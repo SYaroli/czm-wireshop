@@ -1,0 +1,15 @@
+{
+  "name": "wireshop-backend",
+  "version": "1.0.0",
+  "description": "Backend for technician login and build tracking",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "body-parser": "^1.20.2",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "sqlite3": "^5.1.6"
+  }
+}
