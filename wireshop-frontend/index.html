@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wire Shop Login</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="login-container">
+    <h2>Wire Shop Login</h2>
+    <form id="login-form" method="POST" action="/login">
+      <div class="credentials-container">
+        <label>Username:</label>
+        <input type="text" id="usernameInput" name="username" required>
+        <label>PIN:</label>
+        <input type="password" id="pinInput" name="pin" required>
+      </div>
+      <button type="submit">Login</button>
+    </form>
+    <p id="error-message" style="color: red;"></p>
+  </div>
+  <script src="users.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
