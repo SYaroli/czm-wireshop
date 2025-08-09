@@ -1,26 +1,35 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Wire Shop Login</title>
-  <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Wireshop — Sign In</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div class="login-container">
-    <h2>Wire Shop Login</h2>
-    <form id="login-form" method="POST" action="/login">
-      <div class="credentials-container">
-        <label>Username:</label>
-        <input type="text" id="usernameInput" name="username" required>
-        <label>PIN:</label>
-        <input type="password" id="pinInput" name="pin" required>
-      </div>
-      <button type="submit">Login</button>
+  <main class="container login">
+    <div class="logo-wrap">
+      <img src="czm-logo.png" alt="CZM" style="max-width:220px;height:auto;">
+    </div>
+
+    <h1>Wireshop Login</h1>
+
+    <form id="login-form" autocomplete="off">
+      <label for="usernameInput">Username</label>
+      <input id="usernameInput" type="text" placeholder="e.g. rafaela" required />
+
+      <label for="pinInput">PIN</label>
+      <input id="pinInput" type="password" inputmode="numeric" placeholder="****" required />
+
+      <button type="submit">Sign In</button>
+      <p id="error-message" style="color:#d33;margin-top:8px;"></p>
     </form>
-    <p id="error-message" style="color: red;"></p>
-  </div>
+  </main>
+
+  <!-- Load data first -->
   <script src="users.js"></script>
+  <script src="catalog.js"></script>
+  <!-- App logic last -->
   <script src="script.js"></script>
 </body>
 </html>
