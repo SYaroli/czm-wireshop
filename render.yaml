@@ -12,7 +12,7 @@ services:
         value: 20
     healthCheckPath: /health
 
-  - type: static
+  - type: static_site
     name: wireshop-frontend
     rootDir: wireshop-frontend
     buildCommand: ""
@@ -22,3 +22,4 @@ services:
       - type: rewrite
         source: /api/*
         destination: https://wireshop-backend.onrender.com/api/:splat
+
