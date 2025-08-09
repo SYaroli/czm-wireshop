@@ -1,6 +1,7 @@
 // script.js — dashboard wired to catalog (partNumber + printName)
 document.addEventListener('DOMContentLoaded', () => {
-  const API_URL = '/api/jobs'; // Render proxies /api to backend
+  // POINT DIRECTLY TO BACKEND (we'll switch back to /api when Render's rewrite behaves)
+  const API_URL = 'https://wireshop-backend.onrender.com/api/jobs';
 
   // ---------- Shared helpers ----------
   const getUser = () => {
@@ -16,7 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
       ...options
     });
     if (!res.ok) {
-      const msg = await res.text().catch(()=>'');
+      const msg = await res.text().catch(()=> '');
       throw new Error(`HTTP ${res.status} ${res.statusText} - ${msg}`);
     }
     const ct = res.headers.get('content-type') || '';
