@@ -1,4 +1,4 @@
-// script.js — full file
+// script.js — full file (with PIN coercion)
 document.addEventListener('DOMContentLoaded', () => {
   // ----- Config -----
   const API_URL = '/api/jobs'; // Render will proxy /api -> backend
@@ -70,14 +70,19 @@ document.addEventListener('DOMContentLoaded', () => {
       const username = (document.getElementById('usernameInput').value || '').trim().toLowerCase();
       const pin = (document.getElementById('pinInput').value || '').trim();
 
+      // PIN fix: coerce both to strings
       const u = (window.users || []).find(x =>
-        x.username.toLowerCase() === username && x.pin === pin
+        x &&
+        typeof x.username === 'string' &&
+        x.username.toLowerCase() === username &&
+        String(x.pin) === String(pin)
       );
 
       if (!u) {
         if (err) err.textContent = 'Invalid username or PIN.';
         return;
       }
+      err.textContent = '';
       setUser(u);
       window.location.href = 'dashboard.html';
     });
