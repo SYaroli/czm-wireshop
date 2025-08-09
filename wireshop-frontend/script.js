@@ -1,14 +1,12 @@
-// script.js — full file (with PIN coercion)
+// script.js — dashboard wired to catalog (partNumber + printName)
 document.addEventListener('DOMContentLoaded', () => {
-  // ----- Config -----
-  const API_URL = '/api/jobs'; // Render will proxy /api -> backend
+  const API_URL = '/api/jobs'; // Render proxies /api to backend
 
-  // ----- Common helpers -----
+  // ---------- Shared helpers ----------
   const getUser = () => {
     try { return JSON.parse(localStorage.getItem('user')) || null; }
     catch { return null; }
   };
-
   const setUser = (u) => localStorage.setItem('user', JSON.stringify(u));
   const clearUser = () => localStorage.removeItem('user');
 
@@ -25,16 +23,12 @@ document.addEventListener('DOMContentLoaded', () => {
     return ct.includes('application/json') ? res.json() : res.text();
   }
 
-  // Duration formatter using start/end + pause fields
   function formatDuration(start, end, pauseStart, pauseTotal) {
     if (!start) return 'N/A';
     const now = Date.now();
     const effectiveEnd = end || now;
-
-    // Total paused time = recorded pauses + current pause (if any)
     let totalPaused = pauseTotal || 0;
     if (pauseStart && !end) totalPaused += (now - pauseStart);
-
     let ms = Math.max(effectiveEnd - start - totalPaused, 0);
     const h = Math.floor(ms / 3600000); ms %= 3600000;
     const m = Math.floor(ms / 60000);   ms %= 60000;
@@ -42,24 +36,13 @@ document.addEventListener('DOMContentLoaded', () => {
     return `${h}h ${m}m ${s}s`;
   }
 
-  // Find the open (endTime null) log id for a user+part
   async function getActiveLogId(username, partNumber) {
     const rows = await api(`/logs/${encodeURIComponent(username)}`, { method: 'GET' });
     const open = rows.find(r => r.partNumber === partNumber && !r.endTime);
     return open ? open.id : null;
   }
 
-  // Populate a <select> with catalog parts (if present)
-  function populateParts() {
-    const sel = document.getElementById('partSelect');
-    if (!sel || !Array.isArray(window.catalog)) return;
-    sel.innerHTML = `<option value="">-- Select Part --</option>` +
-      window.catalog.map(p =>
-        `<option value="${p.partNumber}">${p.partNumber} — ${p.name || ''}</option>`
-      ).join('');
-  }
-
-  // ====== PAGE: LOGIN (index.html) ======
+  // ---------- LOGIN PAGE (index.html) ----------
   (function initLoginPage() {
     const form = document.getElementById('login-form');
     if (!form) return;
@@ -70,10 +53,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const username = (document.getElementById('usernameInput').value || '').trim().toLowerCase();
       const pin = (document.getElementById('pinInput').value || '').trim();
 
-      // PIN fix: coerce both to strings
       const u = (window.users || []).find(x =>
-        x &&
-        typeof x.username === 'string' &&
+        x && typeof x.username === 'string' &&
         x.username.toLowerCase() === username &&
         String(x.pin) === String(pin)
       );
@@ -88,7 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   })();
 
-  // ====== PAGE: DASHBOARD (dashboard.html) ======
+  // ---------- DASHBOARD PAGE ----------
   (function initDashboardPage() {
     const welcome = document.getElementById('welcome-message');
     if (!welcome) return; // not on this page
@@ -101,10 +82,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const logoutBtn = document.getElementById('logoutBtn');
     const partSelect = document.getElementById('partSelect');
     const actionSelect = document.getElementById('actionSelect');
-    const notesInput = document.getElementById('notesInput');
+    const notesInput = document.getElementById('notes'); // <-- matches dashboard.html
     const submitLogBtn = document.getElementById('submitLog');
     const logTableBody = document.getElementById('logTableBody');
     const deleteAllBtn = document.getElementById('deleteAllLogs');
+
+    // Info spans under the dropdown
+    const spanTime = document.getElementById('expectedTime');
+    const spanNotes = document.getElementById('expectedNotes');
+    const spanLoc  = document.getElementById('expectedLocation');
+    const spanSA   = document.getElementById('expectedSA');
 
     // Greet
     welcome.textContent = `Welcome, ${user.username}${user.role ? ' (' + user.role + ')' : ''}`;
@@ -113,8 +100,28 @@ document.addEventListener('DOMContentLoaded', () => {
     if (liveBtn) liveBtn.addEventListener('click', () => window.location.href = 'admin.html');
     if (logoutBtn) logoutBtn.addEventListener('click', () => { clearUser(); window.location.href = 'index.html'; });
 
-    // Populate parts and actions
+    // Populate part dropdown: "partNumber — printName" sorted by partNumber
+    function populateParts() {
+      if (!partSelect || !Array.isArray(window.catalog)) return;
+      const items = [...window.catalog]
+        .filter(r => r.partNumber)
+        .sort((a, b) => String(a.partNumber).localeCompare(String(b.partNumber)));
+      partSelect.innerHTML = `<option value="">-- Select Part --</option>` +
+        items.map(p => `<option value="${p.partNumber}">${p.partNumber} — ${p.printName || ''}</option>`).join('');
+    }
     populateParts();
+
+    // When a part is chosen, fill the info lines
+    partSelect.addEventListener('change', () => {
+      const pn = partSelect.value;
+      const rec = (window.catalog || []).find(r => r.partNumber === pn);
+      spanTime.textContent = rec && rec.expectedHours != null ? rec.expectedHours : '--';
+      spanNotes.textContent = rec && rec.notes ? rec.notes : '--';
+      spanLoc.textContent = rec && rec.location ? rec.location : '--';
+      spanSA.textContent = rec && rec.saNumber ? rec.saNumber : '--';
+    });
+
+    // Actions list
     if (actionSelect) {
       actionSelect.innerHTML = `
         <option value="">-- Select Action --</option>
@@ -157,7 +164,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
           if (action === 'Start') {
-            // Create new log
             await api(`/log`, {
               method: 'POST',
               body: JSON.stringify({
@@ -169,7 +175,6 @@ document.addEventListener('DOMContentLoaded', () => {
               })
             });
           } else {
-            // Update existing open log for this part
             const id = await getActiveLogId(user.username, partNumber);
             if (!id) { alert('No active log for this part. Start one first.'); return; }
 
@@ -182,7 +187,6 @@ document.addEventListener('DOMContentLoaded', () => {
             });
           }
 
-          // Clear note field and refresh
           if (notesInput) notesInput.value = '';
           await refreshMyLogs();
         } catch (err) {
@@ -212,11 +216,11 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('beforeunload', () => clearInterval(interval));
   })();
 
-  // ====== PAGE: ADMIN (admin.html) ======
+  // ---------- ADMIN PAGE ----------
   (function initAdminPage() {
     const backBtn = document.getElementById('backToDashboard');
     const tableBody = document.getElementById('activityTableBody');
-    if (!backBtn && !tableBody) return; // not on admin page
+    if (!backBtn && !tableBody) return;
 
     const user = getUser();
     if (!user) { window.location.href = 'index.html'; return; }
@@ -259,7 +263,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
-    // Initial + live refresh
     fetchAll().catch(console.error);
     const interval = setInterval(fetchAll, 5000);
     window.addEventListener('beforeunload', () => clearInterval(interval));
