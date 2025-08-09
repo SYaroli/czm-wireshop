@@ -17,9 +17,9 @@ services:
     rootDir: wireshop-frontend
     buildCommand: ""
     staticPublishPath: .
+    plan: free
     autoDeploy: true
     routes:
       - type: rewrite
         source: /api/*
         destination: https://wireshop-backend.onrender.com/api/:splat
-
