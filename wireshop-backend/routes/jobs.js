@@ -3,8 +3,8 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 
-// ----- Simple "auth": who is admin? -----
-// Set ADMIN_USERS env var like:  "shane,giuliano"
+// ----- Admin list via env var -----
+// In Render, set ADMIN_USERS like:  shane,giuliano
 const ADMIN_USERS = (process.env.ADMIN_USERS || '')
   .split(',')
   .map(s => s.trim().toLowerCase())
@@ -20,7 +20,7 @@ function requireAdmin(req, res, next) {
   return res.status(403).json({ error: 'Admin only' });
 }
 
-// Log a job action
+// Create log
 router.post('/log', (req, res) => {
   const { username, partNumber, action, note, startTime, endTime } = req.body;
   if (!username || !partNumber || !action) {
@@ -32,10 +32,7 @@ router.post('/log', (req, res) => {
     VALUES (?, ?, ?, ?, ?, ?, NULL, 0)
   `;
   db.run(stmt, [username, partNumber, action, note || '', startTime || null, endTime || null], function (err) {
-    if (err) {
-      console.error('Error inserting log:', err.message);
-      return res.status(500).json({ error: err.message });
-    }
+    if (err) return res.status(500).json({ error: err.message });
     db.get(`SELECT * FROM jobs WHERE id = ?`, [this.lastID], (err, row) => {
       if (err) return res.status(500).json({ error: err.message });
       res.json({ success: true, id: this.lastID, log: row });
@@ -43,7 +40,7 @@ router.post('/log', (req, res) => {
   });
 });
 
-// Update a job log
+// Update log (pause/continue/finish)
 router.put('/log/:id', (req, res) => {
   const id = req.params.id;
   const { action, endTime } = req.body;
@@ -74,10 +71,7 @@ router.put('/log/:id', (req, res) => {
     params.push(id);
 
     db.run(stmt, params, (err) => {
-      if (err) {
-        console.error('Error updating log:', err.message);
-        return res.status(500).json({ error: 'Failed to update log', details: err.message });
-      }
+      if (err) return res.status(500).json({ error: 'Failed to update log', details: err.message });
       db.get(`SELECT * FROM jobs WHERE id = ?`, [id], (err, row) => {
         if (err) return res.status(500).json({ error: err.message });
         res.json({ success: true, log: row });
@@ -86,7 +80,7 @@ router.put('/log/:id', (req, res) => {
   });
 });
 
-// Get all job logs (admin only)
+// Admin: get all logs
 router.get('/logs', requireAdmin, (req, res) => {
   db.all(`SELECT * FROM jobs ORDER BY id DESC`, [], (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -94,7 +88,7 @@ router.get('/logs', requireAdmin, (req, res) => {
   });
 });
 
-// Get logs for a specific user (self or admin)
+// Self or admin: get logs for a username
 router.get('/logs/:username', (req, res) => {
   const requester = currentUser(req);
   const target = (req.params.username || '').toLowerCase();
@@ -111,7 +105,7 @@ router.get('/logs/:username', (req, res) => {
   });
 });
 
-// Delete logs for a specific user (self or admin)
+// Self or admin: delete all logs for a username
 router.delete('/delete-logs/:username', (req, res) => {
   const requester = currentUser(req);
   const target = (req.params.username || '').toLowerCase();
@@ -123,33 +117,23 @@ router.delete('/delete-logs/:username', (req, res) => {
   }
 
   db.run(`DELETE FROM jobs WHERE username = ?`, [req.params.username], (err) => {
-    if (err) {
-      console.error('Error deleting user logs:', err.message);
-      return res.status(500).json({ error: 'Failed to delete user logs' });
-    }
+    if (err) return res.status(500).json({ error: 'Failed to delete user logs' });
     res.json({ success: true, message: `Logs for ${req.params.username} deleted` });
   });
 });
 
-// Delete a specific log by ID (admin only)
+// Admin: delete one log by id
 router.delete('/log/:id', requireAdmin, (req, res) => {
-  const id = req.params.id;
-  db.run(`DELETE FROM jobs WHERE id = ?`, [id], (err) => {
-    if (err) {
-      console.error('Error deleting log:', err.message);
-      return res.status(500).json({ error: 'Failed to delete log' });
-    }
-    res.json({ success: true, message: `Log ${id} deleted` });
+  db.run(`DELETE FROM jobs WHERE id = ?`, [req.params.id], (err) => {
+    if (err) return res.status(500).json({ error: 'Failed to delete log' });
+    res.json({ success: true, message: `Log ${req.params.id} deleted` });
   });
 });
 
-// Delete all logs (admin only)
+// Admin: clear all logs
 router.delete('/admin/clear-logs', requireAdmin, (req, res) => {
   db.run(`DELETE FROM jobs`, (err) => {
-    if (err) {
-      console.error('Error clearing logs:', err.message);
-      return res.status(500).json({ error: 'Failed to clear logs' });
-    }
+    if (err) return res.status(500).json({ error: 'Failed to clear logs' });
     res.json({ success: true, message: 'All logs cleared by admin' });
   });
 });
