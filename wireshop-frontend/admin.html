@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <button id="backToDashboard">← Back to Dashboard</button>
+    <div class="card">
+        <h1>Live Technician Activity</h1>
+        <button id="clearAllLogs">Clear All Logs</button>
+        <table id="activityTable">
+            <thead>
+                <tr>
+                    <th>Technician</th>
+                    <th>Part Number</th>
+                    <th>Action</th>
+                    <th>Notes</th>
+                    <th>Time Active</th>
+                </tr>
+            </thead>
+            <tbody id="activityTableBody">
+                <!-- Rows will be populated dynamically via script.js -->
+            </tbody>
+        </table>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
