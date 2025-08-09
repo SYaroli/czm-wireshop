@@ -1,53 +1,71 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dashboard</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-    <div class="header-box">
-        <h1>Dashboard</h1>
-        <p id="welcome-message"></p>
-        <div class="header-buttons">
-            <button id="liveViewBtn">Live View</button>
-            <button id="logoutBtn">Logout</button>
-        </div>
+  <div class="header-box">
+    <h1>Dashboard</h1>
+    <p id="welcome-message"></p>
+    <div class="header-buttons">
+      <button id="liveViewBtn">Live View</button>
+      <button id="logoutBtn">Logout</button>
     </div>
-    <div class="card">
-        <h2>Log New Entry</h2>
-        <select id="partSelect">
-            <option value="">-- Select Part --</option>
-        </select>
-        <div id="partInfo">Expected Time: -- hours<br>Notes: --</div>
-        <select id="actionSelect">
-            <option value="">-- Select Action --</option>
-            <option value="Start">Start</option>
-            <option value="Pause">Pause</option>
-            <option value="Continue">Continue</option>
-            <option value="Finish">Finish</option>
-        </select>
-        <textarea id="notes" placeholder="Notes"></textarea>
-        <button id="submitLog">Submit Log</button>
+  </div>
+
+  <div class="card">
+    <h2>Log New Entry</h2>
+
+    <!-- Part selection -->
+    <select id="partSelect">
+      <option value="">-- Select Part --</option>
+    </select>
+
+    <!-- Part info display -->
+    <div id="partInfo" style="margin-top:10px;">
+      <p>Expected Time: <span id="expectedTime">--</span> hours</p>
+      <p>Notes: <span id="expectedNotes">--</span></p>
+      <p>Location: <span id="expectedLocation">--</span></p>
+      <p>SA#: <span id="expectedSA">--</span></p>
     </div>
-    <div class="card">
-        <h2>Log History</h2>
-        <table id="logTable">
-            <thead>
-                <tr>
-                    <th>Part Number</th>
-                    <th>Action</th>
-                    <th>Timestamp</th>
-                    <th>Notes</th>
-                    <th>Total Time</th>
-                </tr>
-            </thead>
-            <tbody id="logTableBody"></tbody>
-        </table>
-        <button id="deleteAllLogs">Delete All Logs</button>
-    </div>
-    <script src="script.js"></script>
-    <script src="catalog.js"></script>
+
+    <!-- Action -->
+    <select id="actionSelect" style="margin-top:10px;">
+      <option value="">-- Select Action --</option>
+      <option value="Start">Start</option>
+      <option value="Pause">Pause</option>
+      <option value="Continue">Continue</option>
+      <option value="Finish">Finish</option>
+    </select>
+
+    <!-- Freeform note the tech can enter for this action -->
+    <textarea id="notes" placeholder="Notes" style="margin-top:10px;"></textarea>
+
+    <button id="submitLog" style="margin-top:10px;">Submit Log</button>
+  </div>
+
+  <div class="card">
+    <h2>Log History</h2>
+    <table id="logTable">
+      <thead>
+        <tr>
+          <th>Part Number</th>
+          <th>Action</th>
+          <th>Timestamp</th>
+          <th>Notes</th>
+          <th>Total Time</th>
+        </tr>
+      </thead>
+      <tbody id="logTableBody"></tbody>
+    </table>
+    <button id="deleteAllLogs">Delete All Logs</button>
+  </div>
+
+  <!-- IMPORTANT: load catalog first, then app logic -->
+  <script src="catalog.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
