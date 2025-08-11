@@ -1,16 +1,16 @@
 /* ===== Theme ===== */
-:root{
-  --navy:#052237;         /* CZM-style deep navy */
-  --navy-600:#0c3350;
-  --cyan:#00a6d6;         /* accent */
-  --cyan-600:#008bb4;
-  --bg:#f4f6f8;
-  --card:#ffffff;
-  --text:#1b2838;
-  --muted:#64748b;
-  --danger:#d92d20;
-  --ring: rgba(0,166,214,0.35);
-  --radius:14px;
+:root {
+  --navy: #000000;        /* Primary = black */
+  --navy-600: #1a1a1a;    /* Dark gray-black for gradients */
+  --cyan: #d90429;        /* Accent = bright red */
+  --cyan-600: #b3001f;    /* Darker red for hover/active */
+  --bg: #f8f9fa;          /* Light background for contrast */
+  --card: #ffffff;        /* Card background */
+  --text: #1b1b1b;        /* Main text */
+  --muted: #666666;       /* Muted text */
+  --danger: #ff0000;      /* Danger red */
+  --ring: rgba(217, 4, 41, 0.35); /* Red ring for focus */
+  --radius: 14px;
 }
 
 /* Reset-ish */
