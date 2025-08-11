@@ -1,4 +1,4 @@
-// script.js — streamlined dashboard with live notes (commit on Finish)
+// script.js — streamlined dashboard with live notes + row selection -> info panel
 document.addEventListener('DOMContentLoaded', () => {
   const API_URL = 'https://wireshop-backend.onrender.com/api/jobs';
 
@@ -65,13 +65,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const deleteAllBtn = document.getElementById('deleteAllLogs');
 
     const isAdmin = String(user.role || '').toLowerCase() === 'admin';
-    if (!isAdmin) {
-      if (liveBtn) liveBtn.style.display='none';
-      if (deleteAllBtn) deleteAllBtn.style.display='none';
-    }
+    if (!isAdmin) { liveBtn && (liveBtn.style.display='none'); deleteAllBtn && (deleteAllBtn.style.display='none'); }
 
-    if (liveBtn) liveBtn.addEventListener('click', ()=> window.location.href='admin.html');
-    if (logoutBtn) logoutBtn.addEventListener('click', ()=> { clearUser(); window.location.href='index.html'; });
+    liveBtn?.addEventListener('click', ()=> window.location.href='admin.html');
+    logoutBtn?.addEventListener('click', ()=> { clearUser(); window.location.href='index.html'; });
 
     const partSelect = document.getElementById('partSelect');
     const tBody = document.getElementById('logTableBody');
@@ -90,14 +87,21 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     loadParts();
 
-    // Part info panel
-    partSelect.addEventListener('change', ()=>{
-      const rec = (window.catalog || []).find(p => p.partNumber === partSelect.value);
-      expTime.textContent = rec && rec.expectedHours != null ? rec.expectedHours : '--';
-      expNotes.textContent = rec && rec.notes ? rec.notes : '--';
-      expLoc.textContent = rec && rec.location ? rec.location : '--';
-      expSA.textContent = rec && rec.saNumber ? rec.saNumber : '--';
-    });
+    // Info panel from part number
+    function fillInfoFromPart(partNumber){
+      const rec = (window.catalog || []).find(p => p.partNumber === partNumber);
+      if (rec){
+        partSelect.value = rec.partNumber; // reflect selection
+        expTime.textContent = rec.expectedHours != null ? rec.expectedHours : '--';
+        expNotes.textContent = rec.notes || '--';
+        expLoc.textContent = rec.location || '--';
+        expSA.textContent = rec.saNumber || '--';
+      }else{
+        expTime.textContent = '--'; expNotes.textContent='--'; expLoc.textContent='--'; expSA.textContent='--';
+      }
+    }
+
+    partSelect.addEventListener('change', ()=> fillInfoFromPart(partSelect.value));
 
     // Start job (no notes here; notes live in active rows)
     startBtn.addEventListener('click', async ()=>{
@@ -113,9 +117,9 @@ document.addEventListener('DOMContentLoaded', () => {
             startTime: Date.now()
           })
         });
-        // reset
+        // reset info panel but keep dropdown cleared
         partSelect.value='';
-        expTime.textContent='--'; expNotes.textContent='--'; expLoc.textContent='--'; expSA.textContent='--';
+        fillInfoFromPart('');
         await refreshActive();
       }catch(err){
         console.error(err); alert('Failed to start job.');
@@ -128,11 +132,26 @@ document.addEventListener('DOMContentLoaded', () => {
     const setDraft = (logId, val)=> localStorage.setItem(draftKey(logId), val);
     const clearDraft = (logId)=> localStorage.removeItem(draftKey(logId));
 
+    // Keep track of which row is "selected"
+    let selectedLogId = null;
+    let selectedPartNumber = '';
+
+    function selectRow(tr, log){
+      // clear previous
+      tBody.querySelectorAll('tr.row-selected').forEach(r => r.classList.remove('row-selected'));
+      tr.classList.add('row-selected');
+      selectedLogId = log.id;
+      selectedPartNumber = log.partNumber || '';
+      fillInfoFromPart(selectedPartNumber);
+    }
+
     // Render active logs (no endTime)
     async function refreshActive(){
       const rows = await api(`/logs/${encodeURIComponent(user.username)}`, { method:'GET' });
       const active = rows.filter(r => !r.endTime);
       tBody.innerHTML='';
+      let foundSelected = false;
+
       active.forEach(log=>{
         const tr = document.createElement('tr');
 
@@ -154,10 +173,25 @@ document.addEventListener('DOMContentLoaded', () => {
           <td>${log.startTime ? new Date(log.startTime).toLocaleString() : ''}</td>
           <td class="dur" data-start="${log.startTime || ''}" data-pause="${log.pauseStart || ''}" data-paused="${log.pauseTotal || 0}">${fmtDuration(log.startTime, log.endTime, log.pauseStart, log.pauseTotal)}</td>
         `;
+
         // select current state (default to Continue if unknown/Start)
         const sel = tr.querySelector('select.row-action');
         const current = (log.action || '').trim();
         sel.value = (current === 'Pause' || current === 'Finish') ? current : 'Continue';
+
+        // Row click to select (but ignore clicks inside textarea/select)
+        tr.addEventListener('click', (e)=>{
+          if (e.target.closest('textarea, select')) return;
+          selectRow(tr, log);
+        });
+
+        // If this row was previously selected, reselect it after refresh
+        if (selectedLogId && log.id === selectedLogId){
+          tr.classList.add('row-selected');
+          foundSelected = true;
+          // ensure info panel matches
+          fillInfoFromPart(log.partNumber);
+        }
 
         // notes draft tracking
         const ta = tr.querySelector('textarea.notes-box');
@@ -177,10 +211,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (next === 'Finish'){
               clearDraft(log.id);
-              tr.remove(); // hide from tech list
+              // remove row; if it was selected, clear selection + info panel
+              if (selectedLogId === log.id){ selectedLogId = null; selectedPartNumber=''; fillInfoFromPart(''); }
+              tr.remove();
             } else {
-              // keep selection as chosen
+              // keep selection state; also keep showing the chosen value
               e.target.value = next;
+              // Update paused/continue timing snapshot on next poll
             }
           }catch(err){
             console.error(err); alert('Failed to update action.');
@@ -189,6 +226,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         tBody.appendChild(tr);
       });
+
+      if (!foundSelected && selectedLogId){
+        // previously selected row no longer active
+        selectedLogId = null; selectedPartNumber=''; fillInfoFromPart('');
+      }
     }
 
     // Tick durations
@@ -201,20 +243,19 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
-    if (deleteAllBtn){
-      deleteAllBtn.addEventListener('click', async ()=>{
-        if (!confirm('Delete ALL your logs?')) return;
-        try{ await api(`/delete-logs/${encodeURIComponent(user.username)}`, { method:'DELETE' }); tBody.innerHTML=''; }
-        catch(err){ console.error(err); alert('Failed to delete logs.'); }
-      });
-    }
+    // Delete all
+    deleteAllBtn?.addEventListener('click', async ()=>{
+      if (!confirm('Delete ALL your logs?')) return;
+      try{ await api(`/delete-logs/${encodeURIComponent(user.username)}`, { method:'DELETE' }); tBody.innerHTML=''; fillInfoFromPart(''); }
+      catch(err){ console.error(err); alert('Failed to delete logs.'); }
+    });
 
     refreshActive().catch(console.error);
     setInterval(async ()=>{ try{ await refreshActive(); }catch{} }, 5000);
     setInterval(tickDurations, 1000);
   })();
 
-  // ---------- ADMIN (unchanged visuals) ----------
+  // ---------- ADMIN ----------
   (function initAdmin(){
     const backBtn = document.getElementById('backToDashboard');
     const tbody = document.getElementById('activityTableBody');
