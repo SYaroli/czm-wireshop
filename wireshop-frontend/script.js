@@ -1,116 +1,150 @@
-document.addEventListener('DOMContentLoaded', () => {
-  const user = JSON.parse(localStorage.getItem('user'));
-  const API_URL = 'https://czm-wireshop.onrender.com/api/jobs';
-  let activeLogs = new Set();
-  let updateTimer;
+// script.js — full file
 
-  // ----- Login -----
+document.addEventListener('DOMContentLoaded', () => {
+  // ===== Config =====
+  const API_BASE = 'https://czm-wireshop.onrender.com'; // change if your backend URL differs
+  const API_URL  = `${API_BASE}/api/jobs`;
+
+  // ===== Session =====
+  const user = safeParse(localStorage.getItem('user')); // { username, role }
+
+  // ===== Page flags =====
+  const path = window.location.pathname || '';
+  const onLogin  = path.includes('index.html') || !/\.html$/.test(path); // default page
+  const onDash   = path.includes('dashboard.html');
+  const onAdmin  = path.includes('admin.html');
+
+  // ===== Login handling =====
   const loginForm = document.getElementById('login-form');
   const errorMessage = document.getElementById('error-message');
   if (loginForm) {
     loginForm.addEventListener('submit', (event) => {
       event.preventDefault();
-      const username = document.getElementById('usernameInput').value.trim().toLowerCase();
-      const pin = document.getElementById('pinInput').value.trim();
-      const foundUser = users.find(u => u.username.toLowerCase() === username && u.pin === pin);
+      const username = val('#usernameInput').trim().toLowerCase();
+      const pin = val('#pinInput').trim();
+      const foundUser = (window.users || []).find(
+        u => u.username.toLowerCase() === username && u.pin === pin
+      );
       if (foundUser) {
         localStorage.setItem('user', JSON.stringify(foundUser));
         window.location.href = foundUser.role === 'admin' ? 'admin.html' : 'dashboard.html';
       } else {
-        errorMessage.textContent = 'Invalid username or PIN';
+        if (errorMessage) errorMessage.textContent = 'Invalid username or PIN';
       }
     });
   }
 
-  // ----- Route guard -----
-  const onDash = window.location.pathname.includes('dashboard.html');
-  const onAdmin = window.location.pathname.includes('admin.html');
-
-  if (onDash || onAdmin) {
-    if (!user) { window.location.href = 'index.html'; return; }
-    if (onAdmin && user.role !== 'admin') { window.location.href = 'dashboard.html'; return; }
+  // ===== Route guard =====
+  if (!onLogin && !user) {
+    window.location.href = 'index.html';
+    return;
+  }
+  if (onAdmin && user && user.role !== 'admin') {
+    window.location.href = 'dashboard.html';
+    return;
   }
 
-  // ===== Dashboard =====
+  // ===== Header buttons (present on dash/admin) =====
+  wire('#logoutBtn', 'click', () => {
+    localStorage.removeItem('user');
+    window.location.href = 'index.html';
+  });
+
+  wire('#liveViewBtn', 'click', () => {
+    if (user && user.role === 'admin') {
+      window.location.href = 'admin.html';
+    } else {
+      alert('Admin only.');
+    }
+  });
+
+  let updateTimer;
+
+  // ===================== Dashboard =====================
   if (onDash) {
-    document.getElementById('welcome-message').textContent =
-      `Welcome, ${user.username.charAt(0).toUpperCase() + user.username.slice(1)}`;
+    text('#welcome-message', `Welcome, ${capitalize(user.username)}`);
 
-    const partSelect = document.getElementById('partSelect');
-    const actionSelect = document.getElementById('actionSelect');
-    const notesInput = document.getElementById('notes');
-    const logTableBody = document.getElementById('logTableBody');
+    const partSelect     = qs('#partSelect');
+    const expectedTimeEl = qs('#expectedTime');
+    const partNotesEl    = qs('#partNotes');
+    const actionSelect   = qs('#actionSelect');
+    const notesInput     = qs('#notes');
+    const logTableBody   = qs('#logTableBody');
 
-    // NEW: explicit fields
-    const expectedTimeEl = document.getElementById('expectedTime');
-    const partNotesEl = document.getElementById('partNotes');
-
-    // Populate dropdown
-    if (Array.isArray(window.catalog)) {
-      window.catalog.forEach(item => {
-        if (item && item.partNumber) {
-          const option = document.createElement('option');
-          option.value = item.partNumber;
-          option.textContent = `${item.partNumber} - ${item.name}`;
-          partSelect.appendChild(option);
-        }
+    // Build dropdown from catalog, guarding against bad rows
+    const catalog = Array.isArray(window.catalog) ? window.catalog : [];
+    if (partSelect) {
+      partSelect.innerHTML = '<option value="">-- Select Part --</option>';
+      catalog.forEach(item => {
+        if (!item || !item.partNumber) return;
+        const safeName = (item.name && String(item.name).trim()) ? item.name : '—';
+        const opt = document.createElement('option');
+        opt.value = String(item.partNumber);
+        opt.textContent = `${item.partNumber} - ${safeName}`;
+        partSelect.appendChild(opt);
       });
     }
 
-    // Update info fields when part changes
+    // Update info box when part changes
     function updatePartInfo() {
-      const selected = (window.catalog || []).find(i => i.partNumber === partSelect.value);
-      if (selected) {
-        if (expectedTimeEl) expectedTimeEl.textContent = `Expected Time: ${selected.hours || '--'} hours`;
-        if (partNotesEl) partNotesEl.textContent = `Notes: ${selected.notes || '--'}`;
-      } else {
-        if (expectedTimeEl) expectedTimeEl.textContent = 'Expected Time: -- hours';
-        if (partNotesEl) partNotesEl.textContent = 'Notes: --';
-      }
+      const pn = partSelect ? partSelect.value : '';
+      const sel = catalog.find(i => i && i.partNumber === pn);
+
+      const hours = sel && sel.hours != null && String(sel.hours).trim() !== '' ? sel.hours : '--';
+      const notes = sel && sel.notes && String(sel.notes).trim() !== '' ? sel.notes : '--';
+
+      if (expectedTimeEl) expectedTimeEl.textContent = `Expected Time: ${hours} hours`;
+      if (partNotesEl)    partNotesEl.textContent    = `Notes: ${notes}`;
     }
-    partSelect.addEventListener('change', updatePartInfo);
+    wire('#partSelect', 'change', updatePartInfo);
+    updatePartInfo(); // initialize
+
+    // Active log tracking to prevent duplicates
+    let activeLogs = new Set();
 
     async function fetchLogs() {
       try {
-        const res = await fetch(`${API_URL}/logs/${user.username}`);
+        const res = await fetch(`${API_URL}/logs/${encodeURIComponent(user.username)}`);
+        if (!res.ok) throw new Error(`GET logs ${res.status}`);
         const data = await res.json();
         renderLogs(data);
-        activeLogs.clear();
-        data.forEach(log => { if (!log.endTime) activeLogs.add(log.partNumber); });
-      } catch (err) {
-        console.error('Failed to fetch logs:', err);
+        // rebuild active set
+        activeLogs = new Set(data.filter(l => !l.endTime).map(l => l.partNumber));
+      } catch (e) {
+        console.error('Failed to fetch logs:', e);
       }
     }
 
     function renderLogs(logs) {
+      if (!logTableBody) return;
       logTableBody.innerHTML = '';
       logs.forEach(log => {
-        const row = document.createElement('tr');
+        const tr = document.createElement('tr');
         const duration = log.startTime
           ? calculateDuration(log.startTime, log.endTime, log.pauseStart, log.pauseTotal)
           : 'N/A';
-        row.innerHTML = `
-          <td>${log.partNumber}</td>
-          <td>${log.action}</td>
+        tr.innerHTML = `
+          <td>${escapeHTML(log.partNumber || '')}</td>
+          <td>${escapeHTML(log.action || '')}</td>
           <td>${new Date(log.timestamp).toLocaleString()}</td>
-          <td>${log.note || ''}</td>
+          <td>${escapeHTML(log.note || '')}</td>
           <td>${duration}</td>
         `;
-        logTableBody.appendChild(row);
+        logTableBody.appendChild(tr);
       });
     }
 
-    document.getElementById('submitLog').addEventListener('click', async () => {
-      const partNumber = partSelect.value;
-      const action = actionSelect.value;
-      const note = notesInput.value.trim();
+    wire('#submitLog', 'click', async () => {
+      const partNumber = partSelect ? partSelect.value : '';
+      const action = actionSelect ? actionSelect.value : '';
+      const note = (notesInput ? notesInput.value : '').trim();
 
       if (!partNumber || !action) {
         alert('Please select a part and action.');
         return;
       }
 
-      const isStart = action === 'Start';
+      const isStart  = action === 'Start';
       const isActive = activeLogs.has(partNumber);
 
       if (isStart && isActive) {
@@ -127,89 +161,93 @@ document.addEventListener('DOMContentLoaded', () => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username: user.username, partNumber, action, note }),
         });
-        if (res.ok) {
-          notesInput.value = '';
-          actionSelect.value = '';
-          await fetchLogs();
-        } else {
-          alert('Failed to submit log.');
-        }
-      } catch (err) {
-        console.error('Error submitting log:', err);
+        if (!res.ok) throw new Error(`POST ${res.status}`);
+        // reset UI
+        if (notesInput) notesInput.value = '';
+        if (actionSelect) actionSelect.value = '';
+        await fetchLogs();
+      } catch (e) {
+        console.error('Error submitting log:', e);
+        alert('Failed to submit log.');
       }
     });
 
-    // Kick things off
-    updatePartInfo();
+    wire('#deleteAllLogs', 'click', async () => {
+      if (!confirm('Delete your entire log history?')) return;
+      try {
+        const res = await fetch(`${API_URL}/logs/${encodeURIComponent(user.username)}`, {
+          method: 'DELETE'
+        });
+        if (!res.ok) throw new Error(`DELETE ${res.status}`);
+        await fetchLogs();
+      } catch (e) {
+        console.error('Failed to delete logs:', e);
+        alert('Delete failed.');
+      }
+    });
+
+    // Start polling
     updateTimer = setInterval(fetchLogs, 5000);
     fetchLogs();
   }
 
-  // ===== Admin =====
+  // ===================== Admin =====================
   if (onAdmin) {
-    const activityTableBody = document.getElementById('activityTableBody');
-    const clearLogsButton = document.getElementById('clearAllLogs');
+    const tbody = qs('#activityTableBody');
 
     async function fetchAllLogs() {
       try {
         const res = await fetch(`${API_URL}/admin/logs`);
+        if (!res.ok) throw new Error(`GET admin/logs ${res.status}`);
         const logs = await res.json();
-        activityTableBody.innerHTML = '';
+        if (!tbody) return;
+        tbody.innerHTML = '';
         logs.forEach(log => {
-          const row = document.createElement('tr');
+          const tr = document.createElement('tr');
           const duration = log.startTime && log.endTime
             ? calculateDuration(log.startTime, log.endTime, log.pauseStart, log.pauseTotal)
             : 'N/A';
-          row.innerHTML = `
-            <td>${log.username}</td>
-            <td>${log.partNumber}</td>
-            <td>${log.action}</td>
-            <td>${log.note || ''}</td>
+          tr.innerHTML = `
+            <td>${escapeHTML(log.username || '')}</td>
+            <td>${escapeHTML(log.partNumber || '')}</td>
+            <td>${escapeHTML(log.action || '')}</td>
+            <td>${escapeHTML(log.note || '')}</td>
             <td>${duration}</td>
           `;
-          activityTableBody.appendChild(row);
+          tbody.appendChild(tr);
         });
-      } catch (err) {
-        console.error('Failed to load admin logs:', err);
+      } catch (e) {
+        console.error('Failed to load admin logs:', e);
       }
     }
 
-    if (clearLogsButton) {
-      clearLogsButton.addEventListener('click', async () => {
-        if (!confirm('Clear ALL logs? This cannot be undone.')) return;
-        try {
-          const res = await fetch(`${API_URL}/admin/clear-logs`, {
-            method: 'DELETE',
-            headers: { 'Content-Type': 'application/json' }
-          });
-          if (!res.ok) throw new Error(`Server error: ${res.status}`);
-          const result = await res.json();
-          if (result.success) {
-            activityTableBody.innerHTML = '';
-            alert('All logs cleared.');
-          } else {
-            alert('Failed to clear logs.');
-          }
-        } catch (err) {
-          console.error('Error clearing logs:', err);
-          alert('Error clearing logs. Check console for details.');
-        }
-      });
-    }
-
-    document.getElementById('backToDashboard').addEventListener('click', () => {
-      window.location.href = 'dashboard.html';
+    wire('#clearAllLogs', 'click', async () => {
+      if (!confirm('Clear ALL logs for ALL users? This cannot be undone.')) return;
+      try {
+        const res = await fetch(`${API_URL}/admin/clear-logs`, { method: 'DELETE' });
+        if (!res.ok) throw new Error(`DELETE admin/clear-logs ${res.status}`);
+        await fetchAllLogs();
+        alert('All logs cleared.');
+      } catch (e) {
+        console.error('Error clearing logs:', e);
+        alert('Error clearing logs.');
+      }
     });
+
+    wire('#backToDashboard', 'click', () => window.location.href = 'dashboard.html');
 
     updateTimer = setInterval(fetchAllLogs, 5000);
     fetchAllLogs();
   }
 
-  // ----- Util -----
+  // ===== Cleanup =====
+  window.addEventListener('beforeunload', () => updateTimer && clearInterval(updateTimer));
+
+  // ===== Helpers =====
   function calculateDuration(start, end, pauseStart, pauseTotal) {
     if (!start) return 'N/A';
     const now = Date.now();
-    let endTime = end || now;
+    const endTime = end || now;
     let duration = endTime - start - (pauseTotal || 0);
     if (pauseStart && !end) duration -= (now - pauseStart);
     if (duration < 0) duration = 0;
@@ -219,7 +257,15 @@ document.addEventListener('DOMContentLoaded', () => {
     return `${h}h ${m}m ${s}s`;
   }
 
-  window.addEventListener('beforeunload', () => {
-    if (updateTimer) clearInterval(updateTimer);
-  });
+  function safeParse(s) {
+    try { return JSON.parse(s || 'null'); } catch { return null; }
+  }
+  function qs(sel) { return document.querySelector(sel); }
+  function val(sel) { const el = qs(sel); return el ? el.value : ''; }
+  function text(sel, t) { const el = qs(sel); if (el) el.textContent = t; }
+  function wire(sel, evt, fn) { const el = qs(sel); if (el) el.addEventListener(evt, fn); }
+  function capitalize(s){ return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''; }
+  function escapeHTML(str){
+    return String(str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  }
 });
