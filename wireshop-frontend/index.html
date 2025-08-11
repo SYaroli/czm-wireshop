@@ -1,50 +1,46 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Wireshop — Sign In</title>
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css"/>
 </head>
 <body>
-  <!-- Brand bar -->
   <div class="brand-bar">
     <div class="brand-inner">
       <a class="brand-logo" href="#">
-        <img src="czm-logo.png" alt="CZM logo">
+        <img src="czm-logo.png" alt="CZM">
         <h1 class="brand-title">CZM • Wireshop</h1>
       </a>
     </div>
   </div>
 
-  <main class="container login">
+  <main class="login-wrap">
     <div class="login-card">
-      <div class="logo-wrap">
+      <div class="login-top">
         <img src="czm-logo.png" alt="CZM">
+        <h2 class="login-title">Sign in</h2>
       </div>
-
-      <h2 style="margin:0 0 6px 0;">Sign in</h2>
-      <p class="help" style="margin:0 0 16px 0;">Use your username and PIN.</p>
+      <p class="login-sub">Enter your username and PIN.</p>
 
       <form id="login-form" autocomplete="off">
-        <label for="usernameInput">Username</label>
-        <input id="usernameInput" type="text" placeholder="e.g. rafaela" required />
-
-        <label for="pinInput">PIN</label>
-        <input id="pinInput" type="password" inputmode="numeric" placeholder="****" required />
-
-        <div style="display:flex; gap:10px; margin-top:14px;">
-          <button type="submit" style="flex:1">Sign In</button>
+        <div class="row">
+          <label for="usernameInput">Username</label>
+          <input id="usernameInput" type="text" placeholder="e.g. rafaela" required>
         </div>
-        <p id="error-message" style="color:#b91c1c;margin-top:10px;"></p>
+        <div class="row">
+          <label for="pinInput">PIN</label>
+          <input id="pinInput" type="password" inputmode="numeric" placeholder="****" required>
+        </div>
+        <div id="error-message"></div>
+        <button type="submit" style="width:100%;">Sign In</button>
       </form>
     </div>
   </main>
 
-  <!-- Load data first -->
   <script src="users.js"></script>
   <script src="catalog.js"></script>
-  <!-- App logic last -->
   <script src="script.js"></script>
 </body>
 </html>
