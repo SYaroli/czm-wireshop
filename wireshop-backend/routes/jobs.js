@@ -1,141 +1,138 @@
 // routes/jobs.js
-const express = require('express');
-const router = express.Router();
-const db = require('../db');
+import express from 'express';
+import { getDB } from '../db.js';
 
-// ----- Admin list via env var -----
-// In Render, set ADMIN_USERS like:  shane,giuliano
-const ADMIN_USERS = (process.env.ADMIN_USERS || '')
-  .split(',')
-  .map(s => s.trim().toLowerCase())
-  .filter(Boolean);
+/*
+  Expected existing endpoints (kept):
+  POST   /api/jobs/log
+  PUT    /api/jobs/log/:id
+  GET    /api/jobs/logs/:username
+  DELETE /api/jobs/delete-logs/:username
+  GET    /api/jobs/logs        (admin)
+  DELETE /api/jobs/admin/clear-logs  (admin)
+*/
 
-function currentUser(req) {
-  return (req.header('x-user') || '').toLowerCase();
-}
+export default function jobsRouterFactory({ adminRequired, authRequired }) {
+  const router = express.Router();
 
-function requireAdmin(req, res, next) {
-  const u = currentUser(req);
-  if (ADMIN_USERS.includes(u)) return next();
-  return res.status(403).json({ error: 'Admin only' });
-}
-
-// Create log
-router.post('/log', (req, res) => {
-  const { username, partNumber, action, note, startTime, endTime } = req.body;
-  if (!username || !partNumber || !action) {
-    return res.status(400).json({ error: 'Missing required fields' });
+  // Helper: resolve acting username (JWT preferred, fallback to legacy x-user)
+  function actingUsername(req) {
+    if (req.user?.username) return req.user.username;
+    const legacy = String(req.headers['x-user'] || '').toLowerCase().trim();
+    return legacy || 'unknown';
   }
 
-  const stmt = `
-    INSERT INTO jobs (username, partNumber, action, note, startTime, endTime, pauseStart, pauseTotal)
-    VALUES (?, ?, ?, ?, ?, ?, NULL, 0)
-  `;
-  db.run(stmt, [username, partNumber, action, note || '', startTime || null, endTime || null], function (err) {
-    if (err) return res.status(500).json({ error: err.message });
-    db.get(`SELECT * FROM jobs WHERE id = ?`, [this.lastID], (err, row) => {
-      if (err) return res.status(500).json({ error: err.message });
-      res.json({ success: true, id: this.lastID, log: row });
-    });
-  });
-});
+  // ---- Create log
+  router.post('/log', authRequired, async (req, res) => {
+    try {
+      const db = getDB();
+      const username = actingUsername(req);
+      const { partNumber, action, startTime, note } = req.body;
 
-// Update log (pause/continue/finish)
-router.put('/log/:id', (req, res) => {
-  const id = req.params.id;
-  const { action, endTime } = req.body;
-
-  db.get(`SELECT * FROM jobs WHERE id = ? AND endTime IS NULL`, [id], (err, row) => {
-    if (err) return res.status(500).json({ error: err.message });
-    if (!row) return res.status(404).json({ error: 'Log not found or already completed' });
-
-    const now = Date.now();
-    let stmt = `UPDATE jobs SET action = ?`;
-    let params = [action || row.action];
-
-    if (endTime) {
-      stmt += `, endTime = ?`;
-      params.push(endTime);
+      await new Promise((resolve, reject) =>
+        db.run(
+          `INSERT INTO logs (username, partNumber, action, startTime, note) VALUES (?, ?, ?, ?, ?)`,
+          [username, partNumber || '', action || 'Start', startTime || Date.now(), note || ''],
+          (err) => (err ? reject(err) : resolve())
+        )
+      );
+      db.close();
+      res.status(201).json({ ok: true });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Failed to create log' });
     }
+  });
 
-    if (action === 'Pause' && !row.pauseStart) {
-      stmt += `, pauseStart = ?`;
-      params.push(now);
-    } else if (action === 'Continue' && row.pauseStart) {
-      const paused = now - row.pauseStart;
-      stmt += `, pauseTotal = pauseTotal + ?, pauseStart = NULL`;
-      params.push(paused);
+  // ---- Update log
+  router.put('/log/:id', authRequired, async (req, res) => {
+    const id = Number(req.params.id);
+    const { action, endTime, note } = req.body;
+    const db = getDB();
+
+    try {
+      // Update allowed fields; keep your existing pause/continue fields if you have them
+      await new Promise((resolve, reject) =>
+        db.run(
+          `UPDATE logs SET action = COALESCE(?, action),
+                           endTime = COALESCE(?, endTime),
+                           note = COALESCE(?, note)
+           WHERE id = ?`,
+          [action || null, endTime || null, note || null, id],
+          (err) => (err ? reject(err) : resolve())
+        )
+      );
+      res.json({ ok: true });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Failed to update log' });
+    } finally {
+      db.close();
     }
-
-    stmt += ` WHERE id = ?`;
-    params.push(id);
-
-    db.run(stmt, params, (err) => {
-      if (err) return res.status(500).json({ error: 'Failed to update log', details: err.message });
-      db.get(`SELECT * FROM jobs WHERE id = ?`, [id], (err, row) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json({ success: true, log: row });
-      });
-    });
   });
-});
 
-// Admin: get all logs
-router.get('/logs', requireAdmin, (req, res) => {
-  db.all(`SELECT * FROM jobs ORDER BY id DESC`, [], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json(rows);
+  // ---- List logs for a user (tech view)
+  router.get('/logs/:username', authRequired, async (req, res) => {
+    const username = String(req.params.username || '').toLowerCase();
+    const db = getDB();
+    try {
+      const rows = await new Promise((resolve) =>
+        db.all(
+          `SELECT id, username, partNumber, action, startTime, endTime, note, pauseStart, pauseTotal
+           FROM logs WHERE username = ? ORDER BY startTime DESC`,
+          [username],
+          (_e, r) => resolve(r || [])
+        )
+      );
+      res.json(rows);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Failed to load logs' });
+    } finally {
+      db.close();
+    }
   });
-});
 
-// Self or admin: get logs for a username
-router.get('/logs/:username', (req, res) => {
-  const requester = currentUser(req);
-  const target = (req.params.username || '').toLowerCase();
-  const isAdmin = ADMIN_USERS.includes(requester);
-  const isSelf = requester === target;
-
-  if (!isAdmin && !isSelf) {
-    return res.status(403).json({ error: 'Forbidden' });
-  }
-
-  db.all(`SELECT * FROM jobs WHERE username = ? ORDER BY id DESC`, [req.params.username], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json(rows);
+  // ---- Delete all logs for a user
+  router.delete('/delete-logs/:username', authRequired, async (req, res) => {
+    const username = String(req.params.username || '').toLowerCase();
+    const db = getDB();
+    await new Promise((resolve, reject) =>
+      db.run(`DELETE FROM logs WHERE username = ?`, [username], (err) => (err ? reject(err) : resolve()))
+    );
+    db.close();
+    res.json({ ok: true });
   });
-});
 
-// Self or admin: delete all logs for a username
-router.delete('/delete-logs/:username', (req, res) => {
-  const requester = currentUser(req);
-  const target = (req.params.username || '').toLowerCase();
-  const isAdmin = ADMIN_USERS.includes(requester);
-  const isSelf = requester === target;
-
-  if (!isAdmin && !isSelf) {
-    return res.status(403).json({ error: 'Forbidden' });
-  }
-
-  db.run(`DELETE FROM jobs WHERE username = ?`, [req.params.username], (err) => {
-    if (err) return res.status(500).json({ error: 'Failed to delete user logs' });
-    res.json({ success: true, message: `Logs for ${req.params.username} deleted` });
+  // ---- Admin: list all logs
+  router.get('/logs', adminRequired, async (_req, res) => {
+    const db = getDB();
+    try {
+      const rows = await new Promise((resolve) =>
+        db.all(
+          `SELECT id, username, partNumber, action, startTime, endTime, note, pauseStart, pauseTotal
+           FROM logs ORDER BY startTime DESC`,
+          (_e, r) => resolve(r || [])
+        )
+      );
+      res.json(rows);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Failed to load admin logs' });
+    } finally {
+      db.close();
+    }
   });
-});
 
-// Admin: delete one log by id
-router.delete('/log/:id', requireAdmin, (req, res) => {
-  db.run(`DELETE FROM jobs WHERE id = ?`, [req.params.id], (err) => {
-    if (err) return res.status(500).json({ error: 'Failed to delete log' });
-    res.json({ success: true, message: `Log ${req.params.id} deleted` });
+  // ---- Admin: clear all logs
+  router.delete('/admin/clear-logs', adminRequired, async (_req, res) => {
+    const db = getDB();
+    await new Promise((resolve, reject) =>
+      db.run(`DELETE FROM logs`, (err) => (err ? reject(err) : resolve()))
+    );
+    db.close();
+    res.json({ ok: true });
   });
-});
 
-// Admin: clear all logs
-router.delete('/admin/clear-logs', requireAdmin, (req, res) => {
-  db.run(`DELETE FROM jobs`, (err) => {
-    if (err) return res.status(500).json({ error: 'Failed to clear logs' });
-    res.json({ success: true, message: 'All logs cleared by admin' });
-  });
-});
-
-module.exports = router;
+  return router;
+}
