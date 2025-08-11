@@ -44,13 +44,11 @@
           <p>SA#: <span id="expectedSA">--</span></p>
         </div>
 
+        <!-- Action now only has "Start" -->
         <label for="actionSelect">Action</label>
         <select id="actionSelect">
           <option value="">-- Select Action --</option>
           <option value="Start">Start</option>
-          <option value="Pause">Pause</option>
-          <option value="Continue">Continue</option>
-          <option value="Finish">Finish</option>
         </select>
 
         <label for="notes">Notes</label>
@@ -86,7 +84,7 @@
   <script src="catalog.js"></script>
   <script src="script.js"></script>
 
-  <!-- Row dropdown decorator: shows CURRENT state; hides finished rows on dashboard -->
+  <!-- Row dropdown decorator stays unchanged -->
   <script>
     (function(){
       const API_URL = 'https://wireshop-backend.onrender.com/api/jobs';
@@ -140,10 +138,8 @@
         const currentText = normalizeState(actionCell.textContent);
         const partNumber = (partCell.textContent || '').trim();
 
-        // If the row is already in a finished state, hide it from the dashboard.
         if (currentText === 'Finish'){ removeRow(tr); return; }
 
-        // Replace action cell with a dropdown showing the full word
         actionCell.textContent = '';
         const sel = makeSelect(currentText);
         actionCell.appendChild(sel);
@@ -151,7 +147,6 @@
         sel.addEventListener('change', async (e)=>{
           const next = e.target.value;
           try {
-            // Find the user's open log for this part (no endTime)
             const rows = await api(`/logs/${encodeURIComponent(uname())}`, { method:'GET' });
             const open = rows.find(r => r.partNumber === partNumber && !r.endTime);
             if (!open){
@@ -166,16 +161,14 @@
             await api(`/log/${open.id}`, { method:'PUT', body: JSON.stringify(body) });
 
             if (next === 'Finish'){
-              // Remove from THIS user's list immediately
               removeRow(tr);
             } else {
-              // Keep showing the new state in the box
               e.target.value = next;
             }
           } catch(err){
             console.error(err);
             alert('Failed to update action.');
-            e.target.value = currentText; // revert visual if error
+            e.target.value = currentText;
           }
         });
       }
