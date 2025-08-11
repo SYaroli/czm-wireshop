@@ -28,56 +28,58 @@
       <p id="welcome-message" class="muted"></p>
     </div>
 
-    <div class="grid">
-      <section class="card">
-        <h2 class="h3">Log New Entry</h2>
+    <section class="card">
+      <h2 class="h3">Log New Entry</h2>
 
-        <label class="label">Part</label>
-        <select id="partSelect">
-          <option value="">-- Select Part --</option>
-        </select>
+      <label class="label">Part</label>
+      <select id="partSelect">
+        <option value="">-- Select Part --</option>
+      </select>
 
-        <div id="partInfo" class="info-box">Expected Time: -- hours<br/>Notes: --</div>
+      <!-- Restored, explicit fields -->
+      <div class="info-group">
+        <div id="expectedTime">Expected Time: -- hours</div>
+        <div id="partNotes">Notes: --</div>
+      </div>
 
-        <label class="label">Action</label>
-        <select id="actionSelect">
-          <option value="">-- Select Action --</option>
-          <option value="Start">Start</option>
-          <option value="Pause">Pause</option>
-          <option value="Continue">Continue</option>
-          <option value="Finish">Finish</option>
-        </select>
+      <label class="label">Action</label>
+      <select id="actionSelect">
+        <option value="">-- Select Action --</option>
+        <option value="Start">Start</option>
+        <option value="Pause">Pause</option>
+        <option value="Continue">Continue</option>
+        <option value="Finish">Finish</option>
+      </select>
 
-        <label class="label">Notes</label>
-        <textarea id="notes" placeholder="Notes (optional)"></textarea>
+      <label class="label">Notes</label>
+      <textarea id="notes" placeholder="Notes (optional)"></textarea>
 
-        <div class="right">
-          <button id="submitLog" class="btn btn-primary">Submit Log</button>
-        </div>
-      </section>
+      <div class="right">
+        <button id="submitLog" class="btn btn-primary">Submit Log</button>
+      </div>
+    </section>
 
-      <section class="card">
-        <div class="card-header">
-          <h2 class="h3">Log History</h2>
-          <button id="deleteAllLogs" class="btn btn-danger btn-sm">Delete All</button>
-        </div>
+    <section class="card">
+      <div class="card-header">
+        <h2 class="h3">Log History</h2>
+        <button id="deleteAllLogs" class="btn btn-danger btn-sm">Delete All</button>
+      </div>
 
-        <div class="table-wrap">
-          <table id="logTable" class="table">
-            <thead>
-              <tr>
-                <th>Part Number</th>
-                <th>Action</th>
-                <th>Timestamp</th>
-                <th>Notes</th>
-                <th>Total Time</th>
-              </tr>
-            </thead>
-            <tbody id="logTableBody"></tbody>
-          </table>
-        </div>
-      </section>
-    </div>
+      <div class="table-wrap">
+        <table id="logTable" class="table">
+          <thead>
+            <tr>
+              <th>Part Number</th>
+              <th>Action</th>
+              <th>Timestamp</th>
+              <th>Notes</th>
+              <th>Total Time</th>
+            </tr>
+          </thead>
+          <tbody id="logTableBody"></tbody>
+        </table>
+      </div>
+    </section>
   </main>
 
   <footer class="footer">
