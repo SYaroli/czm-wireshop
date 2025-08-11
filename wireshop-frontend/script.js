@@ -1,251 +1,219 @@
-// script.js — fixed to read global `catalog` and hardened
+// script.js — uses window.catalog.{printName,expectedHours} + your backend URL
 
 document.addEventListener('DOMContentLoaded', () => {
-  // ===== Config =====
-  const API_BASE = 'https://czm-wireshop.onrender.com'; // update if backend URL differs
-  const API_URL  = `${API_BASE}/api/jobs`;
+  // ---- Backend URL (the one that worked this morning) ----
+  const API_URL = 'https://czm-wireshop.onrender.com/api/jobs';
 
-  // ===== Session =====
-  const user = safeParse(localStorage.getItem('user')); // { username, role }
+  // ---------- tiny helpers ----------
+  const safeJSON = (s) => { try { return JSON.parse(s); } catch { return null; } };
+  const user = safeJSON(localStorage.getItem('user'));
+  const qs = (sel) => document.querySelector(sel);
+  const html = (s) => String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 
-  // ===== Page flags =====
-  const path = window.location.pathname || '';
-  const onLogin  = path.includes('index.html') || !/\.html$/.test(path);
-  const onDash   = path.includes('dashboard.html');
-  const onAdmin  = path.includes('admin.html');
-
-  // ===== Login handling =====
-  const loginForm = document.getElementById('login-form');
-  const errorMessage = document.getElementById('error-message');
-  if (loginForm) {
-    loginForm.addEventListener('submit', (event) => {
-      event.preventDefault();
-      const username = val('#usernameInput').trim().toLowerCase();
-      const pin = val('#pinInput').trim();
-      const foundUser = (window.users || []).find(
-        u => u.username.toLowerCase() === username && u.pin === pin
+  // ---------- LOGIN ----------
+  if (qs('#login-form')) {
+    const err = qs('#error-message');
+    qs('#login-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const u = (window.users || []).find(x =>
+        x.username.toLowerCase() === qs('#usernameInput').value.trim().toLowerCase() &&
+        String(x.pin) === String(qs('#pinInput').value).trim()
       );
-      if (foundUser) {
-        localStorage.setItem('user', JSON.stringify(foundUser));
-        window.location.href = foundUser.role === 'admin' ? 'admin.html' : 'dashboard.html';
-      } else {
-        if (errorMessage) errorMessage.textContent = 'Invalid username or PIN';
-      }
+      if (!u) { if (err) err.textContent = 'Invalid username or PIN.'; return; }
+      localStorage.setItem('user', JSON.stringify(u));
+      window.location.href = 'dashboard.html';
     });
+    return; // stop here on login page
   }
 
-  // ===== Route guard =====
-  if (!onLogin && !user) {
-    window.location.href = 'index.html';
-    return;
-  }
-  if (onAdmin && user && user.role !== 'admin') {
-    window.location.href = 'dashboard.html';
-    return;
-  }
+  // ---------- ROUTE GUARD ----------
+  const onDash  = location.pathname.includes('dashboard.html');
+  const onAdmin = location.pathname.includes('admin.html');
+  if ((onDash || onAdmin) && !user) { location.href = 'index.html'; return; }
 
-  // ===== Header buttons =====
-  wire('#logoutBtn', 'click', () => {
-    localStorage.removeItem('user');
-    window.location.href = 'index.html';
-  });
-  wire('#liveViewBtn', 'click', () => {
-    if (user && user.role === 'admin') window.location.href = 'admin.html';
-    else alert('Admin only.');
-  });
-
-  let updateTimer;
-
-  // ===================== Dashboard =====================
+  // ---------- DASHBOARD ----------
   if (onDash) {
-    text('#welcome-message', `Welcome, ${capitalize(user.username)}`);
+    // header buttons
+    const liveBtn = qs('#liveViewBtn');
+    const logoutBtn = qs('#logoutBtn');
+    if (logoutBtn) logoutBtn.onclick = () => { localStorage.removeItem('user'); location.href = 'index.html'; };
+    if (liveBtn) liveBtn.onclick = () => location.href = 'admin.html';
 
-    const partSelect     = qs('#partSelect');
-    const expectedTimeEl = qs('#expectedTime');
-    const partNotesEl    = qs('#partNotes');
-    const actionSelect   = qs('#actionSelect');
-    const notesInput     = qs('#notes');
-    const logTableBody   = qs('#logTableBody');
+    // welcome
+    const name = user?.username ? user.username[0].toUpperCase() + user.username.slice(1) : '';
+    const role = user?.role ? ` (${user.role})` : '';
+    const welcome = qs('#welcome-message'); if (welcome) welcome.textContent = `Welcome, ${name}${role}`;
 
-    // IMPORTANT: read the global binding `catalog` (from catalog.js), not window.catalog
-    const globalCatalog = (typeof catalog !== 'undefined' && Array.isArray(catalog))
-      ? catalog
-      : (Array.isArray(window.catalog) ? window.catalog : []);
+    // elements
+    const partSelect   = qs('#partSelect');
+    const actionSelect = qs('#actionSelect');
+    const notesInput   = qs('#notes');
+    const logTableBody = qs('#logTableBody');
 
-    // Build dropdown
-    if (partSelect) {
-      partSelect.innerHTML = '<option value="">-- Select Part --</option>';
-      globalCatalog.forEach(item => {
-        if (!item || !item.partNumber) return;
-        const safeName = (item.name && String(item.name).trim()) ? item.name : '—';
-        const opt = document.createElement('option');
-        opt.value = String(item.partNumber);
-        opt.textContent = `${item.partNumber} - ${safeName}`;
-        partSelect.appendChild(opt);
-      });
+    const spanTime = qs('#expectedTime');
+    const spanNotes = qs('#expectedNotes');
+    const spanLoc = qs('#expectedLocation');
+    const spanSA = qs('#expectedSA');
+
+    // build dropdown from window.catalog (printName/expectedHours)
+    function populateParts() {
+      const list = Array.isArray(window.catalog) ? window.catalog : [];
+      const items = list.filter(r => r && r.partNumber).sort((a,b)=>String(a.partNumber).localeCompare(String(b.partNumber)));
+      partSelect.innerHTML = `<option value="">-- Select Part --</option>` +
+        items.map(p => `<option value="${html(p.partNumber)}">${html(p.partNumber)} — ${html(p.printName || '')}</option>`).join('');
     }
+    populateParts();
 
-    // Update info box when part changes
+    // reflect current selection info
     function updatePartInfo() {
-      const pn = partSelect ? partSelect.value : '';
-      const sel = globalCatalog.find(i => i && i.partNumber === pn);
-
-      const hours = sel && sel.hours != null && String(sel.hours).trim() !== '' ? sel.hours : '--';
-      const notes = sel && sel.notes && String(sel.notes).trim() !== '' ? sel.notes : '--';
-
-      if (expectedTimeEl) expectedTimeEl.textContent = `Expected Time: ${hours} hours`;
-      if (partNotesEl)    partNotesEl.textContent    = `Notes: ${notes}`;
+      const pn = partSelect.value;
+      const rec = (window.catalog || []).find(r => r.partNumber === pn);
+      spanTime.textContent  = (rec && Number.isFinite(rec.expectedHours)) ? rec.expectedHours : '--';
+      spanNotes.textContent = (rec && rec.notes && String(rec.notes).trim()) ? rec.notes : '--';
+      spanLoc.textContent   = (rec && rec.location && String(rec.location).trim()) ? rec.location : '--';
+      spanSA.textContent    = (rec && rec.saNumber && String(rec.saNumber).trim()) ? rec.saNumber : '--';
     }
-    wire('#partSelect', 'change', updatePartInfo);
-    updatePartInfo(); // initialize
+    partSelect.addEventListener('change', updatePartInfo);
+    updatePartInfo();
 
-    // Active log tracking to prevent duplicates
-    let activeLogs = new Set();
+    // actions
+    actionSelect.innerHTML = `
+      <option value="">-- Select Action --</option>
+      <option value="Start">Start</option>
+      <option value="Pause">Pause</option>
+      <option value="Continue">Continue</option>
+      <option value="Finish">Finish</option>
+    `;
 
-    async function fetchLogs() {
+    // active logs tracking
+    let active = new Set();
+
+    // utilities
+    const fmtDur = (start, end, pauseStart, pauseTotal) => {
+      if (!start) return 'N/A';
+      const now = Date.now();
+      const stop = end || now;
+      let paused = pauseTotal || 0;
+      if (pauseStart && !end) paused += (now - pauseStart);
+      let ms = Math.max(stop - start - paused, 0);
+      const h = Math.floor(ms/3600000); ms %= 3600000;
+      const m = Math.floor(ms/60000);   ms %= 60000;
+      const s = Math.floor(ms/1000);
+      return `${h}h ${m}m ${s}s`;
+    };
+
+    async function fetchMyLogs() {
       try {
         const res = await fetch(`${API_URL}/logs/${encodeURIComponent(user.username)}`);
-        if (!res.ok) throw new Error(`GET logs ${res.status}`);
-        const data = await res.json();
-        renderLogs(data);
-        activeLogs = new Set(data.filter(l => !l.endTime).map(l => l.partNumber));
+        if (!res.ok) throw new Error(`GET /logs/${user.username} -> ${res.status}`);
+        const rows = await res.json();
+        // render
+        logTableBody.innerHTML = '';
+        rows.forEach(log => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${html(log.partNumber || '')}</td>
+            <td>${html(log.action || '')}</td>
+            <td>${log.timestamp ? new Date(log.timestamp).toLocaleString() : ''}</td>
+            <td>${html(log.note || '')}</td>
+            <td>${fmtDur(log.startTime, log.endTime, log.pauseStart, log.pauseTotal)}</td>
+          `;
+          logTableBody.appendChild(tr);
+        });
+        // rebuild active set
+        active = new Set(rows.filter(r => !r.endTime).map(r => r.partNumber));
       } catch (e) {
-        console.error('Failed to fetch logs:', e);
+        console.error(e);
       }
     }
 
-    function renderLogs(logs) {
-      if (!logTableBody) return;
-      logTableBody.innerHTML = '';
-      logs.forEach(log => {
-        const tr = document.createElement('tr');
-        const duration = log.startTime
-          ? calculateDuration(log.startTime, log.endTime, log.pauseStart, log.pauseTotal)
-          : 'N/A';
-        tr.innerHTML = `
-          <td>${escapeHTML(log.partNumber || '')}</td>
-          <td>${escapeHTML(log.action || '')}</td>
-          <td>${new Date(log.timestamp).toLocaleString()}</td>
-          <td>${escapeHTML(log.note || '')}</td>
-          <td>${duration}</td>
-        `;
-        logTableBody.appendChild(tr);
-      });
-    }
+    qs('#submitLog').addEventListener('click', async () => {
+      const partNumber = partSelect.value;
+      const action = actionSelect.value;
+      const note = (notesInput.value || '').trim();
+      if (!partNumber || !action) return alert('Please select a part and action.');
 
-    wire('#submitLog', 'click', async () => {
-      const partNumber = partSelect ? partSelect.value : '';
-      const action = actionSelect ? actionSelect.value : '';
-      const note = (notesInput ? notesInput.value : '').trim();
-
-      if (!partNumber || !action) {
-        alert('Please select a part and action.');
-        return;
-      }
-
-      const isStart  = action === 'Start';
-      const isActive = activeLogs.has(partNumber);
-
-      if (isStart && isActive) {
-        alert('You already have an active log for this part.');
-        return;
-      } else if (!isStart && !isActive) {
-        alert('No active log for this part. Start a new one first.');
-        return;
-      }
+      const isStart = action === 'Start';
+      const isActive = active.has(partNumber);
+      if (isStart && isActive) return alert('You already have an active log for this part.');
+      if (!isStart && !isActive) return alert('No active log for this part. Start one first.');
 
       try {
-        const res = await fetch(API_URL, {
+        const res = await fetch(`${API_URL}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: user.username, partNumber, action, note }),
+          body: JSON.stringify({ username: user.username, partNumber, action, note })
         });
-        if (!res.ok) throw new Error(`POST ${res.status}`);
-        if (notesInput) notesInput.value = '';
-        if (actionSelect) actionSelect.value = '';
-        await fetchLogs();
+        if (!res.ok) throw new Error(`POST /api/jobs -> ${res.status}`);
+        notesInput.value = ''; actionSelect.value = '';
+        await fetchMyLogs();
       } catch (e) {
-        console.error('Error submitting log:', e);
+        console.error(e);
         alert('Failed to submit log.');
       }
     });
 
-    wire('#deleteAllLogs', 'click', async () => {
-      if (!confirm('Delete your entire log history?')) return;
+    qs('#deleteAllLogs').addEventListener('click', async () => {
+      if (!confirm('Delete ALL of your logs?')) return;
       try {
-        const res = await fetch(`${API_URL}/logs/${encodeURIComponent(user.username)}`, {
-          method: 'DELETE'
-        });
-        if (!res.ok) throw new Error(`DELETE ${res.status}`);
-        await fetchLogs();
+        const res = await fetch(`${API_URL}/logs/${encodeURIComponent(user.username)}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error(`DELETE /logs/${user.username} -> ${res.status}`);
+        await fetchMyLogs();
       } catch (e) {
-        console.error('Failed to delete logs:', e);
-        alert('Delete failed.');
+        console.error(e); alert('Delete failed.');
       }
     });
 
-    updateTimer = setInterval(fetchLogs, 5000);
-    fetchLogs();
+    // poll
+    setInterval(fetchMyLogs, 5000);
+    fetchMyLogs();
   }
 
-  // ===================== Admin =====================
+  // ---------- ADMIN ----------
   if (onAdmin) {
+    if (user?.role !== 'admin') { location.href = 'dashboard.html'; return; }
     const tbody = qs('#activityTableBody');
 
-    async function fetchAllLogs() {
+    async function pullAll() {
       try {
         const res = await fetch(`${API_URL}/admin/logs`);
-        if (!res.ok) throw new Error(`GET admin/logs ${res.status}`);
-        const logs = await res.json();
-        if (!tbody) return;
+        if (!res.ok) throw new Error(`GET /admin/logs -> ${res.status}`);
+        const rows = await res.json();
         tbody.innerHTML = '';
-        logs.forEach(log => {
+        rows.forEach(log => {
           const tr = document.createElement('tr');
-          const duration = log.startTime && log.endTime
-            ? calculateDuration(log.startTime, log.endTime, log.pauseStart, log.pauseTotal)
-            : 'N/A';
+          const ms = (a,b,pStart,pTot) => {
+            if (!a) return 'N/A';
+            const now = Date.now(); const end = b || now;
+            let paused = pTot || 0; if (pStart && !b) paused += (now - pStart);
+            const d = Math.max(end - a - paused, 0);
+            const h=Math.floor(d/3600000), m=Math.floor(d%3600000/60000), s=Math.floor(d%60000/1000);
+            return `${h}h ${m}m ${s}s`;
+          };
           tr.innerHTML = `
-            <td>${escapeHTML(log.username || '')}</td>
-            <td>${escapeHTML(log.partNumber || '')}</td>
-            <td>${escapeHTML(log.action || '')}</td>
-            <td>${escapeHTML(log.note || '')}</td>
-            <td>${duration}</td>
+            <td>${html(log.username || '')}</td>
+            <td>${html(log.partNumber || '')}</td>
+            <td>${html(log.action || '')}</td>
+            <td>${html(log.note || '')}</td>
+            <td>${ms(log.startTime, log.endTime, log.pauseStart, log.pauseTotal)}</td>
           `;
           tbody.appendChild(tr);
         });
-      } catch (e) {
-        console.error('Failed to load admin logs:', e);
-      }
+      } catch (e) { console.error(e); }
     }
 
-    wire('#clearAllLogs', 'click', async () => {
-      if (!confirm('Clear ALL logs for ALL users? This cannot be undone.')) return;
+    const clearBtn = qs('#clearAllLogs');
+    if (clearBtn) clearBtn.onclick = async () => {
+      if (!confirm('Clear ALL logs for ALL users?')) return;
       try {
         const res = await fetch(`${API_URL}/admin/clear-logs`, { method: 'DELETE' });
-        if (!res.ok) throw new Error(`DELETE admin/clear-logs ${res.status}`);
-        await fetchAllLogs();
-        alert('All logs cleared.');
-      } catch (e) {
-        console.error('Error clearing logs:', e);
-        alert('Error clearing logs.');
-      }
-    });
+        if (!res.ok) throw new Error(`DELETE /admin/clear-logs -> ${res.status}`);
+        await pullAll(); alert('All logs cleared.');
+      } catch (e) { console.error(e); alert('Error clearing logs.'); }
+    };
 
-    wire('#backToDashboard', 'click', () => window.location.href = 'dashboard.html');
-
-    updateTimer = setInterval(fetchAllLogs, 5000);
-    fetchAllLogs();
+    qs('#backToDashboard').onclick = () => location.href = 'dashboard.html';
+    setInterval(pullAll, 5000);
+    pullAll();
   }
-
-  // ===== Cleanup =====
-  window.addEventListener('beforeunload', () => updateTimer && clearInterval(updateTimer));
-
-  // ===== Helpers =====
-  function calculateDuration(start, end, pauseStart, pauseTotal) {
-    if (!start) return 'N/A';
-    const now = Date.now();
-    const endTime = end || now;
-    let duration = endTime - start - (pauseTotal || 0);
-    if (pauseStart && !end) duration -= (now - pauseStart);
-    if (duration < 0) duration = 0;
-    const h = Math.floor(duration / 360000
+});
