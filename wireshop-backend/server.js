@@ -1,56 +1,81 @@
 // server.js
-const express = require('express');
-const cors = require('cors');
-const bodyParser = require('body-parser');
+import express from 'express';
+import cors from 'cors';
+import jwt from 'jsonwebtoken';
+import { initDB, getDB } from './db.js';
+import jobsRouter from './routes/jobs.js';
+import usersRouter from './routes/users.js';
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 
-// DB (SQLite for now)
-const db = require('./db');
+// ---------- Init DB ----------
+initDB();
 
-// Parsers
-app.use(bodyParser.json());
+// ---------- CORS / JSON ----------
+app.use(cors({ origin: '*', credentials: false }));
+app.use(express.json());
 
-// CORS — permissive for first deploy; we'll lock it down after it’s live
-app.use(cors({
-  origin: (origin, cb) => cb(null, true),
-  credentials: false
-}));
+// ---------- Auth middleware (JWT) ----------
+const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
 
-// Health check for Render
-app.get('/health', (req, res) => res.status(200).send('ok'));
+export function authOptional(req, _res, next) {
+  const hdr = req.headers['authorization'] || '';
+  const token = hdr.startsWith('Bearer ') ? hdr.slice(7) : null;
+  if (token) {
+    try {
+      const payload = jwt.verify(token, JWT_SECRET);
+      req.user = { id: payload.id, username: payload.username, role: payload.role };
+    } catch {
+      // ignore; route can still read legacy x-user if needed
+      req.user = null;
+    }
+  }
+  next();
+}
 
-// Routes
-const jobsRouter = require('./routes/jobs');
-app.use('/api/jobs', jobsRouter);
-
-// Root test
-app.get('/', (req, res) => {
-  res.send('Wireshop Backend Running');
-});
-
-// Legacy endpoints (intentionally 404 with hints)
-app.post('/api/log', (req, res) => {
-  res.status(404).json({ error: 'Use /api/jobs/log instead' });
-});
-
-app.get('/api/logs', (req, res) => {
-  res.status(404).json({ error: 'Use /api/jobs/logs or /api/jobs/logs/:username' });
-});
-
-app.delete('/api/delete-logs', (req, res) => {
-  res.status(404).json({ error: 'Use /api/jobs/delete-logs/:username or /api/jobs/admin/clear-logs' });
-});
-
-app.get('/api/test-db', (req, res) => {
-  db.get('SELECT COUNT(*) as count FROM jobs', (err, row) => {
-    if (err) return res.status(500).json({ error: 'DB test failed' });
-    res.json({ count: row.count });
+export function authRequired(req, res, next) {
+  authOptional(req, res, () => {
+    if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
+    next();
   });
-});
+}
 
-// Start
-app.listen(PORT, () => {
-  console.log(`Server listening on port ${PORT}`);
-});
+export function adminRequired(req, res, next) {
+  authOptional(req, res, () => {
+    if (!req.user || req.user.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+    next();
+  });
+}
+
+app.use(authOptional);
+
+// ---------- Bootstrap admin if users table empty ----------
+import bcrypt from 'bcryptjs';
+(async function bootstrapAdmin() {
+  const db = getDB();
+  const row = await new Promise(r => db.get('SELECT COUNT(*) as n FROM users', (e, x) => r(x || { n: 0 })));
+  if (row.n === 0) {
+    const username = (process.env.BOOT_ADMIN_USER || 'admin').toLowerCase();
+    const pin = process.env.BOOT_ADMIN_PIN || '1234';
+    const hash = await bcrypt.hash(pin, 10);
+    await new Promise((resolve, reject) =>
+      db.run(
+        `INSERT INTO users (username, pin_hash, role, active, created_at) VALUES (?, ?, 'admin', 1, ?)`,
+        [username, hash, Date.now()],
+        (err) => (err ? reject(err) : resolve())
+      )
+    );
+    console.log(`[bootstrap] Created admin user "${username}". Set BOOT_ADMIN_USER/BOOT_ADMIN_PIN to customize.`);
+  }
+  db.close();
+})().catch(console.error);
+
+// ---------- Routes ----------
+app.use('/api/jobs', jobsRouter({ adminRequired, authRequired }));
+app.use('/api/users', usersRouter({ JWT_SECRET, authRequired, adminRequired }));
+
+// ---------- Health ----------
+app.get('/healthz', (_req, res) => res.json({ ok: true }));
+
+app.listen(PORT, () => console.log(`Wireshop backend listening on ${PORT}`));
