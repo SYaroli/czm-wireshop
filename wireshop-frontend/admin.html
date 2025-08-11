@@ -1,31 +1,54 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>WireShop • Admin</title>
+  <link rel="icon" href="czm-logo.png" />
+  <link rel="stylesheet" href="style.css"/>
 </head>
 <body>
-    <button id="backToDashboard">← Back to Dashboard</button>
-    <div class="card">
-        <h1>Live Technician Activity</h1>
-        <button id="clearAllLogs">Clear All Logs</button>
-        <table id="activityTable">
-            <thead>
-                <tr>
-                    <th>Technician</th>
-                    <th>Part Number</th>
-                    <th>Action</th>
-                    <th>Notes</th>
-                    <th>Time Active</th>
-                </tr>
-            </thead>
-            <tbody id="activityTableBody">
-                <!-- Rows will be populated dynamically via script.js -->
-            </tbody>
-        </table>
+  <header class="topbar">
+    <div class="brand">
+      <img src="czm-logo.png" alt="CZM" class="brand-logo"/>
+      <div class="brand-text">
+        <strong>CZM</strong>
+        <span>WireShop</span>
+      </div>
     </div>
-    <script src="script.js"></script>
+    <nav class="actions">
+      <button id="backToDashboard" class="btn">← Dashboard</button>
+      <button id="clearAllLogs" class="btn btn-danger">Clear All Logs</button>
+    </nav>
+  </header>
+
+  <main class="container">
+    <div class="hero">
+      <h1 class="h2">Live Technician Activity</h1>
+    </div>
+
+    <section class="card">
+      <div class="table-wrap">
+        <table id="activityTable" class="table">
+          <thead>
+            <tr>
+              <th>Technician</th>
+              <th>Part Number</th>
+              <th>Action</th>
+              <th>Notes</th>
+              <th>Time Active</th>
+            </tr>
+          </thead>
+          <tbody id="activityTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <span>© CZM — Internal Use</span>
+  </footer>
+
+  <script src="script.js"></script>
 </body>
 </html>
