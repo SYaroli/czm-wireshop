@@ -21,166 +21,54 @@
     </div>
   </div>
 
-  <div class="header-box">
-    <h1>Dashboard</h1>
-    <p id="welcome-message"></p>
-    <div class="header-buttons"><!-- kept for script.js --></div>
-  </div>
-
   <main class="page">
-    <div class="section-grid two">
-      <div class="card">
-        <h2>Log New Entry</h2>
+    <!-- Single card: Start + Active Jobs -->
+    <div class="card">
+      <h2 style="margin-bottom:10px;">Start Job</h2>
+      <div class="start-strip">
+        <div>
+          <label for="partSelect">Part</label>
+          <select id="partSelect">
+            <option value="">-- Select Part --</option>
+          </select>
+        </div>
 
-        <label for="partSelect">Part</label>
-        <select id="partSelect">
-          <option value="">-- Select Part --</option>
-        </select>
-
-        <div id="partInfo" class="info" style="margin-top:10px;">
+        <div class="info">
           <p>Expected Time: <span id="expectedTime">--</span> hours</p>
           <p>Notes: <span id="expectedNotes">--</span></p>
           <p>Location: <span id="expectedLocation">--</span></p>
           <p>SA#: <span id="expectedSA">--</span></p>
         </div>
 
-        <label for="notes">Notes</label>
-        <textarea id="notes" placeholder="Optional notes..."></textarea>
-
-        <div style="display:flex; gap:10px; margin-top:10px;">
-          <button id="submitLog" style="flex:1;">Start Job</button>
+        <div>
+          <label>&nbsp;</label>
+          <button id="submitLog" style="width:100%;">Start Job</button>
         </div>
       </div>
+    </div>
 
-      <div class="card">
-        <h2>Log History</h2>
-        <table id="logTable">
-          <thead>
-            <tr>
-              <th>Part Number</th>
-              <th>Action</th>
-              <th>Timestamp</th>
-              <th>Notes</th>
-              <th>Total Time</th>
-            </tr>
-          </thead>
-          <tbody id="logTableBody"></tbody>
-        </table>
-        <div style="display:flex; justify-content:flex-end; margin-top:10px;">
-          <button id="deleteAllLogs" class="danger">Delete All Logs</button>
-        </div>
+    <div class="card">
+      <h2>Active Jobs</h2>
+      <table id="logTable">
+        <thead>
+          <tr>
+            <th>Part Number</th>
+            <th>Notes (editable)</th>
+            <th>Action</th>
+            <th>Started</th>
+            <th>Total Time</th>
+          </tr>
+        </thead>
+        <tbody id="logTableBody"></tbody>
+      </table>
+      <div style="display:flex; justify-content:flex-end; margin-top:10px;">
+        <button id="deleteAllLogs" class="danger">Delete All Logs</button>
       </div>
     </div>
   </main>
 
-  <!-- Load app logic -->
+  <!-- Data + logic -->
   <script src="catalog.js"></script>
   <script src="script.js"></script>
-
-  <!-- Row dropdown decorator: shows CURRENT state; hides finished rows on dashboard -->
-  <script>
-    (function(){
-      const API_URL = 'https://wireshop-backend.onrender.com/api/jobs';
-      const tbody = document.getElementById('logTableBody');
-
-      const mapAbbrev = { 'S':'Start', 'P':'Pause', 'C':'Continue', 'F':'Finish' };
-
-      function getUser(){
-        try { return JSON.parse(localStorage.getItem('user')) || null; } catch { return null; }
-      }
-      const uname = () => (getUser()?.username || '');
-
-      async function api(path, options = {}){
-        const headers = { 'Content-Type': 'application/json', 'x-user': uname() };
-        const res = await fetch(API_URL + path, { headers, ...options });
-        if(!res.ok){
-          const msg = await res.text().catch(()=> '');
-          throw new Error('HTTP '+res.status+' '+res.statusText+' - '+msg);
-        }
-        const ct = res.headers.get('content-type') || '';
-        return ct.includes('application/json') ? res.json() : res.text();
-      }
-
-      function normalizeState(text){
-        const t = (text || '').trim();
-        return mapAbbrev[t] || (['Pause','Continue','Finish'].includes(t) ? t : 'Continue');
-      }
-
-      function makeSelect(current){
-        const sel = document.createElement('select');
-        sel.className = 'row-action';
-        sel.innerHTML = `
-          <option value="Pause" class="row-pause">Pause</option>
-          <option value="Continue" class="row-continue">Continue</option>
-          <option value="Finish" class="row-finish">Finish</option>
-        `;
-        sel.value = normalizeState(current);
-        return sel;
-      }
-
-      function removeRow(tr){
-        if (tr && tr.parentNode) tr.parentNode.removeChild(tr);
-      }
-
-      function addDropdownToRow(tr){
-        if (!tr) return;
-        const partCell = tr.cells[0];
-        const actionCell = tr.cells[1];
-        if (!partCell || !actionCell) return;
-
-        const currentText = normalizeState(actionCell.textContent);
-        const partNumber = (partCell.textContent || '').trim();
-
-        if (currentText === 'Finish'){ removeRow(tr); return; }
-
-        actionCell.textContent = '';
-        const sel = makeSelect(currentText);
-        actionCell.appendChild(sel);
-
-        sel.addEventListener('change', async (e)=>{
-          const next = e.target.value;
-          try {
-            const rows = await api(`/logs/${encodeURIComponent(uname())}`, { method:'GET' });
-            const open = rows.find(r => r.partNumber === partNumber && !r.endTime);
-            if (!open){
-              alert('No active log for this part. Start one first.');
-              e.target.value = currentText;
-              return;
-            }
-
-            const body = { action: next };
-            if (next === 'Finish') body.endTime = Date.now();
-
-            await api(`/log/${open.id}`, { method:'PUT', body: JSON.stringify(body) });
-
-            if (next === 'Finish'){
-              removeRow(tr);
-            } else {
-              e.target.value = next;
-            }
-          } catch(err){
-            console.error(err);
-            alert('Failed to update action.');
-            e.target.value = currentText;
-          }
-        });
-      }
-
-      function decorateAll(){
-        if (!tbody) return;
-        [...tbody.rows].forEach((tr)=>{
-          if (!tr.cells[1]) return;
-          const already = tr.cells[1].querySelector('select.row-action');
-          if (!already) addDropdownToRow(tr);
-        });
-      }
-
-      if (tbody){
-        const mo = new MutationObserver(decorateAll);
-        mo.observe(tbody, { childList:true });
-        decorateAll();
-      }
-    })();
-  </script>
 </body>
 </html>
