@@ -1,63 +1,39 @@
 // db.js
-const sqlite3 = require('sqlite3').verbose();
-const path = require('path');
+import sqlite3 from 'sqlite3';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-// Database will live in root of project
-const db = new sqlite3.Database(path.resolve(__dirname, 'wireshop.db'), (err) => {
-  if (err) console.error('Failed to connect to database:', err);
-  else console.log('Connected to SQLite database');
-});
+sqlite3.verbose();
 
-// Create jobs table if it doesn’t exist
-db.serialize(() => {
-  db.run(`CREATE TABLE IF NOT EXISTS jobs (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT,
-    partNumber TEXT,
-    action TEXT,
-    note TEXT,
-    startTime INTEGER,
-    endTime INTEGER,
-    pauseStart INTEGER DEFAULT NULL,
-    pauseTotal INTEGER DEFAULT 0
-  )`);
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-  // Check and add columns if missing
-  db.all(`PRAGMA table_info(jobs)`, (err, rows) => {
-    if (err) {
-      console.error('Error checking table info:', err);
-      return;
-    }
-    if (!rows || rows.length === 0) {
-      console.log('No columns found, table might not be initialized yet. Recreating...');
-      db.run(`DROP TABLE IF EXISTS jobs`);
-      db.run(`CREATE TABLE jobs (
+const DB_PATH = path.join(__dirname, 'wireshop.db');
+
+export function getDB() {
+  return new sqlite3.Database(DB_PATH);
+}
+
+// Create tables if not exist, including secure users table
+export function initDB() {
+  const db = getDB();
+  db.serialize(() => {
+    // Jobs table(s) assumed to already exist in your app.
+    // Add/keep whatever you already have.
+
+    // Users table
+    db.run(`
+      CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT,
-        partNumber TEXT,
-        action TEXT,
-        note TEXT,
-        startTime INTEGER,
-        endTime INTEGER,
-        pauseStart INTEGER DEFAULT NULL,
-        pauseTotal INTEGER DEFAULT 0
-      )`);
-      return;
-    }
-    const columnNames = rows.map(c => c.name);
-    if (!columnNames.includes('pauseStart')) {
-      db.run(`ALTER TABLE jobs ADD COLUMN pauseStart INTEGER DEFAULT NULL`, (err) => {
-        if (err) console.error('Error adding pauseStart column:', err);
-        else console.log('Added pauseStart column');
-      });
-    }
-    if (!columnNames.includes('pauseTotal')) {
-      db.run(`ALTER TABLE jobs ADD COLUMN pauseTotal INTEGER DEFAULT 0`, (err) => {
-        if (err) console.error('Error adding pauseTotal column:', err);
-        else console.log('Added pauseTotal column');
-      });
-    }
+        username TEXT UNIQUE NOT NULL,
+        pin_hash TEXT NOT NULL,
+        role TEXT NOT NULL CHECK(role IN ('admin','assembler')),
+        active INTEGER NOT NULL DEFAULT 1,
+        created_at INTEGER NOT NULL
+      )
+    `);
+    // Simple index
+    db.run(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username ON users(username)`);
   });
-});
-
-module.exports = db;
+  db.close();
+}
