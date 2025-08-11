@@ -1,4 +1,4 @@
-// script.js — smarter refresh: pauses while interacting; resumes after
+// script.js — stable selection + change-based refresh + focus-safe polling
 document.addEventListener('DOMContentLoaded', () => {
   const API_URL = 'https://wireshop-backend.onrender.com/api/jobs';
 
@@ -119,7 +119,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         partSelect.value='';
         fillInfoFromPart('');
-        await requestRefresh(); // do a refresh now that interaction is done
+        await requestRefresh(true); // force a refresh after starting
       }catch(err){
         console.error(err); alert('Failed to start job.');
       }
@@ -131,64 +131,68 @@ document.addEventListener('DOMContentLoaded', () => {
     const setDraft = (logId, val)=> localStorage.setItem(draftKey(logId), val);
     const clearDraft = (logId)=> localStorage.removeItem(draftKey(logId));
 
-    // Selection tracking
+    // --- Selection state (persistent) ---
     let selectedLogId = null;
-
-    function applySelection(tr){
-      tBody.querySelectorAll('tr.row-selected').forEach(r => r.classList.remove('row-selected'));
-      if (tr){ tr.classList.add('row-selected'); }
+    function highlightById(id){
+      tBody.querySelectorAll('tr').forEach(r => r.classList.toggle('row-selected', r.dataset.id === id));
+    }
+    function selectRow(tr, log){
+      selectedLogId = log?.id || null;
+      highlightById(selectedLogId);
+      fillInfoFromPart(log?.partNumber || '');
     }
 
-    function selectByPart(partNumber, tr, logId){
-      selectedLogId = logId || null;
-      applySelection(tr || null);
-      fillInfoFromPart(partNumber || '');
-    }
-
-    // ---- Interaction guard for refresh ----
-    let isInteracting = false;     // typing/selecting/hovering over table
-    let refreshQueued = false;     // whether we owe a refresh after interaction
-
-    function beginInteraction(){ isInteracting = true; }
-    function endInteraction(){
-      // if focus left the table AND mouse not hovering, end interaction
+    // Focus guard: pause refresh only while editing/using controls (not hover-based)
+    let isInteracting = false;
+    const beginInteraction = ()=> { isInteracting = true; };
+    const endInteraction = ()=> {
+      // if focus moved outside the table, resume
       const activeInside = tBody.contains(document.activeElement);
-      if (!activeInside && !isHovering) {
-        isInteracting = false;
-        if (refreshQueued) { refreshQueued = false; refreshActive().catch(console.error); }
-      }
-    }
-
-    let isHovering = false;
-    tBody.addEventListener('mouseenter', ()=>{ isHovering = true; beginInteraction(); });
-    tBody.addEventListener('mouseleave', ()=>{ isHovering = false; endInteraction(); });
-
-    // Focus management (textarea/select focus pauses refresh)
+      if (!activeInside) isInteracting = false;
+    };
     tBody.addEventListener('focusin', beginInteraction);
     tBody.addEventListener('focusout', () => setTimeout(endInteraction, 0));
 
-    // Event delegation for row selection (click anywhere in row, including controls)
+    // Click anywhere in row (including controls) to select
     tBody.addEventListener('mousedown', (e)=>{
       const tr = e.target.closest('tr');
       if (!tr) return;
-      const partNumber = (tr.querySelector('td')?.textContent || '').trim();
-      const logId = tr.dataset.id || null;
-      selectByPart(partNumber, tr, logId);
+      const id = tr.dataset.id;
+      const partNumber = tr.querySelector('td')?.textContent.trim() || '';
+      selectRow(tr, { id, partNumber });
     }, true);
 
-    // Render active logs (no endTime)
-    async function refreshActive(){
-      // Skip if user is interacting; queue a refresh
-      if (isInteracting) { refreshQueued = true; return; }
+    // ---- Change-aware refresh ----
+    let lastSig = ''; // signature of active jobs from backend
+
+    function makeSignature(rows){
+      // Only fields that affect rendering; ignore text in textarea (we use drafts)
+      const minimal = rows
+        .filter(r => !r.endTime)
+        .map(r => ({
+          id: r.id, partNumber: r.partNumber, action: r.action,
+          startTime: r.startTime, endTime: r.endTime,
+          pauseStart: r.pauseStart, pauseTotal: r.pauseTotal
+        }));
+      return JSON.stringify(minimal);
+    }
+
+    async function refreshActive(force = false){
+      if (isInteracting && !force) return; // don't disrupt typing or open selects
 
       const rows = await api(`/logs/${encodeURIComponent(user.username)}`, { method:'GET' });
       const active = rows.filter(r => !r.endTime);
-      const prevSelected = selectedLogId;
+      const sig = makeSignature(rows);
 
-      // Preserve scroll position to reduce jank
+      // If nothing changed and not forced, skip DOM work
+      if (!force && sig === lastSig) return;
+      lastSig = sig;
+
+      // Preserve scroll
       const prevScroll = tBody.parentElement?.scrollTop ?? 0;
 
-      tBody.innerHTML='';
+      // Rebuild rows (simple and safe); selection restored below
+      tBody.innerHTML = '';
       active.forEach(log=>{
         const tr = document.createElement('tr');
         tr.dataset.id = log.id;
@@ -211,15 +215,15 @@ document.addEventListener('DOMContentLoaded', () => {
           <td class="dur" data-start="${log.startTime || ''}" data-pause="${log.pauseStart || ''}" data-paused="${log.pauseTotal || 0}">${fmtDuration(log.startTime, log.endTime, log.pauseStart, log.pauseTotal)}</td>
         `;
 
-        // current state
+        // current state -> dropdown
         const sel = tr.querySelector('select.row-action');
         const current = (log.action || '').trim();
         sel.value = (current === 'Pause' || current === 'Finish') ? current : 'Continue';
 
-        // notes draft tracking
+        // notes draft tracking (doesn't hit backend until Finish)
         tr.querySelector('textarea.notes-box').addEventListener('input', (e)=> setDraft(log.id, e.target.value));
 
-        // action changes
+        // action changes -> PUT; on Finish remove row and clear draft
         sel.addEventListener('change', async (e)=>{
           const next = e.target.value;
           try{
@@ -227,33 +231,35 @@ document.addEventListener('DOMContentLoaded', () => {
             if (next === 'Finish'){
               body.endTime = Date.now();
               const latestDraft = tr.querySelector('textarea.notes-box').value.trim();
-              if (latestDraft) body.note = latestDraft; // commit note only at finish
+              if (latestDraft) body.note = latestDraft;
             }
             await api(`/log/${log.id}`, { method:'PUT', body: JSON.stringify(body) });
 
             if (next === 'Finish'){
               clearDraft(log.id);
-              if (selectedLogId === log.id) { selectedLogId = null; fillInfoFromPart(''); }
-              tr.remove();
+              if (selectedLogId === log.id){ selectedLogId = null; fillInfoFromPart(''); }
+              // Force-refresh now that data changed
+              await requestRefresh(true);
             } else {
-              e.target.value = next;
+              sel.value = next;
+              // force signature change so next poll updates durations if needed
+              lastSig = ''; 
             }
           }catch(err){
             console.error(err); alert('Failed to update action.');
           }
         });
 
-        // restore selection after refresh
-        if (prevSelected && log.id === prevSelected){
-          applySelection(tr);
-          fillInfoFromPart(log.partNumber || '');
-        }
-
         tBody.appendChild(tr);
       });
 
-      // if previously selected row vanished, clear panel
-      if (prevSelected && !active.find(r => r.id === prevSelected)){
+      // restore selection if still present
+      if (selectedLogId && active.some(r => r.id === selectedLogId)){
+        highlightById(selectedLogId);
+        const log = active.find(r => r.id === selectedLogId);
+        fillInfoFromPart(log?.partNumber || '');
+      } else if (selectedLogId){
+        // selected row no longer exists
         selectedLogId = null;
         fillInfoFromPart('');
       }
@@ -262,12 +268,11 @@ document.addEventListener('DOMContentLoaded', () => {
       if (tBody.parentElement) tBody.parentElement.scrollTop = prevScroll;
     }
 
-    async function requestRefresh(){
-      if (isInteracting) { refreshQueued = true; return; }
-      await refreshActive();
+    async function requestRefresh(force = false){
+      await refreshActive(force);
     }
 
-    // Tick durations (safe: only touches text within .dur)
+    // Tick durations (safe: only text changes)
     function tickDurations(){
       tBody.querySelectorAll('.dur').forEach(td=>{
         const start = Number(td.getAttribute('data-start')) || 0;
@@ -280,18 +285,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // Delete all
     deleteAllBtn?.addEventListener('click', async ()=>{
       if (!confirm('Delete ALL your logs?')) return;
-      try{ await api(`/delete-logs/${encodeURIComponent(user.username)}`, { method:'DELETE' }); tBody.innerHTML=''; fillInfoFromPart(''); }
+      try{ await api(`/delete-logs/${encodeURIComponent(user.username)}`, { method:'DELETE' }); lastSig=''; tBody.innerHTML=''; fillInfoFromPart(''); }
       catch(err){ console.error(err); alert('Failed to delete logs.'); }
     });
 
     // Initial + polling
-    requestRefresh().catch(console.error);
-
-    // Poll every 5s, but respect interaction guard
-    setInterval(requestRefresh, 5000);
-
-    // Update durations every second (non-disruptive)
-    setInterval(tickDurations, 1000);
+    requestRefresh(true).catch(console.error);          // first render forced
+    setInterval(()=> requestRefresh(false), 5000);      // change-aware poll
+    setInterval(tickDurations, 1000);                   // smooth timer
   })();
 
   // ---------- ADMIN ----------
