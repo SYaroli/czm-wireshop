@@ -24,7 +24,7 @@
   <div class="header-box">
     <h1>Dashboard</h1>
     <p id="welcome-message"></p>
-    <div class="header-buttons"><!-- kept for script.js (will be hidden for non-admins) --></div>
+    <div class="header-buttons"><!-- kept for script.js --></div>
   </div>
 
   <main class="page">
@@ -32,13 +32,11 @@
       <div class="card">
         <h2>Log New Entry</h2>
 
-        <!-- Part selection -->
         <label for="partSelect">Part</label>
         <select id="partSelect">
           <option value="">-- Select Part --</option>
         </select>
 
-        <!-- Part info display -->
         <div id="partInfo" class="info" style="margin-top:10px;">
           <p>Expected Time: <span id="expectedTime">--</span> hours</p>
           <p>Notes: <span id="expectedNotes">--</span></p>
@@ -46,7 +44,6 @@
           <p>SA#: <span id="expectedSA">--</span></p>
         </div>
 
-        <!-- Action -->
         <label for="actionSelect">Action</label>
         <select id="actionSelect">
           <option value="">-- Select Action --</option>
@@ -56,7 +53,6 @@
           <option value="Finish">Finish</option>
         </select>
 
-        <!-- Freeform note -->
         <label for="notes">Notes</label>
         <textarea id="notes" placeholder="Optional notes..."></textarea>
 
@@ -71,19 +67,7 @@
           <thead>
             <tr>
               <th>Part Number</th>
-              <th>
-                Action
-                <!-- inline header control directly under "Action" -->
-                <div class="action-dropdown-wrap">
-                  <select class="action-dropdown" id="headerActionDropdown" title="Quick Action">
-                    <option selected disabled>— Quick Action —</option>
-                    <option value="Start" class="action-start">Start</option>
-                    <option value="Pause" class="action-pause">Pause</option>
-                    <option value="Continue" class="action-continue">Continue</option>
-                    <option value="Finish" class="action-finish">Finish</option>
-                  </select>
-                </div>
-              </th>
+              <th>Action</th>
               <th>Timestamp</th>
               <th>Notes</th>
               <th>Total Time</th>
@@ -98,8 +82,96 @@
     </div>
   </main>
 
-  <!-- IMPORTANT: load catalog first, then app logic -->
+  <!-- Load app logic -->
   <script src="catalog.js"></script>
   <script src="script.js"></script>
+
+  <!-- Row dropdown decorator (no backend changes; uses same endpoints) -->
+  <script>
+    (function(){
+      const API_URL = 'https://wireshop-backend.onrender.com/api/jobs';
+      const tbody = document.getElementById('logTableBody');
+
+      function getUser(){
+        try { return JSON.parse(localStorage.getItem('user')) || null; } catch { return null; }
+      }
+      function username(){ return (getUser()?.username || ''); }
+
+      async function api(path, options = {}){
+        const headers = { 'Content-Type': 'application/json', 'x-user': username() };
+        const res = await fetch(API_URL + path, { headers, ...options });
+        if(!res.ok){
+          const msg = await res.text().catch(()=> '');
+          throw new Error('HTTP '+res.status+' '+res.statusText+' - '+msg);
+        }
+        const ct = res.headers.get('content-type') || '';
+        return ct.includes('application/json') ? res.json() : res.text();
+      }
+
+      function addDropdownToRow(tr){
+        if (!tr || tr.querySelector('select.row-action')) return;
+        const partCell = tr.cells[0];
+        const actionCell = tr.cells[1];
+        if (!partCell || !actionCell) return;
+
+        const partNumber = (partCell.textContent || '').trim();
+
+        const sel = document.createElement('select');
+        sel.className = 'row-action';
+        sel.innerHTML = `
+          <option selected disabled>— Action —</option>
+          <option value="Start" class="row-start">Start</option>
+          <option value="Pause" class="row-pause">Pause</option>
+          <option value="Continue" class="row-continue">Continue</option>
+          <option value="Finish" class="row-finish">Finish</option>
+        `;
+        actionCell.appendChild(sel);
+
+        sel.addEventListener('change', async (e)=>{
+          const action = e.target.value;
+          try {
+            if (action === 'Start') {
+              await api('/log', {
+                method:'POST',
+                body: JSON.stringify({
+                  username: username(),
+                  partNumber,
+                  action: 'Start',
+                  startTime: Date.now()
+                })
+              });
+            } else {
+              // Find open log for this part for this user
+              const rows = await api(`/logs/${encodeURIComponent(username())}`, { method:'GET' });
+              const open = rows.find(r => r.partNumber === partNumber && !r.endTime);
+              if (!open) { alert('No active log for this part. Start one first.'); e.target.selectedIndex = 0; return; }
+
+              const body = { action };
+              if (action === 'Finish') body.endTime = Date.now();
+
+              await api(`/log/${open.id}`, { method:'PUT', body: JSON.stringify(body) });
+            }
+          } catch(err){
+            console.error(err);
+            alert('Failed to update action. Check console for details.');
+          } finally {
+            // Reset selector and trigger table refresh via your existing interval
+            e.target.selectedIndex = 0;
+          }
+        });
+      }
+
+      function decorateAll(){
+        if (!tbody) return;
+        [...tbody.rows].forEach(addDropdownToRow);
+      }
+
+      if (tbody){
+        const mo = new MutationObserver(decorateAll);
+        mo.observe(tbody, { childList:true });
+        decorateAll();
+      }
+    })();
+  </script>
 </body>
 </html>
