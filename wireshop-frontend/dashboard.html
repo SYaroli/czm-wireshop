@@ -71,7 +71,19 @@
           <thead>
             <tr>
               <th>Part Number</th>
-              <th>Action</th>
+              <th>
+                Action
+                <!-- inline header control directly under "Action" -->
+                <div class="action-dropdown-wrap">
+                  <select class="action-dropdown" id="headerActionDropdown" title="Quick Action">
+                    <option selected disabled>— Quick Action —</option>
+                    <option value="Start" class="action-start">Start</option>
+                    <option value="Pause" class="action-pause">Pause</option>
+                    <option value="Continue" class="action-continue">Continue</option>
+                    <option value="Finish" class="action-finish">Finish</option>
+                  </select>
+                </div>
+              </th>
               <th>Timestamp</th>
               <th>Notes</th>
               <th>Total Time</th>
