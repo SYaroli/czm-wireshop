@@ -7,62 +7,84 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+  <!-- Brand bar -->
+  <div class="brand-bar">
+    <div class="brand-inner">
+      <a class="brand-logo" href="dashboard.html">
+        <img src="czm-logo.png" alt="CZM logo">
+        <h1 class="brand-title">CZM • Wireshop Dashboard</h1>
+      </a>
+      <div class="brand-actions">
+        <button id="liveViewBtn" class="secondary">Live View</button>
+        <button id="logoutBtn" class="dark">Logout</button>
+      </div>
+    </div>
+  </div>
+
   <div class="header-box">
     <h1>Dashboard</h1>
     <p id="welcome-message"></p>
-    <div class="header-buttons">
-      <button id="liveViewBtn">Live View</button>
-      <button id="logoutBtn">Logout</button>
+    <div class="header-buttons"><!-- kept for script.js (will be hidden for non-admins) --></div>
+  </div>
+
+  <main class="page">
+    <div class="section-grid two">
+      <div class="card">
+        <h2>Log New Entry</h2>
+
+        <!-- Part selection -->
+        <label for="partSelect">Part</label>
+        <select id="partSelect">
+          <option value="">-- Select Part --</option>
+        </select>
+
+        <!-- Part info display -->
+        <div id="partInfo" class="info" style="margin-top:10px;">
+          <p>Expected Time: <span id="expectedTime">--</span> hours</p>
+          <p>Notes: <span id="expectedNotes">--</span></p>
+          <p>Location: <span id="expectedLocation">--</span></p>
+          <p>SA#: <span id="expectedSA">--</span></p>
+        </div>
+
+        <!-- Action -->
+        <label for="actionSelect">Action</label>
+        <select id="actionSelect">
+          <option value="">-- Select Action --</option>
+          <option value="Start">Start</option>
+          <option value="Pause">Pause</option>
+          <option value="Continue">Continue</option>
+          <option value="Finish">Finish</option>
+        </select>
+
+        <!-- Freeform note -->
+        <label for="notes">Notes</label>
+        <textarea id="notes" placeholder="Optional notes..."></textarea>
+
+        <div style="display:flex; gap:10px; margin-top:10px;">
+          <button id="submitLog" style="flex:1;">Submit Log</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Log History</h2>
+        <table id="logTable">
+          <thead>
+            <tr>
+              <th>Part Number</th>
+              <th>Action</th>
+              <th>Timestamp</th>
+              <th>Notes</th>
+              <th>Total Time</th>
+            </tr>
+          </thead>
+          <tbody id="logTableBody"></tbody>
+        </table>
+        <div style="display:flex; justify-content:flex-end; margin-top:10px;">
+          <button id="deleteAllLogs" class="danger">Delete All Logs</button>
+        </div>
+      </div>
     </div>
-  </div>
-
-  <div class="card">
-    <h2>Log New Entry</h2>
-
-    <!-- Part selection -->
-    <select id="partSelect">
-      <option value="">-- Select Part --</option>
-    </select>
-
-    <!-- Part info display -->
-    <div id="partInfo" style="margin-top:10px;">
-      <p>Expected Time: <span id="expectedTime">--</span> hours</p>
-      <p>Notes: <span id="expectedNotes">--</span></p>
-      <p>Location: <span id="expectedLocation">--</span></p>
-      <p>SA#: <span id="expectedSA">--</span></p>
-    </div>
-
-    <!-- Action -->
-    <select id="actionSelect" style="margin-top:10px;">
-      <option value="">-- Select Action --</option>
-      <option value="Start">Start</option>
-      <option value="Pause">Pause</option>
-      <option value="Continue">Continue</option>
-      <option value="Finish">Finish</option>
-    </select>
-
-    <!-- Freeform note the tech can enter for this action -->
-    <textarea id="notes" placeholder="Notes" style="margin-top:10px;"></textarea>
-
-    <button id="submitLog" style="margin-top:10px;">Submit Log</button>
-  </div>
-
-  <div class="card">
-    <h2>Log History</h2>
-    <table id="logTable">
-      <thead>
-        <tr>
-          <th>Part Number</th>
-          <th>Action</th>
-          <th>Timestamp</th>
-          <th>Notes</th>
-          <th>Total Time</th>
-        </tr>
-      </thead>
-      <tbody id="logTableBody"></tbody>
-    </table>
-    <button id="deleteAllLogs">Delete All Logs</button>
-  </div>
+  </main>
 
   <!-- IMPORTANT: load catalog first, then app logic -->
   <script src="catalog.js"></script>
