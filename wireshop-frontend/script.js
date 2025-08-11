@@ -1,8 +1,8 @@
-// script.js — full file
+// script.js — fixed to read global `catalog` and hardened
 
 document.addEventListener('DOMContentLoaded', () => {
   // ===== Config =====
-  const API_BASE = 'https://czm-wireshop.onrender.com'; // change if your backend URL differs
+  const API_BASE = 'https://czm-wireshop.onrender.com'; // update if backend URL differs
   const API_URL  = `${API_BASE}/api/jobs`;
 
   // ===== Session =====
@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ===== Page flags =====
   const path = window.location.pathname || '';
-  const onLogin  = path.includes('index.html') || !/\.html$/.test(path); // default page
+  const onLogin  = path.includes('index.html') || !/\.html$/.test(path);
   const onDash   = path.includes('dashboard.html');
   const onAdmin  = path.includes('admin.html');
 
@@ -44,18 +44,14 @@ document.addEventListener('DOMContentLoaded', () => {
     return;
   }
 
-  // ===== Header buttons (present on dash/admin) =====
+  // ===== Header buttons =====
   wire('#logoutBtn', 'click', () => {
     localStorage.removeItem('user');
     window.location.href = 'index.html';
   });
-
   wire('#liveViewBtn', 'click', () => {
-    if (user && user.role === 'admin') {
-      window.location.href = 'admin.html';
-    } else {
-      alert('Admin only.');
-    }
+    if (user && user.role === 'admin') window.location.href = 'admin.html';
+    else alert('Admin only.');
   });
 
   let updateTimer;
@@ -71,11 +67,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const notesInput     = qs('#notes');
     const logTableBody   = qs('#logTableBody');
 
-    // Build dropdown from catalog, guarding against bad rows
-    const catalog = Array.isArray(window.catalog) ? window.catalog : [];
+    // IMPORTANT: read the global binding `catalog` (from catalog.js), not window.catalog
+    const globalCatalog = (typeof catalog !== 'undefined' && Array.isArray(catalog))
+      ? catalog
+      : (Array.isArray(window.catalog) ? window.catalog : []);
+
+    // Build dropdown
     if (partSelect) {
       partSelect.innerHTML = '<option value="">-- Select Part --</option>';
-      catalog.forEach(item => {
+      globalCatalog.forEach(item => {
         if (!item || !item.partNumber) return;
         const safeName = (item.name && String(item.name).trim()) ? item.name : '—';
         const opt = document.createElement('option');
@@ -88,7 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Update info box when part changes
     function updatePartInfo() {
       const pn = partSelect ? partSelect.value : '';
-      const sel = catalog.find(i => i && i.partNumber === pn);
+      const sel = globalCatalog.find(i => i && i.partNumber === pn);
 
       const hours = sel && sel.hours != null && String(sel.hours).trim() !== '' ? sel.hours : '--';
       const notes = sel && sel.notes && String(sel.notes).trim() !== '' ? sel.notes : '--';
@@ -108,7 +108,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!res.ok) throw new Error(`GET logs ${res.status}`);
         const data = await res.json();
         renderLogs(data);
-        // rebuild active set
         activeLogs = new Set(data.filter(l => !l.endTime).map(l => l.partNumber));
       } catch (e) {
         console.error('Failed to fetch logs:', e);
@@ -162,7 +161,6 @@ document.addEventListener('DOMContentLoaded', () => {
           body: JSON.stringify({ username: user.username, partNumber, action, note }),
         });
         if (!res.ok) throw new Error(`POST ${res.status}`);
-        // reset UI
         if (notesInput) notesInput.value = '';
         if (actionSelect) actionSelect.value = '';
         await fetchLogs();
@@ -186,7 +184,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
-    // Start polling
     updateTimer = setInterval(fetchLogs, 5000);
     fetchLogs();
   }
@@ -251,21 +248,4 @@ document.addEventListener('DOMContentLoaded', () => {
     let duration = endTime - start - (pauseTotal || 0);
     if (pauseStart && !end) duration -= (now - pauseStart);
     if (duration < 0) duration = 0;
-    const h = Math.floor(duration / 3600000);
-    const m = Math.floor((duration % 3600000) / 60000);
-    const s = Math.floor((duration % 60000) / 1000);
-    return `${h}h ${m}m ${s}s`;
-  }
-
-  function safeParse(s) {
-    try { return JSON.parse(s || 'null'); } catch { return null; }
-  }
-  function qs(sel) { return document.querySelector(sel); }
-  function val(sel) { const el = qs(sel); return el ? el.value : ''; }
-  function text(sel, t) { const el = qs(sel); if (el) el.textContent = t; }
-  function wire(sel, evt, fn) { const el = qs(sel); if (el) el.addEventListener(evt, fn); }
-  function capitalize(s){ return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''; }
-  function escapeHTML(str){
-    return String(str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-  }
-});
+    const h = Math.floor(duration / 360000
