@@ -1,4 +1,4 @@
-// script.js — streamlined dashboard with live notes + row selection -> info panel
+// script.js — smarter refresh: pauses while interacting; resumes after
 document.addEventListener('DOMContentLoaded', () => {
   const API_URL = 'https://wireshop-backend.onrender.com/api/jobs';
 
@@ -119,7 +119,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         partSelect.value='';
         fillInfoFromPart('');
-        await refreshActive();
+        await requestRefresh(); // do a refresh now that interaction is done
       }catch(err){
         console.error(err); alert('Failed to start job.');
       }
@@ -145,6 +145,28 @@ document.addEventListener('DOMContentLoaded', () => {
       fillInfoFromPart(partNumber || '');
     }
 
+    // ---- Interaction guard for refresh ----
+    let isInteracting = false;     // typing/selecting/hovering over table
+    let refreshQueued = false;     // whether we owe a refresh after interaction
+
+    function beginInteraction(){ isInteracting = true; }
+    function endInteraction(){
+      // if focus left the table AND mouse not hovering, end interaction
+      const activeInside = tBody.contains(document.activeElement);
+      if (!activeInside && !isHovering) {
+        isInteracting = false;
+        if (refreshQueued) { refreshQueued = false; refreshActive().catch(console.error); }
+      }
+    }
+
+    let isHovering = false;
+    tBody.addEventListener('mouseenter', ()=>{ isHovering = true; beginInteraction(); });
+    tBody.addEventListener('mouseleave', ()=>{ isHovering = false; endInteraction(); });
+
+    // Focus management (textarea/select focus pauses refresh)
+    tBody.addEventListener('focusin', beginInteraction);
+    tBody.addEventListener('focusout', () => setTimeout(endInteraction, 0));
+
     // Event delegation for row selection (click anywhere in row, including controls)
     tBody.addEventListener('mousedown', (e)=>{
       const tr = e.target.closest('tr');
@@ -156,9 +178,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Render active logs (no endTime)
     async function refreshActive(){
+      // Skip if user is interacting; queue a refresh
+      if (isInteracting) { refreshQueued = true; return; }
+
       const rows = await api(`/logs/${encodeURIComponent(user.username)}`, { method:'GET' });
       const active = rows.filter(r => !r.endTime);
       const prevSelected = selectedLogId;
+
+      // Preserve scroll position to reduce jank
+      const prevScroll = tBody.parentElement?.scrollTop ?? 0;
 
       tBody.innerHTML='';
       active.forEach(log=>{
@@ -224,14 +252,22 @@ document.addEventListener('DOMContentLoaded', () => {
         tBody.appendChild(tr);
       });
 
-      // if previous selected row vanished, clear panel
+      // if previously selected row vanished, clear panel
       if (prevSelected && !active.find(r => r.id === prevSelected)){
         selectedLogId = null;
         fillInfoFromPart('');
       }
+
+      // restore scroll
+      if (tBody.parentElement) tBody.parentElement.scrollTop = prevScroll;
     }
 
-    // Tick durations
+    async function requestRefresh(){
+      if (isInteracting) { refreshQueued = true; return; }
+      await refreshActive();
+    }
+
+    // Tick durations (safe: only touches text within .dur)
     function tickDurations(){
       tBody.querySelectorAll('.dur').forEach(td=>{
         const start = Number(td.getAttribute('data-start')) || 0;
@@ -248,8 +284,13 @@ document.addEventListener('DOMContentLoaded', () => {
       catch(err){ console.error(err); alert('Failed to delete logs.'); }
     });
 
-    refreshActive().catch(console.error);
-    setInterval(async ()=>{ try{ await refreshActive(); }catch{} }, 5000);
+    // Initial + polling
+    requestRefresh().catch(console.error);
+
+    // Poll every 5s, but respect interaction guard
+    setInterval(requestRefresh, 5000);
+
+    // Update durations every second (non-disruptive)
     setInterval(tickDurations, 1000);
   })();
 
