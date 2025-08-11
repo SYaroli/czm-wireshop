@@ -86,7 +86,7 @@
   <script src="catalog.js"></script>
   <script src="script.js"></script>
 
-  <!-- Row dropdown decorator (no backend changes; uses same endpoints) -->
+  <!-- Row dropdown decorator: shows CURRENT state, only Pause/Continue/Finish -->
   <script>
     (function(){
       const API_URL = 'https://wireshop-backend.onrender.com/api/jobs';
@@ -95,10 +95,10 @@
       function getUser(){
         try { return JSON.parse(localStorage.getItem('user')) || null; } catch { return null; }
       }
-      function username(){ return (getUser()?.username || ''); }
+      const uname = () => (getUser()?.username || '');
 
       async function api(path, options = {}){
-        const headers = { 'Content-Type': 'application/json', 'x-user': username() };
+        const headers = { 'Content-Type': 'application/json', 'x-user': uname() };
         const res = await fetch(API_URL + path, { headers, ...options });
         if(!res.ok){
           const msg = await res.text().catch(()=> '');
@@ -108,62 +108,70 @@
         return ct.includes('application/json') ? res.json() : res.text();
       }
 
-      function addDropdownToRow(tr){
-        if (!tr || tr.querySelector('select.row-action')) return;
-        const partCell = tr.cells[0];
-        const actionCell = tr.cells[1];
-        if (!partCell || !actionCell) return;
-
-        const partNumber = (partCell.textContent || '').trim();
-
+      function makeSelect(current){
         const sel = document.createElement('select');
         sel.className = 'row-action';
         sel.innerHTML = `
-          <option selected disabled>— Action —</option>
-          <option value="Start" class="row-start">Start</option>
           <option value="Pause" class="row-pause">Pause</option>
           <option value="Continue" class="row-continue">Continue</option>
           <option value="Finish" class="row-finish">Finish</option>
         `;
+        // Default selected = current state if one of the three; if 'Start', assume 'Continue'
+        const valid = ['Pause','Continue','Finish'];
+        const value = valid.includes(current) ? current : 'Continue';
+        sel.value = value;
+        return sel;
+      }
+
+      function addDropdownToRow(tr){
+        if (!tr) return;
+        const partCell = tr.cells[0];
+        const actionCell = tr.cells[1];
+        if (!partCell || !actionCell) return;
+
+        const currentText = (actionCell.textContent || '').trim();
+        const partNumber = (partCell.textContent || '').trim();
+
+        // Replace cell content with a select that reflects currentText
+        actionCell.textContent = '';
+        const sel = makeSelect(currentText);
         actionCell.appendChild(sel);
 
         sel.addEventListener('change', async (e)=>{
-          const action = e.target.value;
+          const next = e.target.value;
           try {
-            if (action === 'Start') {
-              await api('/log', {
-                method:'POST',
-                body: JSON.stringify({
-                  username: username(),
-                  partNumber,
-                  action: 'Start',
-                  startTime: Date.now()
-                })
-              });
-            } else {
-              // Find open log for this part for this user
-              const rows = await api(`/logs/${encodeURIComponent(username())}`, { method:'GET' });
-              const open = rows.find(r => r.partNumber === partNumber && !r.endTime);
-              if (!open) { alert('No active log for this part. Start one first.'); e.target.selectedIndex = 0; return; }
-
-              const body = { action };
-              if (action === 'Finish') body.endTime = Date.now();
-
-              await api(`/log/${open.id}`, { method:'PUT', body: JSON.stringify(body) });
+            // Find user's open log for that part
+            const rows = await api(`/logs/${encodeURIComponent(uname())}`, { method:'GET' });
+            const open = rows.find(r => r.partNumber === partNumber && !r.endTime);
+            if (!open){
+              alert('No active log for this part. Start one first.');
+              // revert to what we just tried to set (keeps showing "state")
+              e.target.value = next;
+              return;
             }
+
+            const body = { action: next };
+            if (next === 'Finish') body.endTime = Date.now();
+
+            await api(`/log/${open.id}`, { method:'PUT', body: JSON.stringify(body) });
+
+            // Keep the box showing the current state the user chose
+            e.target.value = next;
           } catch(err){
             console.error(err);
             alert('Failed to update action. Check console for details.');
-          } finally {
-            // Reset selector and trigger table refresh via your existing interval
-            e.target.selectedIndex = 0;
           }
         });
       }
 
       function decorateAll(){
         if (!tbody) return;
-        [...tbody.rows].forEach(addDropdownToRow);
+        [...tbody.rows].forEach((tr)=>{
+          // only decorate if not already a select
+          if (!tr.cells[1]) return;
+          const hasSelect = tr.cells[1].querySelector('select.row-action');
+          if (!hasSelect) addDropdownToRow(tr);
+        });
       }
 
       if (tbody){
