@@ -44,18 +44,11 @@
           <p>SA#: <span id="expectedSA">--</span></p>
         </div>
 
-        <!-- Action now only has "Start" -->
-        <label for="actionSelect">Action</label>
-        <select id="actionSelect">
-          <option value="">-- Select Action --</option>
-          <option value="Start">Start</option>
-        </select>
-
         <label for="notes">Notes</label>
         <textarea id="notes" placeholder="Optional notes..."></textarea>
 
         <div style="display:flex; gap:10px; margin-top:10px;">
-          <button id="submitLog" style="flex:1;">Submit Log</button>
+          <button id="submitLog" style="flex:1;">Start Job</button>
         </div>
       </div>
 
@@ -84,7 +77,7 @@
   <script src="catalog.js"></script>
   <script src="script.js"></script>
 
-  <!-- Row dropdown decorator stays unchanged -->
+  <!-- Row dropdown decorator: shows CURRENT state; hides finished rows on dashboard -->
   <script>
     (function(){
       const API_URL = 'https://wireshop-backend.onrender.com/api/jobs';
