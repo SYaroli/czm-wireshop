@@ -1,92 +1,70 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/>
+  <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>WireShop • Dashboard</title>
-  <link rel="icon" href="czm-logo.png" />
-  <link rel="stylesheet" href="style.css"/>
+  <title>Dashboard</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <header class="topbar">
-    <div class="brand">
-      <img src="czm-logo.png" alt="CZM" class="brand-logo"/>
-      <div class="brand-text">
-        <strong>CZM</strong>
-        <span>WireShop</span>
-      </div>
+  <div class="header-box">
+    <h1>Dashboard</h1>
+    <p id="welcome-message"></p>
+    <div class="header-buttons">
+      <button id="liveViewBtn">Live View</button>
+      <button id="logoutBtn">Logout</button>
     </div>
-    <nav class="actions">
-      <button id="liveViewBtn" class="btn">Live View</button>
-      <button id="logoutBtn" class="btn btn-ghost">Logout</button>
-    </nav>
-  </header>
+  </div>
 
-  <main class="container">
-    <div class="hero">
-      <h1 class="h2">Dashboard</h1>
-      <p id="welcome-message" class="muted"></p>
+  <div class="card">
+    <h2>Log New Entry</h2>
+
+    <!-- Part selection -->
+    <select id="partSelect">
+      <option value="">-- Select Part --</option>
+    </select>
+
+    <!-- Part info display -->
+    <div id="partInfo" style="margin-top:10px;">
+      <p>Expected Time: <span id="expectedTime">--</span> hours</p>
+      <p>Notes: <span id="expectedNotes">--</span></p>
+      <p>Location: <span id="expectedLocation">--</span></p>
+      <p>SA#: <span id="expectedSA">--</span></p>
     </div>
 
-    <section class="card">
-      <h2 class="h3">Log New Entry</h2>
+    <!-- Action -->
+    <select id="actionSelect" style="margin-top:10px;">
+      <option value="">-- Select Action --</option>
+      <option value="Start">Start</option>
+      <option value="Pause">Pause</option>
+      <option value="Continue">Continue</option>
+      <option value="Finish">Finish</option>
+    </select>
 
-      <label class="label">Part</label>
-      <select id="partSelect">
-        <option value="">-- Select Part --</option>
-      </select>
+    <!-- Freeform note the tech can enter for this action -->
+    <textarea id="notes" placeholder="Notes" style="margin-top:10px;"></textarea>
 
-      <!-- Expected time + notes block -->
-      <div class="info-group">
-        <div id="expectedTime">Expected Time: -- hours</div>
-        <div id="partNotes">Notes: --</div>
-      </div>
+    <button id="submitLog" style="margin-top:10px;">Submit Log</button>
+  </div>
 
-      <label class="label">Action</label>
-      <select id="actionSelect">
-        <option value="">-- Select Action --</option>
-        <option value="Start">Start</option>
-        <option value="Pause">Pause</option>
-        <option value="Continue">Continue</option>
-        <option value="Finish">Finish</option>
-      </select>
+  <div class="card">
+    <h2>Log History</h2>
+    <table id="logTable">
+      <thead>
+        <tr>
+          <th>Part Number</th>
+          <th>Action</th>
+          <th>Timestamp</th>
+          <th>Notes</th>
+          <th>Total Time</th>
+        </tr>
+      </thead>
+      <tbody id="logTableBody"></tbody>
+    </table>
+    <button id="deleteAllLogs">Delete All Logs</button>
+  </div>
 
-      <label class="label">Notes</label>
-      <textarea id="notes" placeholder="Notes (optional)"></textarea>
-
-      <div class="right">
-        <button id="submitLog" class="btn btn-primary">Submit Log</button>
-      </div>
-    </section>
-
-    <section class="card">
-      <div class="card-header">
-        <h2 class="h3">Log History</h2>
-        <button id="deleteAllLogs" class="btn btn-danger btn-sm">Delete All</button>
-      </div>
-
-      <div class="table-wrap">
-        <table id="logTable" class="table">
-          <thead>
-            <tr>
-              <th>Part Number</th>
-              <th>Action</th>
-              <th>Timestamp</th>
-              <th>Notes</th>
-              <th>Total Time</th>
-            </tr>
-          </thead>
-          <tbody id="logTableBody"></tbody>
-        </table>
-      </div>
-    </section>
-  </main>
-
-  <footer class="footer">
-    <span>© CZM — Internal Use</span>
-  </footer>
-
-  <!-- IMPORTANT: catalog first, then script -->
+  <!-- IMPORTANT: load catalog first, then app logic -->
   <script src="catalog.js"></script>
   <script src="script.js"></script>
 </body>
