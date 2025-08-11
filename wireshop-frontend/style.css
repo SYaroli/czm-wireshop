@@ -118,7 +118,6 @@ tbody td:last-child, thead th:last-child{white-space:nowrap}
 
 /* Row-level action dropdown (Log History -> each row) */
 .row-action{
-  margin-top:6px;
   width:100%;
   padding:6px 8px;
   font-weight:700;
@@ -127,7 +126,6 @@ tbody td:last-child, thead th:last-child{white-space:nowrap}
   background:#fff;
 }
 .row-action option{font-weight:700}
-.row-start{color:#16a34a}     /* green */
 .row-pause{color:#b08900}     /* yellow/gold */
 .row-continue{color:#1e40af}  /* blue */
 .row-finish{color:#b91c1c}    /* red */
