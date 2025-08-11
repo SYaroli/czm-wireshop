@@ -197,6 +197,24 @@ tbody td:last-child, thead th:last-child{white-space:nowrap}
 .header-buttons button{background:var(--brand-red)}
 .header-box p{margin:0}
 
+/* ===== Action dropdown in Log History header ===== */
+th .action-dropdown-wrap{
+  margin-top:6px;
+}
+.action-dropdown{
+  width:100%;
+  padding:6px 8px;
+  font-weight:700;
+  border-radius:8px;
+  border:1px solid #cfd4dc;
+  background:#fff;
+}
+.action-dropdown option{font-weight:700}
+.action-start{color:#16a34a}     /* green */
+.action-pause{color:#b08900}     /* yellow/gold */
+.action-continue{color:#1e40af}  /* blue */
+.action-finish{color:#b91c1c}    /* red */
+
 /* Responsive tweaks */
 @media (min-width:860px){
   .section-grid.two{grid-template-columns:1fr 1fr}
