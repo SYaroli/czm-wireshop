@@ -1,210 +1,203 @@
-/* Body Background */
-body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background: url('czm-logo.png') no-repeat center center fixed;
-  background-size: contain;
-  background-color: #f0f0f0;
-  margin: 0;
-  padding: 0;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding-top: 20px;
+/* ===== CZM Wireshop Theme (Visuals only) ===== */
+/* Brand */
+:root{
+  --brand-red:#C20F2F;   /* CZM red */
+  --brand-black:#0F1113; /* deep black */
+  --ink:#1d1f23;
+  --muted:#6b7280;
+  --bg:#f4f5f7;
+  --card:#ffffff;
+  --line:#e5e7eb;
+  --shadow:0 8px 24px rgba(0,0,0,.12);
 }
 
-/* Header Box */
-.header-box {
-  background-color: rgba(255, 255, 255, 0.10);
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-  padding: 1rem;
-  max-width: 400px;
-  width: 80%;
-  text-align: center;
-  margin-bottom: 1rem;
-  transform: translateY(-10px);
-  z-index: 10;
-  position: relative;
+/* Base reset-ish */
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Noto Sans", "Apple Color Emoji","Segoe UI Emoji";
+  color:var(--ink);
+  background: radial-gradient(ellipse at top left, #fafafa 0%, #f1f1f1 60%, #ececec 100%);
 }
 
-.header-box h1 {
-  margin: 0;
-  font-size: 1.8rem;
-  font-weight: bold;
+/* Subtle watermark background with logo */
+body::before{
+  content:"";
+  position:fixed; inset:0;
+  background: url('czm-logo.png') center/420px no-repeat;
+  opacity:.06; pointer-events:none; filter:grayscale(100%);
 }
 
-.header-box p {
-  margin: 0.5rem 0;
-  font-size: 1rem;
-  color: #444;
+/* Global container rhythm */
+main, .page {
+  width:min(1100px, 92vw);
+  margin:72px auto 48px;
 }
 
-.header-buttons {
-  margin-top: 0.75rem;
+/* ===== Top Bar ===== */
+.brand-bar{
+  position:sticky; top:0; z-index:50;
+  background:linear-gradient(0deg, var(--brand-black), #000);
+  border-bottom:3px solid var(--brand-red);
+  box-shadow: 0 4px 18px rgba(0,0,0,.25);
+}
+.brand-inner{
+  width:min(1100px, 92vw);
+  margin:0 auto;
+  display:flex; align-items:center; gap:14px;
+  padding:10px 0;
+}
+.brand-logo{
+  display:flex; align-items:center; gap:10px;
+  color:#fff; text-decoration:none;
+}
+.brand-logo img{height:36px; width:auto; display:block; filter:drop-shadow(0 2px 2px rgba(0,0,0,.3))}
+.brand-title{
+  color:#fff; font-weight:800; letter-spacing:.5px; margin:0; font-size:1.05rem;
+}
+.brand-actions{margin-left:auto; display:flex; gap:8px}
+.brand-actions button{
+  background:var(--brand-red);
+  color:#fff; border:none; padding:8px 12px; border-radius:10px; font-weight:700;
+  cursor:pointer; box-shadow: var(--shadow);
+}
+.brand-actions button.secondary{
+  background:#222; border:1px solid #333;
 }
 
-.header-buttons button {
-  margin: 0 0.25rem;
-  padding: 0.4rem 0.8rem;
-  border-radius: 8px;
-  background-color: #007bff;
-  border: none;
-  color: white;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
+/* ===== Cards ===== */
+.card{
+  background:var(--card);
+  border:1px solid var(--line);
+  border-top:4px solid var(--brand-red);
+  border-radius:14px;
+  padding:18px 20px;
+  margin:18px auto;
+  box-shadow: var(--shadow);
+}
+.card h1,.card h2{margin:.1rem 0 0.75rem 0}
+.section-grid{
+  display:grid; gap:16px;
 }
 
-.header-buttons button:hover {
-  background-color: #0056b3;
+/* ===== Forms & Inputs ===== */
+label{font-weight:700; font-size:.95rem}
+input,select,textarea,button{
+  font:inherit;
+}
+input, select, textarea{
+  width:100%;
+  padding:10px 12px;
+  border:1px solid #cfd4dc;
+  border-radius:10px;
+  background:#fff;
+  outline:none;
+  transition:border .15s ease, box-shadow .15s ease;
+}
+input:focus, select:focus, textarea:focus{
+  border-color:var(--brand-red);
+  box-shadow:0 0 0 3px rgba(194,15,47,.15);
 }
 
-/* Card Style Containers */
-.card {
-  background-color: rgba(255, 255, 255, 0.9);
-  border-radius: 12px;
-  padding: 1rem 1.5rem;
-  margin: 1rem 0;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
-  width: 90%;
-  max-width: 600px;
-}
+textarea{min-height:90px; resize:vertical}
 
-/* Buttons */
 button,
-input[type="submit"] {
-  background-color: #007bff;
-  color: white;
-  padding: 0.4rem 1rem;
-  border: none;
-  border-radius: 6px;
-  font-weight: bold;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
+input[type="submit"]{
+  background:var(--brand-red);
+  color:#fff; font-weight:800;
+  border:none; border-radius:10px;
+  padding:10px 14px; cursor:pointer;
+  transition:transform .05s ease, filter .15s ease, background .2s ease;
+}
+button:hover{filter:brightness(1.05)}
+button:active{transform:translateY(1px)}
+button[disabled]{opacity:.6; cursor:not-allowed}
+
+button.outline{
+  background:#fff; color:var(--brand-red);
+  border:2px solid var(--brand-red);
 }
 
-button:hover,
-input[type="submit"]:hover {
-  background-color: #0056b3;
+button.dark{
+  background:var(--brand-black);
+}
+button.danger{
+  background:#b91c1c;
 }
 
-.delete-btn {
-  background-color: #dc3545;
+/* Inline info group for part data */
+.info{
+  display:grid; gap:6px;
+  background:#fafafb;
+  border:1px dashed #d2d6dd;
+  border-radius:12px;
+  padding:12px;
 }
+.info p{margin:0; color:#333}
+.info span{font-weight:800; color:#111}
 
-.delete-btn:hover {
-  background-color: #a71d2a;
+/* ===== Tables ===== */
+table{
+  width:100%; border-collapse:collapse; font-size:.95rem;
+  border:1px solid var(--line); border-radius:12px; overflow:hidden;
 }
-
-/* Form Inputs */
-input, select, textarea {
-  width: 100%;
-  margin: 0.25rem 0;
-  padding: 0.4rem;
-  border-radius: 6px;
-  border: 1px solid #ccc;
-  font-size: 0.95rem;
+thead th{
+  background:#111214; color:#fff; text-align:left; font-weight:800;
+  padding:10px 12px; letter-spacing:.3px;
 }
-
-/* Log Table */
-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.9rem;
+tbody td{
+  padding:10px 12px; border-top:1px solid var(--line);
 }
+tbody tr:hover{background:#fafafa}
+tbody td:last-child, thead th:last-child{white-space:nowrap}
 
-th, td {
-  text-align: left;
-  padding: 0.4rem;
-  border-bottom: 1px solid #ddd;
-}
-
-#expectedTime,
-#partNotes {
-  display: block;
-  width: 100%;
-  background-color: #f5f5f5;
-  border: 1px solid #ccc;
-  border-radius: 5px;
-  padding: 6px 10px;
-  margin-top: 10px;
-  margin-bottom: 10px;
-  font-weight: bold;
-  color: #333;
-}
-
-.info-group {
-  background-color: #f5f5f5;
-  border: 1px solid #ccc;
-  border-radius: 5px;
-  padding: 10px;
-  margin-bottom: 10px;
-}
-
-/* Login Container */
-.login-container {
-  background-color: rgba(255, 255, 255, 0.7); /* Increased transparency (0.7 instead of 0.95) */
-  border-radius: 12px;
-  padding: 1.5rem; /* Reduced padding for smaller size */
-  margin: 14rem auto; /* Moved down by increasing top margin to 5rem */
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  max-width: 250px; /* Reduced max-width for smaller size */
-  width: 80%; /* Adjusted width to scale with max-width */
-  text-align: center;
-}
-
-.login-container h2 {
-  margin-bottom: 1rem;
-}
-
-/* Credentials Container */
-.credentials-container {
-  background-color: #ffffff;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  padding: 1rem;
-  margin-bottom: 1rem;
-}
-
-.credentials-container label {
-  display: block;
-  margin-top: 0.5rem;
-  text-align: left;
-  font-weight: 600;
-}
-
-.credentials-container input[type="text"],
-.credentials-container input[type="password"] {
-  width: 100%;
-  padding: 0.5rem;
-  margin-top: 0.25rem;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  font-size: 1rem;
-  box-sizing: border-box;
-}
-
-.login-container button {
-  margin-top: 1rem;
-  width: 100%;
-  padding: 0.5rem;
-  font-weight: bold;
-  background-color: #007bff;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.login-container button:hover {
-  background-color: #0056b3;
-}
-
-/* Highlight Time Active column */
+/* Emphasize Time column in admin */
 #activityTable th:nth-child(5),
-#activityTable td:nth-child(5) {
-  background-color: #f0f0f0; /* Light gray to make it pop */
-  font-weight: bold;
-  padding: 0.6rem; /* A bit more padding for emphasis */
+#activityTable td:nth-child(5){
+  background:#fff5f6;
+  color:#911226;
+  font-weight:800;
+}
+
+/* ===== Login page ===== */
+.container.login{
+  display:grid; place-items:center;
+  width:min(420px, 92vw);
+}
+.login-card{
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:16px;
+  padding:22px 22px 18px;
+  width:100%;
+  box-shadow: var(--shadow);
+}
+.logo-wrap{
+  display:flex; justify-content:center; margin-bottom:10px;
+}
+.logo-wrap img{max-width:220px; height:auto}
+
+/* Tiny helper text */
+.help{color:var(--muted); font-size:.9rem}
+
+/* Header box on dashboard (kept for JS id) */
+.header-box{
+  background:#101214; color:#fff;
+  border:1px solid #191b1f;
+  border-left:4px solid var(--brand-red);
+  border-radius:14px;
+  padding:14px 16px;
+  margin: 16px auto;
+  width:min(1100px, 92vw);
+  box-shadow: var(--shadow);
+}
+.header-box h1{margin:0 0 6px 0; font-size:1.4rem}
+.header-buttons{display:flex; gap:8px; margin-top:10px}
+.header-buttons button{background:var(--brand-red)}
+.header-box p{margin:0}
+
+/* Responsive tweaks */
+@media (min-width:860px){
+  .section-grid.two{grid-template-columns:1fr 1fr}
 }
