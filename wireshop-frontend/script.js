@@ -65,7 +65,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const liveBtn = document.getElementById('liveViewBtn');
     const logoutBtn = document.getElementById('logoutBtn');
     const partSelect = document.getElementById('partSelect');
-    const actionSelect = document.getElementById('actionSelect');
     const notesInput = document.getElementById('notes');
     const submitLogBtn = document.getElementById('submitLog');
     const logTableBody = document.getElementById('logTableBody');
@@ -103,20 +102,46 @@ document.addEventListener('DOMContentLoaded', () => {
     partSelect.addEventListener('change', () => {
       const pn = partSelect.value;
       const rec = (window.catalog || []).find(r => r.partNumber === pn);
+      // NOTE: your catalog uses expectedHours; keep that to avoid breaking
       spanTime.textContent = rec && rec.expectedHours != null ? rec.expectedHours : '--';
       spanNotes.textContent = rec && rec.notes ? rec.notes : '--';
       spanLoc.textContent = rec && rec.location ? rec.location : '--';
       spanSA.textContent = rec && rec.saNumber ? rec.saNumber : '--';
     });
 
-    if (actionSelect) {
-      actionSelect.innerHTML = `
-        <option value="">-- Select Action --</option>
-        <option value="Start">Start</option>
-        <option value="Pause">Pause</option>
-        <option value="Continue">Continue</option>
-        <option value="Finish">Finish</option>
-      `;
+    // Submit new log: ALWAYS Start (no actionSelect on the form)
+    if (submitLogBtn) {
+      submitLogBtn.addEventListener('click', async () => {
+        const partNumber = partSelect ? partSelect.value : '';
+        const note = notesInput ? notesInput.value.trim() : '';
+        if (!partNumber) { alert('Please select a part.'); return; }
+
+        try {
+          await api(`/log`, {
+            method: 'POST',
+            body: JSON.stringify({
+              username: user.username,
+              partNumber,
+              action: 'Start',
+              note,
+              startTime: Date.now()
+            })
+          });
+
+          // Reset form
+          if (notesInput) notesInput.value = '';
+          if (partSelect) partSelect.value = '';
+          spanTime.textContent = '--';
+          spanNotes.textContent = '--';
+          spanLoc.textContent = '--';
+          spanSA.textContent = '--';
+
+          await refreshMyLogs();
+        } catch (err) {
+          console.error(err);
+          alert('Failed to submit action. Check console for details.');
+        }
+      });
     }
 
     async function refreshMyLogs() {
@@ -133,44 +158,6 @@ document.addEventListener('DOMContentLoaded', () => {
           <td>${formatDuration(log.startTime, log.endTime, log.pauseStart, log.pauseTotal)}</td>
         `;
         logTableBody.appendChild(tr);
-      });
-    }
-
-    if (submitLogBtn) {
-      submitLogBtn.addEventListener('click', async () => {
-        const partNumber = partSelect ? partSelect.value : '';
-        const action = actionSelect ? actionSelect.value : '';
-        const note = notesInput ? notesInput.value.trim() : '';
-        if (!partNumber || !action) { alert('Please select a part and an action.'); return; }
-
-        try {
-          if (action === 'Start') {
-            await api(`/log`, {
-              method: 'POST',
-              body: JSON.stringify({
-                username: user.username,
-                partNumber,
-                action: 'Start',
-                note,
-                startTime: Date.now()
-              })
-            });
-          } else {
-            // find open log for this part
-            const rows = await api(`/logs/${encodeURIComponent(user.username)}`, { method: 'GET' });
-            const open = rows.find(r => r.partNumber === partNumber && !r.endTime);
-            if (!open) { alert('No active log for this part. Start one first.'); return; }
-            const body = { action };
-            if (action === 'Finish') body.endTime = Date.now();
-            await api(`/log/${open.id}`, { method: 'PUT', body: JSON.stringify(body) });
-          }
-
-          if (notesInput) notesInput.value = '';
-          await refreshMyLogs();
-        } catch (err) {
-          console.error(err);
-          alert('Failed to submit action. Check console for details.');
-        }
       });
     }
 
