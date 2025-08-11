@@ -117,7 +117,6 @@ document.addEventListener('DOMContentLoaded', () => {
             startTime: Date.now()
           })
         });
-        // reset info panel but keep dropdown cleared
         partSelect.value='';
         fillInfoFromPart('');
         await refreshActive();
@@ -132,30 +131,40 @@ document.addEventListener('DOMContentLoaded', () => {
     const setDraft = (logId, val)=> localStorage.setItem(draftKey(logId), val);
     const clearDraft = (logId)=> localStorage.removeItem(draftKey(logId));
 
-    // Keep track of which row is "selected"
+    // Selection tracking
     let selectedLogId = null;
-    let selectedPartNumber = '';
 
-    function selectRow(tr, log){
-      // clear previous
+    function applySelection(tr){
       tBody.querySelectorAll('tr.row-selected').forEach(r => r.classList.remove('row-selected'));
-      tr.classList.add('row-selected');
-      selectedLogId = log.id;
-      selectedPartNumber = log.partNumber || '';
-      fillInfoFromPart(selectedPartNumber);
+      if (tr){ tr.classList.add('row-selected'); }
     }
+
+    function selectByPart(partNumber, tr, logId){
+      selectedLogId = logId || null;
+      applySelection(tr || null);
+      fillInfoFromPart(partNumber || '');
+    }
+
+    // Event delegation for row selection (click anywhere in row, including controls)
+    tBody.addEventListener('mousedown', (e)=>{
+      const tr = e.target.closest('tr');
+      if (!tr) return;
+      const partNumber = (tr.querySelector('td')?.textContent || '').trim();
+      const logId = tr.dataset.id || null;
+      selectByPart(partNumber, tr, logId);
+    }, true);
 
     // Render active logs (no endTime)
     async function refreshActive(){
       const rows = await api(`/logs/${encodeURIComponent(user.username)}`, { method:'GET' });
       const active = rows.filter(r => !r.endTime);
-      tBody.innerHTML='';
-      let foundSelected = false;
+      const prevSelected = selectedLogId;
 
+      tBody.innerHTML='';
       active.forEach(log=>{
         const tr = document.createElement('tr');
+        tr.dataset.id = log.id;
 
-        // Notes value: prefer draft; else backend note
         const draft = getDraft(log.id) || log.note || '';
 
         tr.innerHTML = `
@@ -174,28 +183,13 @@ document.addEventListener('DOMContentLoaded', () => {
           <td class="dur" data-start="${log.startTime || ''}" data-pause="${log.pauseStart || ''}" data-paused="${log.pauseTotal || 0}">${fmtDuration(log.startTime, log.endTime, log.pauseStart, log.pauseTotal)}</td>
         `;
 
-        // select current state (default to Continue if unknown/Start)
+        // current state
         const sel = tr.querySelector('select.row-action');
         const current = (log.action || '').trim();
         sel.value = (current === 'Pause' || current === 'Finish') ? current : 'Continue';
 
-        // Row click to select (but ignore clicks inside textarea/select)
-        tr.addEventListener('click', (e)=>{
-          if (e.target.closest('textarea, select')) return;
-          selectRow(tr, log);
-        });
-
-        // If this row was previously selected, reselect it after refresh
-        if (selectedLogId && log.id === selectedLogId){
-          tr.classList.add('row-selected');
-          foundSelected = true;
-          // ensure info panel matches
-          fillInfoFromPart(log.partNumber);
-        }
-
         // notes draft tracking
-        const ta = tr.querySelector('textarea.notes-box');
-        ta.addEventListener('input', (e)=> setDraft(log.id, e.target.value));
+        tr.querySelector('textarea.notes-box').addEventListener('input', (e)=> setDraft(log.id, e.target.value));
 
         // action changes
         sel.addEventListener('change', async (e)=>{
@@ -211,25 +205,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (next === 'Finish'){
               clearDraft(log.id);
-              // remove row; if it was selected, clear selection + info panel
-              if (selectedLogId === log.id){ selectedLogId = null; selectedPartNumber=''; fillInfoFromPart(''); }
+              if (selectedLogId === log.id) { selectedLogId = null; fillInfoFromPart(''); }
               tr.remove();
             } else {
-              // keep selection state; also keep showing the chosen value
               e.target.value = next;
-              // Update paused/continue timing snapshot on next poll
             }
           }catch(err){
             console.error(err); alert('Failed to update action.');
           }
         });
 
+        // restore selection after refresh
+        if (prevSelected && log.id === prevSelected){
+          applySelection(tr);
+          fillInfoFromPart(log.partNumber || '');
+        }
+
         tBody.appendChild(tr);
       });
 
-      if (!foundSelected && selectedLogId){
-        // previously selected row no longer active
-        selectedLogId = null; selectedPartNumber=''; fillInfoFromPart('');
+      // if previous selected row vanished, clear panel
+      if (prevSelected && !active.find(r => r.id === prevSelected)){
+        selectedLogId = null;
+        fillInfoFromPart('');
       }
     }
 
