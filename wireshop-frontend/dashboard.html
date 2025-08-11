@@ -86,11 +86,13 @@
   <script src="catalog.js"></script>
   <script src="script.js"></script>
 
-  <!-- Row dropdown decorator: shows CURRENT state, only Pause/Continue/Finish -->
+  <!-- Row dropdown decorator: shows CURRENT state; hides finished rows on dashboard -->
   <script>
     (function(){
       const API_URL = 'https://wireshop-backend.onrender.com/api/jobs';
       const tbody = document.getElementById('logTableBody');
+
+      const mapAbbrev = { 'S':'Start', 'P':'Pause', 'C':'Continue', 'F':'Finish' };
 
       function getUser(){
         try { return JSON.parse(localStorage.getItem('user')) || null; } catch { return null; }
@@ -108,6 +110,11 @@
         return ct.includes('application/json') ? res.json() : res.text();
       }
 
+      function normalizeState(text){
+        const t = (text || '').trim();
+        return mapAbbrev[t] || (['Pause','Continue','Finish'].includes(t) ? t : 'Continue');
+      }
+
       function makeSelect(current){
         const sel = document.createElement('select');
         sel.className = 'row-action';
@@ -116,11 +123,12 @@
           <option value="Continue" class="row-continue">Continue</option>
           <option value="Finish" class="row-finish">Finish</option>
         `;
-        // Default selected = current state if one of the three; if 'Start', assume 'Continue'
-        const valid = ['Pause','Continue','Finish'];
-        const value = valid.includes(current) ? current : 'Continue';
-        sel.value = value;
+        sel.value = normalizeState(current);
         return sel;
+      }
+
+      function removeRow(tr){
+        if (tr && tr.parentNode) tr.parentNode.removeChild(tr);
       }
 
       function addDropdownToRow(tr){
@@ -129,10 +137,13 @@
         const actionCell = tr.cells[1];
         if (!partCell || !actionCell) return;
 
-        const currentText = (actionCell.textContent || '').trim();
+        const currentText = normalizeState(actionCell.textContent);
         const partNumber = (partCell.textContent || '').trim();
 
-        // Replace cell content with a select that reflects currentText
+        // If the row is already in a finished state, hide it from the dashboard.
+        if (currentText === 'Finish'){ removeRow(tr); return; }
+
+        // Replace action cell with a dropdown showing the full word
         actionCell.textContent = '';
         const sel = makeSelect(currentText);
         actionCell.appendChild(sel);
@@ -140,13 +151,12 @@
         sel.addEventListener('change', async (e)=>{
           const next = e.target.value;
           try {
-            // Find user's open log for that part
+            // Find the user's open log for this part (no endTime)
             const rows = await api(`/logs/${encodeURIComponent(uname())}`, { method:'GET' });
             const open = rows.find(r => r.partNumber === partNumber && !r.endTime);
             if (!open){
               alert('No active log for this part. Start one first.');
-              // revert to what we just tried to set (keeps showing "state")
-              e.target.value = next;
+              e.target.value = currentText;
               return;
             }
 
@@ -155,11 +165,17 @@
 
             await api(`/log/${open.id}`, { method:'PUT', body: JSON.stringify(body) });
 
-            // Keep the box showing the current state the user chose
-            e.target.value = next;
+            if (next === 'Finish'){
+              // Remove from THIS user's list immediately
+              removeRow(tr);
+            } else {
+              // Keep showing the new state in the box
+              e.target.value = next;
+            }
           } catch(err){
             console.error(err);
-            alert('Failed to update action. Check console for details.');
+            alert('Failed to update action.');
+            e.target.value = currentText; // revert visual if error
           }
         });
       }
@@ -167,10 +183,9 @@
       function decorateAll(){
         if (!tbody) return;
         [...tbody.rows].forEach((tr)=>{
-          // only decorate if not already a select
           if (!tr.cells[1]) return;
-          const hasSelect = tr.cells[1].querySelector('select.row-action');
-          if (!hasSelect) addDropdownToRow(tr);
+          const already = tr.cells[1].querySelector('select.row-action');
+          if (!already) addDropdownToRow(tr);
         });
       }
 
