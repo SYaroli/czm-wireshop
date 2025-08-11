@@ -3,33 +3,42 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Wireshop — Sign In</title>
-  <link rel="stylesheet" href="style.css" />
+  <title>WireShop • Login</title>
+  <link rel="icon" href="czm-logo.png" />
+  <link rel="stylesheet" href="style.css"/>
 </head>
 <body>
-  <main class="container login">
-    <div class="logo-wrap">
-      <img src="czm-logo.png" alt="CZM" style="max-width:220px;height:auto;">
+  <header class="topbar">
+    <div class="brand">
+      <img src="czm-logo.png" alt="CZM" class="brand-logo"/>
+      <div class="brand-text">
+        <strong>CZM</strong>
+        <span>WireShop</span>
+      </div>
     </div>
+  </header>
 
-    <h1>Wireshop Login</h1>
+  <main class="container">
+    <div class="card card-compact login-card">
+      <h1 class="h2">Sign in</h1>
+      <form id="login-form" method="POST" action="/login" class="stack">
+        <label class="label">Username</label>
+        <input type="text" id="usernameInput" name="username" required />
 
-    <form id="login-form" autocomplete="off">
-      <label for="usernameInput">Username</label>
-      <input id="usernameInput" type="text" placeholder="e.g. rafaela" required />
+        <label class="label">PIN</label>
+        <input type="password" id="pinInput" name="pin" required />
 
-      <label for="pinInput">PIN</label>
-      <input id="pinInput" type="password" inputmode="numeric" placeholder="****" required />
-
-      <button type="submit">Sign In</button>
-      <p id="error-message" style="color:#d33;margin-top:8px;"></p>
-    </form>
+        <button type="submit" class="btn btn-primary full">Login</button>
+        <p id="error-message" class="error"></p>
+      </form>
+    </div>
   </main>
 
-  <!-- Load data first -->
+  <footer class="footer">
+    <span>© CZM — Internal Use</span>
+  </footer>
+
   <script src="users.js"></script>
-  <script src="catalog.js"></script>
-  <!-- App logic last -->
   <script src="script.js"></script>
 </body>
 </html>
