@@ -1,4 +1,4 @@
-/* ===== CZM Wireshop Theme (Visuals only) ===== */
+/* ===== CZM Wireshop Theme ===== */
 :root{
   --brand-red:#C20F2F;
   --brand-black:#0F1113;
@@ -50,78 +50,72 @@ main, .page { width:min(1100px, 92vw); margin:72px auto 48px; }
   border:1px solid var(--line);
   border-top:4px solid var(--brand-red);
   border-radius:14px;
-  padding:18px 20px;
+  padding:16px 18px;
   margin:18px auto;
   box-shadow: var(--shadow);
 }
 .card h1,.card h2{margin:.1rem 0 0.75rem 0}
-.section-grid{ display:grid; gap:16px; }
 
-/* Forms & Inputs */
+/* Start strip */
+.start-strip{
+  display:grid;
+  gap:10px;
+  align-items:end;
+}
+@media (min-width:800px){
+  .start-strip{
+    grid-template-columns: 1.3fr 1fr auto;
+  }
+}
 label{font-weight:700; font-size:.95rem}
-input,select,textarea,button{ font:inherit; }
-input, select, textarea{
+select,button{
+  font:inherit;
+}
+select{
   width:100%; padding:10px 12px; border:1px solid #cfd4dc; border-radius:10px; background:#fff;
   outline:none; transition:border .15s ease, box-shadow .15s ease;
 }
-input:focus, select:focus, textarea:focus{
+select:focus{
   border-color:var(--brand-red); box-shadow:0 0 0 3px rgba(194,15,47,.15);
 }
-textarea{min-height:90px; resize:vertical}
-
-button, input[type="submit"]{
+button{
   background:var(--brand-red); color:#fff; font-weight:800; border:none; border-radius:10px;
   padding:10px 14px; cursor:pointer; transition:transform .05s ease, filter .15s ease, background .2s ease;
 }
 button:hover{filter:brightness(1.05)}
 button:active{transform:translateY(1px)}
-button[disabled]{opacity:.6; cursor:not-allowed}
-button.outline{ background:#fff; color:var(--brand-red); border:2px solid var(--brand-red); }
 button.dark{ background:var(--brand-black); }
 button.danger{ background:#b91c1c; }
 
-/* Inline info group */
+/* Info chips */
 .info{
   display:grid; gap:6px; background:#fafafb; border:1px dashed #d2d6dd; border-radius:12px; padding:12px;
 }
 .info p{margin:0; color:#333}
 .info span{font-weight:800; color:#111}
 
-/* Tables */
-table{ width:100%; border-collapse:collapse; font-size:.95rem; border:1px solid --line; border-radius:12px; overflow:hidden; }
+/* Table */
+table{ width:100%; border-collapse:collapse; font-size:.95rem; border:1px solid var(--line); border-radius:12px; overflow:hidden; }
 thead th{ background:#111214; color:#fff; text-align:left; font-weight:800; padding:10px 12px; letter-spacing:.3px; }
-tbody td{ padding:10px 12px; border-top:1px solid var(--line); }
+tbody td{ padding:10px 12px; border-top:1px solid var(--line); vertical-align:top; }
 tbody tr:hover{background:#fafafa}
-tbody td:last-child, thead th:last-child{white-space:nowrap}
 
-/* Make Action column wide enough to show full words */
-#logTable th:nth-child(2), #logTable td:nth-child(2){
-  width: 170px;
+/* Notes cell */
+.notes-box{
+  width:100%;
+  min-height:74px;
+  padding:8px 10px;
+  border:1px solid #cfd4dc;
+  border-radius:10px;
+  resize:vertical;
+  font:inherit;
+}
+.notes-box:focus{
+  border-color:var(--brand-red);
+  box-shadow:0 0 0 3px rgba(194,15,47,.15);
 }
 
-/* Emphasize Time column in admin */
-#activityTable th:nth-child(5), #activityTable td:nth-child(5){
-  background:#fff5f6; color:#911226; font-weight:800;
-}
-
-/* Login page */
-.container.login{ display:grid; place-items:center; width:min(420px, 92vw); }
-.login-card{ background:var(--card); border:1px solid var(--line); border-radius:16px; padding:22px 22px 18px; width:100%; box-shadow: var(--shadow); }
-.logo-wrap{ display:flex; justify-content:center; margin-bottom:10px; }
-.logo-wrap img{max-width:220px; height:auto}
-.help{color:var(--muted); font-size:.9rem}
-
-/* Header strip */
-.header-box{
-  background:#101214; color:#fff; border:1px solid #191b1f; border-left:4px solid var(--brand-red);
-  border-radius:14px; padding:14px 16px; margin: 16px auto; width:min(1100px, 92vw); box-shadow: var(--shadow);
-}
-.header-box h1{margin:0 0 6px 0; font-size:1.4rem}
-.header-buttons{display:flex; gap:8px; margin-top:10px}
-.header-buttons button{background:var(--brand-red)}
-.header-box p{margin:0}
-
-/* Row-level action dropdown (Log History -> each row) */
+/* Row action */
 .row-action{
   width:100%;
   min-width:150px;
@@ -132,9 +126,11 @@ tbody td:last-child, thead th:last-child{white-space:nowrap}
   background:#fff;
 }
 .row-action option{font-weight:700}
-.row-pause{color:#b08900}     /* yellow/gold */
-.row-continue{color:#1e40af}  /* blue */
-.row-finish{color:#b91c1c}    /* red */
+.row-pause{color:#b08900}
+.row-continue{color:#1e40af}
+.row-finish{color:#b91c1c}
 
-/* Responsive */
-@media (min-width:860px){ .section-grid.two{grid-template-columns:1fr 1fr} }
+/* Admin time highlight stays */
+#activityTable th:nth-child(5), #activityTable td:nth-child(5){
+  background:#fff5f6; color:#911226; font-weight:800;
+}
