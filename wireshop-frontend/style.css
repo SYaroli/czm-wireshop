@@ -88,11 +88,16 @@ button.danger{ background:#b91c1c; }
 .info span{font-weight:800; color:#111}
 
 /* Tables */
-table{ width:100%; border-collapse:collapse; font-size:.95rem; border:1px solid var(--line); border-radius:12px; overflow:hidden; }
+table{ width:100%; border-collapse:collapse; font-size:.95rem; border:1px solid --line; border-radius:12px; overflow:hidden; }
 thead th{ background:#111214; color:#fff; text-align:left; font-weight:800; padding:10px 12px; letter-spacing:.3px; }
 tbody td{ padding:10px 12px; border-top:1px solid var(--line); }
 tbody tr:hover{background:#fafafa}
 tbody td:last-child, thead th:last-child{white-space:nowrap}
+
+/* Make Action column wide enough to show full words */
+#logTable th:nth-child(2), #logTable td:nth-child(2){
+  width: 170px;
+}
 
 /* Emphasize Time column in admin */
 #activityTable th:nth-child(5), #activityTable td:nth-child(5){
@@ -119,6 +124,7 @@ tbody td:last-child, thead th:last-child{white-space:nowrap}
 /* Row-level action dropdown (Log History -> each row) */
 .row-action{
   width:100%;
+  min-width:150px;
   padding:6px 8px;
   font-weight:700;
   border-radius:8px;
