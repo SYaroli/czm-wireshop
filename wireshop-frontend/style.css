@@ -1,8 +1,7 @@
 /* ===== CZM Wireshop Theme (Visuals only) ===== */
-/* Brand */
 :root{
-  --brand-red:#C20F2F;   /* CZM red */
-  --brand-black:#0F1113; /* deep black */
+  --brand-red:#C20F2F;
+  --brand-black:#0F1113;
   --ink:#1d1f23;
   --muted:#6b7280;
   --bg:#f4f5f7;
@@ -11,7 +10,6 @@
   --shadow:0 8px 24px rgba(0,0,0,.12);
 }
 
-/* Base reset-ish */
 *{box-sizing:border-box}
 html,body{height:100%}
 body{
@@ -20,8 +18,6 @@ body{
   color:var(--ink);
   background: radial-gradient(ellipse at top left, #fafafa 0%, #f1f1f1 60%, #ececec 100%);
 }
-
-/* Subtle watermark background with logo */
 body::before{
   content:"";
   position:fixed; inset:0;
@@ -29,44 +25,26 @@ body::before{
   opacity:.06; pointer-events:none; filter:grayscale(100%);
 }
 
-/* Global container rhythm */
-main, .page {
-  width:min(1100px, 92vw);
-  margin:72px auto 48px;
-}
+main, .page { width:min(1100px, 92vw); margin:72px auto 48px; }
 
-/* ===== Top Bar ===== */
+/* Top bar */
 .brand-bar{
   position:sticky; top:0; z-index:50;
   background:linear-gradient(0deg, var(--brand-black), #000);
   border-bottom:3px solid var(--brand-red);
   box-shadow: 0 4px 18px rgba(0,0,0,.25);
 }
-.brand-inner{
-  width:min(1100px, 92vw);
-  margin:0 auto;
-  display:flex; align-items:center; gap:14px;
-  padding:10px 0;
-}
-.brand-logo{
-  display:flex; align-items:center; gap:10px;
-  color:#fff; text-decoration:none;
-}
+.brand-inner{ width:min(1100px, 92vw); margin:0 auto; display:flex; align-items:center; gap:14px; padding:10px 0; }
+.brand-logo{ display:flex; align-items:center; gap:10px; color:#fff; text-decoration:none; }
 .brand-logo img{height:36px; width:auto; display:block; filter:drop-shadow(0 2px 2px rgba(0,0,0,.3))}
-.brand-title{
-  color:#fff; font-weight:800; letter-spacing:.5px; margin:0; font-size:1.05rem;
-}
-.brand-actions{margin-left:auto; display:flex; gap:8px}
+.brand-title{ color:#fff; font-weight:800; letter-spacing:.5px; margin:0; font-size:1.05rem; }
+.brand-actions{ margin-left:auto; display:flex; gap:8px }
 .brand-actions button{
-  background:var(--brand-red);
-  color:#fff; border:none; padding:8px 12px; border-radius:10px; font-weight:700;
-  cursor:pointer; box-shadow: var(--shadow);
+  background:var(--brand-red); color:#fff; border:none; padding:8px 12px; border-radius:10px; font-weight:700; cursor:pointer; box-shadow: var(--shadow);
 }
-.brand-actions button.secondary{
-  background:#222; border:1px solid #333;
-}
+.brand-actions button.secondary{ background:#222; border:1px solid #333; }
 
-/* ===== Cards ===== */
+/* Cards */
 .card{
   background:var(--card);
   border:1px solid var(--line);
@@ -77,131 +55,70 @@ main, .page {
   box-shadow: var(--shadow);
 }
 .card h1,.card h2{margin:.1rem 0 0.75rem 0}
-.section-grid{
-  display:grid; gap:16px;
-}
+.section-grid{ display:grid; gap:16px; }
 
-/* ===== Forms & Inputs ===== */
+/* Forms & Inputs */
 label{font-weight:700; font-size:.95rem}
-input,select,textarea,button{
-  font:inherit;
-}
+input,select,textarea,button{ font:inherit; }
 input, select, textarea{
-  width:100%;
-  padding:10px 12px;
-  border:1px solid #cfd4dc;
-  border-radius:10px;
-  background:#fff;
-  outline:none;
-  transition:border .15s ease, box-shadow .15s ease;
+  width:100%; padding:10px 12px; border:1px solid #cfd4dc; border-radius:10px; background:#fff;
+  outline:none; transition:border .15s ease, box-shadow .15s ease;
 }
 input:focus, select:focus, textarea:focus{
-  border-color:var(--brand-red);
-  box-shadow:0 0 0 3px rgba(194,15,47,.15);
+  border-color:var(--brand-red); box-shadow:0 0 0 3px rgba(194,15,47,.15);
 }
-
 textarea{min-height:90px; resize:vertical}
 
-button,
-input[type="submit"]{
-  background:var(--brand-red);
-  color:#fff; font-weight:800;
-  border:none; border-radius:10px;
-  padding:10px 14px; cursor:pointer;
-  transition:transform .05s ease, filter .15s ease, background .2s ease;
+button, input[type="submit"]{
+  background:var(--brand-red); color:#fff; font-weight:800; border:none; border-radius:10px;
+  padding:10px 14px; cursor:pointer; transition:transform .05s ease, filter .15s ease, background .2s ease;
 }
 button:hover{filter:brightness(1.05)}
 button:active{transform:translateY(1px)}
 button[disabled]{opacity:.6; cursor:not-allowed}
+button.outline{ background:#fff; color:var(--brand-red); border:2px solid var(--brand-red); }
+button.dark{ background:var(--brand-black); }
+button.danger{ background:#b91c1c; }
 
-button.outline{
-  background:#fff; color:var(--brand-red);
-  border:2px solid var(--brand-red);
-}
-
-button.dark{
-  background:var(--brand-black);
-}
-button.danger{
-  background:#b91c1c;
-}
-
-/* Inline info group for part data */
+/* Inline info group */
 .info{
-  display:grid; gap:6px;
-  background:#fafafb;
-  border:1px dashed #d2d6dd;
-  border-radius:12px;
-  padding:12px;
+  display:grid; gap:6px; background:#fafafb; border:1px dashed #d2d6dd; border-radius:12px; padding:12px;
 }
 .info p{margin:0; color:#333}
 .info span{font-weight:800; color:#111}
 
-/* ===== Tables ===== */
-table{
-  width:100%; border-collapse:collapse; font-size:.95rem;
-  border:1px solid var(--line); border-radius:12px; overflow:hidden;
-}
-thead th{
-  background:#111214; color:#fff; text-align:left; font-weight:800;
-  padding:10px 12px; letter-spacing:.3px;
-}
-tbody td{
-  padding:10px 12px; border-top:1px solid var(--line);
-}
+/* Tables */
+table{ width:100%; border-collapse:collapse; font-size:.95rem; border:1px solid var(--line); border-radius:12px; overflow:hidden; }
+thead th{ background:#111214; color:#fff; text-align:left; font-weight:800; padding:10px 12px; letter-spacing:.3px; }
+tbody td{ padding:10px 12px; border-top:1px solid var(--line); }
 tbody tr:hover{background:#fafafa}
 tbody td:last-child, thead th:last-child{white-space:nowrap}
 
 /* Emphasize Time column in admin */
-#activityTable th:nth-child(5),
-#activityTable td:nth-child(5){
-  background:#fff5f6;
-  color:#911226;
-  font-weight:800;
+#activityTable th:nth-child(5), #activityTable td:nth-child(5){
+  background:#fff5f6; color:#911226; font-weight:800;
 }
 
-/* ===== Login page ===== */
-.container.login{
-  display:grid; place-items:center;
-  width:min(420px, 92vw);
-}
-.login-card{
-  background:var(--card);
-  border:1px solid var(--line);
-  border-radius:16px;
-  padding:22px 22px 18px;
-  width:100%;
-  box-shadow: var(--shadow);
-}
-.logo-wrap{
-  display:flex; justify-content:center; margin-bottom:10px;
-}
+/* Login page */
+.container.login{ display:grid; place-items:center; width:min(420px, 92vw); }
+.login-card{ background:var(--card); border:1px solid var(--line); border-radius:16px; padding:22px 22px 18px; width:100%; box-shadow: var(--shadow); }
+.logo-wrap{ display:flex; justify-content:center; margin-bottom:10px; }
 .logo-wrap img{max-width:220px; height:auto}
-
-/* Tiny helper text */
 .help{color:var(--muted); font-size:.9rem}
 
-/* Header box on dashboard (kept for JS id) */
+/* Header strip */
 .header-box{
-  background:#101214; color:#fff;
-  border:1px solid #191b1f;
-  border-left:4px solid var(--brand-red);
-  border-radius:14px;
-  padding:14px 16px;
-  margin: 16px auto;
-  width:min(1100px, 92vw);
-  box-shadow: var(--shadow);
+  background:#101214; color:#fff; border:1px solid #191b1f; border-left:4px solid var(--brand-red);
+  border-radius:14px; padding:14px 16px; margin: 16px auto; width:min(1100px, 92vw); box-shadow: var(--shadow);
 }
 .header-box h1{margin:0 0 6px 0; font-size:1.4rem}
 .header-buttons{display:flex; gap:8px; margin-top:10px}
 .header-buttons button{background:var(--brand-red)}
 .header-box p{margin:0}
 
-/* ===== Action dropdown in Log History header ===== */
-th .action-dropdown-wrap{
+/* Row-level action dropdown (Log History -> each row) */
+.row-action{
   margin-top:6px;
-}
-.action-dropdown{
   width:100%;
   padding:6px 8px;
   font-weight:700;
@@ -209,13 +126,11 @@ th .action-dropdown-wrap{
   border:1px solid #cfd4dc;
   background:#fff;
 }
-.action-dropdown option{font-weight:700}
-.action-start{color:#16a34a}     /* green */
-.action-pause{color:#b08900}     /* yellow/gold */
-.action-continue{color:#1e40af}  /* blue */
-.action-finish{color:#b91c1c}    /* red */
+.row-action option{font-weight:700}
+.row-start{color:#16a34a}     /* green */
+.row-pause{color:#b08900}     /* yellow/gold */
+.row-continue{color:#1e40af}  /* blue */
+.row-finish{color:#b91c1c}    /* red */
 
-/* Responsive tweaks */
-@media (min-width:860px){
-  .section-grid.two{grid-template-columns:1fr 1fr}
-}
+/* Responsive */
+@media (min-width:860px){ .section-grid.two{grid-template-columns:1fr 1fr} }
