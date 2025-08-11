@@ -1,125 +1,210 @@
-/* ===== Theme ===== */
-:root {
-  --navy: #000000;        /* Primary = black */
-  --navy-600: #1a1a1a;    /* Dark gray-black for gradients */
-  --cyan: #d90429;        /* Accent = bright red */
-  --cyan-600: #b3001f;    /* Darker red for hover/active */
-  --bg: #f8f9fa;          /* Light background for contrast */
-  --card: #ffffff;        /* Card background */
-  --text: #1b1b1b;        /* Main text */
-  --muted: #666666;       /* Muted text */
-  --danger: #ff0000;      /* Danger red */
-  --ring: rgba(217, 4, 41, 0.35); /* Red ring for focus */
-  --radius: 14px;
+/* Body Background */
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: url('czm-logo.png') no-repeat center center fixed;
+  background-size: contain;
+  background-color: #f0f0f0;
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 20px;
 }
 
-/* Reset-ish */
-*{box-sizing:border-box}
-html,body{height:100%}
-body{
-  margin:0;
-  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji","Segoe UI Emoji";
-  color:var(--text);
-  background:var(--bg);
+/* Header Box */
+.header-box {
+  background-color: rgba(255, 255, 255, 0.10);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  padding: 1rem;
+  max-width: 400px;
+  width: 80%;
+  text-align: center;
+  margin-bottom: 1rem;
+  transform: translateY(-10px);
+  z-index: 10;
+  position: relative;
 }
 
-/* ===== Top bar ===== */
-.topbar{
-  position:sticky; top:0; z-index:50;
-  background:linear-gradient(90deg,var(--navy),var(--navy-600));
-  color:#fff;
-  display:flex; align-items:center; justify-content:space-between;
-  padding:10px 16px; box-shadow:0 2px 8px rgba(0,0,0,.15);
+.header-box h1 {
+  margin: 0;
+  font-size: 1.8rem;
+  font-weight: bold;
 }
-.brand{display:flex; align-items:center; gap:10px}
-.brand-logo{height:34px; width:auto; border-radius:6px; background:#fff; padding:2px}
-.brand-text{display:flex; flex-direction:column; line-height:1}
-.brand-text strong{font-size:14px; letter-spacing:.6px}
-.brand-text span{font-size:12px; opacity:.9}
 
-.actions{display:flex; gap:8px; align-items:center}
-
-/* ===== Layout ===== */
-.container{max-width:1000px; margin:24px auto; padding:0 16px}
-.hero{margin-bottom:16px}
-.h2{font-size:28px; margin:0 0 4px}
-.h3{font-size:20px; margin:0 0 8px}
-.muted{color:var(--muted)}
-
-.grid{display:grid; gap:16px}
-@media(min-width:900px){ .grid{grid-template-columns:1fr} } /* one column for now */
-
-/* Cards */
-.card{
-  background:var(--card);
-  border-radius:var(--radius);
-  box-shadow:0 8px 20px rgba(2,14,26,.06);
-  padding:18px;
-  border:1px solid #e7edf3;
+.header-box p {
+  margin: 0.5rem 0;
+  font-size: 1rem;
+  color: #444;
 }
-.card-compact{max-width:380px; margin:48px auto}
-.card-header{display:flex; align-items:center; justify-content:space-between; margin-bottom:8px}
 
-/* Forms */
-.stack>*+*{margin-top:8px}
-.label{font-weight:600; font-size:13px; color:var(--muted)}
-input,select,textarea{
-  width:100%; padding:10px 12px; font-size:14px;
-  border:1px solid #d6dde6; border-radius:10px; background:#fff;
-  outline:0; transition:border .15s, box-shadow .15s;
+.header-buttons {
+  margin-top: 0.75rem;
 }
-input:focus,select:focus,textarea:focus{border-color:var(--cyan); box-shadow:0 0 0 4px var(--ring)}
-textarea{min-height:90px; resize:vertical}
+
+.header-buttons button {
+  margin: 0 0.25rem;
+  padding: 0.4rem 0.8rem;
+  border-radius: 8px;
+  background-color: #007bff;
+  border: none;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.header-buttons button:hover {
+  background-color: #0056b3;
+}
+
+/* Card Style Containers */
+.card {
+  background-color: rgba(255, 255, 255, 0.9);
+  border-radius: 12px;
+  padding: 1rem 1.5rem;
+  margin: 1rem 0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  width: 90%;
+  max-width: 600px;
+}
 
 /* Buttons */
-.btn{
-  border:1px solid transparent; background:#eef3f7; color:var(--navy);
-  padding:9px 14px; border-radius:10px; font-weight:600; cursor:pointer;
-}
-.btn:hover{filter:brightness(0.97)}
-.btn:active{transform:translateY(1px)}
-.btn-ghost{background:transparent; color:#fff; border-color:rgba(255,255,255,.25)}
-.btn-primary{background:var(--cyan); color:#fff}
-.btn-primary:hover{background:var(--cyan-600)}
-.btn-danger{background:var(--danger); color:#fff}
-.btn-sm{padding:6px 10px; font-size:13px}
-.full{width:100%}
-.right{display:flex; justify-content:flex-end}
-
-/* Info box */
-.info-box{
-  background:#f8fafc; border:1px solid #e6edf3; color:#0f172a;
-  padding:10px 12px; border-radius:10px; font-weight:600; white-space:pre-line;
+button,
+input[type="submit"] {
+  background-color: #007bff;
+  color: white;
+  padding: 0.4rem 1rem;
+  border: none;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
 }
 
-/* Tables */
-.table-wrap{overflow:auto; border:1px solid #e7edf3; border-radius:12px}
-.table{width:100%; border-collapse:collapse; font-size:14px; background:#fff}
-.table thead th{
-  text-align:left; padding:10px 12px; position:sticky; top:0;
-  background:#f1f5f9; border-bottom:1px solid #e7edf3;
-}
-.table td{padding:10px 12px; border-bottom:1px solid #f0f3f8; vertical-align:top}
-.table tbody tr:hover{background:#f9fcff}
-
-/* Admin time column highlight */
-#activityTable th:nth-child(5), #activityTable td:nth-child(5){
-  font-weight:700; background:#f7fbfe;
+button:hover,
+input[type="submit"]:hover {
+  background-color: #0056b3;
 }
 
-/* Login tweaks */
-.login-card .error{color:#d92d20; margin:6px 0 0}
-.footer{
-  margin:40px auto 24px; text-align:center; color:var(--muted); font-size:12px;
+.delete-btn {
+  background-color: #dc3545;
 }
-/* Restored info group styling */
-.info-group{
-  background:#f8fafc;
-  border:1px solid #e6edf3;
-  border-radius:10px;
-  padding:10px 12px;
-  margin:10px 0 12px;
-  font-weight:600;
-  color:#0f172a;
+
+.delete-btn:hover {
+  background-color: #a71d2a;
 }
-.info-group > div + div{ margin-top:6px; }
+
+/* Form Inputs */
+input, select, textarea {
+  width: 100%;
+  margin: 0.25rem 0;
+  padding: 0.4rem;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 0.95rem;
+}
+
+/* Log Table */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+th, td {
+  text-align: left;
+  padding: 0.4rem;
+  border-bottom: 1px solid #ddd;
+}
+
+#expectedTime,
+#partNotes {
+  display: block;
+  width: 100%;
+  background-color: #f5f5f5;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  padding: 6px 10px;
+  margin-top: 10px;
+  margin-bottom: 10px;
+  font-weight: bold;
+  color: #333;
+}
+
+.info-group {
+  background-color: #f5f5f5;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+/* Login Container */
+.login-container {
+  background-color: rgba(255, 255, 255, 0.7); /* Increased transparency (0.7 instead of 0.95) */
+  border-radius: 12px;
+  padding: 1.5rem; /* Reduced padding for smaller size */
+  margin: 14rem auto; /* Moved down by increasing top margin to 5rem */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  max-width: 250px; /* Reduced max-width for smaller size */
+  width: 80%; /* Adjusted width to scale with max-width */
+  text-align: center;
+}
+
+.login-container h2 {
+  margin-bottom: 1rem;
+}
+
+/* Credentials Container */
+.credentials-container {
+  background-color: #ffffff;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.credentials-container label {
+  display: block;
+  margin-top: 0.5rem;
+  text-align: left;
+  font-weight: 600;
+}
+
+.credentials-container input[type="text"],
+.credentials-container input[type="password"] {
+  width: 100%;
+  padding: 0.5rem;
+  margin-top: 0.25rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 1rem;
+  box-sizing: border-box;
+}
+
+.login-container button {
+  margin-top: 1rem;
+  width: 100%;
+  padding: 0.5rem;
+  font-weight: bold;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.login-container button:hover {
+  background-color: #0056b3;
+}
+
+/* Highlight Time Active column */
+#activityTable th:nth-child(5),
+#activityTable td:nth-child(5) {
+  background-color: #f0f0f0; /* Light gray to make it pop */
+  font-weight: bold;
+  padding: 0.6rem; /* A bit more padding for emphasis */
+}
