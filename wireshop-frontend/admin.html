@@ -8,7 +8,6 @@
   <link rel="stylesheet" href="style.css"/>
 </head>
 <body>
-  <!-- Brand bar -->
   <div class="brand-bar">
     <div class="brand-inner">
       <a class="brand-logo" href="dashboard.html">
@@ -44,7 +43,7 @@
       </div>
     </div>
 
-    <!-- Archive controls -->
+    <!-- Archive -->
     <div class="card">
       <h2>Completed Jobs (Archive)</h2>
 
@@ -83,6 +82,7 @@
               <th>Notes</th>
               <th>Total Active</th>
               <th>Adjust</th>
+              <th>Delete</th>
             </tr>
           </thead>
           <tbody id="archiveTableBody"></tbody>
@@ -98,27 +98,13 @@
       <div id="adjMeta" style="font-size:.9rem; opacity:.7; margin-bottom:8px;"></div>
 
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
-        <label>Technician
-          <input id="adjUser" type="text" />
-        </label>
-        <label>Part Number
-          <input id="adjPart" type="text" />
-        </label>
-        <label style="grid-column:1 / -1">Notes
-          <textarea id="adjNote" rows="2"></textarea>
-        </label>
-        <label>Start Time
-          <input id="adjStart" type="datetime-local" />
-        </label>
-        <label>End Time
-          <input id="adjEnd" type="datetime-local" />
-        </label>
-        <label>Pause Total (minutes)
-          <input id="adjPause" type="number" min="0" step="1" placeholder="leave blank to keep"/>
-        </label>
-        <label style="grid-column:1 / -1">Reason (required)
-          <input id="adjReason" type="text" required placeholder="e.g. missed punch"/>
-        </label>
+        <label>Technician <input id="adjUser" type="text" /></label>
+        <label>Part Number <input id="adjPart" type="text" /></label>
+        <label style="grid-column:1 / -1">Notes <textarea id="adjNote" rows="2"></textarea></label>
+        <label>Start Time <input id="adjStart" type="datetime-local" /></label>
+        <label>End Time <input id="adjEnd" type="datetime-local" /></label>
+        <label>Pause Total (minutes) <input id="adjPause" type="number" min="0" step="1" placeholder="leave blank to keep"/></label>
+        <label style="grid-column:1 / -1">Reason (required) <input id="adjReason" type="text" required placeholder="e.g. missed punch"/></label>
       </div>
 
       <div id="adjHistory" style="margin-top:8px; padding:8px; background:#f6f6f6; border-radius:8px; display:none;"></div>
@@ -131,11 +117,9 @@
     </form>
   </dialog>
 
-  <!-- scripts (load base scripts first) -->
   <script src="script.js"></script>
   <script src="catalog.js"></script>
 
-  <!-- archive + adjust logic (safe: runs after DOM is ready) -->
   <script>
     window.addEventListener('DOMContentLoaded', () => {
       const API = 'https://wireshop-backend.onrender.com';
@@ -162,7 +146,7 @@
         return t.getTime();
       };
 
-      // elements (now they actually exist)
+      // elements
       const A = {
         body: document.getElementById('archiveTableBody'),
         count: document.getElementById('rowCount'),
@@ -173,7 +157,6 @@
         apply: document.getElementById('btnApply'),
         reset: document.getElementById('btnReset'),
         csv:   document.getElementById('btnCsv'),
-
         dlg: document.getElementById('adjDialog'),
         form: document.getElementById('adjForm'),
         meta: document.getElementById('adjMeta'),
@@ -242,12 +225,32 @@
             <td>${row.note || ''}</td>
             <td>${fmt(total)}</td>
             <td><button class="secondary small" data-adj="${row.id}">Adjust</button></td>
+            <td><button class="danger small" data-del="${row.id}">Delete</button></td>
           `;
           A.body.appendChild(tr);
         });
+
         A.body.querySelectorAll('button[data-adj]').forEach(btn=>{
           btn.addEventListener('click', ()=> openAdjust( VIEW.find(r => r.id == btn.dataset.adj) ));
         });
+        A.body.querySelectorAll('button[data-del]').forEach(btn=>{
+          btn.addEventListener('click', ()=> doDelete(parseInt(btn.dataset.del, 10)));
+        });
+      }
+
+      async function doDelete(id){
+        const reason = prompt('Delete reason (required):');
+        if (!reason) return;
+        try{
+          const u = getUser();
+          const res = await fetch(`${API}/api/jobs/archive/${id}/delete`, {
+            method:'POST',
+            headers:{ 'Content-Type':'application/json', 'x-user': u.username || '' },
+            body: JSON.stringify({ reason })
+          });
+          if (!res.ok){ alert('Delete failed'); return; }
+          await loadArchive();
+        }catch(e){ console.error(e); alert('Delete error'); }
       }
 
       const toLocalDT = (ms) => {
@@ -325,7 +328,14 @@
         await loadArchive();
       }
 
-      // events (exist now)
+      // controls
+      document.getElementById('backToDashboard')?.addEventListener('click', ()=> window.location.href='dashboard.html');
+      document.getElementById('clearAllLogs')?.addEventListener('click', async ()=>{
+        if (!confirm('Clear ALL logs for ALL users?')) return;
+        const u = getUser();
+        await fetch(`${API}/api/jobs/admin/clear-logs`, { method:'DELETE', headers:{'x-user': u.username || ''} });
+      });
+
       A.apply.addEventListener('click', applyFilters);
       A.reset.addEventListener('click', ()=>{ A.tech.value=''; A.part.value=''; A.from.value=''; A.to.value=''; applyFilters(); });
       A.csv.addEventListener('click', ()=>{
