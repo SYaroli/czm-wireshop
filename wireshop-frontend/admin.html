@@ -15,32 +15,95 @@
         <h1 class="brand-title">CZM • Admin Live View</h1>
       </a>
       <div class="brand-actions">
-        <button id="backToDashboard" class="dark">← Back</button>
+        <button id="backToDashboard" class="secondary">← Back</button>
         <button id="clearAllLogs" class="danger">Clear All Logs</button>
       </div>
     </div>
   </div>
 
-  <main class="page">
+  <main class="container">
+    <!-- Live -->
     <div class="card">
-      <h2 style="margin-top:0">Live Technician Activity</h2>
-      <table id="activityTable">
-        <thead>
-          <tr>
-            <th>Technician</th>
-            <th>Part Number</th>
-            <th>Action</th>
-            <th>Notes</th>
-            <th>Time Active</th>
-          </tr>
-        </thead>
-        <tbody id="activityTableBody">
-          <!-- Populated by script.js -->
-        </tbody>
-      </table>
+      <h2>Live Technician Activity</h2>
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Technician</th>
+              <th>Part Number</th>
+              <th>Action</th>
+              <th>Notes</th>
+              <th>Time Active</th>
+            </tr>
+          </thead>
+          <tbody id="activityTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Archive -->
+    <div class="card">
+      <h2>Completed Jobs (Archive)</h2>
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Finished</th>
+              <th>Technician</th>
+              <th>Part Number</th>
+              <th>Notes</th>
+              <th>Total Active</th>
+            </tr>
+          </thead>
+          <tbody id="archiveTableBody"></tbody>
+        </table>
+      </div>
     </div>
   </main>
 
   <script src="script.js"></script>
+  <script>
+    (function(){
+      const tbody = document.getElementById('archiveTableBody');
+      if(!tbody) return;
+
+      function fmt(ms){
+        if(!ms || ms < 0) return '00:00:00';
+        let s = Math.floor(ms/1000);
+        const h = Math.floor(s/3600); s -= h*3600;
+        const m = Math.floor(s/60); s -= m*60;
+        return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+      }
+
+      async function loadArchive(){
+        try{
+          const u = JSON.parse(localStorage.getItem('user')||'{}');
+          const res = await fetch('https://wireshop-backend.onrender.com/api/jobs/archive', {
+            headers: { 'x-user': u.username || '' }
+          });
+          if(!res.ok){ console.error('archive http', res.status); return; }
+          const rows = await res.json();
+          tbody.innerHTML = '';
+          rows.forEach(row=>{
+            const total = (row.totalActive != null)
+              ? row.totalActive
+              : Math.max(0, (row.endTime - row.startTime) - (row.pauseTotal || 0));
+            const finished = new Date(row.finishedAt || row.endTime || Date.now()).toLocaleString();
+            const tr = document.createElement('tr');
+            tr.innerHTML =
+              `<td>${finished}</td>
+               <td>${row.username || ''}</td>
+               <td>${row.partNumber || ''}</td>
+               <td>${row.note || ''}</td>
+               <td>${fmt(total)}</td>`;
+            tbody.appendChild(tr);
+          });
+        }catch(e){ console.error('archive load failed', e); }
+      }
+
+      loadArchive();
+      setInterval(loadArchive, 10000);
+    })();
+  </script>
 </body>
 </html>
