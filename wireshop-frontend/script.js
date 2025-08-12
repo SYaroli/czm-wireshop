@@ -29,22 +29,46 @@ document.addEventListener('DOMContentLoaded', () => {
     return `${h}h ${m}m ${s}s`;
   }
 
-  // Inject minimal 3D button styles so we don't touch style.css
+  // Inject upgraded 3D button styles (stronger colors, crisper shadows)
   (function inject3D(){
     const css = `
-      .btn3d{appearance:none;border:0;border-radius:10px;padding:6px 10px;font-weight:600;cursor:pointer;
-        box-shadow:0 2px 0 rgba(0,0,0,.25),0 6px 12px rgba(0,0,0,.08);transition:transform .05s ease, box-shadow .05s ease, filter .15s ease;}
-      .btn3d.small{font-size:.85rem;line-height:1}
-      .btn3d:active{transform:translateY(1px);box-shadow:0 1px 0 rgba(0,0,0,.25),0 3px 6px rgba(0,0,0,.12)}
-      .btn3d.pause{background:#ffe9cc}
-      .btn3d.continue{background:#e7f7ee}
-      .btn3d.finish{background:#ffe5e5}
-      .btn3d:hover{filter:brightness(0.98)}
-      .btn3d[disabled]{opacity:.55;cursor:not-allowed;filter:none}
-      .btn-group{display:flex;gap:.4rem;align-items:center}
-      .actions-cell{min-width:220px}
-      .notes-box{min-width:220px}
-      .row-selected{outline:2px solid #0072ff33}
+      .btn3d{
+        appearance:none; border:1px solid transparent; border-radius:12px;
+        padding:7px 12px; font-weight:700; cursor:pointer; letter-spacing:.2px;
+        box-shadow:0 3px 0 rgba(0,0,0,.28), 0 10px 18px rgba(0,0,0,.10);
+        transition:transform .06s ease, box-shadow .06s ease, filter .15s ease, opacity .15s ease;
+        text-shadow:0 1px 0 rgba(255,255,255,.35);
+      }
+      .btn3d.small{ font-size:.9rem; line-height:1 }
+      .btn3d:active{ transform:translateY(1px); box-shadow:0 1px 0 rgba(0,0,0,.28), 0 6px 12px rgba(0,0,0,.14) }
+      .btn3d:focus-visible{ outline:2px solid #005bd3; outline-offset:2px }
+
+      /* Color themes with subtle gradients and hard edge for 3D rim */
+      .btn3d.pause{
+        color:#4a2a00; background:linear-gradient(#ffd99a, #ffb44a);
+        border-color:#e0902d;
+      }
+      .btn3d.pause:hover{ filter:brightness(0.98) }
+      .btn3d.continue{
+        color:#0f4a2d; background:linear-gradient(#bff3d3, #4fd08a);
+        border-color:#2fb26f;
+      }
+      .btn3d.continue:hover{ filter:brightness(0.98) }
+      .btn3d.finish{
+        color:#5a0e12; background:linear-gradient(#ffc5c5, #ff6e6e);
+        border-color:#e24a4a;
+      }
+      .btn3d.finish:hover{ filter:brightness(0.98) }
+
+      .btn3d[disabled]{
+        opacity:.55; cursor:not-allowed; filter:none;
+        box-shadow:0 2px 0 rgba(0,0,0,.12), 0 4px 8px rgba(0,0,0,.06);
+      }
+
+      .btn-group{ display:flex; gap:.5rem; align-items:center }
+      .actions-cell{ min-width:240px }
+      .notes-box{ min-width:240px }
+      .row-selected{ outline:2px solid #0072ff33 }
     `;
     const s = document.createElement('style'); s.textContent = css; document.head.appendChild(s);
   })();
@@ -162,7 +186,7 @@ document.addEventListener('DOMContentLoaded', () => {
       fillInfoFromPart(log?.partNumber || '');
     }
 
-    // Focus guard: pause refresh only while editing/using controls (not hover-based)
+    // Focus guard
     let isInteracting = false;
     const beginInteraction = ()=> { isInteracting = true; };
     const endInteraction = ()=> {
@@ -172,7 +196,7 @@ document.addEventListener('DOMContentLoaded', () => {
     tBody.addEventListener('focusin', beginInteraction);
     tBody.addEventListener('focusout', () => setTimeout(endInteraction, 0));
 
-    // Click anywhere in row (including controls) to select
+    // Click anywhere in row to select
     tBody.addEventListener('mousedown', (e)=>{
       const tr = e.target.closest('tr');
       if (!tr) return;
@@ -195,7 +219,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return JSON.stringify(minimal);
     }
 
-    // Event delegation for action buttons
+    // Action buttons (delegated)
     tBody.addEventListener('click', async (e)=>{
       const btn = e.target.closest('button[data-act]');
       if (!btn) return;
@@ -203,7 +227,6 @@ document.addEventListener('DOMContentLoaded', () => {
       const logId = Number(tr.dataset.id);
       const act = btn.getAttribute('data-act');
 
-      // disable buttons during request
       const group = tr.querySelectorAll('button[data-act]');
       group.forEach(b=> b.disabled = true);
 
@@ -221,7 +244,7 @@ document.addEventListener('DOMContentLoaded', () => {
           if (selectedLogId === logId){ selectedLogId = null; fillInfoFromPart(''); }
           await requestRefresh(true);
         } else {
-          lastSig = ''; // force update on next poll
+          lastSig = '';
         }
       }catch(err){
         console.error(err); alert('Failed to update action.');
@@ -267,13 +290,10 @@ document.addEventListener('DOMContentLoaded', () => {
           <td class="dur" data-start="${log.startTime || ''}" data-pause="${log.pauseStart || ''}" data-paused="${log.pauseTotal || 0}">${fmtDuration(log.startTime, log.endTime, log.pauseStart, log.pauseTotal)}</td>
         `;
 
-        // notes draft tracking
         tr.querySelector('textarea.notes-box').addEventListener('input', (e)=> setDraft(log.id, e.target.value));
-
         tBody.appendChild(tr);
       });
 
-      // restore selection if still present
       if (selectedLogId && active.some(r => r.id === selectedLogId)){
         highlightById(selectedLogId);
         const log = active.find(r => r.id === selectedLogId);
@@ -290,7 +310,7 @@ document.addEventListener('DOMContentLoaded', () => {
       await refreshActive(force);
     }
 
-    // Tick durations (safe: only text changes)
+    // Tick durations
     function tickDurations(){
       tBody.querySelectorAll('.dur').forEach(td=>{
         const start = Number(td.getAttribute('data-start')) || 0;
@@ -333,7 +353,6 @@ document.addEventListener('DOMContentLoaded', () => {
       catch(err){ console.error(err); alert('Failed to clear logs.'); }
     });
 
-    // Catalog lookups for Print Name + Expected
     const catByPart = new Map((window.catalog || []).map(p => [String(p.partNumber), p]));
     const fmtExpected = (hours) => {
       if (hours == null) return '';
