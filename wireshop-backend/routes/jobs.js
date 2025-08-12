@@ -85,19 +85,14 @@ router.put('/log/:id', (req, res) => {
     const params = [action || row.action];
 
     // persist note if provided
-    if (typeof note !== 'undefined') {
-      stmt += `, note = ?`;
-      params.push(String(note || ''));
-    }
+    if (typeof note !== 'undefined') { stmt += `, note = ?`; params.push(String(note || '')); }
 
     // pause/continue bookkeeping
     if (action === 'Pause' && !row.pauseStart) {
-      stmt += `, pauseStart = ?`;
-      params.push(now);
+      stmt += `, pauseStart = ?`; params.push(now);
     } else if (action === 'Continue' && row.pauseStart) {
       const paused = now - row.pauseStart;
-      stmt += `, pauseTotal = pauseTotal + ?, pauseStart = NULL`;
-      params.push(paused);
+      stmt += `, pauseTotal = pauseTotal + ?, pauseStart = NULL`; params.push(paused);
     }
 
     const finishing = action === 'Finish' || !!endTime;
@@ -166,9 +161,11 @@ router.get('/logs/:username', (req, res) => {
   });
 });
 
-// -------- ARCHIVE: read (admin, with latest adjustment applied) --------
+// -------- ARCHIVE: read (admin, hide soft-deleted) --------
 router.get('/archive', requireAdmin, (req, res) => {
-  db.all(`SELECT * FROM jobs_archive ORDER BY id DESC`, [], (err, rows) => {
+  const showDeleted = String(req.query.showDeleted || '0') === '1';
+  const where = showDeleted ? '' : 'WHERE isDeleted = 0';
+  db.all(`SELECT * FROM jobs_archive ${where} ORDER BY id DESC`, [], (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
 
     getLatestAdjustments((err2, adjs) => {
@@ -180,7 +177,7 @@ router.get('/archive', requireAdmin, (req, res) => {
   });
 });
 
-// -------- ARCHIVE: add an adjustment (admin) --------
+// -------- ARCHIVE: add adjustment (admin) --------
 router.post('/archive/:id/adjust', requireAdmin, (req, res) => {
   const archiveId = parseInt(req.params.id, 10);
   const { startTime, endTime, pauseTotal, partNumber, note, username, reason } = req.body || {};
@@ -188,7 +185,7 @@ router.post('/archive/:id/adjust', requireAdmin, (req, res) => {
 
   db.get('SELECT * FROM jobs_archive WHERE id = ?', [archiveId], (err, base) => {
     if (err) return res.status(500).json({ error: err.message });
-    if (!base) return res.status(404).json({ error: 'archive row not found' });
+    if (!base || base.isDeleted) return res.status(404).json({ error: 'archive row not found' });
 
     const u = currentUser(req);
     const stmt = `
@@ -226,7 +223,40 @@ router.get('/archive/:id/adjustments', requireAdmin, (req, res) => {
   });
 });
 
-// -------- LIVE admin utilities (optional, keeps your buttons working) --------
+// -------- ARCHIVE: soft delete (admin, reason required) --------
+router.post('/archive/:id/delete', requireAdmin, (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  const reason = String((req.body && req.body.reason) || '').trim();
+  if (!reason) return res.status(400).json({ error: 'reason required' });
+
+  const u = currentUser(req);
+  const now = Date.now();
+  db.run(
+    `UPDATE jobs_archive SET isDeleted = 1, deletedAt = ?, deletedBy = ?, deleteReason = ? WHERE id = ? AND isDeleted = 0`,
+    [now, u, reason, id],
+    function (err) {
+      if (err) return res.status(500).json({ error: err.message });
+      if (this.changes === 0) return res.status(404).json({ error: 'not found or already deleted' });
+      res.json({ success: true, id, deletedAt: now, deletedBy: u });
+    }
+  );
+});
+
+// (optional) ARCHIVE: restore
+router.post('/archive/:id/restore', requireAdmin, (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  db.run(
+    `UPDATE jobs_archive SET isDeleted = 0, deletedAt = NULL, deletedBy = NULL, deleteReason = NULL WHERE id = ?`,
+    [id],
+    function (err) {
+      if (err) return res.status(500).json({ error: err.message });
+      if (this.changes === 0) return res.status(404).json({ error: 'not found' });
+      res.json({ success: true, id });
+    }
+  );
+});
+
+// -------- LIVE admin utilities (unchanged) --------
 router.post('/log/:id/reassign', requireAdmin, (req, res) => {
   const id = req.params.id;
   const { username, partNumber, note } = req.body || {};
@@ -289,7 +319,7 @@ router.post('/log/:id/force-finish', requireAdmin, (req, res) => {
   });
 });
 
-// -------- LIVE admin deletes (does not touch archive) --------
+// -------- LIVE admin deletes --------
 router.delete('/log/:id', requireAdmin, (req, res) => {
   db.run(`DELETE FROM jobs WHERE id = ?`, [req.params.id], (err) => {
     if (err) return res.status(500).json({ error: 'Failed to delete log' });
