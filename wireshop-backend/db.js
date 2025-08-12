@@ -1,4 +1,4 @@
-// db.js
+// db.js  (complete file)
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 
@@ -8,7 +8,7 @@ const db = new sqlite3.Database(path.resolve(__dirname, 'wireshop.db'), (err) =>
 });
 
 db.serialize(() => {
-  // LIVE table (mutable)
+  // LIVE jobs
   db.run(`CREATE TABLE IF NOT EXISTS jobs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT,
@@ -21,7 +21,7 @@ db.serialize(() => {
     pauseTotal INTEGER DEFAULT 0
   )`);
 
-  // Ensure legacy installs have pause columns
+  // Ensure missing columns on old DBs
   db.all(`PRAGMA table_info(jobs)`, (err, rows) => {
     if (err) return console.error('Error checking table info (jobs):', err);
     const names = (rows || []).map(c => c.name);
@@ -29,7 +29,7 @@ db.serialize(() => {
     if (!names.includes('pauseTotal')) db.run(`ALTER TABLE jobs ADD COLUMN pauseTotal INTEGER DEFAULT 0`);
   });
 
-  // ARCHIVE table (append-only snapshots + soft delete)
+  // ARCHIVE (append-only, with soft delete)
   db.run(`CREATE TABLE IF NOT EXISTS jobs_archive (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     sourceId INTEGER,
@@ -47,18 +47,17 @@ db.serialize(() => {
     deleteReason TEXT
   )`);
 
-  // Add any missing archive columns (migrate older DBs)
   db.all(`PRAGMA table_info(jobs_archive)`, (err, rows) => {
     if (err) return console.error('Error checking table info (jobs_archive):', err);
     const names = (rows || []).map(c => c.name);
     const add = (col, def) => db.run(`ALTER TABLE jobs_archive ADD COLUMN ${col} ${def}`);
-    if (!names.includes('isDeleted'))   add('isDeleted',   'INTEGER DEFAULT 0');
-    if (!names.includes('deletedAt'))   add('deletedAt',   'INTEGER');
-    if (!names.includes('deletedBy'))   add('deletedBy',   'TEXT');
-    if (!names.includes('deleteReason'))add('deleteReason','TEXT');
+    if (!names.includes('isDeleted'))    add('isDeleted',    'INTEGER DEFAULT 0');
+    if (!names.includes('deletedAt'))    add('deletedAt',    'INTEGER');
+    if (!names.includes('deletedBy'))    add('deletedBy',    'TEXT');
+    if (!names.includes('deleteReason')) add('deleteReason', 'TEXT');
   });
 
-  // ADJUSTMENTS ledger (non-destructive overrides)
+  // ADJUSTMENTS ledger
   db.run(`CREATE TABLE IF NOT EXISTS jobs_adjustments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     archiveId INTEGER NOT NULL,
@@ -72,8 +71,15 @@ db.serialize(() => {
     adminUser TEXT,
     createdAt INTEGER DEFAULT (strftime('%s','now')*1000)
   )`);
-
   db.run(`CREATE INDEX IF NOT EXISTS idx_adj_archive ON jobs_adjustments(archiveId, id)`);
+
+  // USERS (case-insensitive unique usernames)
+  db.run(`CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    pin TEXT NOT NULL,
+    role TEXT NOT NULL CHECK (role IN ('admin','assembler'))
+  )`);
 });
 
 module.exports = db;
