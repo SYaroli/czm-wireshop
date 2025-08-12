@@ -1,4 +1,4 @@
-// db.js  (complete file)
+// db.js — SQLite schema + migrations
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 
@@ -20,16 +20,14 @@ db.serialize(() => {
     pauseStart INTEGER DEFAULT NULL,
     pauseTotal INTEGER DEFAULT 0
   )`);
-
-  // Ensure missing columns on old DBs
-  db.all(`PRAGMA table_info(jobs)`, (err, rows) => {
-    if (err) return console.error('Error checking table info (jobs):', err);
-    const names = (rows || []).map(c => c.name);
+  db.all(`PRAGMA table_info(jobs)`, (err, rows=[]) => {
+    if (err) return console.error('PRAGMA jobs:', err);
+    const names = rows.map(c => c.name);
     if (!names.includes('pauseStart')) db.run(`ALTER TABLE jobs ADD COLUMN pauseStart INTEGER DEFAULT NULL`);
     if (!names.includes('pauseTotal')) db.run(`ALTER TABLE jobs ADD COLUMN pauseTotal INTEGER DEFAULT 0`);
   });
 
-  // ARCHIVE (append-only, with soft delete)
+  // ARCHIVE (append-only, soft delete)
   db.run(`CREATE TABLE IF NOT EXISTS jobs_archive (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     sourceId INTEGER,
@@ -46,15 +44,14 @@ db.serialize(() => {
     deletedBy TEXT,
     deleteReason TEXT
   )`);
-
-  db.all(`PRAGMA table_info(jobs_archive)`, (err, rows) => {
-    if (err) return console.error('Error checking table info (jobs_archive):', err);
-    const names = (rows || []).map(c => c.name);
-    const add = (col, def) => db.run(`ALTER TABLE jobs_archive ADD COLUMN ${col} ${def}`);
-    if (!names.includes('isDeleted'))    add('isDeleted',    'INTEGER DEFAULT 0');
-    if (!names.includes('deletedAt'))    add('deletedAt',    'INTEGER');
-    if (!names.includes('deletedBy'))    add('deletedBy',    'TEXT');
-    if (!names.includes('deleteReason')) add('deleteReason', 'TEXT');
+  db.all(`PRAGMA table_info(jobs_archive)`, (err, rows=[]) => {
+    if (err) return console.error('PRAGMA jobs_archive:', err);
+    const names = rows.map(c => c.name);
+    const add = (c, d) => db.run(`ALTER TABLE jobs_archive ADD COLUMN ${c} ${d}`);
+    if (!names.includes('isDeleted'))    add('isDeleted','INTEGER DEFAULT 0');
+    if (!names.includes('deletedAt'))    add('deletedAt','INTEGER');
+    if (!names.includes('deletedBy'))    add('deletedBy','TEXT');
+    if (!names.includes('deleteReason')) add('deleteReason','TEXT');
   });
 
   // ADJUSTMENTS ledger
@@ -73,7 +70,7 @@ db.serialize(() => {
   )`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_adj_archive ON jobs_adjustments(archiveId, id)`);
 
-  // USERS (case-insensitive unique usernames)
+  // USERS (case-insensitive unique)
   db.run(`CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT NOT NULL UNIQUE COLLATE NOCASE,
