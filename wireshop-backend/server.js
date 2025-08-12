@@ -14,11 +14,10 @@ app.use(cors({ origin: (o, cb) => cb(null, true), credentials: false }));
 
 app.get('/health', (_req, res) => res.status(200).send('ok'));
 
-// Routers (paths match your /routes folder)
+// Routers
 app.use('/api/jobs',   require('./routes/jobs'));
 app.use('/api/users',  require('./routes/users'));
 
-// Root
 app.get('/', (_req, res) => res.send('Wireshop Backend Running'));
 
 app.listen(PORT, () => console.log(`Server listening on ${PORT}`));
