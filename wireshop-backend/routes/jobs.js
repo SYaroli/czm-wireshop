@@ -3,7 +3,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 
-// Admin list via env var: ADMIN_USERS=shane.yaroli,giuliano.clo
+// Admins via env: ADMIN_USERS=shane.yaroli,giuliano.clo
 const ADMIN_USERS = (process.env.ADMIN_USERS || '')
   .split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
 
@@ -137,6 +137,74 @@ router.put('/log/:id', (req, res) => {
   });
 });
 
+// ---- live: admin reassign/edit fields ----
+router.post('/log/:id/reassign', requireAdmin, (req, res) => {
+  const id = req.params.id;
+  const { username, partNumber, note } = req.body || {};
+  if (!username && !partNumber && typeof note === 'undefined') {
+    return res.status(400).json({ error: 'nothing to update' });
+  }
+
+  db.get(`SELECT * FROM jobs WHERE id = ?`, [id], (err, row) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!row) return res.status(404).json({ error: 'Log not found' });
+
+    const updates = [];
+    const params = [];
+    if (username)   { updates.push('username = ?');   params.push(username); }
+    if (partNumber) { updates.push('partNumber = ?'); params.push(partNumber); }
+    if (typeof note !== 'undefined') { updates.push('note = ?'); params.push(note || ''); }
+
+    const sql = `UPDATE jobs SET ${updates.join(', ')} WHERE id = ?`;
+    params.push(id);
+
+    db.run(sql, params, (err2) => {
+      if (err2) return res.status(500).json({ error: 'update failed' });
+      db.get(`SELECT * FROM jobs WHERE id = ?`, [id], (err3, out) => {
+        if (err3) return res.status(500).json({ error: err3.message });
+        res.json({ success: true, log: out });
+      });
+    });
+  });
+});
+
+// ---- live: admin force-finish now (archive + remove from live) ----
+router.post('/log/:id/force-finish', requireAdmin, (req, res) => {
+  const id = req.params.id;
+  const { note } = req.body || {};
+
+  db.get(`SELECT * FROM jobs WHERE id = ?`, [id], (err, row) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!row) return res.status(404).json({ error: 'Log not found' });
+
+    const totals = finalizeTotals(row, Date.now());
+    const updateSql = `UPDATE jobs SET action='Finish', endTime=?, pauseStart=NULL, pauseTotal=?, note=? WHERE id=?`;
+    db.run(updateSql, [totals.endTime, totals.pauseTotal, note ?? row.note ?? '', id], (err2) => {
+      if (err2) return res.status(500).json({ error: 'Failed to finalize' });
+
+      db.get(`SELECT * FROM jobs WHERE id = ?`, [id], (err3, r) => {
+        if (err3) return res.status(500).json({ error: err3.message });
+
+        const ins = `
+          INSERT INTO jobs_archive (sourceId, username, partNumber, note, startTime, endTime, pauseTotal, totalActive)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `;
+        db.run(ins, [r.id, r.username, r.partNumber, r.note || '', r.startTime, totals.endTime, totals.pauseTotal, totals.totalActive], function (err4) {
+          if (err4) return res.status(500).json({ error: 'Archive insert failed', details: err4.message });
+
+          db.run(`DELETE FROM jobs WHERE id = ?`, [id], (err5) => {
+            if (err5) return res.status(500).json({ error: 'Failed to remove live row after archive' });
+            db.get(`SELECT * FROM jobs_archive WHERE id = ?`, [this.lastID], (err6, archived) => {
+              if (err6) return res.status(500).json({ error: err6.message });
+              res.json({ success: true, archived: true, archive: archived });
+            });
+          });
+        });
+      });
+    });
+  });
+});
+
 // ---- live: read admins ----
 router.get('/logs', requireAdmin, (req, res) => {
   db.all(`SELECT * FROM jobs ORDER BY id DESC`, [], (err, rows) => {
@@ -172,8 +240,7 @@ router.get('/archive', requireAdmin, (req, res) => {
   });
 });
 
-// ---- archive: add an adjustment (admin) ----
-// Accepts any subset of: startTime, endTime, pauseTotal, partNumber, note, username, reason (required)
+// ---- archive: add adjustment ----
 router.post('/archive/:id/adjust', requireAdmin, (req, res) => {
   const archiveId = parseInt(req.params.id, 10);
   const { startTime, endTime, pauseTotal, partNumber, note, username, reason } = req.body || {};
@@ -211,7 +278,7 @@ router.post('/archive/:id/adjust', requireAdmin, (req, res) => {
   });
 });
 
-// ---- archive: list all adjustments for a row (admin) ----
+// ---- archive: list adjustments ----
 router.get('/archive/:id/adjustments', requireAdmin, (req, res) => {
   db.all('SELECT * FROM jobs_adjustments WHERE archiveId = ? ORDER BY id ASC', [req.params.id], (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
