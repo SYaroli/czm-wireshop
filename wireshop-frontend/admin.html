@@ -1,3 +1,4 @@
+<!-- admin.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -90,15 +91,57 @@
     </div>
   </main>
 
-  <!-- scripts -->
+  <!-- Adjust dialog -->
+  <dialog id="adjDialog" style="max-width:720px; width:clamp(320px,90vw,720px); border:none; border-radius:12px; padding:16px;">
+    <form method="dialog" id="adjForm">
+      <h3 style="margin:0 0 8px 0;">Adjust Completed Job</h3>
+      <div id="adjMeta" style="font-size:.9rem; opacity:.7; margin-bottom:8px;"></div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+        <label>Technician
+          <input id="adjUser" type="text" />
+        </label>
+        <label>Part Number
+          <input id="adjPart" type="text" />
+        </label>
+        <label style="grid-column:1 / -1">Notes
+          <textarea id="adjNote" rows="2"></textarea>
+        </label>
+        <label>Start Time
+          <input id="adjStart" type="datetime-local" />
+        </label>
+        <label>End Time
+          <input id="adjEnd" type="datetime-local" />
+        </label>
+        <label>Pause Total (minutes)
+          <input id="adjPause" type="number" min="0" step="1" placeholder="leave blank to keep"/>
+        </label>
+        <label style="grid-column:1 / -1">Reason (required)
+          <input id="adjReason" type="text" required placeholder="e.g. missed punch"/>
+        </label>
+      </div>
+
+      <div id="adjHistory" style="margin-top:8px; padding:8px; background:#f6f6f6; border-radius:8px; display:none;"></div>
+
+      <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:12px;">
+        <button id="adjShowHistory" type="button" class="secondary" style="margin-right:auto;">History</button>
+        <button type="button" id="adjCancel" class="secondary">Cancel</button>
+        <button type="submit" id="adjSave" class="primary">Save Adjustment</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- scripts (load base scripts first) -->
   <script src="script.js"></script>
   <script src="catalog.js"></script>
+
+  <!-- archive + adjust logic (safe: runs after DOM is ready) -->
   <script>
-    (function(){
+    window.addEventListener('DOMContentLoaded', () => {
       const API = 'https://wireshop-backend.onrender.com';
       const getUser = () => JSON.parse(localStorage.getItem('user') || '{}');
 
-      // index catalog by partNumber for fast lookups
+      // catalog index for print name + expected time
       const CAT = new Map((window.catalog || []).map(p => [String(p.partNumber), p]));
       const fmt = (ms) => {
         if (!ms || ms < 0) return '00:00:00';
@@ -119,7 +162,7 @@
         return t.getTime();
       };
 
-      // -------- Archive (with filters, CSV, Adjust) --------
+      // elements (now they actually exist)
       const A = {
         body: document.getElementById('archiveTableBody'),
         count: document.getElementById('rowCount'),
@@ -130,6 +173,7 @@
         apply: document.getElementById('btnApply'),
         reset: document.getElementById('btnReset'),
         csv:   document.getElementById('btnCsv'),
+
         dlg: document.getElementById('adjDialog'),
         form: document.getElementById('adjForm'),
         meta: document.getElementById('adjMeta'),
@@ -151,7 +195,7 @@
         try{
           const u = getUser();
           const res = await fetch(`${API}/api/jobs/archive`, { headers:{'x-user': u.username || ''} });
-          if(!res.ok) return console.error('Archive HTTP', res.status);
+          if(!res.ok) { console.error('Archive HTTP', res.status); return; }
           ALL = await res.json();
           const names = [...new Set(ALL.map(r => r.username).filter(Boolean))].sort();
           A.tech.innerHTML = '<option value="">All</option>' + names.map(n=>`<option>${n}</option>`).join('');
@@ -206,45 +250,108 @@
         });
       }
 
-      // existing Adjust modal code (unchanged)
-      function toLocalDT(ms){ if(!ms) return ''; const d=new Date(ms),p=n=>String(n).padStart(2,'0'); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; }
-      async function showHistory(){ if(!current) return; const u=getUser(); const r=await fetch(`${API}/api/jobs/archive/${current.id}/adjustments`,{headers:{'x-user':u.username||''}}); if(!r.ok) return; const rows=await r.json(); A.historyBox.style.display='block'; A.historyBox.innerHTML=rows.length?rows.map(a=>{const when=new Date(a.createdAt).toLocaleString();return `<div style="padding:6px 0; border-top:1px solid #ddd"><div><strong>${when}</strong> by <code>${a.adminUser||''}</code></div><div>Reason: ${a.reason}</div></div>`}).join(''):'<em>No adjustments yet.</em>'; }
-      function openAdjust(row){ current=row; A.meta.textContent=`Archive #${row.id} • Finished ${new Date(row.finishedAt||row.endTime).toLocaleString()}`; A.u.value=row.username||''; A.p.value=row.partNumber||''; A.n.value=row.note||''; A.s.value=toLocalDT(row.startTime); A.e.value=toLocalDT(row.endTime); A.z.value=(row.pauseTotal!=null&&row.pauseTotal>=0)?Math.round(row.pauseTotal/60000):''; A.r.value=''; A.historyBox.style.display='none'; A.historyBox.innerHTML=''; A.dlg.showModal(); }
-      async function saveAdjust(e){ e.preventDefault(); if(!current) return; const u=getUser(); const payload={}; const toMs=v=>v?new Date(v).getTime():null; if(A.u.value!==(current.username||'')) payload.username=A.u.value; if(A.p.value!==(current.partNumber||'')) payload.partNumber=A.p.value; if(A.n.value!==(current.note||'')) payload.note=A.n.value; const s=toMs(A.s.value), e2=toMs(A.e.value); if(s&&s!==current.startTime) payload.startTime=s; if(e2&&e2!==current.endTime) payload.endTime=e2; if(A.z.value!=='' && (Math.round((current.pauseTotal||0)/60000)!==Number(A.z.value))) payload.pauseTotal=Number(A.z.value)*60000; payload.reason=A.r.value.trim(); if(!payload.reason){A.r.focus();return;} const r=await fetch(`${API}/api/jobs/archive/${current.id}/adjust`,{method:'POST',headers:{'Content-Type':'application/json','x-user':u.username||''},body:JSON.stringify(payload)}); if(!r.ok){alert('Failed to save adjustment');return;} A.dlg.close(); await loadArchive(); }
+      const toLocalDT = (ms) => {
+        if (!ms) return '';
+        const d=new Date(ms), pad=n=>String(n).padStart(2,'0');
+        return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+      };
 
+      async function showHistory(){
+        if (!current) return;
+        const u = getUser();
+        const res = await fetch(`${API}/api/jobs/archive/${current.id}/adjustments`, { headers:{'x-user': u.username || ''} });
+        if (!res.ok) return;
+        const rows = await res.json();
+        A.historyBox.style.display = 'block';
+        A.historyBox.innerHTML = rows.length
+          ? rows.map(a=>{
+              const when=new Date(a.createdAt).toLocaleString();
+              const overrides=['overrideUsername','overridePartNumber','overrideNote','overrideStartTime','overrideEndTime','overridePauseTotal']
+                .filter(k=>a[k]!=null).map(k=>k.replace('override','')).join(', ') || 'none';
+              return `<div style="padding:6px 0; border-top:1px solid #ddd">
+                <div><strong>${when}</strong> by <code>${a.adminUser || ''}</code></div>
+                <div>Reason: ${a.reason}</div>
+                <div style="font-size:.9em; opacity:.8">Overrides: ${overrides}</div>
+              </div>`;
+            }).join('')
+          : '<em>No adjustments yet.</em>';
+      }
+
+      function openAdjust(row){
+        current = row;
+        A.meta.textContent = `Archive #${row.id} • Finished ${new Date(row.finishedAt || row.endTime).toLocaleString()}`;
+        A.u.value = row.username || '';
+        A.p.value = row.partNumber || '';
+        A.n.value = row.note || '';
+        A.s.value = toLocalDT(row.startTime);
+        A.e.value = toLocalDT(row.endTime);
+        A.z.value = (row.pauseTotal != null && row.pauseTotal >= 0) ? Math.round(row.pauseTotal/60000) : '';
+        A.r.value = '';
+        A.historyBox.style.display = 'none';
+        A.historyBox.innerHTML = '';
+        A.dlg.showModal();
+      }
+
+      async function saveAdjust(e){
+        e.preventDefault();
+        if (!current) return;
+
+        const u = getUser();
+        const payload = {};
+        const toMs = v => v ? new Date(v).getTime() : null;
+
+        if (A.u.value !== (current.username || '')) payload.username = A.u.value;
+        if (A.p.value !== (current.partNumber || '')) payload.partNumber = A.p.value;
+        if (A.n.value !== (current.note || '')) payload.note = A.n.value;
+
+        const sMs = toMs(A.s.value), eMs = toMs(A.e.value);
+        if (sMs && sMs !== current.startTime) payload.startTime = sMs;
+        if (eMs && eMs !== current.endTime)   payload.endTime   = eMs;
+
+        if (A.z.value !== '' && (Math.round((current.pauseTotal||0)/60000) !== Number(A.z.value))) {
+          payload.pauseTotal = Number(A.z.value) * 60000;
+        }
+
+        payload.reason = A.r.value.trim();
+        if (!payload.reason){ A.r.focus(); return; }
+
+        const res = await fetch(`${API}/api/jobs/archive/${current.id}/adjust`, {
+          method:'POST',
+          headers:{ 'Content-Type':'application/json', 'x-user': u.username || '' },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok){ alert('Failed to save adjustment'); return; }
+        A.dlg.close();
+        await loadArchive();
+      }
+
+      // events (exist now)
       A.apply.addEventListener('click', applyFilters);
-      A.reset.addEventListener('click', ()=>{A.tech.value='';A.part.value='';A.from.value='';A.to.value='';applyFilters();});
-      A.csv.addEventListener('click', ()=>{ const header=['finished','username','partNumber','printName','expected','note','totalActive_ms']; const lines=[header.join(',')]; VIEW.forEach(r=>{ const cat=CAT.get(String(r.partNumber))||{}; const expected=fmtExpected(cat.expectedHours); const total=(r.totalActive!=null)?r.totalActive:Math.max(0,(r.endTime-r.startTime)-(r.pauseTotal||0)); const fin=r.finishedAt||r.endTime||0; const q=s=>{s=String(s??'');return /[",\n]/.test(s)?`"${s.replace(/"/g,'""')}"`:s}; lines.push([new Date(fin).toISOString(), q(r.username), q(r.partNumber), q(cat.printName||''), expected, q(r.note), String(total)].join(',')); }); const blob=new Blob([lines.join('\n')],{type:'text/csv'}); const url=URL.createObjectURL(blob); const a=Object.assign(document.createElement('a'),{href:url,download:`wireshop-archive-${new Date().toISOString().slice(0,10)}.csv`}); document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); });
+      A.reset.addEventListener('click', ()=>{ A.tech.value=''; A.part.value=''; A.from.value=''; A.to.value=''; applyFilters(); });
+      A.csv.addEventListener('click', ()=>{
+        const header=['finished','username','partNumber','printName','expected','note','totalActive_ms'];
+        const lines=[header.join(',')];
+        VIEW.forEach(r=>{
+          const cat = CAT.get(String(r.partNumber)) || {};
+          const expected = fmtExpected(cat.expectedHours);
+          const total=(r.totalActive!=null)?r.totalActive:Math.max(0,(r.endTime-r.startTime)-(r.pauseTotal||0));
+          const fin=r.finishedAt||r.endTime||0;
+          const q=s=>{s=String(s??'');return /[",\n]/.test(s)?`"${s.replace(/"/g,'""')}"`:s};
+          lines.push([new Date(fin).toISOString(), q(r.username), q(r.partNumber), q(cat.printName||''), expected, q(r.note), String(total)].join(','));
+        });
+        const blob=new Blob([lines.join('\n')],{type:'text/csv'});
+        const url=URL.createObjectURL(blob);
+        const a=Object.assign(document.createElement('a'),{href:url,download:`wireshop-archive-${new Date().toISOString().slice(0,10)}.csv`});
+        document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+      });
+
       A.form.addEventListener('submit', saveAdjust);
       A.cancel.addEventListener('click', ()=> A.dlg.close());
       A.histBtn.addEventListener('click', showHistory);
 
       loadArchive();
       setInterval(loadArchive, 10000);
-    })();
+    });
   </script>
-
-  <!-- Adjust dialog (unchanged from before) -->
-  <dialog id="adjDialog" style="max-width:720px; width:clamp(320px,90vw,720px); border:none; border-radius:12px; padding:16px;">
-    <form method="dialog" id="adjForm">
-      <h3 style="margin:0 0 8px 0;">Adjust Completed Job</h3>
-      <div id="adjMeta" style="font-size:.9rem; opacity:.7; margin-bottom:8px;"></div>
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
-        <label>Technician <input id="adjUser" type="text" /></label>
-        <label>Part Number <input id="adjPart" type="text" /></label>
-        <label style="grid-column:1 / -1">Notes <textarea id="adjNote" rows="2"></textarea></label>
-        <label>Start Time <input id="adjStart" type="datetime-local" /></label>
-        <label>End Time <input id="adjEnd" type="datetime-local" /></label>
-        <label>Pause Total (minutes) <input id="adjPause" type="number" min="0" step="1" placeholder="leave blank to keep"/></label>
-        <label style="grid-column:1 / -1">Reason (required) <input id="adjReason" type="text" required placeholder="e.g. missed punch"/></label>
-      </div>
-      <div id="adjHistory" style="margin-top:8px; padding:8px; background:#f6f6f6; border-radius:8px; display:none;"></div>
-      <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:12px;">
-        <button id="adjShowHistory" type="button" class="secondary" style="margin-right:auto;">History</button>
-        <button type="button" id="adjCancel" class="secondary">Cancel</button>
-        <button type="submit" id="adjSave" class="primary">Save Adjustment</button>
-      </div>
-    </form>
-  </dialog>
 </body>
 </html>
