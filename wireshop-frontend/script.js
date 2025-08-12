@@ -1,4 +1,4 @@
-// script.js — login + dashboard with instant Pause/Continue timing
+// script.js — login + dashboard with hard-freeze Pause (no visual jump)
 document.addEventListener('DOMContentLoaded', () => {
   const API_ROOT = 'https://wireshop-backend.onrender.com';
   const API_JOBS = `${API_ROOT}/api/jobs`;
@@ -178,40 +178,59 @@ document.addEventListener('DOMContentLoaded', () => {
       return JSON.stringify(minimal);
     }
 
-    // Instant local timing update to avoid "jump"
+    // HARD-FREEZE mechanism: when paused, stop updating the cell completely
+    function freezeCell(td){
+      if (!td) return;
+      td.setAttribute('data-frozen', '1');
+      td.setAttribute('data-frozen-text', td.textContent);
+    }
+    function unfreezeCell(td){
+      if (!td) return;
+      td.removeAttribute('data-frozen');
+      td.removeAttribute('data-frozen-text');
+    }
+
+    // Local timing tweak for instant UX, paired with freeze
     function applyLocalTiming(tr, act){
       const td = tr.querySelector('.dur');
       if (!td) return { revert: ()=>{} };
 
-      // snapshot to allow revert on failure
-      const prev = {
+      const snapshot = {
         pause: td.getAttribute('data-pause') || '',
         paused: td.getAttribute('data-paused') || '0',
-        text: td.textContent
+        text: td.textContent,
+        frozen: td.getAttribute('data-frozen') || ''
       };
       const start = Number(td.getAttribute('data-start')) || 0;
       const now = Date.now();
 
       if (act === 'Pause') {
-        // freeze timer immediately by starting a local pause window
+        // set pause start and FREEZE display
         td.setAttribute('data-pause', String(now));
-        td.textContent = fmtDuration(start, null, now, Number(td.getAttribute('data-paused')) || 0);
+        td.textContent = fmtDuration(start, now, 0, Number(td.getAttribute('data-paused')) || 0);
+        freezeCell(td);
       } else if (act === 'Continue') {
-        // roll paused window into total and resume ticking
+        // fold paused delta into total and UNFREEZE
         const pStart = Number(td.getAttribute('data-pause')) || 0;
         if (pStart) {
           const delta = Math.max(0, now - pStart);
           const newTotal = (Number(td.getAttribute('data-paused')) || 0) + delta;
           td.setAttribute('data-paused', String(newTotal));
           td.setAttribute('data-pause', '');
+          unfreezeCell(td);
           td.textContent = fmtDuration(start, null, 0, newTotal);
+        } else {
+          unfreezeCell(td);
         }
       }
+
       return {
         revert: ()=> {
-          td.setAttribute('data-pause', prev.pause);
-          td.setAttribute('data-paused', prev.paused);
-          td.textContent = prev.text;
+          td.setAttribute('data-pause', snapshot.pause);
+          td.setAttribute('data-paused', snapshot.paused);
+          td.textContent = snapshot.text;
+          if (snapshot.frozen) td.setAttribute('data-frozen', snapshot.frozen);
+          else unfreezeCell(td);
         }
       };
     }
@@ -226,7 +245,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const group = tr.querySelectorAll('button[data-act]');
       group.forEach(b=> b.disabled = true);
 
-      // flip UI timing immediately to avoid visible jump
+      // instant local UX (with freeze)
       const local = applyLocalTiming(tr, act);
 
       try{
@@ -238,7 +257,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         await jobsApi(`/log/${logId}`, { method:'PUT', body: JSON.stringify(body) });
 
-        // set correct enabled/disabled after success
+        // enable states
         const pauseBtn = tr.querySelector('button[data-act="Pause"]');
         const contBtn  = tr.querySelector('button[data-act="Continue"]');
         if (act === 'Pause'){ pauseBtn && (pauseBtn.disabled = true); contBtn && (contBtn.disabled = false); }
@@ -249,13 +268,12 @@ document.addEventListener('DOMContentLoaded', () => {
           if (selectedLogId === logId){ selectedLogId = null; fillInfoFromPart(''); }
           await requestRefresh(true);
         } else {
-          // force a refresh soon to reconcile with server state
+          // force re-render soon to sync with server values
           lastSig = '';
         }
       }catch(err){
         console.error(err);
-        // backend failed: put UI back like nothing happened
-        local.revert();
+        local.revert(); // put UI back if server said no
         alert('Failed to update action.');
       }finally{
         group.forEach(b=> b.disabled = false);
@@ -275,6 +293,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const tr=document.createElement('tr'); tr.dataset.id=log.id;
         const draft=getDraft(log.id)||log.note||'';
         const current=(log.action||'').trim(); const logical=(current==='Pause'||current==='Finish')?current:'Continue';
+        const pausedNow = !!log.pauseStart;
         tr.innerHTML=`
           <td>${log.partNumber||''}</td>
           <td><textarea class="notes-box" data-id="${log.id}" placeholder="Type notes...">${draft}</textarea></td>
@@ -290,9 +309,14 @@ document.addEventListener('DOMContentLoaded', () => {
               data-start="${log.startTime || ''}"
               data-pause="${log.pauseStart || ''}"
               data-paused="${log.pauseTotal || 0}">
-            ${fmtDuration(log.startTime, log.endTime, log.pauseStart, log.pauseTotal)}
+            ${fmtDuration(log.startTime, pausedNow ? log.pauseStart : null, pausedNow ? 0 : log.pauseStart, log.pauseTotal)}
           </td>
         `;
+        // If server says it's paused, freeze the display exactly at pauseStart
+        const td = tr.querySelector('.dur');
+        if (pausedNow){
+          freezeCell(td);
+        }
         tr.querySelector('textarea.notes-box').addEventListener('input', e=> setDraft(log.id, e.target.value));
         tBody.appendChild(tr);
       });
@@ -305,6 +329,11 @@ document.addEventListener('DOMContentLoaded', () => {
     async function requestRefresh(force=false){ await refreshActive(force); }
     function tickDurations(){
       tBody.querySelectorAll('.dur').forEach(td=>{
+        if (td.getAttribute('data-frozen') === '1') {
+          // keep the frozen text; do nothing
+          td.textContent = td.getAttribute('data-frozen-text') || td.textContent;
+          return;
+        }
         const s=Number(td.getAttribute('data-start'))||0;
         const pS=Number(td.getAttribute('data-pause'))||0;
         const pT=Number(td.getAttribute('data-paused'))||0;
