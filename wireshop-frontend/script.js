@@ -1,4 +1,4 @@
-// script.js — login + dashboard with hard-freeze Pause (no visual jump)
+// script.js — login + dashboard; part number is the ONLY selector for details; hard-freeze Pause
 document.addEventListener('DOMContentLoaded', () => {
   const API_ROOT = 'https://wireshop-backend.onrender.com';
   const API_JOBS = `${API_ROOT}/api/jobs`;
@@ -30,8 +30,8 @@ document.addEventListener('DOMContentLoaded', () => {
     return `${h}h ${m}m ${s}s`;
   }
 
-  // Stronger 3D buttons
-  (function inject3D(){
+  // Styles: 3D buttons + clickable part-number link
+  (function injectStyles(){
     const css = `
       .btn3d{appearance:none;border:1px solid transparent;border-radius:12px;padding:7px 12px;font-weight:700;cursor:pointer;letter-spacing:.2px;
         box-shadow:0 3px 0 rgba(0,0,0,.28),0 10px 18px rgba(0,0,0,.10);transition:transform .06s, box-shadow .06s, filter .15s, opacity .15s;text-shadow:0 1px 0 rgba(255,255,255,.35);}
@@ -41,7 +41,12 @@ document.addEventListener('DOMContentLoaded', () => {
       .btn3d.continue{color:#0f4a2d;background:linear-gradient(#bff3d3,#4fd08a);border-color:#2fb26f}
       .btn3d.finish{color:#5a0e12;background:linear-gradient(#ffc5c5,#ff6e6e);border-color:#e24a4a}
       .btn3d[disabled]{opacity:.55;cursor:not-allowed;box-shadow:0 2px 0 rgba(0,0,0,.12),0 4px 8px rgba(0,0,0,.06)}
-      .btn-group{display:flex;gap:.5rem;align-items:center}.actions-cell{min-width:240px}.notes-box{min-width:240px}.row-selected{outline:2px solid #0072ff33}
+      .btn-group{display:flex;gap:.5rem;align-items:center}
+      .actions-cell{min-width:240px}
+      .notes-box{min-width:240px}
+      .row-selected{outline:2px solid #0072ff33}
+      .part-link{background:none;border:none;padding:0;margin:0;color:#0b61ff;cursor:pointer;font-weight:700;text-decoration:underline}
+      .part-link:focus{outline:2px solid #0072ff33;border-radius:4px}
     `;
     const s = document.createElement('style'); s.textContent = css; document.head.appendChild(s);
   })();
@@ -163,12 +168,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const endInteraction = ()=> { const inside=tBody.contains(document.activeElement); if (!inside) isInteracting = false; };
     tBody.addEventListener('focusin', beginInteraction);
     tBody.addEventListener('focusout', () => setTimeout(endInteraction, 0));
-    tBody.addEventListener('mousedown', (e)=>{
-      const tr = e.target.closest('tr'); if (!tr) return;
-      const id = tr.dataset.id;
-      const pn = tr.querySelector('td')?.textContent.trim() || '';
-      selectRow(tr, { id, partNumber: pn });
-    }, true);
+
+    // Remove the old "click anywhere" row selector.
+    // Now only clicks on the part number control selection.
+    // (No mousedown listener on rows.)
 
     let lastSig = '';
     function makeSignature(rows){
@@ -205,12 +208,10 @@ document.addEventListener('DOMContentLoaded', () => {
       const now = Date.now();
 
       if (act === 'Pause') {
-        // set pause start and FREEZE display
         td.setAttribute('data-pause', String(now));
         td.textContent = fmtDuration(start, now, 0, Number(td.getAttribute('data-paused')) || 0);
         freezeCell(td);
       } else if (act === 'Continue') {
-        // fold paused delta into total and UNFREEZE
         const pStart = Number(td.getAttribute('data-pause')) || 0;
         if (pStart) {
           const delta = Math.max(0, now - pStart);
@@ -235,48 +236,60 @@ document.addEventListener('DOMContentLoaded', () => {
       };
     }
 
-    // Action buttons
+    // Actions (Pause/Continue/Finish)
     tBody.addEventListener('click', async (e)=>{
-      const btn = e.target.closest('button[data-act]'); if (!btn) return;
-      const tr = btn.closest('tr'); if (!tr) return;
-      const logId = Number(tr.dataset.id);
-      const act = btn.getAttribute('data-act');
+      // Action buttons handler
+      const btn = e.target.closest('button[data-act]');
+      if (btn) {
+        const tr = btn.closest('tr'); if (!tr) return;
+        const logId = Number(tr.dataset.id);
+        const act = btn.getAttribute('data-act');
 
-      const group = tr.querySelectorAll('button[data-act]');
-      group.forEach(b=> b.disabled = true);
+        const group = tr.querySelectorAll('button[data-act]');
+        group.forEach(b=> b.disabled = true);
 
-      // instant local UX (with freeze)
-      const local = applyLocalTiming(tr, act);
+        // instant local UX (with freeze)
+        const local = applyLocalTiming(tr, act);
 
-      try{
-        const body = { action: act };
-        if (act === 'Finish'){
-          body.endTime = Date.now();
-          const latestDraft = tr.querySelector('textarea.notes-box')?.value.trim();
-          if (latestDraft) body.note = latestDraft;
+        try{
+          const body = { action: act };
+          if (act === 'Finish'){
+            body.endTime = Date.now();
+            const latestDraft = tr.querySelector('textarea.notes-box')?.value.trim();
+            if (latestDraft) body.note = latestDraft;
+          }
+          await jobsApi(`/log/${logId}`, { method:'PUT', body: JSON.stringify(body) });
+
+          // toggle button states
+          const pauseBtn = tr.querySelector('button[data-act="Pause"]');
+          const contBtn  = tr.querySelector('button[data-act="Continue"]');
+          if (act === 'Pause'){ pauseBtn && (pauseBtn.disabled = true); contBtn && (contBtn.disabled = false); }
+          else if (act === 'Continue'){ contBtn && (contBtn.disabled = true); pauseBtn && (pauseBtn.disabled = false); }
+
+          if (act === 'Finish'){
+            clearDraft(logId);
+            if (selectedLogId === logId){ selectedLogId = null; fillInfoFromPart(''); }
+            await requestRefresh(true);
+          } else {
+            lastSig = '';
+          }
+        }catch(err){
+          console.error(err);
+          local.revert();
+          alert('Failed to update action.');
+        }finally{
+          group.forEach(b=> b.disabled = false);
         }
-        await jobsApi(`/log/${logId}`, { method:'PUT', body: JSON.stringify(body) });
+        return;
+      }
 
-        // enable states
-        const pauseBtn = tr.querySelector('button[data-act="Pause"]');
-        const contBtn  = tr.querySelector('button[data-act="Continue"]');
-        if (act === 'Pause'){ pauseBtn && (pauseBtn.disabled = true); contBtn && (contBtn.disabled = false); }
-        else if (act === 'Continue'){ contBtn && (contBtn.disabled = true); pauseBtn && (pauseBtn.disabled = false); }
-
-        if (act === 'Finish'){
-          clearDraft(logId);
-          if (selectedLogId === logId){ selectedLogId = null; fillInfoFromPart(''); }
-          await requestRefresh(true);
-        } else {
-          // force re-render soon to sync with server values
-          lastSig = '';
-        }
-      }catch(err){
-        console.error(err);
-        local.revert(); // put UI back if server said no
-        alert('Failed to update action.');
-      }finally{
-        group.forEach(b=> b.disabled = false);
+      // Part-number click handler (the ONLY selector)
+      const link = e.target.closest('.part-link');
+      if (link) {
+        const tr = link.closest('tr'); if (!tr) return;
+        const id = tr.dataset.id;
+        const pn = link.dataset.pn || link.textContent.trim();
+        selectRow(tr, { id, partNumber: pn });
       }
     });
 
@@ -294,8 +307,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const draft=getDraft(log.id)||log.note||'';
         const current=(log.action||'').trim(); const logical=(current==='Pause'||current==='Finish')?current:'Continue';
         const pausedNow = !!log.pauseStart;
+
         tr.innerHTML=`
-          <td>${log.partNumber||''}</td>
+          <td>
+            <button class="part-link" type="button" data-pn="${log.partNumber || ''}">
+              ${log.partNumber || ''}
+            </button>
+          </td>
           <td><textarea class="notes-box" data-id="${log.id}" placeholder="Type notes...">${draft}</textarea></td>
           <td class="actions-cell">
             <div class="btn-group">
@@ -312,25 +330,31 @@ document.addEventListener('DOMContentLoaded', () => {
             ${fmtDuration(log.startTime, pausedNow ? log.pauseStart : null, pausedNow ? 0 : log.pauseStart, log.pauseTotal)}
           </td>
         `;
-        // If server says it's paused, freeze the display exactly at pauseStart
+
+        // If server says it's paused, freeze exactly at pauseStart
         const td = tr.querySelector('.dur');
-        if (pausedNow){
-          freezeCell(td);
-        }
+        if (pausedNow) freezeCell(td);
+
         tr.querySelector('textarea.notes-box').addEventListener('input', e=> setDraft(log.id, e.target.value));
         tBody.appendChild(tr);
       });
 
-      if (selectedLogId && active.some(r=> r.id===selectedLogId)){ highlightById(selectedLogId); const log=active.find(r=> r.id===selectedLogId); fillInfoFromPart(log?.partNumber||''); }
-      else if (selectedLogId){ selectedLogId=null; fillInfoFromPart(''); }
+      if (selectedLogId && active.some(r=> r.id===selectedLogId)){
+        highlightById(selectedLogId);
+        const log=active.find(r=> r.id===selectedLogId);
+        fillInfoFromPart(log?.partNumber||'');
+      } else if (selectedLogId){
+        selectedLogId=null; fillInfoFromPart('');
+      }
 
       if (tBody.parentElement) tBody.parentElement.scrollTop = prevScroll;
     }
+
     async function requestRefresh(force=false){ await refreshActive(force); }
+
     function tickDurations(){
       tBody.querySelectorAll('.dur').forEach(td=>{
         if (td.getAttribute('data-frozen') === '1') {
-          // keep the frozen text; do nothing
           td.textContent = td.getAttribute('data-frozen-text') || td.textContent;
           return;
         }
