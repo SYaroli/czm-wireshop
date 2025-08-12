@@ -1,17 +1,15 @@
-// routes/users.js  (new file, complete)
+// routes/users.js — DB-backed users + admin CRUD
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
 
-// Admins via env: ADMIN_USERS=shane.yaroli,giuliano.clo
 const ADMIN_USERS = (process.env.ADMIN_USERS || '')
   .split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
-
 const currentUser = req => (req.header('x-user') || '').toLowerCase();
 const requireAdmin = (req, res, next) =>
   ADMIN_USERS.includes(currentUser(req)) ? next() : res.status(403).json({ error: 'Admin only' });
 
-// Public: login against DB users
+// Login against DB users
 router.post('/login', (req, res) => {
   const { username, pin } = req.body || {};
   if (!username || !pin) return res.status(400).json({ error: 'username and pin required' });
@@ -26,15 +24,13 @@ router.post('/login', (req, res) => {
   );
 });
 
-// Admin: list users
-router.get('/', requireAdmin, (req, res) => {
+// Admin: list/add/delete
+router.get('/', requireAdmin, (_req, res) => {
   db.all(`SELECT id, username, role FROM users ORDER BY username COLLATE NOCASE ASC`, [], (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(rows);
   });
 });
-
-// Admin: add user
 router.post('/', requireAdmin, (req, res) => {
   const { username, pin, role } = req.body || {};
   if (!username || !pin || !role) return res.status(400).json({ error: 'username, pin, role required' });
@@ -53,8 +49,6 @@ router.post('/', requireAdmin, (req, res) => {
     }
   );
 });
-
-// Admin: delete user
 router.delete('/:id', requireAdmin, (req, res) => {
   const id = parseInt(req.params.id, 10);
   db.run(`DELETE FROM users WHERE id = ?`, [id], function (err) {
