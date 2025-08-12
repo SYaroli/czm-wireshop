@@ -1,4 +1,4 @@
-<!-- admin.html -->
+<!-- admin.html  (complete file) -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -89,6 +89,35 @@
         </table>
       </div>
     </div>
+
+    <!-- Users -->
+    <div class="card">
+      <h2>Users</h2>
+      <div style="display:flex; gap:.5rem; flex-wrap:wrap; align-items:end; margin:.25rem 0 .75rem">
+        <label>Username<br><input id="uName" type="text" placeholder="firstname.lastname" /></label>
+        <label>PIN<br><input id="uPin" type="text" inputmode="numeric" placeholder="1234" /></label>
+        <label>Role<br>
+          <select id="uRole">
+            <option value="assembler">assembler</option>
+            <option value="admin">admin</option>
+          </select>
+        </label>
+        <button id="btnAddUser" class="primary">Add User</button>
+        <div id="uMsg" style="margin-left:auto; opacity:.8"></div>
+      </div>
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Username</th>
+              <th>Role</th>
+              <th>Delete</th>
+            </tr>
+          </thead>
+          <tbody id="usersTableBody"></tbody>
+        </table>
+      </div>
+    </div>
   </main>
 
   <!-- Adjust dialog -->
@@ -125,7 +154,7 @@
       const API = 'https://wireshop-backend.onrender.com';
       const getUser = () => JSON.parse(localStorage.getItem('user') || '{}');
 
-      // catalog index for print name + expected time
+      // ==== Archive + Adjust (unchanged from your working version) ====
       const CAT = new Map((window.catalog || []).map(p => [String(p.partNumber), p]));
       const fmt = (ms) => {
         if (!ms || ms < 0) return '00:00:00';
@@ -140,13 +169,8 @@
         const h = Math.floor(mins/60), m = mins % 60;
         return `${h}:${String(m).padStart(2,'0')}`;
       };
-      const toMidnight = (d, end=false) => {
-        const t = new Date(d);
-        if (!end) t.setHours(0,0,0,0); else t.setHours(23,59,59,999);
-        return t.getTime();
-      };
+      const toMidnight = (d, end=false) => { const t=new Date(d); if(!end)t.setHours(0,0,0,0); else t.setHours(23,59,59,999); return t.getTime(); };
 
-      // elements
       const A = {
         body: document.getElementById('archiveTableBody'),
         count: document.getElementById('rowCount'),
@@ -206,7 +230,7 @@
 
       function renderRows(){
         A.body.innerHTML = '';
-        A.count.textContent = VIEW.length;
+        A.count && (A.count.textContent = VIEW.length);
         VIEW.forEach(row=>{
           const cat = CAT.get(String(row.partNumber)) || {};
           const expected = fmtExpected(cat.expectedHours);
@@ -236,21 +260,6 @@
         A.body.querySelectorAll('button[data-del]').forEach(btn=>{
           btn.addEventListener('click', ()=> doDelete(parseInt(btn.dataset.del, 10)));
         });
-      }
-
-      async function doDelete(id){
-        const reason = prompt('Delete reason (required):');
-        if (!reason) return;
-        try{
-          const u = getUser();
-          const res = await fetch(`${API}/api/jobs/archive/${id}/delete`, {
-            method:'POST',
-            headers:{ 'Content-Type':'application/json', 'x-user': u.username || '' },
-            body: JSON.stringify({ reason })
-          });
-          if (!res.ok){ alert('Delete failed'); return; }
-          await loadArchive();
-        }catch(e){ console.error(e); alert('Delete error'); }
       }
 
       const toLocalDT = (ms) => {
@@ -328,14 +337,25 @@
         await loadArchive();
       }
 
-      // controls
+      async function doDelete(id){
+        const reason = prompt('Delete reason (required):');
+        if (!reason) return;
+        const u = getUser();
+        const res = await fetch(`${API}/api/jobs/archive/${id}/delete`, {
+          method:'POST', headers:{ 'Content-Type':'application/json', 'x-user': u.username || '' },
+          body: JSON.stringify({ reason })
+        });
+        if (!res.ok){ alert('Delete failed'); return; }
+        await loadArchive();
+      }
+
+      // wire controls
       document.getElementById('backToDashboard')?.addEventListener('click', ()=> window.location.href='dashboard.html');
       document.getElementById('clearAllLogs')?.addEventListener('click', async ()=>{
         if (!confirm('Clear ALL logs for ALL users?')) return;
         const u = getUser();
         await fetch(`${API}/api/jobs/admin/clear-logs`, { method:'DELETE', headers:{'x-user': u.username || ''} });
       });
-
       A.apply.addEventListener('click', applyFilters);
       A.reset.addEventListener('click', ()=>{ A.tech.value=''; A.part.value=''; A.from.value=''; A.to.value=''; applyFilters(); });
       A.csv.addEventListener('click', ()=>{
@@ -343,7 +363,7 @@
         const lines=[header.join(',')];
         VIEW.forEach(r=>{
           const cat = CAT.get(String(r.partNumber)) || {};
-          const expected = fmtExpected(cat.expectedHours);
+        const expected = fmtExpected(cat.expectedHours);
           const total=(r.totalActive!=null)?r.totalActive:Math.max(0,(r.endTime-r.startTime)-(r.pauseTotal||0));
           const fin=r.finishedAt||r.endTime||0;
           const q=s=>{s=String(s??'');return /[",\n]/.test(s)?`"${s.replace(/"/g,'""')}"`:s};
@@ -354,13 +374,71 @@
         const a=Object.assign(document.createElement('a'),{href:url,download:`wireshop-archive-${new Date().toISOString().slice(0,10)}.csv`});
         document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
       });
-
       A.form.addEventListener('submit', saveAdjust);
       A.cancel.addEventListener('click', ()=> A.dlg.close());
       A.histBtn.addEventListener('click', showHistory);
 
       loadArchive();
       setInterval(loadArchive, 10000);
+
+      // ==== Users (add/delete) ====
+      const U = {
+        body: document.getElementById('usersTableBody'),
+        name: document.getElementById('uName'),
+        pin:  document.getElementById('uPin'),
+        role: document.getElementById('uRole'),
+        add:  document.getElementById('btnAddUser'),
+        msg:  document.getElementById('uMsg')
+      };
+
+      async function loadUsers(){
+        const u = getUser();
+        const res = await fetch(`${API}/api/users`, { headers:{'x-user': u.username || ''} });
+        if (!res.ok){ U.msg.textContent = 'Cannot load users (admin only)'; return; }
+        const rows = await res.json();
+        U.body.innerHTML = '';
+        rows.forEach(r=>{
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${r.username}</td>
+            <td>${r.role}</td>
+            <td><button class="danger small" data-deluser="${r.id}">Delete</button></td>
+          `;
+          U.body.appendChild(tr);
+        });
+        U.body.querySelectorAll('button[data-deluser]').forEach(b=>{
+          b.addEventListener('click', async ()=>{
+            if (!confirm('Delete this user?')) return;
+            const u = getUser();
+            const resp = await fetch(`${API}/api/users/${b.dataset.deluser}`, { method:'DELETE', headers:{'x-user': u.username || ''} });
+            if (!resp.ok){ alert('Delete failed'); return; }
+            loadUsers();
+          });
+        });
+      }
+
+      U.add.addEventListener('click', async ()=>{
+        const username = (U.name.value || '').trim();
+        const pin = (U.pin.value || '').trim();
+        const role = U.role.value;
+        if (!username || !pin) { U.msg.textContent='username & pin required'; return; }
+        const u = getUser();
+        const res = await fetch(`${API}/api/users`, {
+          method:'POST',
+          headers:{ 'Content-Type':'application/json', 'x-user': u.username || '' },
+          body: JSON.stringify({ username, pin, role })
+        });
+        if (!res.ok){
+          const j = await res.json().catch(()=> ({}));
+          U.msg.textContent = j.error || 'Add failed';
+          return;
+        }
+        U.name.value = ''; U.pin.value = ''; U.role.value = 'assembler';
+        U.msg.textContent = 'User added';
+        loadUsers();
+      });
+
+      loadUsers();
     });
   </script>
 </body>
