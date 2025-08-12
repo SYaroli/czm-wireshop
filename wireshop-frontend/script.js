@@ -29,6 +29,26 @@ document.addEventListener('DOMContentLoaded', () => {
     return `${h}h ${m}m ${s}s`;
   }
 
+  // Inject minimal 3D button styles so we don't touch style.css
+  (function inject3D(){
+    const css = `
+      .btn3d{appearance:none;border:0;border-radius:10px;padding:6px 10px;font-weight:600;cursor:pointer;
+        box-shadow:0 2px 0 rgba(0,0,0,.25),0 6px 12px rgba(0,0,0,.08);transition:transform .05s ease, box-shadow .05s ease, filter .15s ease;}
+      .btn3d.small{font-size:.85rem;line-height:1}
+      .btn3d:active{transform:translateY(1px);box-shadow:0 1px 0 rgba(0,0,0,.25),0 3px 6px rgba(0,0,0,.12)}
+      .btn3d.pause{background:#ffe9cc}
+      .btn3d.continue{background:#e7f7ee}
+      .btn3d.finish{background:#ffe5e5}
+      .btn3d:hover{filter:brightness(0.98)}
+      .btn3d[disabled]{opacity:.55;cursor:not-allowed;filter:none}
+      .btn-group{display:flex;gap:.4rem;align-items:center}
+      .actions-cell{min-width:220px}
+      .notes-box{min-width:220px}
+      .row-selected{outline:2px solid #0072ff33}
+    `;
+    const s = document.createElement('style'); s.textContent = css; document.head.appendChild(s);
+  })();
+
   // ---------- LOGIN ----------
   (function initLogin(){
     const form = document.getElementById('login-form');
@@ -103,7 +123,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     partSelect.addEventListener('change', ()=> fillInfoFromPart(partSelect.value));
 
-    // Start job (no notes here; notes live in active rows)
+    // Start job
     startBtn.addEventListener('click', async ()=>{
       const pn = partSelect.value;
       if (!pn){ alert('Please select a part.'); return; }
@@ -146,7 +166,6 @@ document.addEventListener('DOMContentLoaded', () => {
     let isInteracting = false;
     const beginInteraction = ()=> { isInteracting = true; };
     const endInteraction = ()=> {
-      // if focus moved outside the table, resume
       const activeInside = tBody.contains(document.activeElement);
       if (!activeInside) isInteracting = false;
     };
@@ -166,7 +185,6 @@ document.addEventListener('DOMContentLoaded', () => {
     let lastSig = ''; // signature of active jobs from backend
 
     function makeSignature(rows){
-      // Only fields that affect rendering; ignore text in textarea (we use drafts)
       const minimal = rows
         .filter(r => !r.endTime)
         .map(r => ({
@@ -177,78 +195,80 @@ document.addEventListener('DOMContentLoaded', () => {
       return JSON.stringify(minimal);
     }
 
+    // Event delegation for action buttons
+    tBody.addEventListener('click', async (e)=>{
+      const btn = e.target.closest('button[data-act]');
+      if (!btn) return;
+      const tr = btn.closest('tr'); if (!tr) return;
+      const logId = Number(tr.dataset.id);
+      const act = btn.getAttribute('data-act');
+
+      // disable buttons during request
+      const group = tr.querySelectorAll('button[data-act]');
+      group.forEach(b=> b.disabled = true);
+
+      try{
+        const body = { action: act };
+        if (act === 'Finish'){
+          body.endTime = Date.now();
+          const latestDraft = tr.querySelector('textarea.notes-box')?.value.trim();
+          if (latestDraft) body.note = latestDraft;
+        }
+        await api(`/log/${logId}`, { method:'PUT', body: JSON.stringify(body) });
+
+        if (act === 'Finish'){
+          clearDraft(logId);
+          if (selectedLogId === logId){ selectedLogId = null; fillInfoFromPart(''); }
+          await requestRefresh(true);
+        } else {
+          lastSig = ''; // force update on next poll
+        }
+      }catch(err){
+        console.error(err); alert('Failed to update action.');
+      }finally{
+        group.forEach(b=> b.disabled = false);
+      }
+    });
+
     async function refreshActive(force = false){
-      if (isInteracting && !force) return; // don't disrupt typing or open selects
+      if (isInteracting && !force) return;
 
       const rows = await api(`/logs/${encodeURIComponent(user.username)}`, { method:'GET' });
       const active = rows.filter(r => !r.endTime);
       const sig = makeSignature(rows);
 
-      // If nothing changed and not forced, skip DOM work
       if (!force && sig === lastSig) return;
       lastSig = sig;
 
-      // Preserve scroll
       const prevScroll = tBody.parentElement?.scrollTop ?? 0;
 
-      // Rebuild rows (simple and safe); selection restored below
       tBody.innerHTML = '';
       active.forEach(log=>{
         const tr = document.createElement('tr');
         tr.dataset.id = log.id;
 
         const draft = getDraft(log.id) || log.note || '';
+        const current = (log.action || '').trim();
+        const logicalState = (current === 'Pause' || current === 'Finish') ? current : 'Continue';
 
         tr.innerHTML = `
           <td>${log.partNumber || ''}</td>
           <td>
             <textarea class="notes-box" data-id="${log.id}" placeholder="Type notes...">${draft}</textarea>
           </td>
-          <td>
-            <select class="row-action" data-id="${log.id}" data-part="${log.partNumber}">
-              <option value="Pause" class="row-pause">Pause</option>
-              <option value="Continue" class="row-continue">Continue</option>
-              <option value="Finish" class="row-finish">Finish</option>
-            </select>
+          <td class="actions-cell">
+            <div class="btn-group">
+              <button class="btn3d small pause" data-act="Pause" ${logicalState==='Pause'?'disabled':''}>Pause</button>
+              <button class="btn3d small continue" data-act="Continue" ${logicalState==='Continue'?'disabled':''}>Continue</button>
+              <button class="btn3d small finish" data-act="Finish">Finish</button>
+            </div>
           </td>
           <td>${log.startTime ? new Date(log.startTime).toLocaleString() : ''}</td>
           <td class="dur" data-start="${log.startTime || ''}" data-pause="${log.pauseStart || ''}" data-paused="${log.pauseTotal || 0}">${fmtDuration(log.startTime, log.endTime, log.pauseStart, log.pauseTotal)}</td>
         `;
 
-        // current state -> dropdown
-        const sel = tr.querySelector('select.row-action');
-        const current = (log.action || '').trim();
-        sel.value = (current === 'Pause' || current === 'Finish') ? current : 'Continue';
-
-        // notes draft tracking (doesn't hit backend until Finish)
+        // notes draft tracking
         tr.querySelector('textarea.notes-box').addEventListener('input', (e)=> setDraft(log.id, e.target.value));
-
-        // action changes -> PUT; on Finish remove row and clear draft
-        sel.addEventListener('change', async (e)=>{
-          const next = e.target.value;
-          try{
-            const body = { action: next };
-            if (next === 'Finish'){
-              body.endTime = Date.now();
-              const latestDraft = tr.querySelector('textarea.notes-box').value.trim();
-              if (latestDraft) body.note = latestDraft;
-            }
-            await api(`/log/${log.id}`, { method:'PUT', body: JSON.stringify(body) });
-
-            if (next === 'Finish'){
-              clearDraft(log.id);
-              if (selectedLogId === log.id){ selectedLogId = null; fillInfoFromPart(''); }
-              // Force-refresh now that data changed
-              await requestRefresh(true);
-            } else {
-              sel.value = next;
-              // force signature change so next poll updates durations if needed
-              lastSig = ''; 
-            }
-          }catch(err){
-            console.error(err); alert('Failed to update action.');
-          }
-        });
 
         tBody.appendChild(tr);
       });
@@ -259,12 +279,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const log = active.find(r => r.id === selectedLogId);
         fillInfoFromPart(log?.partNumber || '');
       } else if (selectedLogId){
-        // selected row no longer exists
         selectedLogId = null;
         fillInfoFromPart('');
       }
 
-      // restore scroll
       if (tBody.parentElement) tBody.parentElement.scrollTop = prevScroll;
     }
 
@@ -290,9 +308,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Initial + polling
-    requestRefresh(true).catch(console.error);          // first render forced
-    setInterval(()=> requestRefresh(false), 5000);      // change-aware poll
-    setInterval(tickDurations, 1000);                   // smooth timer
+    requestRefresh(true).catch(console.error);
+    setInterval(()=> requestRefresh(false), 5000);
+    setInterval(tickDurations, 1000);
   })();
 
   // ---------- ADMIN ----------
