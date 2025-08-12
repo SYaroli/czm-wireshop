@@ -1,8 +1,9 @@
-// script.js — login + dashboard with 3D action buttons
+// script.js — login + dashboard with instant Pause/Continue timing
 document.addEventListener('DOMContentLoaded', () => {
   const API_ROOT = 'https://wireshop-backend.onrender.com';
   const API_JOBS = `${API_ROOT}/api/jobs`;
 
+  // --------- Shared helpers ---------
   const getUser = () => { try { return JSON.parse(localStorage.getItem('user')) || null; } catch { return null; } };
   const setUser = (u) => localStorage.setItem('user', JSON.stringify(u));
   const clearUser = () => localStorage.removeItem('user');
@@ -15,6 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const ct = res.headers.get('content-type') || '';
     return ct.includes('application/json') ? res.json() : res.text();
   }
+
   function fmtDuration(start, end, pauseStart, pauseTotal) {
     if (!start) return '';
     const now = Date.now();
@@ -28,7 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
     return `${h}h ${m}m ${s}s`;
   }
 
-  // 3D button styles
+  // Stronger 3D buttons
   (function inject3D(){
     const css = `
       .btn3d{appearance:none;border:1px solid transparent;border-radius:12px;padding:7px 12px;font-weight:700;cursor:pointer;letter-spacing:.2px;
@@ -44,11 +46,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const s = document.createElement('style'); s.textContent = css; document.head.appendChild(s);
   })();
 
-  // LOGIN
+  // ---------- LOGIN ----------
   (function initLogin(){
     const form = document.getElementById('login-form');
     if (!form) return;
     const err = document.getElementById('error-message');
+
     form.addEventListener('submit', async (e)=>{
       e.preventDefault();
       const uname = (document.getElementById('usernameInput').value || '').trim();
@@ -79,7 +82,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   })();
 
-  // DASHBOARD
+  // ---------- DASHBOARD ----------
   (function initDashboard(){
     const startBtn = document.getElementById('submitLog');
     if (!startBtn) return;
@@ -154,6 +157,7 @@ document.addEventListener('DOMContentLoaded', () => {
       fillInfoFromPart(log?.partNumber || '');
     }
 
+    // Focus guard
     let isInteracting = false;
     const beginInteraction = ()=> { isInteracting = true; };
     const endInteraction = ()=> { const inside=tBody.contains(document.activeElement); if (!inside) isInteracting = false; };
@@ -174,12 +178,57 @@ document.addEventListener('DOMContentLoaded', () => {
       return JSON.stringify(minimal);
     }
 
+    // Instant local timing update to avoid "jump"
+    function applyLocalTiming(tr, act){
+      const td = tr.querySelector('.dur');
+      if (!td) return { revert: ()=>{} };
+
+      // snapshot to allow revert on failure
+      const prev = {
+        pause: td.getAttribute('data-pause') || '',
+        paused: td.getAttribute('data-paused') || '0',
+        text: td.textContent
+      };
+      const start = Number(td.getAttribute('data-start')) || 0;
+      const now = Date.now();
+
+      if (act === 'Pause') {
+        // freeze timer immediately by starting a local pause window
+        td.setAttribute('data-pause', String(now));
+        td.textContent = fmtDuration(start, null, now, Number(td.getAttribute('data-paused')) || 0);
+      } else if (act === 'Continue') {
+        // roll paused window into total and resume ticking
+        const pStart = Number(td.getAttribute('data-pause')) || 0;
+        if (pStart) {
+          const delta = Math.max(0, now - pStart);
+          const newTotal = (Number(td.getAttribute('data-paused')) || 0) + delta;
+          td.setAttribute('data-paused', String(newTotal));
+          td.setAttribute('data-pause', '');
+          td.textContent = fmtDuration(start, null, 0, newTotal);
+        }
+      }
+      return {
+        revert: ()=> {
+          td.setAttribute('data-pause', prev.pause);
+          td.setAttribute('data-paused', prev.paused);
+          td.textContent = prev.text;
+        }
+      };
+    }
+
+    // Action buttons
     tBody.addEventListener('click', async (e)=>{
       const btn = e.target.closest('button[data-act]'); if (!btn) return;
       const tr = btn.closest('tr'); if (!tr) return;
       const logId = Number(tr.dataset.id);
       const act = btn.getAttribute('data-act');
-      const group = tr.querySelectorAll('button[data-act]'); group.forEach(b=> b.disabled=true);
+
+      const group = tr.querySelectorAll('button[data-act]');
+      group.forEach(b=> b.disabled = true);
+
+      // flip UI timing immediately to avoid visible jump
+      const local = applyLocalTiming(tr, act);
+
       try{
         const body = { action: act };
         if (act === 'Finish'){
@@ -188,10 +237,29 @@ document.addEventListener('DOMContentLoaded', () => {
           if (latestDraft) body.note = latestDraft;
         }
         await jobsApi(`/log/${logId}`, { method:'PUT', body: JSON.stringify(body) });
-        if (act === 'Finish'){ clearDraft(logId); if (selectedLogId===logId){ selectedLogId=null; fillInfoFromPart(''); } await requestRefresh(true); }
-        else { lastSig=''; }
-      }catch(err){ console.error(err); alert('Failed to update action.'); }
-      finally { group.forEach(b=> b.disabled=false); }
+
+        // set correct enabled/disabled after success
+        const pauseBtn = tr.querySelector('button[data-act="Pause"]');
+        const contBtn  = tr.querySelector('button[data-act="Continue"]');
+        if (act === 'Pause'){ pauseBtn && (pauseBtn.disabled = true); contBtn && (contBtn.disabled = false); }
+        else if (act === 'Continue'){ contBtn && (contBtn.disabled = true); pauseBtn && (pauseBtn.disabled = false); }
+
+        if (act === 'Finish'){
+          clearDraft(logId);
+          if (selectedLogId === logId){ selectedLogId = null; fillInfoFromPart(''); }
+          await requestRefresh(true);
+        } else {
+          // force a refresh soon to reconcile with server state
+          lastSig = '';
+        }
+      }catch(err){
+        console.error(err);
+        // backend failed: put UI back like nothing happened
+        local.revert();
+        alert('Failed to update action.');
+      }finally{
+        group.forEach(b=> b.disabled = false);
+      }
     });
 
     async function refreshActive(force=false){
@@ -218,7 +286,12 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
           </td>
           <td>${log.startTime ? new Date(log.startTime).toLocaleString() : ''}</td>
-          <td class="dur" data-start="${log.startTime||''}" data-pause="${log.pauseStart||''}" data-paused="${log.pauseTotal||0}">${fmtDuration(log.startTime, log.endTime, log.pauseStart, log.pauseTotal)}</td>
+          <td class="dur"
+              data-start="${log.startTime || ''}"
+              data-pause="${log.pauseStart || ''}"
+              data-paused="${log.pauseTotal || 0}">
+            ${fmtDuration(log.startTime, log.endTime, log.pauseStart, log.pauseTotal)}
+          </td>
         `;
         tr.querySelector('textarea.notes-box').addEventListener('input', e=> setDraft(log.id, e.target.value));
         tBody.appendChild(tr);
@@ -230,7 +303,14 @@ document.addEventListener('DOMContentLoaded', () => {
       if (tBody.parentElement) tBody.parentElement.scrollTop = prevScroll;
     }
     async function requestRefresh(force=false){ await refreshActive(force); }
-    function tickDurations(){ tBody.querySelectorAll('.dur').forEach(td=>{ const s=Number(td.getAttribute('data-start'))||0; const pS=Number(td.getAttribute('data-pause'))||0; const pT=Number(td.getAttribute('data-paused'))||0; td.textContent=fmtDuration(s,null,pS,pT); }); }
+    function tickDurations(){
+      tBody.querySelectorAll('.dur').forEach(td=>{
+        const s=Number(td.getAttribute('data-start'))||0;
+        const pS=Number(td.getAttribute('data-pause'))||0;
+        const pT=Number(td.getAttribute('data-paused'))||0;
+        td.textContent=fmtDuration(s,null,pS,pT);
+      });
+    }
 
     deleteAllBtn?.addEventListener('click', async ()=>{
       if (!confirm('Delete ALL your logs?')) return;
