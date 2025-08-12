@@ -1,17 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin Dashboard</title>
-  <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CZM • Admin Live + Archive</title>
+  <link rel="stylesheet" href="style.css"/>
 </head>
 <body>
   <!-- Brand bar -->
   <div class="brand-bar">
     <div class="brand-inner">
       <a class="brand-logo" href="dashboard.html">
-        <img src="czm-logo.png" alt="CZM logo">
+        <img src="czm-logo.png" alt="CZM logo"/>
         <h1 class="brand-title">CZM • Admin Live View</h1>
       </a>
       <div class="brand-actions">
@@ -41,9 +41,39 @@
       </div>
     </div>
 
-    <!-- Archive -->
+    <!-- Archive controls -->
     <div class="card">
       <h2>Completed Jobs (Archive)</h2>
+
+      <div class="toolbar" style="display:flex; gap:.75rem; flex-wrap:wrap; align-items:end; margin-bottom:.5rem">
+        <div>
+          <label for="fltTech">Technician</label><br/>
+          <select id="fltTech">
+            <option value="">All</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="fltPart">Part # contains</label><br/>
+          <input id="fltPart" type="text" placeholder="e.g. 44602"/>
+        </div>
+
+        <div>
+          <label for="fltFrom">From date</label><br/>
+          <input id="fltFrom" type="date"/>
+        </div>
+
+        <div>
+          <label for="fltTo">To date</label><br/>
+          <input id="fltTo" type="date"/>
+        </div>
+
+        <button id="btnApply" class="primary">Apply</button>
+        <button id="btnReset" class="secondary">Reset</button>
+        <button id="btnCsv" class="secondary">Export CSV</button>
+        <div style="margin-left:auto; opacity:.8"><span id="rowCount">0</span> records</div>
+      </div>
+
       <div class="table-wrap">
         <table class="table">
           <thead>
@@ -61,46 +91,141 @@
     </div>
   </main>
 
+  <!-- Your existing live JS -->
   <script src="script.js"></script>
+
+  <!-- Archive logic -->
   <script>
     (function(){
-      const tbody = document.getElementById('archiveTableBody');
-      if(!tbody) return;
-
-      function fmt(ms){
-        if(!ms || ms < 0) return '00:00:00';
+      const API = 'https://wireshop-backend.onrender.com';
+      const getUser = () => JSON.parse(localStorage.getItem('user') || '{}');
+      const fmt = (ms) => {
+        if (!ms || ms < 0) return '00:00:00';
         let s = Math.floor(ms/1000);
         const h = Math.floor(s/3600); s -= h*3600;
-        const m = Math.floor(s/60); s -= m*60;
+        const m = Math.floor(s/60);   s -= m*60;
         return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
-      }
+      };
+      const toMidnight = (d, end=false) => {
+        const t = new Date(d);
+        if (!end) { t.setHours(0,0,0,0); }
+        else { t.setHours(23,59,59,999); }
+        return t.getTime();
+      };
+
+      const els = {
+        body: document.getElementById('archiveTableBody'),
+        count: document.getElementById('rowCount'),
+        tech: document.getElementById('fltTech'),
+        part: document.getElementById('fltPart'),
+        from: document.getElementById('fltFrom'),
+        to:   document.getElementById('fltTo'),
+        apply: document.getElementById('btnApply'),
+        reset: document.getElementById('btnReset'),
+        csv:   document.getElementById('btnCsv')
+      };
+
+      let ALL = [];    // raw archive
+      let VIEW = [];   // filtered
 
       async function loadArchive(){
         try{
-          const u = JSON.parse(localStorage.getItem('user')||'{}');
-          const res = await fetch('https://wireshop-backend.onrender.com/api/jobs/archive', {
-            headers: { 'x-user': u.username || '' }
-          });
-          if(!res.ok){ console.error('archive http', res.status); return; }
-          const rows = await res.json();
-          tbody.innerHTML = '';
-          rows.forEach(row=>{
-            const total = (row.totalActive != null)
-              ? row.totalActive
-              : Math.max(0, (row.endTime - row.startTime) - (row.pauseTotal || 0));
-            const finished = new Date(row.finishedAt || row.endTime || Date.now()).toLocaleString();
-            const tr = document.createElement('tr');
-            tr.innerHTML =
-              `<td>${finished}</td>
-               <td>${row.username || ''}</td>
-               <td>${row.partNumber || ''}</td>
-               <td>${row.note || ''}</td>
-               <td>${fmt(total)}</td>`;
-            tbody.appendChild(tr);
-          });
+          const u = getUser();
+          const res = await fetch(`${API}/api/jobs/archive`, { headers:{'x-user': u.username || ''} });
+          if(!res.ok) return console.error('Archive HTTP', res.status);
+          ALL = await res.json();
+          // populate tech dropdown
+          const names = [...new Set(ALL.map(r => r.username).filter(Boolean))].sort();
+          els.tech.innerHTML = '<option value="">All</option>' + names.map(n=>`<option>${n}</option>`).join('');
+          applyFilters();
         }catch(e){ console.error('archive load failed', e); }
       }
 
+      function applyFilters(){
+        const tech = (els.tech.value || '').toLowerCase();
+        const part = (els.part.value || '').toLowerCase();
+        const from = els.from.value ? toMidnight(els.from.value, false) : null;
+        const to   = els.to.value   ? toMidnight(els.to.value, true)   : null;
+
+        VIEW = ALL.filter(r => {
+          const finishedAt = r.finishedAt || r.endTime || 0;
+          if (tech && String(r.username || '').toLowerCase() !== tech) return false;
+          if (part && !String(r.partNumber || '').toLowerCase().includes(part)) return false;
+          if (from && finishedAt < from) return false;
+          if (to && finishedAt > to) return false;
+          return true;
+        });
+
+        renderRows();
+      }
+
+      function renderRows(){
+        els.body.innerHTML = '';
+        els.count.textContent = VIEW.length;
+        VIEW.forEach(row=>{
+          const total = (row.totalActive != null)
+            ? row.totalActive
+            : Math.max(0, (row.endTime - row.startTime) - (row.pauseTotal || 0));
+          const finished = new Date(row.finishedAt || row.endTime || Date.now()).toLocaleString();
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${finished}</td>
+            <td>${row.username || ''}</td>
+            <td>${row.partNumber || ''}</td>
+            <td>${row.note || ''}</td>
+            <td>${fmt(total)}</td>
+          `;
+          els.body.appendChild(tr);
+        });
+      }
+
+      function toCSV(rows){
+        const header = ['finished','username','partNumber','note','totalActive_ms'];
+        const lines = [header.join(',')];
+        rows.forEach(r=>{
+          const total = (r.totalActive != null)
+            ? r.totalActive
+            : Math.max(0, (r.endTime - r.startTime) - (r.pauseTotal || 0));
+          const finished = r.finishedAt || r.endTime || 0;
+          const vals = [
+            new Date(finished).toISOString(),
+            quote(r.username),
+            quote(r.partNumber),
+            quote(r.note),
+            String(total)
+          ];
+          lines.push(vals.join(','));
+        });
+        return lines.join('\n');
+
+        function quote(v){
+          const s = String(v ?? '');
+          return /[",\n]/.test(s) ? `"${s.replace(/"/g,'""')}"` : s;
+        }
+      }
+
+      function downloadCSV(){
+        const csv = toCSV(VIEW);
+        const blob = new Blob([csv], {type:'text/csv'});
+        const url = URL.createObjectURL(blob);
+        const a = Object.assign(document.createElement('a'), {
+          href: url, download: `wireshop-archive-${new Date().toISOString().slice(0,10)}.csv`
+        });
+        document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+      }
+
+      // Events
+      els.apply.addEventListener('click', applyFilters);
+      els.reset.addEventListener('click', () => {
+        els.tech.value = '';
+        els.part.value = '';
+        els.from.value = '';
+        els.to.value   = '';
+        applyFilters();
+      });
+      els.csv.addEventListener('click', downloadCSV);
+
+      // Auto-refresh every 10s
       loadArchive();
       setInterval(loadArchive, 10000);
     })();
