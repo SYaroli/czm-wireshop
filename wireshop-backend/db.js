@@ -8,7 +8,7 @@ const db = new sqlite3.Database(path.resolve(__dirname, 'wireshop.db'), (err) =>
 });
 
 db.serialize(() => {
-  // LIVE
+  // LIVE table (mutable)
   db.run(`CREATE TABLE IF NOT EXISTS jobs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT,
@@ -21,15 +21,15 @@ db.serialize(() => {
     pauseTotal INTEGER DEFAULT 0
   )`);
 
-  // Ensure pause columns on legacy DBs
+  // Ensure legacy installs have pause columns
   db.all(`PRAGMA table_info(jobs)`, (err, rows) => {
-    if (err) return console.error('Error checking table info:', err);
+    if (err) return console.error('Error checking table info (jobs):', err);
     const names = (rows || []).map(c => c.name);
     if (!names.includes('pauseStart')) db.run(`ALTER TABLE jobs ADD COLUMN pauseStart INTEGER DEFAULT NULL`);
     if (!names.includes('pauseTotal')) db.run(`ALTER TABLE jobs ADD COLUMN pauseTotal INTEGER DEFAULT 0`);
   });
 
-  // ARCHIVE snapshots (immutable base)
+  // ARCHIVE table (append-only snapshots + soft delete)
   db.run(`CREATE TABLE IF NOT EXISTS jobs_archive (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     sourceId INTEGER,
@@ -40,10 +40,25 @@ db.serialize(() => {
     endTime INTEGER,
     pauseTotal INTEGER DEFAULT 0,
     totalActive INTEGER DEFAULT 0,
-    finishedAt INTEGER DEFAULT (strftime('%s','now')*1000)
+    finishedAt INTEGER DEFAULT (strftime('%s','now')*1000),
+    isDeleted INTEGER DEFAULT 0,
+    deletedAt INTEGER,
+    deletedBy TEXT,
+    deleteReason TEXT
   )`);
 
-  // ADJUSTMENTS ledger (layered overrides, never delete base)
+  // Add any missing archive columns (migrate older DBs)
+  db.all(`PRAGMA table_info(jobs_archive)`, (err, rows) => {
+    if (err) return console.error('Error checking table info (jobs_archive):', err);
+    const names = (rows || []).map(c => c.name);
+    const add = (col, def) => db.run(`ALTER TABLE jobs_archive ADD COLUMN ${col} ${def}`);
+    if (!names.includes('isDeleted'))   add('isDeleted',   'INTEGER DEFAULT 0');
+    if (!names.includes('deletedAt'))   add('deletedAt',   'INTEGER');
+    if (!names.includes('deletedBy'))   add('deletedBy',   'TEXT');
+    if (!names.includes('deleteReason'))add('deleteReason','TEXT');
+  });
+
+  // ADJUSTMENTS ledger (non-destructive overrides)
   db.run(`CREATE TABLE IF NOT EXISTS jobs_adjustments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     archiveId INTEGER NOT NULL,
