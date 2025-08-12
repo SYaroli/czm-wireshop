@@ -315,15 +315,27 @@ document.addEventListener('DOMContentLoaded', () => {
       catch(err){ console.error(err); alert('Failed to clear logs.'); }
     });
 
+    // Catalog lookups for Print Name + Expected
+    const catByPart = new Map((window.catalog || []).map(p => [String(p.partNumber), p]));
+    const fmtExpected = (hours) => {
+      if (hours == null) return '';
+      const mins = Math.round(Number(hours) * 60);
+      const h = Math.floor(mins/60), m = mins % 60;
+      return `${h}:${String(m).padStart(2,'0')}`;
+    };
+
     async function fetchAll(){
       try{
         const rows = await api(`/logs`, { method:'GET' });
         tbody.innerHTML='';
         rows.forEach(log=>{
+          const cat = catByPart.get(String(log.partNumber)) || {};
           const tr = document.createElement('tr');
           tr.innerHTML = `
             <td>${log.username || ''}</td>
             <td>${log.partNumber || ''}</td>
+            <td>${cat.printName || ''}</td>
+            <td>${fmtExpected(cat.expectedHours)}</td>
             <td>${log.action || ''}</td>
             <td>${log.note || ''}</td>
             <td>${fmtDuration(log.startTime, log.endTime, log.pauseStart, log.pauseTotal)}</td>
