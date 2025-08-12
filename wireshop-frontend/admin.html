@@ -48,9 +48,7 @@
       <div class="toolbar" style="display:flex; gap:.75rem; flex-wrap:wrap; align-items:end; margin-bottom:.5rem">
         <div>
           <label for="fltTech">Technician</label><br/>
-          <select id="fltTech">
-            <option value="">All</option>
-          </select>
+          <select id="fltTech"><option value="">All</option></select>
         </div>
 
         <div>
@@ -83,6 +81,7 @@
               <th>Part Number</th>
               <th>Notes</th>
               <th>Total Active</th>
+              <th>Adjust</th>
             </tr>
           </thead>
           <tbody id="archiveTableBody"></tbody>
@@ -91,27 +90,54 @@
     </div>
   </main>
 
-  <!-- Your existing live JS -->
+  <!-- Adjust dialog -->
+  <dialog id="adjDialog" style="max-width:720px; width:clamp(320px,90vw,720px); border:none; border-radius:12px; padding:16px;">
+    <form method="dialog" id="adjForm">
+      <h3 style="margin:0 0 8px 0;">Adjust Completed Job</h3>
+      <div id="adjMeta" style="font-size:.9rem; opacity:.7; margin-bottom:8px;"></div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+        <label>Technician
+          <input id="adjUser" type="text" />
+        </label>
+        <label>Part Number
+          <input id="adjPart" type="text" />
+        </label>
+        <label style="grid-column:1 / -1">Notes
+          <textarea id="adjNote" rows="2"></textarea>
+        </label>
+        <label>Start Time
+          <input id="adjStart" type="datetime-local" />
+        </label>
+        <label>End Time
+          <input id="adjEnd" type="datetime-local" />
+        </label>
+        <label>Pause Total (minutes)
+          <input id="adjPause" type="number" min="0" step="1" placeholder="leave blank to keep"/>
+        </label>
+        <label style="grid-column:1 / -1">Reason (required)
+          <input id="adjReason" type="text" required placeholder="e.g. missed punch"/>
+        </label>
+      </div>
+
+      <div id="adjHistory" style="margin-top:8px; padding:8px; background:#f6f6f6; border-radius:8px; display:none;"></div>
+
+      <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:12px;">
+        <button id="adjShowHistory" type="button" class="secondary" style="margin-right:auto;">History</button>
+        <button type="button" id="adjCancel" class="secondary">Cancel</button>
+        <button type="submit" id="adjSave" class="primary">Save Adjustment</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- existing Live logic -->
   <script src="script.js"></script>
 
-  <!-- Archive logic -->
+  <!-- Archive + Adjust logic -->
   <script>
     (function(){
       const API = 'https://wireshop-backend.onrender.com';
       const getUser = () => JSON.parse(localStorage.getItem('user') || '{}');
-      const fmt = (ms) => {
-        if (!ms || ms < 0) return '00:00:00';
-        let s = Math.floor(ms/1000);
-        const h = Math.floor(s/3600); s -= h*3600;
-        const m = Math.floor(s/60);   s -= m*60;
-        return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
-      };
-      const toMidnight = (d, end=false) => {
-        const t = new Date(d);
-        if (!end) { t.setHours(0,0,0,0); }
-        else { t.setHours(23,59,59,999); }
-        return t.getTime();
-      };
 
       const els = {
         body: document.getElementById('archiveTableBody'),
@@ -122,19 +148,52 @@
         to:   document.getElementById('fltTo'),
         apply: document.getElementById('btnApply'),
         reset: document.getElementById('btnReset'),
-        csv:   document.getElementById('btnCsv')
+        csv:   document.getElementById('btnCsv'),
+
+        dlg: document.getElementById('adjDialog'),
+        form: document.getElementById('adjForm'),
+        meta: document.getElementById('adjMeta'),
+        u: document.getElementById('adjUser'),
+        p: document.getElementById('adjPart'),
+        n: document.getElementById('adjNote'),
+        s: document.getElementById('adjStart'),
+        e: document.getElementById('adjEnd'),
+        z: document.getElementById('adjPause'),
+        r: document.getElementById('adjReason'),
+        cancel: document.getElementById('adjCancel'),
+        histBtn: document.getElementById('adjShowHistory'),
+        historyBox: document.getElementById('adjHistory')
       };
 
-      let ALL = [];    // raw archive
-      let VIEW = [];   // filtered
+      const fmt = (ms) => {
+        if (!ms || ms < 0) return '00:00:00';
+        let s = Math.floor(ms/1000);
+        const h = Math.floor(s/3600); s -= h*3600;
+        const m = Math.floor(s/60);   s -= m*60;
+        return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+      };
+      const toMidnight = (d, end=false) => {
+        const t = new Date(d);
+        if (!end) t.setHours(0,0,0,0); else t.setHours(23,59,59,999);
+        return t.getTime();
+      };
+      const toLocalDT = (ms) => {
+        if (!ms) return '';
+        const dt = new Date(ms);
+        const pad = n => String(n).padStart(2,'0');
+        return `${dt.getFullYear()}-${pad(dt.getMonth()+1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
+      };
+
+      let ALL = [];
+      let VIEW = [];
+      let current = null; // current archive row in dialog
 
       async function loadArchive(){
         try{
           const u = getUser();
           const res = await fetch(`${API}/api/jobs/archive`, { headers:{'x-user': u.username || ''} });
-          if(!res.ok) return console.error('Archive HTTP', res.status);
+          if(!res.ok) { console.error('Archive HTTP', res.status); return; }
           ALL = await res.json();
-          // populate tech dropdown
           const names = [...new Set(ALL.map(r => r.username).filter(Boolean))].sort();
           els.tech.innerHTML = '<option value="">All</option>' + names.map(n=>`<option>${n}</option>`).join('');
           applyFilters();
@@ -167,15 +226,22 @@
             ? row.totalActive
             : Math.max(0, (row.endTime - row.startTime) - (row.pauseTotal || 0));
           const finished = new Date(row.finishedAt || row.endTime || Date.now()).toLocaleString();
+
           const tr = document.createElement('tr');
           tr.innerHTML = `
-            <td>${finished}</td>
+            <td>${finished}${row.adjusted ? ' •' : ''}</td>
             <td>${row.username || ''}</td>
             <td>${row.partNumber || ''}</td>
             <td>${row.note || ''}</td>
             <td>${fmt(total)}</td>
+            <td><button class="secondary small" data-adj="${row.id}">Adjust</button></td>
           `;
           els.body.appendChild(tr);
+        });
+
+        // wire adjust buttons
+        els.body.querySelectorAll('button[data-adj]').forEach(btn=>{
+          btn.addEventListener('click', ()=> openAdjust( VIEW.find(r => r.id == btn.dataset.adj) ));
         });
       }
 
@@ -189,19 +255,12 @@
           const finished = r.finishedAt || r.endTime || 0;
           const vals = [
             new Date(finished).toISOString(),
-            quote(r.username),
-            quote(r.partNumber),
-            quote(r.note),
-            String(total)
+            q(r.username), q(r.partNumber), q(r.note), String(total)
           ];
           lines.push(vals.join(','));
         });
         return lines.join('\n');
-
-        function quote(v){
-          const s = String(v ?? '');
-          return /[",\n]/.test(s) ? `"${s.replace(/"/g,'""')}"` : s;
-        }
+        function q(v){ const s = String(v ?? ''); return /[",\n]/.test(s) ? `"${s.replace(/"/g,'""')}"` : s; }
       }
 
       function downloadCSV(){
@@ -214,18 +273,96 @@
         document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
       }
 
+      function openAdjust(row){
+        current = row;
+        els.meta.textContent = `Archive #${row.id} • Finished ${new Date(row.finishedAt || row.endTime).toLocaleString()}`;
+        els.u.value = row.username || '';
+        els.p.value = row.partNumber || '';
+        els.n.value = row.note || '';
+        els.s.value = toLocalDT(row.startTime);
+        els.e.value = toLocalDT(row.endTime);
+        els.z.value = (row.pauseTotal != null && row.pauseTotal >= 0) ? Math.round(row.pauseTotal/60000) : '';
+        els.r.value = '';
+        els.historyBox.style.display = 'none';
+        els.historyBox.innerHTML = '';
+        els.dlg.showModal();
+      }
+
+      async function saveAdjust(e){
+        e.preventDefault();
+        if (!current) return;
+
+        const u = getUser();
+        const payload = {};
+        const toMs = v => v ? new Date(v).getTime() : null;
+
+        // only send overrides the user changed
+        if (els.u.value !== (current.username || '')) payload.username = els.u.value;
+        if (els.p.value !== (current.partNumber || '')) payload.partNumber = els.p.value;
+        if (els.n.value !== (current.note || '')) payload.note = els.n.value;
+
+        const startMs = toMs(els.s.value);
+        const endMs   = toMs(els.e.value);
+        if (startMs && startMs !== current.startTime) payload.startTime = startMs;
+        if (endMs && endMs !== current.endTime)       payload.endTime   = endMs;
+
+        if (els.z.value !== '' && (Math.round((current.pauseTotal||0)/60000) !== Number(els.z.value))) {
+          payload.pauseTotal = Number(els.z.value) * 60000;
+        }
+
+        payload.reason = els.r.value.trim();
+        if (!payload.reason) { els.r.focus(); return; }
+
+        try{
+          const res = await fetch(`${API}/api/jobs/archive/${current.id}/adjust`, {
+            method:'POST',
+            headers:{ 'Content-Type':'application/json', 'x-user': u.username || '' },
+            body: JSON.stringify(payload)
+          });
+          if (!res.ok) { alert('Failed to save adjustment'); return; }
+          els.dlg.close();
+          await loadArchive();
+        }catch(err){ console.error(err); alert('Error saving adjustment'); }
+      }
+
+      async function showHistory(){
+        if (!current) return;
+        const u = getUser();
+        try{
+          const res = await fetch(`${API}/api/jobs/archive/${current.id}/adjustments`, {
+            headers:{ 'x-user': u.username || '' }
+          });
+          if (!res.ok) return;
+          const rows = await res.json();
+          if (!rows.length) {
+            els.historyBox.style.display = 'block';
+            els.historyBox.innerHTML = '<em>No adjustments yet.</em>';
+            return;
+          }
+          els.historyBox.style.display = 'block';
+          els.historyBox.innerHTML = rows.map(a=>{
+            const when = new Date(a.createdAt).toLocaleString();
+            return `<div style="padding:6px 0; border-top:1px solid #ddd">
+              <div><strong>${when}</strong> by <code>${a.adminUser || ''}</code></div>
+              <div>Reason: ${a.reason}</div>
+              <div style="font-size:.9em; opacity:.8">Overrides: ${
+                ['overrideUsername','overridePartNumber','overrideNote','overrideStartTime','overrideEndTime','overridePauseTotal']
+                  .filter(k=>a[k]!=null).map(k=>k.replace('override','')).join(', ') || 'none'
+              }</div>
+            </div>`;
+          }).join('');
+        }catch(e){ console.error(e); }
+      }
+
       // Events
       els.apply.addEventListener('click', applyFilters);
-      els.reset.addEventListener('click', () => {
-        els.tech.value = '';
-        els.part.value = '';
-        els.from.value = '';
-        els.to.value   = '';
-        applyFilters();
-      });
+      els.reset.addEventListener('click', () => { els.tech.value=''; els.part.value=''; els.from.value=''; els.to.value=''; applyFilters(); });
       els.csv.addEventListener('click', downloadCSV);
 
-      // Auto-refresh every 10s
+      els.form.addEventListener('submit', saveAdjust);
+      els.cancel.addEventListener('click', ()=> els.dlg.close());
+      els.histBtn.addEventListener('click', showHistory);
+
       loadArchive();
       setInterval(loadArchive, 10000);
     })();
