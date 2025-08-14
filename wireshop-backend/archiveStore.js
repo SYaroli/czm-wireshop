@@ -1,11 +1,11 @@
 // wireshop-backend/archiveStore.js
-// Durable archive storage using Postgres.
+// Durable archive storage using Postgres with helpful indexes.
 
 let Pool;
 try {
   ({ Pool } = require("pg"));
 } catch {
-  console.error("[ARCHIVE] 'pg' is not installed. We’ll need it when we wire this up.");
+  console.error("[ARCHIVE] 'pg' is not installed.");
 }
 
 const conn = process.env.DATABASE_URL || "";
@@ -31,6 +31,10 @@ async function init() {
       job_json          JSONB,
       created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+    -- Indexes for the common filters/sorts
+    CREATE INDEX IF NOT EXISTS idx_archive_finished_at ON archive_jobs (finished_at DESC NULLS LAST);
+    CREATE INDEX IF NOT EXISTS idx_archive_part_number ON archive_jobs (part_number);
+    CREATE INDEX IF NOT EXISTS idx_archive_tech ON archive_jobs (technician);
   `);
 }
 
