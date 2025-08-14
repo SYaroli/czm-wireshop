@@ -7,7 +7,7 @@
   <style>
     body { font-family: system-ui, Arial, sans-serif; margin: 24px; }
     h1 { margin: 0 0 12px; }
-    .bar { display: flex; gap: 12px; align-items: center; margin: 12px 0 20px; }
+    .bar { display: flex; gap: 12px; align-items: center; margin: 12px 0 20px; flex-wrap: wrap; }
     input, button, select { padding: 8px 10px; font-size: 14px; }
     table { border-collapse: collapse; width: 100%; }
     th, td { border: 1px solid #ddd; padding: 8px; font-size: 14px; }
@@ -17,6 +17,7 @@
     .muted { color: #777; }
     .ok { color: #0a0; }
     .err { color: #b00; }
+    .spacer { flex: 1; }
   </style>
 </head>
 <body>
@@ -26,6 +27,12 @@
     <strong>Status:</strong>
     <span id="status" class="muted">checking…</span>
     <button id="refreshBtn">Refresh</button>
+    <span class="spacer"></span>
+    <button id="exportBtn">Export JSON</button>
+    <label>
+      <input type="file" id="importFile" accept="application/json" style="display:none;" />
+      <button id="importBtn" type="button">Import JSON</button>
+    </label>
   </div>
 
   <form id="addForm" class="bar">
@@ -34,7 +41,7 @@
     <input id="loc" placeholder="Location" />
     <input id="mins" placeholder="Expected minutes" type="number" min="0" />
     <button>Add test entry</button>
-    <span class="muted">This hits POST /api/archive</span>
+    <span class="muted">Writes to POST /api/archive</span>
   </form>
 
   <table>
@@ -76,7 +83,7 @@
 
     async function load() {
       try {
-        const res = await fetch("/api/archive?limit=500");
+        const res = await fetch("/api/archive?limit=5000");
         if (!res.ok) throw new Error("GET /api/archive failed");
         const data = await res.json();
         const tbody = $("#rows");
@@ -144,6 +151,48 @@
     });
 
     $("#refreshBtn").addEventListener("click", load);
+
+    // Export all rows as JSON
+    $("#exportBtn").addEventListener("click", async () => {
+      try {
+        const res = await fetch("/api/archive?limit=500000");
+        if (!res.ok) throw new Error("GET /api/archive failed");
+        const data = await res.json();
+        const blob = new Blob([JSON.stringify({ exported_at: new Date().toISOString(), jobs: data }, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `wireshop-archive-${new Date().toISOString().replace(/[:.]/g,"-")}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+      } catch (e) {
+        alert("Export failed: " + e.message);
+      }
+    });
+
+    // Import a JSON file produced by Export
+    $("#importBtn").addEventListener("click", () => $("#importFile").click());
+    $("#importFile").addEventListener("change", async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const parsed = JSON.parse(text);
+        const jobs = Array.isArray(parsed?.jobs) ? parsed.jobs : (Array.isArray(parsed) ? parsed : []);
+        if (jobs.length === 0) return alert("No jobs found in file.");
+        const res = await fetch("/api/archive/bulk", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ jobs })
+        });
+        if (!res.ok) throw new Error("Bulk import failed");
+        load();
+      } catch (err) {
+        alert("Import failed: " + err.message);
+      } finally {
+        e.target.value = "";
+      }
+    });
 
     // boot
     ping();
