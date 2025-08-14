@@ -77,4 +77,68 @@ const toISO = (v) => {
 
 // Wrap ALL /api/jobs traffic, regardless of method (GET/POST/etc)
 app.use("/api/jobs", (req, res, next) => {
-  res.on("finis
+  res.on("finish", async () => {
+    if (!archiveReady) return;
+    if (res.statusCode >= 400) return;
+
+    // Merge body + query since some routes are GET-with-query
+    const src = { ...(req.body || {}), ...(req.query || {}) };
+
+    if (!looksLikeFinish(src, req.originalUrl || req.url)) return;
+
+    try {
+      const job = {
+        part_number: pick(src, [
+          "part_number", "partNumber", "part", "partNo", "partno",
+          "print", "print_number", "printNumber"
+        ]),
+        technician: pick(src, ["technician", "tech", "username", "user", "name"]),
+        location: pick(src, ["location", "station", "workstation"]),
+        status: "archived",
+        expected_minutes: toInt(pick(src, ["expected_minutes", "expected", "expectedMin", "expectedMinutes"])),
+        total_active_sec: toInt(pick(src, ["total_active_sec", "totalSeconds", "total", "elapsed", "timeActiveSec"])),
+        started_at: toISO(pick(src, ["started_at", "startedAt", "start_time", "startTime"])),
+        finished_at: toISO(pick(src, ["finished_at", "finishedAt", "finish_time", "finishTime"])) || new Date().toISOString(),
+        notes: pick(src, ["notes", "comment"])
+      };
+
+      await archive.saveArchivedJob({ ...src, ...job });
+      console.log("[ARCHIVE] auto-saved:", job.part_number || "(no part)", "by", job.technician || "(unknown)");
+    } catch (e) {
+      console.error("[ARCHIVE] auto-archive failed:", e.message);
+    }
+  });
+
+  next();
+}, jobsRouter);
+
+// Other API routes
+app.use("/api/users", usersRouter);
+app.use("/api/archive", archiveRouter);
+
+// Health
+app.get("/healthz", (_req, res) => {
+  res.json({ ok: true, archiveReady, node: process.version, now: new Date().toISOString() });
+});
+
+// Static frontend
+const FRONTEND_DIR = path.join(__dirname, "..", "wireshop-frontend");
+app.use(express.static(FRONTEND_DIR));
+app.get("/archive", (_req, res) => {
+  res.sendFile(path.join(FRONTEND_DIR, "archive.html"));
+});
+app.get("/", (_req, res) => {
+  res.sendFile(path.join(FRONTEND_DIR, "index.html"));
+});
+
+// Errors
+/* eslint-disable no-unused-vars */
+app.use((err, _req, res, _next) => {
+  console.error("[ERROR]", err);
+  res.status(500).json({ error: "Server error" });
+});
+
+const PORT = process.env.PORT || 10000;
+app.listen(PORT, () => {
+  console.log(`WireShop backend listening on port ${PORT}`);
+});
