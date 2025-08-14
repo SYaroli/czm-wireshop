@@ -1,5 +1,6 @@
 // wireshop-backend/server.js
-// Express server for CZM WireShop with automatic archiving on job finish.
+// Express server for CZM WireShop with robust auto-archive for finished jobs.
+// Mirrors any "finish/complete" job calls (GET/POST/etc) into Postgres.
 
 const path = require("path");
 const express = require("express");
@@ -8,12 +9,7 @@ const cors = require("cors");
 const usersRouter = require("./routes/users");
 const jobsRouter = require("./routes/jobs");
 const archiveRouter = require("./routes/archive");
-
-// Postgres archive
 const archive = require("./archiveStore");
-
-// If your finish endpoint path is different, change this:
-const FINISH_PATH = "/api/jobs/finish";
 
 let archiveReady = false;
 (async () => {
@@ -31,87 +27,94 @@ app.use(cors());
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true }));
 
-/**
- * Auto-archive hook:
- * We register a lightweight handler on the same path your app uses to finish a job.
- * It does NOTHING to the request/response. It just listens for a successful response
- * and then writes an archive row in the background.
- */
-app.post(FINISH_PATH, (req, res, next) => {
-  // Let the real /api/jobs/finish route run first.
+// ---------- Auto-archive middleware for ANY /api/jobs request ----------
+function looksLikeFinish(src = {}, url = "") {
+  const u = (url || "").toLowerCase();
+  if (u.includes("finish") || u.includes("/finish") || u.includes("complete") || u.includes("/complete")) return true;
+
+  const lower = (k) => String(src[k] ?? "").toLowerCase();
+  const haystack = [
+    lower("action"),
+    lower("status"),
+    lower("event"),
+    lower("op"),
+    lower("type"),
+    lower("mode")
+  ].join("|");
+
+  return /finish|finished|complete|completed|done|end|stop/.test(haystack);
+}
+
+function pick(obj, keys) {
+  for (const k of keys) {
+    if (obj && obj[k] != null && obj[k] !== "") return obj[k];
+  }
+  return null;
+}
+const toInt = (v) => {
+  if (v == null || v === "") return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? Math.trunc(n) : null;
+};
+const toISO = (v) => {
+  if (!v) return null;
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+};
+
+// Wrap ALL /api/jobs traffic, regardless of method (GET/POST/etc)
+app.use("/api/jobs", (req, res, next) => {
   res.on("finish", async () => {
-    // Only archive if the finish call succeeded.
     if (!archiveReady) return;
     if (res.statusCode >= 400) return;
 
+    // Merge body + query since some routes are GET-with-query
+    const src = { ...(req.body || {}), ...(req.query || {}) };
+
+    if (!looksLikeFinish(src, req.originalUrl || req.url)) return;
+
     try {
-      const b = req.body || {};
-      // Best-effort mapping. We also store the full payload in job_json.
       const job = {
-        part_number:
-          b.part_number || b.partNumber || b.part || b.partNo || b.partno || null,
-        technician:
-          b.technician || b.username || b.user || b.name || null,
-        location:
-          b.location || b.station || b.workstation || null,
+        part_number: pick(src, [
+          "part_number", "partNumber", "part", "partNo", "partno",
+          "print", "print_number", "printNumber"
+        ]),
+        technician: pick(src, ["technician", "tech", "username", "user", "name"]),
+        location: pick(src, ["location", "station", "workstation"]),
         status: "archived",
-        expected_minutes:
-          b.expected_minutes || b.expected || b.expectedMin || null,
-        total_active_sec:
-          b.total_active_sec || b.totalSeconds || b.total || b.elapsed || null,
-        started_at: b.started_at || b.startedAt || null,
-        finished_at: b.finished_at || b.finishedAt || new Date().toISOString(),
-        notes: b.notes || null,
-        // archiveStore will also persist the entire body into job_json
+        expected_minutes: toInt(pick(src, ["expected_minutes", "expected", "expectedMin", "expectedMinutes"])),
+        total_active_sec: toInt(pick(src, ["total_active_sec", "totalSeconds", "total", "elapsed", "timeActiveSec"])),
+        started_at: toISO(pick(src, ["started_at", "startedAt", "start_time", "startTime"])),
+        finished_at: toISO(pick(src, ["finished_at", "finishedAt", "finish_time", "finishTime"])) || new Date().toISOString(),
+        notes: pick(src, ["notes", "comment"])
       };
 
-      // Save it. archiveStore handles JSON packing and null-safety.
-      await archive.saveArchivedJob({ ...job, ...{ job_json: undefined } });
-      console.log(
-        "[ARCHIVE] Auto-saved on finish:",
-        job.part_number || "(no part)"
-      );
+      // Store full payload too (archiveStore packs JSON safely)
+      await archive.saveArchivedJob({ ...src, ...job });
+      console.log("[ARCHIVE] auto-saved:", job.part_number || "(no part)", "by", job.technician || "(unknown)");
     } catch (e) {
       console.error("[ARCHIVE] auto-archive failed:", e.message);
     }
   });
 
-  // Hand off to the real route in routes/jobs.js
   next();
-});
+}, jobsRouter);
 
-// API routes
+// ---------- Other API routes ----------
 app.use("/api/users", usersRouter);
-app.use("/api/jobs", jobsRouter);
 app.use("/api/archive", archiveRouter);
 
-// Health
+// ---------- Health ----------
 app.get("/healthz", (_req, res) => {
   res.json({ ok: true, archiveReady, node: process.version, now: new Date().toISOString() });
 });
 
-// Static frontend
+// ---------- Static frontend ----------
 const FRONTEND_DIR = path.join(__dirname, "..", "wireshop-frontend");
 app.use(express.static(FRONTEND_DIR));
 
-// Shortcut to the archive viewer
 app.get("/archive", (_req, res) => {
   res.sendFile(path.join(FRONTEND_DIR, "archive.html"));
 });
 
-// Default: login page
-app.get("/", (_req, res) => {
-  res.sendFile(path.join(FRONTEND_DIR, "index.html"));
-});
-
-// Errors
-// eslint-disable-next-line no-unused-vars
-app.use((err, _req, res, _next) => {
-  console.error("[ERROR]", err);
-  res.status(500).json({ error: "Server error" });
-});
-
-const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => {
-  console.log(`WireShop backend listening on port ${PORT}`);
-});
+app.get("/", (_req, res) => {_
