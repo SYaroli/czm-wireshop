@@ -80,8 +80,6 @@
         <label style="grid-column:1 / -1">Reason (required) <input id="adjReason" type="text" required placeholder="e.g. missed punch"/></label>
       </div>
 
-      <div id="adjHistory" style="margin-top:8px;padding:8px;background:#f6f6f6;border-radius:8px;display:none;"></div>
-
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px;">
         <button type="button" id="adjCancel" class="secondary">Cancel</button>
         <button type="submit" id="adjSave" class="primary">Save Adjustment</button>
@@ -91,103 +89,95 @@
 
   <script src="catalog.js"></script>
   <script>
-    const API_BASE = "https://wireshop-backend.onrender.com";
-
+    // Use the stable archive API (NOT /api/jobs/...).
+    const API_BASE = ''; // same origin
     const $ = (s) => document.querySelector(s);
-    const rowsEl = $("#rows");
-    const statusEl = $("#status");
-    const countEl = $("#rowCount");
+
+    const statusEl = $('#status');
+    const rowsEl = $('#rows');
+    const countEl = $('#rowCount');
 
     const filters = {
-      part: $("#fltPart"),
-      tech: $("#fltTech"),
-      loc: $("#fltLoc"),
-      mins: $("#fltMins"),
+      part: $('#fltPart'),
+      tech: $('#fltTech'),
+      loc:  $('#fltLoc'),
+      mins: $('#fltMins'),
     };
 
     const state = { all: [], view: [], current: null };
 
     const catByPart = new Map((window.catalog || []).map(p => [String(p.partNumber), p]));
 
-    const zpad = (n, w=2) => String(n).padStart(w, "0");
+    const z2 = n => String(n).padStart(2, '0');
     const fmtHM = (mins) => {
-      if (mins == null || mins === "") return "";
+      if (mins == null || mins === '') return '';
       const m = Number(mins);
-      const h = Math.floor(m / 60);
-      const mm = m % 60;
-      return `${h}:${zpad(mm)}`;
+      return `${Math.floor(m/60)}:${z2(m%60)}`;
     };
     const fmtHMS = (sec) => {
-      if (sec == null) return "00:00:00";
+      if (sec == null) return '00:00:00';
       let s = Math.max(0, Number(sec));
-      const h = Math.floor(s / 3600); s -= h*3600;
-      const m = Math.floor(s / 60);  s -= m*60;
-      return `${zpad(h)}:${zpad(m)}:${zpad(s)}`;
+      const h = Math.floor(s/3600); s -= h*3600;
+      const m = Math.floor(s/60);   s -= m*60;
+      return `${z2(h)}:${z2(m)}:${z2(s)}`;
     };
-    const toLocal = (t) => t ? new Date(t).toLocaleString() : "";
+    const toLocal = (t) => t ? new Date(t).toLocaleString() : '';
 
     async function ping() {
       try {
         const r = await fetch(`${API_BASE}/healthz`);
         const j = await r.json();
-        statusEl.textContent = j.archiveReady ? "archiveReady = true" : "archiveReady = false";
-        statusEl.className = j.archiveReady ? "ok" : "err";
+        statusEl.textContent = j.archiveReady ? 'archiveReady = true' : 'archiveReady = false';
+        statusEl.className = j.archiveReady ? 'ok' : 'err';
       } catch {
-        statusEl.textContent = "healthz failed";
-        statusEl.className = "err";
+        statusEl.textContent = 'healthz failed';
+        statusEl.className = 'err';
       }
     }
 
-    // NOTE: use the stable archive API, not the legacy /api/jobs alias.
     async function load() {
       const r = await fetch(`${API_BASE}/api/archive?limit=5000`);
-      if (!r.ok) { rowsEl.innerHTML = `<tr><td colspan="9" class="muted">GET /api/archive failed</td></tr>`; return; }
+      if (!r.ok) {
+        rowsEl.innerHTML = `<tr><td colspan="9" class="muted">GET /api/archive failed</td></tr>`;
+        countEl.textContent = '0';
+        return;
+      }
       const data = await r.json();
-
-      state.all = (Array.isArray(data) ? data : data.jobs || []).map(x => ({
-        id: x.id,
-        finishedAt: x.finished ?? x.finished_at ?? x.endTime ?? null,
-        username:  x.technician ?? x.username ?? "",
-        partNumber: x.part_number ?? x.partNumber ?? "",
-        expectedMin: (() => {
-          const cat = catByPart.get(String(x.part_number || x.partNumber || ""));
-          if (cat && typeof cat.expectedHours === "number") return Math.round(cat.expectedHours*60);
-          if (x.expected_minutes != null) return Number(x.expected_minutes);
-          if (x.expected != null) return Number(x.expected);
-          return null;
-        })(),
-        printName: (() => {
-          const cat = catByPart.get(String(x.part_number || x.partNumber || ""));
-          return cat?.printName ?? x.printName ?? "";
-        })(),
-        note: x.notes ?? x.note ?? "",
-        totalActiveSec: (() => {
-          if (x.total_active_sec != null) return Number(x.total_active_sec);
-          if (x.totalActive != null) return Number(x.totalActive);
-          if (x.startTime && x.endTime) {
-            const pause = Number(x.pauseTotal || 0);
-            return Math.max(0, Math.round((x.endTime - x.startTime - pause)/1000));
-          }
-          return null;
-        })(),
-        startTime: x.started_at ?? x.startTime ?? null,
-        endTime: x.finished_at ?? x.endTime ?? null
-      }));
-
+      const arr = Array.isArray(data) ? data : (Array.isArray(data.jobs) ? data.jobs : []);
+      state.all = arr.map(x => {
+        const part = x.part_number ?? x.partNumber ?? '';
+        const cat = catByPart.get(String(part));
+        const expectedMin = (cat && typeof cat.expectedHours === 'number')
+          ? Math.round(cat.expectedHours * 60)
+          : (x.expected_minutes ?? x.expected ?? null);
+        const totalActiveSec = (x.total_active_sec ?? x.totalActive ?? null);
+        return {
+          id: x.id,
+          finishedAt: x.finished_at ?? x.finished ?? x.endTime ?? null,
+          username: x.technician ?? x.username ?? '',
+          partNumber: part,
+          printName: cat?.printName ?? x.printName ?? '',
+          expectedMin,
+          note: x.notes ?? x.note ?? '',
+          totalActiveSec,
+          startTime: x.started_at ?? x.startTime ?? null,
+          endTime: x.finished_at ?? x.endTime ?? null
+        };
+      });
       apply();
     }
 
     function apply() {
-      const p = (filters.part.value || "").toLowerCase();
-      const t = (filters.tech.value || "").toLowerCase();
-      const l = (filters.loc.value || "").toLowerCase();
+      const p = (filters.part.value || '').toLowerCase();
+      const t = (filters.tech.value || '').toLowerCase();
+      const l = (filters.loc.value  || '').toLowerCase();
       const m = filters.mins.value ? Number(filters.mins.value) : null;
 
       state.view = state.all.filter(r => {
         if (p && !String(r.partNumber).toLowerCase().includes(p)) return false;
         if (t && !String(r.username).toLowerCase().includes(t)) return false;
         if (l && !(r.location ? String(r.location).toLowerCase().includes(l) : false)) return false;
-        if (m != null && r.expectedMin != null && r.expectedMin !== m && Math.abs(r.expectedMin - m) > 0.5) return false;
+        if (m != null && r.expectedMin != null && Math.abs(r.expectedMin - m) > 0.5) return false;
         return true;
       });
 
@@ -195,8 +185,8 @@
     }
 
     function render() {
-      rowsEl.innerHTML = "";
-      if (countEl) countEl.textContent = state.view.length;
+      rowsEl.innerHTML = '';
+      countEl.textContent = String(state.view.length);
 
       if (state.view.length === 0) {
         rowsEl.innerHTML = `<tr><td colspan="9" class="muted">No archived jobs yet.</td></tr>`;
@@ -204,14 +194,14 @@
       }
 
       for (const r of state.view) {
-        const tr = document.createElement("tr");
+        const tr = document.createElement('tr');
         tr.innerHTML = `
           <td>${toLocal(r.finishedAt)}</td>
           <td>${r.username}</td>
           <td>${r.partNumber}</td>
-          <td>${r.printName || ""}</td>
+          <td>${r.printName || ''}</td>
           <td>${fmtHM(r.expectedMin)}</td>
-          <td>${r.note || ""}</td>
+          <td>${r.note || ''}</td>
           <td>${fmtHMS(r.totalActiveSec)}</td>
           <td><button class="secondary small" data-adj="${r.id}">Adjust</button></td>
           <td><button class="danger small" data-del="${r.id}">Delete</button></td>
@@ -219,115 +209,126 @@
         rowsEl.appendChild(tr);
       }
 
-      rowsEl.querySelectorAll("button[data-adj]").forEach(b => b.addEventListener("click", () => openAdjust(Number(b.dataset.adj))));
-      rowsEl.querySelectorAll("button[data-del]").forEach(b => b.addEventListener("click", () => doDelete(Number(b.dataset.del))));
+      rowsEl.querySelectorAll('button[data-adj]').forEach(b =>
+        b.addEventListener('click', () => openAdjust(Number(b.dataset.adj)))
+      );
+      rowsEl.querySelectorAll('button[data-del]').forEach(b =>
+        b.addEventListener('click', () => doDelete(Number(b.dataset.del)))
+      );
     }
 
-    // Adjust dialog helpers
-    const dlg = $("#adjDialog");
+    // Adjust dialog
+    const dlg = document.getElementById('adjDialog');
     const adj = {
-      meta: $("#adjMeta"), form: $("#adjForm"),
-      user: $("#adjUser"), part: $("#adjPart"), note: $("#adjNote"),
-      start: $("#adjStart"), end: $("#adjEnd"), pause: $("#adjPause"),
-      reason: $("#adjReason"), cancel: $("#adjCancel")
+      form: document.getElementById('adjForm'),
+      meta: document.getElementById('adjMeta'),
+      user: document.getElementById('adjUser'),
+      part: document.getElementById('adjPart'),
+      note: document.getElementById('adjNote'),
+      start: document.getElementById('adjStart'),
+      end: document.getElementById('adjEnd'),
+      pause: document.getElementById('adjPause'),
+      reason: document.getElementById('adjReason'),
+      cancel: document.getElementById('adjCancel')
     };
-
-    const toLocalDT = (ms)=>{ if(!ms)return""; const d=new Date(ms),pad=n=>String(n).padStart(2,'0'); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+    const toLocalDT = (ms)=>{ if(!ms)return''; const d=new Date(ms),pad=n=>String(n).padStart(2,'0'); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`; };
 
     function openAdjust(id) {
       const r = state.view.find(x => x.id === id); if (!r) return;
       state.current = r;
       adj.meta.textContent = `Archive #${r.id} • Finished ${toLocal(r.finishedAt)}`;
-      adj.user.value = r.username || "";
-      adj.part.value = r.partNumber || "";
-      adj.note.value = r.note || "";
+      adj.user.value = r.username || '';
+      adj.part.value = r.partNumber || '';
+      adj.note.value = r.note || '';
       adj.start.value = toLocalDT(r.startTime);
       adj.end.value = toLocalDT(r.endTime);
-      adj.pause.value = "";
-      adj.reason.value = "";
+      adj.pause.value = '';
+      adj.reason.value = '';
       dlg.showModal();
     }
 
-    adj.cancel.addEventListener("click", () => dlg.close());
-    adj.form.addEventListener("submit", async (e) => {
+    adj.cancel.addEventListener('click', () => dlg.close());
+    adj.form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const r = state.current; if (!r) return;
-
       const toMs = v => v ? new Date(v).getTime() : null;
+
       const payload = {};
       if (adj.user.value !== r.username) payload.username = adj.user.value;
       if (adj.part.value !== r.partNumber) payload.partNumber = adj.part.value;
-      if (adj.note.value !== (r.note || "")) payload.note = adj.note.value;
+      if (adj.note.value !== (r.note || '')) payload.note = adj.note.value;
       const sMs = toMs(adj.start.value), eMs = toMs(adj.end.value);
       if (sMs && sMs !== r.startTime) payload.startTime = sMs;
       if (eMs && eMs !== r.endTime)   payload.endTime   = eMs;
-      if (adj.pause.value !== "") payload.pauseTotal = Number(adj.pause.value) * 60000;
+      if (adj.pause.value !== '') payload.pauseTotal = Number(adj.pause.value) * 60000;
       payload.reason = adj.reason.value.trim();
       if (!payload.reason) { adj.reason.focus(); return; }
 
       const res = await fetch(`${API_BASE}/api/archive/${r.id}/adjust`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-      if (!res.ok) { alert("Adjustment failed"); return; }
+      if (!res.ok) { alert('Adjustment failed'); return; }
       dlg.close();
       await load();
     });
 
     async function doDelete(id) {
-      const reason = prompt("Delete reason (required):");
+      const reason = prompt('Delete reason (required):');
       if (!reason) return;
       const res = await fetch(`${API_BASE}/api/archive/${id}/delete`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reason })
       });
-      if (!res.ok) { alert("Delete failed"); return; }
+      if (!res.ok) { alert('Delete failed'); return; }
       await load();
     }
 
-    // Export / Import
-    $("#exportBtn").addEventListener("click", async () => {
+    // Export / Import using stable archive endpoints
+    document.getElementById('exportBtn').addEventListener('click', async () => {
       const res = await fetch(`${API_BASE}/api/archive?limit=500000`);
-      if (!res.ok) return alert("Export failed");
+      if (!res.ok) return alert('Export failed');
       const data = await res.json();
-      const blob = new Blob([JSON.stringify({ exported_at: new Date().toISOString(), jobs: data }, null, 2)], { type: "application/json" });
+      const blob = new Blob([JSON.stringify({ exported_at: new Date().toISOString(), jobs: data }, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url; a.download = `wireshop-archive-${new Date().toISOString().replace(/[:.]/g,"-")}.json`;
-      a.click(); URL.revokeObjectURL(url);
+      const a = Object.assign(document.createElement('a'), {
+        href: url,
+        download: `wireshop-archive-${new Date().toISOString().replace(/[:.]/g,'-')}.json`
+      });
+      document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
     });
 
-    $("#importBtn").addEventListener("click", () => $("#importFile").click());
-    $("#importFile").addEventListener("change", async (e) => {
+    document.getElementById('importBtn').addEventListener('click', () => document.getElementById('importFile').click());
+    document.getElementById('importFile').addEventListener('change', async (e) => {
       const file = e.target.files?.[0]; if (!file) return;
       try {
         const text = await file.text();
         const parsed = JSON.parse(text);
         const jobs = Array.isArray(parsed?.jobs) ? parsed.jobs : (Array.isArray(parsed) ? parsed : []);
-        if (jobs.length === 0) return alert("No jobs found in file.");
+        if (jobs.length === 0) return alert('No jobs found in file.');
         const res = await fetch(`${API_BASE}/api/archive/bulk`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ jobs })
         });
-        if (!res.ok) throw new Error("Bulk import failed");
+        if (!res.ok) throw new Error('Bulk import failed');
         await load();
       } catch (err) {
-        alert("Import failed: " + err.message);
+        alert('Import failed: ' + err.message);
       } finally {
-        e.target.value = "";
+        e.target.value = '';
       }
     });
 
-    // Filters
-    $("#apply").addEventListener("click", apply);
-    $("#reset").addEventListener("click", () => {
-      filters.part.value = ""; filters.tech.value = ""; filters.loc.value = ""; filters.mins.value = "";
+    // Filter buttons
+    document.getElementById('apply').addEventListener('click', apply);
+    document.getElementById('reset').addEventListener('click', () => {
+      filters.part.value = ''; filters.tech.value = ''; filters.loc.value = ''; filters.mins.value = '';
       apply();
     });
-    $("#refresh").addEventListener("click", load);
+    document.getElementById('refresh').addEventListener('click', load);
 
     // boot
     ping();
