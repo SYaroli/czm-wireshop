@@ -1,5 +1,6 @@
 // wireshop-backend/server.js
-// WireShop backend with robust auto-archive + legacy /api/jobs/archive aliases.
+// WireShop backend with robust auto-archive + legacy aliases.
+// TRACE logging is off unless env JOBS_TRACE=1.
 
 const path = require("path");
 const express = require("express");
@@ -9,6 +10,8 @@ const usersRouter = require("./routes/users");
 const jobsRouter = require("./routes/jobs");
 const archiveRouter = require("./routes/archive");
 const archive = require("./archiveStore");
+
+const TRACE = String(process.env.JOBS_TRACE || "").trim() === "1";
 
 let archiveReady = false;
 (async () => {
@@ -50,21 +53,23 @@ function pruneOld() {
   for (const [c, v] of lastUserByClient) if (v.ts < cutoff) lastUserByClient.delete(c);
 }
 
-// ---------------- TRACE every /api/jobs request (leave on for now) --------------
-app.use("/api/jobs", (req, res, next) => {
-  const started = Date.now();
-  const method = req.method;
-  const url = req.originalUrl || req.url;
-  const q = JSON.stringify(req.query || {});
-  let bodyPreview = "";
-  try { bodyPreview = JSON.stringify(req.body || {}); } catch {}
-  if (bodyPreview.length > 800) bodyPreview = bodyPreview.slice(0, 800) + "...";
-  res.on("finish", () => {
-    const ms = Date.now() - started;
-    console.log(`[TRACE] ${method} ${url} -> ${res.statusCode} (${ms}ms) q=${q} body=${bodyPreview}`);
+// ---------------- TRACE every /api/jobs request (optional) ----------------
+if (TRACE) {
+  app.use("/api/jobs", (req, res, next) => {
+    const started = Date.now();
+    const method = req.method;
+    const url = req.originalUrl || req.url;
+    const q = JSON.stringify(req.query || {});
+    let bodyPreview = "";
+    try { bodyPreview = JSON.stringify(req.body || {}); } catch {}
+    if (bodyPreview.length > 800) bodyPreview = bodyPreview.slice(0, 800) + "...";
+    res.on("finish", () => {
+      const ms = Date.now() - started;
+      console.log(`[TRACE] ${method} ${url} -> ${res.statusCode} (${ms}ms) q=${q} body=${bodyPreview}`);
+    });
+    next();
   });
-  next();
-});
+}
 
 // Remember which username this browser cares about
 app.use("/api/jobs/logs/:username", (req, _res, next) => {
@@ -72,7 +77,7 @@ app.use("/api/jobs/logs/:username", (req, _res, next) => {
   next();
 });
 
-// Cache START on /api/jobs/log (the one your UI actually posts)
+// Cache START on /api/jobs/log (actual Start POST)
 app.post("/api/jobs/log", (req, _res, next) => {
   const b = req.body || {};
   const isStart = String(b.action || "").toLowerCase() === "start";
@@ -90,7 +95,7 @@ app.post("/api/jobs/log", (req, _res, next) => {
   next();
 });
 
-// Keep old /logs POST too, just in case
+// Keep /logs POST too, just in case
 app.post("/api/jobs/logs", (req, _res, next) => {
   const b = req.body || {};
   const isStart = String(b.action || "").toLowerCase() === "start";
@@ -119,20 +124,9 @@ function looksLikeFinish(src = {}, url = "") {
   ].join("|");
   return /finish|finished|complete|completed|done|end|stop/.test(haystack);
 }
-function pick(obj, keys) {
-  for (const k of keys) if (obj && obj[k] != null && obj[k] !== "") return obj[k];
-  return null;
-}
-const toInt = (v) => {
-  if (v == null || v === "") return null;
-  const n = Number(v);
-  return Number.isFinite(n) ? Math.trunc(n) : null;
-};
-const toISO = (v) => {
-  if (!v) return null;
-  const d = new Date(v);
-  return Number.isNaN(d.getTime()) ? null : d.toISOString();
-};
+function pick(obj, keys) { for (const k of keys) if (obj && obj[k] != null && obj[k] !== "") return obj[k]; return null; }
+const toInt = (v) => { if (v == null || v === "") return null; const n = Number(v); return Number.isFinite(n) ? Math.trunc(n) : null; };
+const toISO = (v) => { if (!v) return null; const d = new Date(v); return Number.isNaN(d.getTime()) ? null : d.toISOString(); };
 
 app.use("/api/jobs", (req, res, next) => {
   res.on("finish", async () => {
@@ -141,22 +135,17 @@ app.use("/api/jobs", (req, res, next) => {
 
     pruneOld();
 
-    // Merge body + query since some routes are GET-with-query
     const src = { ...(req.body || {}), ...(req.query || {}) };
     const url = req.originalUrl || req.url;
     if (!looksLikeFinish(src, url)) return;
 
-    let username =
-      pick(src, ["technician", "tech", "username", "user", "name"]) ||
-      getClientUser(req);
-
+    let username = pick(src, ["technician", "tech", "username", "user", "name"]) || getClientUser(req);
     let part =
       pick(src, ["part_number", "partNumber", "part", "partNo", "partno", "print", "print_number", "printNumber"]) ||
-      (username && lastStartByUser.get(username)?.part_number) ||
-      null;
+      (username && lastStartByUser.get(username)?.part_number) || null;
 
     const job = {
-      part_number: part,                        // archiveStore coerces null -> "(unknown)"
+      part_number: part, // archiveStore coerces null -> "(unknown)"
       technician: username || null,
       location: pick(src, ["location", "station", "workstation"]),
       status: "archived",
@@ -167,8 +156,7 @@ app.use("/api/jobs", (req, res, next) => {
         toInt(pick(src, ["total_active_sec", "totalSeconds", "total", "elapsed", "timeActiveSec"])) ?? null,
       started_at:
         toISO(pick(src, ["started_at", "startedAt", "start_time", "startTime"])) ||
-        (username && lastStartByUser.get(username)?.started_at) ||
-        null,
+        (username && lastStartByUser.get(username)?.started_at) || null,
       finished_at:
         toISO(pick(src, ["finished_at", "finishedAt", "finish_time", "finishTime"])) || new Date().toISOString(),
       notes: pick(src, ["notes", "comment"])
@@ -176,7 +164,7 @@ app.use("/api/jobs", (req, res, next) => {
 
     try {
       await archive.saveArchivedJob({ ...src, ...job });
-      console.log("[ARCHIVE] auto-saved:", job.part_number || "(unknown)", "by", job.technician || "(unknown)");
+      if (TRACE) console.log("[ARCHIVE] auto-saved:", job.part_number || "(unknown)", "by", job.technician || "(unknown)");
     } catch (e) {
       console.error("[ARCHIVE] auto-archive failed:", e.message);
     }
@@ -185,7 +173,7 @@ app.use("/api/jobs", (req, res, next) => {
   next();
 }, jobsRouter);
 
-// ---------------- Legacy aliases: make Admin table read from Postgres ----------
+// ---------------- Legacy aliases: Admin reads Postgres -------------------
 const { listArchivedJobs, deleteArchivedJob } = archive;
 
 function parseJSON(value) {
@@ -194,7 +182,6 @@ function parseJSON(value) {
   try { return JSON.parse(value); } catch { return null; }
 }
 
-// List, legacy shape
 app.get("/api/jobs/archive", async (req, res) => {
   try {
     const limit = Number(req.query.limit ?? 500);
@@ -220,7 +207,6 @@ app.get("/api/jobs/archive", async (req, res) => {
   }
 });
 
-// Delete, legacy path
 app.delete("/api/jobs/archive/:id", async (req, res) => {
   try {
     await deleteArchivedJob(req.params.id);
@@ -231,24 +217,24 @@ app.delete("/api/jobs/archive/:id", async (req, res) => {
   }
 });
 
-// ---------------- Native archive API (new) ------------------------------------
+// ---------------- Native archive API ------------------------------------
 app.use("/api/archive", archiveRouter);
 
-// ---------------- Users API ---------------------------------------------------
+// ---------------- Users API ---------------------------------------------
 app.use("/api/users", usersRouter);
 
-// ---------------- Health ------------------------------------------------------
+// ---------------- Health -------------------------------------------------
 app.get("/healthz", (_req, res) => {
   res.json({ ok: true, archiveReady, node: process.version, now: new Date().toISOString() });
 });
 
-// ---------------- Static frontend --------------------------------------------
+// ---------------- Static frontend ---------------------------------------
 const FRONTEND_DIR = path.join(__dirname, "..", "wireshop-frontend");
 app.use(express.static(FRONTEND_DIR));
 app.get("/archive", (_req, res) => res.sendFile(path.join(FRONTEND_DIR, "archive.html")));
 app.get("/", (_req, res) => res.sendFile(path.join(FRONTEND_DIR, "index.html")));
 
-// ---------------- Errors ------------------------------------------------------
+// ---------------- Errors -------------------------------------------------
 /* eslint-disable no-unused-vars */
 app.use((err, _req, res, _next) => {
   console.error("[ERROR]", err);
