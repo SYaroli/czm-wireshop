@@ -1,23 +1,67 @@
-// server.js — clean boot, two routers, CORS, health
-const express = require('express');
-const cors = require('cors');
-const bodyParser = require('body-parser');
+// wireshop-backend/server.js
+// Express server for CZM WireShop.
+// Boots archive persistence (Postgres) so redeploys stop wiping history.
 
-const app = express();
-const PORT = process.env.PORT || 3000;
-
-// init DB (creates/migrates tables)
-require('./db');
-
-app.use(bodyParser.json());
-app.use(cors({ origin: (o, cb) => cb(null, true), credentials: false }));
-
-app.get('/health', (_req, res) => res.status(200).send('ok'));
+const path = require("path");
+const express = require("express");
+const cors = require("cors");
 
 // Routers
-app.use('/api/jobs',   require('./routes/jobs'));
-app.use('/api/users',  require('./routes/users'));
+const usersRouter = require("./routes/users");
+const jobsRouter = require("./routes/jobs");
 
-app.get('/', (_req, res) => res.send('Wireshop Backend Running'));
+// Durable archive (Postgres)
+let archiveReady = false;
+(async () => {
+  try {
+    const archive = require("./archiveStore"); // created earlier
+    await archive.init();
+    archiveReady = true;
+    console.log("[ARCHIVE] Postgres archive initialized");
+  } catch (err) {
+    console.error("[ARCHIVE] init failed:", err.message);
+    // Fail fast. If we run without durable storage, you lose data on redeploy.
+    process.exit(1);
+  }
+})();
 
-app.listen(PORT, () => console.log(`Server listening on ${PORT}`));
+const app = express();
+app.use(cors());
+app.use(express.json({ limit: "1mb" }));
+app.use(express.urlencoded({ extended: true }));
+
+// API routes (unchanged)
+app.use("/api/users", usersRouter);
+app.use("/api/jobs", jobsRouter);
+
+// Health/diagnostics
+app.get("/healthz", (_req, res) => {
+  res.json({
+    ok: true,
+    archiveReady,
+    node: process.version,
+    now: new Date().toISOString(),
+  });
+});
+
+// Static frontend
+const FRONTEND_DIR = path.join(__dirname, "..", "wireshop-frontend");
+app.use(express.static(FRONTEND_DIR));
+
+// Default: serve the login page
+app.get("/", (_req, res) => {
+  res.sendFile(path.join(FRONTEND_DIR, "index.html"));
+});
+
+// Error handler
+// eslint-disable-next-line no-unused-vars
+app.use((err, _req, res, _next) => {
+  console.error("[ERROR]", err);
+  res.status(500).json({ error: "Server error" });
+});
+
+// Start server
+const PORT = process.env.PORT || 10000;
+app.listen(PORT, () => {
+  console.log(`WireShop backend listening on port ${PORT}`);
+});
