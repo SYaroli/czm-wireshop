@@ -1,4 +1,6 @@
 // wireshop-backend/server.js
+// Express server for CZM WireShop with automatic archiving on job finish.
+
 const path = require("path");
 const express = require("express");
 const cors = require("cors");
@@ -7,11 +9,15 @@ const usersRouter = require("./routes/users");
 const jobsRouter = require("./routes/jobs");
 const archiveRouter = require("./routes/archive");
 
-// Initialize durable archive (Postgres)
+// Postgres archive
+const archive = require("./archiveStore");
+
+// If your finish endpoint path is different, change this:
+const FINISH_PATH = "/api/jobs/finish";
+
 let archiveReady = false;
 (async () => {
   try {
-    const archive = require("./archiveStore");
     await archive.init();
     archiveReady = true;
     console.log("[ARCHIVE] Postgres archive initialized");
@@ -24,6 +30,55 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true }));
+
+/**
+ * Auto-archive hook:
+ * We register a lightweight handler on the same path your app uses to finish a job.
+ * It does NOTHING to the request/response. It just listens for a successful response
+ * and then writes an archive row in the background.
+ */
+app.post(FINISH_PATH, (req, res, next) => {
+  // Let the real /api/jobs/finish route run first.
+  res.on("finish", async () => {
+    // Only archive if the finish call succeeded.
+    if (!archiveReady) return;
+    if (res.statusCode >= 400) return;
+
+    try {
+      const b = req.body || {};
+      // Best-effort mapping. We also store the full payload in job_json.
+      const job = {
+        part_number:
+          b.part_number || b.partNumber || b.part || b.partNo || b.partno || null,
+        technician:
+          b.technician || b.username || b.user || b.name || null,
+        location:
+          b.location || b.station || b.workstation || null,
+        status: "archived",
+        expected_minutes:
+          b.expected_minutes || b.expected || b.expectedMin || null,
+        total_active_sec:
+          b.total_active_sec || b.totalSeconds || b.total || b.elapsed || null,
+        started_at: b.started_at || b.startedAt || null,
+        finished_at: b.finished_at || b.finishedAt || new Date().toISOString(),
+        notes: b.notes || null,
+        // archiveStore will also persist the entire body into job_json
+      };
+
+      // Save it. archiveStore handles JSON packing and null-safety.
+      await archive.saveArchivedJob({ ...job, ...{ job_json: undefined } });
+      console.log(
+        "[ARCHIVE] Auto-saved on finish:",
+        job.part_number || "(no part)"
+      );
+    } catch (e) {
+      console.error("[ARCHIVE] auto-archive failed:", e.message);
+    }
+  });
+
+  // Hand off to the real route in routes/jobs.js
+  next();
+});
 
 // API routes
 app.use("/api/users", usersRouter);
@@ -39,12 +94,12 @@ app.get("/healthz", (_req, res) => {
 const FRONTEND_DIR = path.join(__dirname, "..", "wireshop-frontend");
 app.use(express.static(FRONTEND_DIR));
 
-// Serve archive viewer at /archive (so you don’t have to type .html)
+// Shortcut to the archive viewer
 app.get("/archive", (_req, res) => {
   res.sendFile(path.join(FRONTEND_DIR, "archive.html"));
 });
 
-// Default route: login
+// Default: login page
 app.get("/", (_req, res) => {
   res.sendFile(path.join(FRONTEND_DIR, "index.html"));
 });
