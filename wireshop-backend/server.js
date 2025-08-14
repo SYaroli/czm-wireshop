@@ -1,5 +1,6 @@
 // wireshop-backend/server.js
-// Express server for CZM WireShop with auto-archive that survives empty Finish payloads.
+// WireShop backend with robust auto-archive.
+// Caches "Start" on /api/jobs/log (and /logs), fills missing fields on "Finish".
 
 const path = require("path");
 const express = require("express");
@@ -26,7 +27,7 @@ app.use(cors());
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true }));
 
-// ---------------- In-memory hints so we can fill missing fields ----------------
+// ---------------- In-memory hints to fill Finish payloads ----------------
 const lastStartByUser = new Map();   // username -> { part_number, technician, started_at, expected_minutes, ts }
 const lastUserByClient = new Map();  // clientId -> { username, ts }
 
@@ -36,6 +37,7 @@ function clientId(req) {
   return `${xff || req.ip || "?"}|${ua}`;
 }
 function rememberClientUser(req, username) {
+  if (!username) return;
   lastUserByClient.set(clientId(req), { username, ts: Date.now() });
 }
 function getClientUser(req) {
@@ -49,7 +51,7 @@ function pruneOld() {
   for (const [c, v] of lastUserByClient) if (v.ts < cutoff) lastUserByClient.delete(c);
 }
 
-// ---------------- TRACE every /api/jobs request (helps debugging) ---------------
+// ---------------- TRACE every /api/jobs request (leave on) ----------------
 app.use("/api/jobs", (req, res, next) => {
   const started = Date.now();
   const method = req.method;
@@ -67,16 +69,16 @@ app.use("/api/jobs", (req, res, next) => {
 
 // When the UI fetches logs for a specific user, remember the username for that client.
 app.use("/api/jobs/logs/:username", (req, _res, next) => {
-  const u = req.params.username || req.params.user;
-  if (u) rememberClientUser(req, u);
+  rememberClientUser(req, req.params.username || req.params.user);
   next();
 });
 
-// When a Start event is posted, remember part number etc for that user.
-app.post("/api/jobs/logs", (req, _res, next) => {
+// Cache START on /api/jobs/log  (singular, the one your app actually uses)
+app.post("/api/jobs/log", (req, _res, next) => {
   const b = req.body || {};
-  if (String(b.action || "").toLowerCase() === "start" && (b.username || b.user || b.tech)) {
-    const username = b.username || b.user || b.tech;
+  const isStart = String(b.action || "").toLowerCase() === "start";
+  const username = b.username || b.user || b.tech || b.technician || null;
+  if (isStart && username) {
     lastStartByUser.set(username, {
       part_number: b.part_number || b.partNumber || b.part || b.print || null,
       technician: username,
@@ -84,13 +86,30 @@ app.post("/api/jobs/logs", (req, _res, next) => {
       expected_minutes: b.expected_minutes || b.expected || null,
       ts: Date.now()
     });
-    // IMPORTANT: tie the client to this username so later Finish can find it
     rememberClientUser(req, username);
   }
   next();
 });
 
-// ---------------- Auto-archive for ANY /api/jobs request -----------------------
+// Keep old /logs POST too (harmless; covers both shapes)
+app.post("/api/jobs/logs", (req, _res, next) => {
+  const b = req.body || {};
+  const isStart = String(b.action || "").toLowerCase() === "start";
+  const username = b.username || b.user || b.tech || b.technician || null;
+  if (isStart && username) {
+    lastStartByUser.set(username, {
+      part_number: b.part_number || b.partNumber || b.part || b.print || null,
+      technician: username,
+      started_at: b.start_time || b.startTime || new Date().toISOString(),
+      expected_minutes: b.expected_minutes || b.expected || null,
+      ts: Date.now()
+    });
+    rememberClientUser(req, username);
+  }
+  next();
+});
+
+// ---------------- Auto-archive for ANY /api/jobs request -----------------
 function looksLikeFinish(src = {}, url = "") {
   const u = (url || "").toLowerCase();
   if (u.includes("finish") || u.includes("/finish") || u.includes("complete") || u.includes("/complete")) return true;
@@ -142,7 +161,7 @@ app.use("/api/jobs", (req, res, next) => {
       null;
 
     const job = {
-      part_number: part,
+      part_number: part,                        // archiveStore will coerce null -> "(unknown)"
       technician: username || null,
       location: pick(src, ["location", "station", "workstation"]),
       status: "archived",
