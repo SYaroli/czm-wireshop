@@ -7,6 +7,7 @@ window.users = [
   { username: "Larissa.Frauche",   pin: "1234", role: "assembler" },
   { username: "Tyler.Ellis",     pin: "1234", role: "assembler" },
   { username: "Carter.Heptinstall",    pin: "1234", role: "assembler" },
-  { username: "Christine.Sapp", pin: "1234", role: "assembler" }
+  { username: "Christen.Sapp", pin: "1234", role: "assembler" }
 ];
+
 
