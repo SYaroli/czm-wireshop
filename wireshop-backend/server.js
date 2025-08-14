@@ -65,7 +65,6 @@ app.use("/api/jobs", (req, res, next) => {
   next();
 });
 
-// ---------------- Capture "context" calls the UI makes -------------------------
 // When the UI fetches logs for a specific user, remember the username for that client.
 app.use("/api/jobs/logs/:username", (req, _res, next) => {
   const u = req.params.username || req.params.user;
@@ -85,7 +84,8 @@ app.post("/api/jobs/logs", (req, _res, next) => {
       expected_minutes: b.expected_minutes || b.expected || null,
       ts: Date.now()
     });
-    rememberClientUser({ headers: { "x-forwarded-for": "", "user-agent": "" }, ip: "" }, username);
+    // IMPORTANT: tie the client to this username so later Finish can find it
+    rememberClientUser(req, username);
   }
   next();
 });
@@ -132,7 +132,6 @@ app.use("/api/jobs", (req, res, next) => {
     const url = req.originalUrl || req.url;
     if (!looksLikeFinish(src, url)) return;
 
-    // Try to determine username and part even if the payload is skeletal
     let username =
       pick(src, ["technician", "tech", "username", "user", "name"]) ||
       getClientUser(req);
@@ -147,12 +146,17 @@ app.use("/api/jobs", (req, res, next) => {
       technician: username || null,
       location: pick(src, ["location", "station", "workstation"]),
       status: "archived",
-      expected_minutes: toInt(pick(src, ["expected_minutes", "expected", "expectedMin", "expectedMinutes"]))
-        ?? (username && lastStartByUser.get(username)?.expected_minutes) ?? null,
-      total_active_sec: toInt(pick(src, ["total_active_sec", "totalSeconds", "total", "elapsed", "timeActiveSec"])) ?? null,
-      started_at: toISO(pick(src, ["started_at", "startedAt", "start_time", "startTime"]))
-        || (username && lastStartByUser.get(username)?.started_at) || null,
-      finished_at: toISO(pick(src, ["finished_at", "finishedAt", "finish_time", "finishTime"])) || new Date().toISOString(),
+      expected_minutes:
+        toInt(pick(src, ["expected_minutes", "expected", "expectedMin", "expectedMinutes"])) ??
+        (username && lastStartByUser.get(username)?.expected_minutes) ?? null,
+      total_active_sec:
+        toInt(pick(src, ["total_active_sec", "totalSeconds", "total", "elapsed", "timeActiveSec"])) ?? null,
+      started_at:
+        toISO(pick(src, ["started_at", "startedAt", "start_time", "startTime"])) ||
+        (username && lastStartByUser.get(username)?.started_at) ||
+        null,
+      finished_at:
+        toISO(pick(src, ["finished_at", "finishedAt", "finish_time", "finishTime"])) || new Date().toISOString(),
       notes: pick(src, ["notes", "comment"])
     };
 
