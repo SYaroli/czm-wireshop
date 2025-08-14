@@ -1,6 +1,5 @@
 // wireshop-backend/server.js
-// WireShop backend with robust auto-archive.
-// Caches "Start" on /api/jobs/log (and /logs), fills missing fields on "Finish".
+// WireShop backend with robust auto-archive + legacy /api/jobs/archive aliases.
 
 const path = require("path");
 const express = require("express");
@@ -51,7 +50,7 @@ function pruneOld() {
   for (const [c, v] of lastUserByClient) if (v.ts < cutoff) lastUserByClient.delete(c);
 }
 
-// ---------------- TRACE every /api/jobs request (leave on) ----------------
+// ---------------- TRACE every /api/jobs request (leave on for now) --------------
 app.use("/api/jobs", (req, res, next) => {
   const started = Date.now();
   const method = req.method;
@@ -67,13 +66,13 @@ app.use("/api/jobs", (req, res, next) => {
   next();
 });
 
-// When the UI fetches logs for a specific user, remember the username for that client.
+// Remember which username this browser cares about
 app.use("/api/jobs/logs/:username", (req, _res, next) => {
   rememberClientUser(req, req.params.username || req.params.user);
   next();
 });
 
-// Cache START on /api/jobs/log  (singular, the one your app actually uses)
+// Cache START on /api/jobs/log (the one your UI actually posts)
 app.post("/api/jobs/log", (req, _res, next) => {
   const b = req.body || {};
   const isStart = String(b.action || "").toLowerCase() === "start";
@@ -91,7 +90,7 @@ app.post("/api/jobs/log", (req, _res, next) => {
   next();
 });
 
-// Keep old /logs POST too (harmless; covers both shapes)
+// Keep old /logs POST too, just in case
 app.post("/api/jobs/logs", (req, _res, next) => {
   const b = req.body || {};
   const isStart = String(b.action || "").toLowerCase() === "start";
@@ -115,12 +114,8 @@ function looksLikeFinish(src = {}, url = "") {
   if (u.includes("finish") || u.includes("/finish") || u.includes("complete") || u.includes("/complete")) return true;
   const lower = (k) => String(src[k] ?? "").toLowerCase();
   const haystack = [
-    lower("action"),
-    lower("status"),
-    lower("event"),
-    lower("op"),
-    lower("type"),
-    lower("mode")
+    lower("action"), lower("status"), lower("event"),
+    lower("op"), lower("type"), lower("mode")
   ].join("|");
   return /finish|finished|complete|completed|done|end|stop/.test(haystack);
 }
@@ -161,7 +156,7 @@ app.use("/api/jobs", (req, res, next) => {
       null;
 
     const job = {
-      part_number: part,                        // archiveStore will coerce null -> "(unknown)"
+      part_number: part,                        // archiveStore coerces null -> "(unknown)"
       technician: username || null,
       location: pick(src, ["location", "station", "workstation"]),
       status: "archived",
@@ -190,26 +185,70 @@ app.use("/api/jobs", (req, res, next) => {
   next();
 }, jobsRouter);
 
-// ---------------- Other API routes ----------------
-app.use("/api/users", usersRouter);
+// ---------------- Legacy aliases: make Admin table read from Postgres ----------
+const { listArchivedJobs, deleteArchivedJob } = archive;
+
+function parseJSON(value) {
+  if (value == null) return null;
+  if (typeof value === "object") return value;
+  try { return JSON.parse(value); } catch { return null; }
+}
+
+// List, legacy shape
+app.get("/api/jobs/archive", async (req, res) => {
+  try {
+    const limit = Number(req.query.limit ?? 500);
+    const offset = Number(req.query.offset ?? 0);
+    const rows = await listArchivedJobs({ limit, offset });
+    const out = rows.map(r => {
+      const j = parseJSON(r.job_json);
+      return {
+        id: r.id,
+        finished: r.finished_at,
+        technician: r.technician,
+        partNumber: r.part_number,
+        printName: j?.printName || j?.print || null,
+        expected: r.expected_minutes,
+        notes: r.notes,
+        totalActive: r.total_active_sec
+      };
+    });
+    res.json(out);
+  } catch (e) {
+    console.error("[LEGACY /api/jobs/archive] list failed:", e);
+    res.status(500).json({ error: "Failed to list archive" });
+  }
+});
+
+// Delete, legacy path
+app.delete("/api/jobs/archive/:id", async (req, res) => {
+  try {
+    await deleteArchivedJob(req.params.id);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error("[LEGACY /api/jobs/archive] delete failed:", e);
+    res.status(500).json({ error: "Failed to delete archive row" });
+  }
+});
+
+// ---------------- Native archive API (new) ------------------------------------
 app.use("/api/archive", archiveRouter);
 
-// ---------------- Health ----------------
+// ---------------- Users API ---------------------------------------------------
+app.use("/api/users", usersRouter);
+
+// ---------------- Health ------------------------------------------------------
 app.get("/healthz", (_req, res) => {
   res.json({ ok: true, archiveReady, node: process.version, now: new Date().toISOString() });
 });
 
-// ---------------- Static frontend ----------------
+// ---------------- Static frontend --------------------------------------------
 const FRONTEND_DIR = path.join(__dirname, "..", "wireshop-frontend");
 app.use(express.static(FRONTEND_DIR));
-app.get("/archive", (_req, res) => {
-  res.sendFile(path.join(FRONTEND_DIR, "archive.html"));
-});
-app.get("/", (_req, res) => {
-  res.sendFile(path.join(FRONTEND_DIR, "index.html"));
-});
+app.get("/archive", (_req, res) => res.sendFile(path.join(FRONTEND_DIR, "archive.html")));
+app.get("/", (_req, res) => res.sendFile(path.join(FRONTEND_DIR, "index.html")));
 
-// ---------------- Errors ----------------
+// ---------------- Errors ------------------------------------------------------
 /* eslint-disable no-unused-vars */
 app.use((err, _req, res, _next) => {
   console.error("[ERROR]", err);
