@@ -138,39 +138,40 @@
       }
     }
 
+    // NOTE: use the stable archive API, not the legacy /api/jobs alias.
     async function load() {
-      const r = await fetch(`${API_BASE}/api/jobs/archive?limit=5000`);
-      if (!r.ok) { rowsEl.innerHTML = `<tr><td colspan="9" class="muted">GET /api/jobs/archive failed</td></tr>`; return; }
-      state.all = await r.json();
+      const r = await fetch(`${API_BASE}/api/archive?limit=5000`);
+      if (!r.ok) { rowsEl.innerHTML = `<tr><td colspan="9" class="muted">GET /api/archive failed</td></tr>`; return; }
+      const data = await r.json();
 
-      // normalize fields since different routes may use different names
-      state.all = state.all.map(x => ({
+      state.all = (Array.isArray(data) ? data : data.jobs || []).map(x => ({
         id: x.id,
-        finishedAt: x.finished ?? x.finishedAt ?? x.endTime ?? null,
-        username:  x.username ?? x.technician ?? "",
-        partNumber: x.partNumber ?? x.part ?? "",
+        finishedAt: x.finished ?? x.finished_at ?? x.endTime ?? null,
+        username:  x.technician ?? x.username ?? "",
+        partNumber: x.part_number ?? x.partNumber ?? "",
         expectedMin: (() => {
-          const cat = catByPart.get(String(x.partNumber || ""));
+          const cat = catByPart.get(String(x.part_number || x.partNumber || ""));
           if (cat && typeof cat.expectedHours === "number") return Math.round(cat.expectedHours*60);
+          if (x.expected_minutes != null) return Number(x.expected_minutes);
           if (x.expected != null) return Number(x.expected);
           return null;
         })(),
         printName: (() => {
-          const cat = catByPart.get(String(x.partNumber || ""));
+          const cat = catByPart.get(String(x.part_number || x.partNumber || ""));
           return cat?.printName ?? x.printName ?? "";
         })(),
-        note: x.note ?? x.notes ?? "",
+        note: x.notes ?? x.note ?? "",
         totalActiveSec: (() => {
-          if (x.totalActive != null) return Number(x.totalActive);
           if (x.total_active_sec != null) return Number(x.total_active_sec);
+          if (x.totalActive != null) return Number(x.totalActive);
           if (x.startTime && x.endTime) {
             const pause = Number(x.pauseTotal || 0);
             return Math.max(0, Math.round((x.endTime - x.startTime - pause)/1000));
           }
           return null;
         })(),
-        startTime: x.startTime ?? x.started ?? x.started_at ?? null,
-        endTime: x.endTime ?? x.finished ?? x.finished_at ?? null
+        startTime: x.started_at ?? x.startTime ?? null,
+        endTime: x.finished_at ?? x.endTime ?? null
       }));
 
       apply();
@@ -264,7 +265,7 @@
       payload.reason = adj.reason.value.trim();
       if (!payload.reason) { adj.reason.focus(); return; }
 
-      const res = await fetch(`${API_BASE}/api/jobs/archive/${r.id}/adjust`, {
+      const res = await fetch(`${API_BASE}/api/archive/${r.id}/adjust`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
@@ -277,7 +278,7 @@
     async function doDelete(id) {
       const reason = prompt("Delete reason (required):");
       if (!reason) return;
-      const res = await fetch(`${API_BASE}/api/jobs/archive/${id}/delete`, {
+      const res = await fetch(`${API_BASE}/api/archive/${id}/delete`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ reason })
