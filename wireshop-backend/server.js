@@ -117,4 +117,18 @@ app.get("/archive", (_req, res) => {
   res.sendFile(path.join(FRONTEND_DIR, "archive.html"));
 });
 
-app.get("/", (_req, res) => {_
+app.get("/", (_req, res) => {
+  res.sendFile(path.join(FRONTEND_DIR, "index.html"));
+});
+
+// ---------- Errors ----------
+/* eslint-disable no-unused-vars */
+app.use((err, _req, res, _next) => {
+  console.error("[ERROR]", err);
+  res.status(500).json({ error: "Server error" });
+});
+
+const PORT = process.env.PORT || 10000;
+app.listen(PORT, () => {
+  console.log(`WireShop backend listening on port ${PORT}`);
+});
