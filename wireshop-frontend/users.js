@@ -8,6 +8,8 @@ window.users = [
   { username: "Tyler.Ellis",     pin: "1234", role: "assembler" },
   { username: "Carter.Heptinstall",    pin: "1234", role: "assembler" },
   { username: "Christen.Sapp", pin: "1234", role: "assembler" }
+  { username: "Justin.Anderson", pin: "1234", role: "admin" }
 ];
+
 
 
