@@ -1,6 +1,5 @@
 // wireshop-backend/archiveStore.js
 // Durable archive storage using Postgres.
-// Requires env var DATABASE_URL (Render Postgres). SSL on.
 
 let Pool;
 try {
@@ -15,8 +14,6 @@ const pool = conn && Pool ? new Pool({
   ssl: { rejectUnauthorized: false }
 }) : null;
 
-// Initialize table if it doesn't exist.
-// This runs once when the module is first required (next step).
 async function init() {
   if (!pool) throw new Error("[ARCHIVE] DATABASE_URL missing or 'pg' not installed.");
   await pool.query(`
@@ -37,8 +34,7 @@ async function init() {
   `);
 }
 
-// Save one archived job
-async function saveArchivedJob(job = {}) {
+async function saveArchivedJob(job) {
   await init();
   const {
     part_number = null,
@@ -50,16 +46,20 @@ async function saveArchivedJob(job = {}) {
     started_at = null,
     finished_at = null,
     notes = null,
-  } = job;
+  } = job || {};
 
+  const pn = part_number || "(unknown)"; // never null
   const res = await pool.query(
-    `INSERT INTO archive_jobs
+    `
+    INSERT INTO archive_jobs
       (part_number, technician, location, status, expected_minutes, total_active_sec,
        started_at, finished_at, notes, job_json)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
-     RETURNING *;`,
+    VALUES
+      ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+    RETURNING *;
+    `,
     [
-      part_number,
+      pn,
       technician,
       location,
       status,
@@ -74,7 +74,6 @@ async function saveArchivedJob(job = {}) {
   return res.rows[0];
 }
 
-// List archived jobs (newest first)
 async function listArchivedJobs({ limit = 500, offset = 0 } = {}) {
   await init();
   const res = await pool.query(
@@ -88,32 +87,24 @@ async function listArchivedJobs({ limit = 500, offset = 0 } = {}) {
   return res.rows;
 }
 
-// Get one by id
 async function getArchivedJob(id) {
   await init();
-  const res = await pool.query(
-    `SELECT * FROM archive_jobs WHERE id = $1 LIMIT 1;`,
-    [Number(id)]
-  );
+  const res = await pool.query(`SELECT * FROM archive_jobs WHERE id = $1 LIMIT 1;`, [Number(id)]);
   return res.rows[0] || null;
 }
 
-// Delete one by id
 async function deleteArchivedJob(id) {
   await init();
   await pool.query(`DELETE FROM archive_jobs WHERE id = $1;`, [Number(id)]);
   return true;
 }
 
-// Bulk import
 async function bulkImport(jobs = []) {
   await init();
   if (!Array.isArray(jobs) || jobs.length === 0) return 0;
   await pool.query("BEGIN");
   try {
-    for (const j of jobs) {
-      await saveArchivedJob(j);
-    }
+    for (const j of jobs) await saveArchivedJob(j);
     await pool.query("COMMIT");
     return jobs.length;
   } catch (e) {
@@ -138,7 +129,6 @@ function safeJson(j) {
 }
 
 module.exports = {
-  // init is exported for tests or manual boot, but not required once wired
   init,
   saveArchivedJob,
   listArchivedJobs,
