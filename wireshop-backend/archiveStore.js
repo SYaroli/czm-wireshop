@@ -31,7 +31,6 @@ async function init() {
       job_json          JSONB,
       created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
-    -- Indexes for the common filters/sorts
     CREATE INDEX IF NOT EXISTS idx_archive_finished_at ON archive_jobs (finished_at DESC NULLS LAST);
     CREATE INDEX IF NOT EXISTS idx_archive_part_number ON archive_jobs (part_number);
     CREATE INDEX IF NOT EXISTS idx_archive_tech ON archive_jobs (technician);
@@ -97,6 +96,34 @@ async function getArchivedJob(id) {
   return res.rows[0] || null;
 }
 
+async function updateArchivedJob(id, patch = {}) {
+  await init();
+  const sets = [];
+  const vals = [];
+  let i = 1;
+
+  function set(col, val, transform = x => x) {
+    if (val === undefined) return;
+    sets.push(`${col} = $${i++}`);
+    vals.push(transform(val));
+  }
+
+  set("part_number", patch.part_number ?? patch.partNumber);
+  set("technician", patch.technician ?? patch.username);
+  set("location", patch.location);
+  set("notes", patch.notes ?? patch.note);
+  set("expected_minutes", toInt(patch.expected_minutes ?? patch.expected));
+  set("total_active_sec", toInt(patch.total_active_sec ?? patch.totalActive));
+  set("started_at", toTs(patch.started_at ?? patch.startTime));
+  set("finished_at", toTs(patch.finished_at ?? patch.endTime));
+
+  if (sets.length === 0) return getArchivedJob(id);
+  vals.push(Number(id));
+  const sql = `UPDATE archive_jobs SET ${sets.join(", ")} WHERE id = $${i} RETURNING *;`;
+  const res = await pool.query(sql, vals);
+  return res.rows[0] || null;
+}
+
 async function deleteArchivedJob(id) {
   await init();
   await pool.query(`DELETE FROM archive_jobs WHERE id = $1;`, [Number(id)]);
@@ -137,6 +164,7 @@ module.exports = {
   saveArchivedJob,
   listArchivedJobs,
   getArchivedJob,
+  updateArchivedJob,
   deleteArchivedJob,
   bulkImport,
 };
