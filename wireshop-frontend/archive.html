@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>WireShop — Archive</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { font-family: system-ui, Arial, sans-serif; margin: 24px; }
+    h1 { margin: 0 0 12px; }
+    .bar { display: flex; gap: 12px; align-items: center; margin: 12px 0 20px; }
+    input, button, select { padding: 8px 10px; font-size: 14px; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #ddd; padding: 8px; font-size: 14px; }
+    th { background: #f3f3f3; text-align: left; }
+    tbody tr:nth-child(even) { background: #fafafa; }
+    .right { text-align: right; }
+    .muted { color: #777; }
+    .ok { color: #0a0; }
+    .err { color: #b00; }
+  </style>
+</head>
+<body>
+  <h1>Archive</h1>
+
+  <div class="bar">
+    <strong>Status:</strong>
+    <span id="status" class="muted">checking…</span>
+    <button id="refreshBtn">Refresh</button>
+  </div>
+
+  <form id="addForm" class="bar">
+    <input id="part" placeholder="Part number" required />
+    <input id="tech" placeholder="Technician" />
+    <input id="loc" placeholder="Location" />
+    <input id="mins" placeholder="Expected minutes" type="number" min="0" />
+    <button>Add test entry</button>
+    <span class="muted">This hits POST /api/archive</span>
+  </form>
+
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Part</th>
+        <th>Tech</th>
+        <th>Location</th>
+        <th>Status</th>
+        <th class="right">Exp (min)</th>
+        <th class="right">Total (sec)</th>
+        <th>Started</th>
+        <th>Finished</th>
+        <th>Notes</th>
+        <th>Created</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="rows"><tr><td colspan="12" class="muted">Loading…</td></tr></tbody>
+  </table>
+
+  <script>
+    const $ = (sel) => document.querySelector(sel);
+    const fmt = (v) => v ?? "";
+    const fmtTime = (v) => v ? new Date(v).toLocaleString() : "";
+
+    async function ping() {
+      try {
+        const r = await fetch("/healthz");
+        const j = await r.json();
+        $("#status").textContent = j.archiveReady ? "archiveReady = true" : "archiveReady = false";
+        $("#status").className = j.archiveReady ? "ok" : "err";
+      } catch {
+        $("#status").textContent = "healthz failed";
+        $("#status").className = "err";
+      }
+    }
+
+    async function load() {
+      try {
+        const res = await fetch("/api/archive?limit=500");
+        if (!res.ok) throw new Error("GET /api/archive failed");
+        const data = await res.json();
+        const tbody = $("#rows");
+        if (!Array.isArray(data) || data.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="12" class="muted">No archived jobs yet.</td></tr>';
+          return;
+        }
+        tbody.innerHTML = "";
+        for (const r of data) {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${fmt(r.id)}</td>
+            <td>${fmt(r.part_number)}</td>
+            <td>${fmt(r.technician)}</td>
+            <td>${fmt(r.location)}</td>
+            <td>${fmt(r.status)}</td>
+            <td class="right">${fmt(r.expected_minutes)}</td>
+            <td class="right">${fmt(r.total_active_sec)}</td>
+            <td>${fmtTime(r.started_at)}</td>
+            <td>${fmtTime(r.finished_at)}</td>
+            <td>${fmt(r.notes)}</td>
+            <td>${fmtTime(r.created_at)}</td>
+            <td><button data-id="${r.id}" class="del">Delete</button></td>
+          `;
+          tbody.appendChild(tr);
+        }
+        tbody.querySelectorAll("button.del").forEach(btn => {
+          btn.addEventListener("click", async (e) => {
+            const id = e.currentTarget.getAttribute("data-id");
+            if (!confirm("Delete archive #" + id + "?")) return;
+            const res = await fetch("/api/archive/" + id, { method: "DELETE" });
+            if (res.ok) load();
+          });
+        });
+      } catch (e) {
+        $("#rows").innerHTML = `<tr><td colspan="12" class="err">${e.message}</td></tr>`;
+      }
+    }
+
+    $("#addForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const job = {
+        part_number: $("#part").value.trim(),
+        technician: $("#tech").value.trim() || null,
+        location: $("#loc").value.trim() || null,
+        expected_minutes: $("#mins").value ? Number($("#mins").value) : null,
+        status: "archived",
+        notes: "test entry from archive.html"
+      };
+      if (!job.part_number) return;
+      const res = await fetch("/api/archive", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(job)
+      });
+      if (res.ok) {
+        $("#part").value = "";
+        $("#tech").value = "";
+        $("#loc").value = "";
+        $("#mins").value = "";
+        load();
+      } else {
+        alert("POST /api/archive failed");
+      }
+    });
+
+    $("#refreshBtn").addEventListener("click", load);
+
+    // boot
+    ping();
+    load();
+  </script>
+</body>
+</html>
