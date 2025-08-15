@@ -10,7 +10,7 @@ const usersRouter = require("./routes/users");
 const jobsRouter = require("./routes/jobs");
 const archiveRouter = require("./routes/archive");
 const archive = require("./archiveStore");
-const db = require("./db"); // needed for scheduler queries
+const db = require("./db"); // used by scheduler + auto-archive
 
 const TRACE = String(process.env.JOBS_TRACE || "").trim() === "1";
 
@@ -52,7 +52,6 @@ function mapRow(r) {
   };
 }
 
-// GET list
 app.get("/api/jobs/archive", async (req, res) => {
   try {
     const limit = Number(req.query.limit ?? 500);
@@ -64,8 +63,6 @@ app.get("/api/jobs/archive", async (req, res) => {
     res.status(500).json({ error: "Failed to list archive" });
   }
 });
-
-// POST delete (matches admin.html)
 app.post("/api/jobs/archive/:id/delete", async (req, res) => {
   try {
     await deleteArchivedJob(req.params.id);
@@ -75,8 +72,6 @@ app.post("/api/jobs/archive/:id/delete", async (req, res) => {
     res.status(500).json({ error: "Failed to delete archive row" });
   }
 });
-
-// POST adjust (minimal)
 app.post("/api/jobs/archive/:id/adjust", async (req, res) => {
   try {
     const id = req.params.id;
@@ -88,9 +83,7 @@ app.post("/api/jobs/archive/:id/adjust", async (req, res) => {
     res.status(500).json({ error: "Failed to adjust archive row" });
   }
 });
-app.get("/api/jobs/archive/:id/adjustments", async (_req, res) => {
-  res.json([]);
-});
+app.get("/api/jobs/archive/:id/adjustments", async (_req, res) => { res.json([]); });
 
 // ---------------- In-memory hints to fill Finish payloads ----------------
 const lastStartByUser = new Map();
@@ -116,7 +109,7 @@ function pruneOld() {
   for (const [c, v] of lastUserByClient) if (v.ts < cutoff) lastUserByClient.delete(c);
 }
 
-// ---------------- TRACE every /api/jobs request (optional) ----------------
+// TRACE (optional)
 if (TRACE) {
   app.use("/api/jobs", (req, res, next) => {
     const started = Date.now();
@@ -134,62 +127,60 @@ if (TRACE) {
   });
 }
 
-// Remember which username this browser cares about
+// Remember username on list route
 app.use("/api/jobs/logs/:username", (req, _res, next) => {
   rememberClientUser(req, req.params.username || req.params.user);
   next();
 });
 
-// Cache START on /api/jobs/log (actual Start POST)
+// Cache STARTs
 app.post("/api/jobs/log", (req, _res, next) => {
   const b = req.body || {};
-  const isStart = String(b.action || "").toLowerCase() === "start";
-  const username = b.username || b.user || b.tech || b.technician || null;
-  if (isStart && username) {
-    lastStartByUser.set(username, {
-      part_number: b.part_number || b.partNumber || b.part || b.print || null,
-      technician: username,
+  if (String(b.action || "").toLowerCase() === "start" && b.username) {
+    lastStartByUser.set(b.username, {
+      part_number: b.part_number || b.partNumber || null,
+      technician: b.username,
       started_at: b.start_time || b.startTime || new Date().toISOString(),
       expected_minutes: b.expected_minutes || b.expected || null,
       ts: Date.now()
     });
-    rememberClientUser(req, username);
+    rememberClientUser(req, b.username);
   }
   next();
 });
-
-// Keep /logs POST too, just in case
 app.post("/api/jobs/logs", (req, _res, next) => {
   const b = req.body || {};
-  const isStart = String(b.action || "").toLowerCase() === "start";
-  const username = b.username || b.user || b.tech || b.technician || null;
-  if (isStart && username) {
-    lastStartByUser.set(username, {
-      part_number: b.part_number || b.partNumber || b.part || b.print || null,
-      technician: username,
+  if (String(b.action || "").toLowerCase() === "start" && b.username) {
+    lastStartByUser.set(b.username, {
+      part_number: b.part_number || b.partNumber || null,
+      technician: b.username,
       started_at: b.start_time || b.startTime || new Date().toISOString(),
       expected_minutes: b.expected_minutes || b.expected || null,
       ts: Date.now()
     });
-    rememberClientUser(req, username);
+    rememberClientUser(req, b.username);
   }
   next();
 });
 
-// ---------------- Auto-archive for ANY /api/jobs request -----------------
+// ---------------- Auto-archive (now pulls totals from SQLite) -----------
 function looksLikeFinish(src = {}, url = "") {
   const u = (url || "").toLowerCase();
-  if (u.includes("finish") || u.includes("/finish") || u.includes("complete") || u.includes("/complete")) return true;
-  const lower = (k) => String(src[k] ?? "").toLowerCase();
-  const haystack = [
-    lower("action"), lower("status"), lower("event"),
-    lower("op"), lower("type"), lower("mode")
-  ].join("|");
-  return /finish|finished|complete|completed|done|end|stop/.test(haystack);
+  if (u.includes("/finish") || u.endsWith("/log") && (src.action || "").toLowerCase() === "finish") return true;
+  const lower = k => String(src[k] ?? "").toLowerCase();
+  const hay = [lower("action"), lower("status"), lower("event"), lower("op"), lower("type")].join("|");
+  return /finish|finished|complete|completed|done|end|stop/.test(hay);
 }
 function pick(obj, keys) { for (const k of keys) if (obj && obj[k] != null && obj[k] !== "") return obj[k]; return null; }
-const toInt = (v) => { if (v == null || v === "") return null; const n = Number(v); return Number.isFinite(n) ? Math.trunc(n) : null; };
-const toISO = (v) => { if (!v) return null; const d = new Date(v); return Number.isNaN(d.getTime()) ? null : d.toISOString(); };
+const toInt = v => { if (v == null || v === "") return null; const n = Number(v); return Number.isFinite(n) ? Math.trunc(n) : null; };
+const toISO = v => { if (!v) return null; const d = new Date(v); return Number.isNaN(d.getTime()) ? null : d.toISOString(); };
+
+// pull latest finalized archive row for that user from SQLite
+function fetchSqliteArchiveForUser(username, cb) {
+  if (!username) return cb(null, null);
+  const sql = `SELECT * FROM jobs_archive WHERE username = ? ORDER BY id DESC LIMIT 1`;
+  db.get(sql, [username], (err, row) => cb(err, row || null));
+}
 
 app.use("/api/jobs", (req, res, next) => {
   res.on("finish", async () => {
@@ -202,35 +193,47 @@ app.use("/api/jobs", (req, res, next) => {
     const url = req.originalUrl || req.url;
     if (!looksLikeFinish(src, url)) return;
 
-    let username = pick(src, ["technician", "tech", "username", "user", "name"]) || getClientUser(req);
+    let username =
+      pick(src, ["technician", "tech", "username", "user", "name"]) || getClientUser(req);
     let part =
-      pick(src, ["part_number", "partNumber", "part", "partNo", "partno", "print", "print_number", "printNumber"]) ||
+      pick(src, ["part_number", "partNumber", "part", "partNo", "print", "print_number", "printNumber"]) ||
       (username && lastStartByUser.get(username)?.part_number) || null;
 
-    const job = {
-      part_number: part,
-      technician: username || null,
-      location: pick(src, ["location", "station", "workstation"]),
-      status: "archived",
-      expected_minutes:
-        toInt(pick(src, ["expected_minutes", "expected", "expectedMin", "expectedMinutes"])) ??
-        (username && lastStartByUser.get(username)?.expected_minutes) ?? null,
-      total_active_sec:
-        toInt(pick(src, ["total_active_sec", "totalSeconds", "total", "elapsed", "timeActiveSec"])) ?? null,
-      started_at:
+    // Try to grab the freshly archived SQLite row to get real totals
+    fetchSqliteArchiveForUser(username, async (_err, sRow) => {
+      // Fallbacks if SQLite didn’t have it yet (should be rare)
+      const started_at =
         toISO(pick(src, ["started_at", "startedAt", "start_time", "startTime"])) ||
-        (username && lastStartByUser.get(username)?.started_at) || null,
-      finished_at:
-        toISO(pick(src, ["finished_at", "finishedAt", "finish_time", "finishTime"])) || new Date().toISOString(),
-      notes: pick(src, ["notes", "comment"])
-    };
+        (username && lastStartByUser.get(username)?.started_at) || null;
+      const finished_at =
+        toISO(pick(src, ["finished_at", "finishedAt", "finish_time", "finishTime"])) || new Date().toISOString();
+      const expected_minutes =
+        toInt(pick(src, ["expected_minutes", "expected", "expectedMin", "expectedMinutes"])) ??
+        (username && lastStartByUser.get(username)?.expected_minutes) ?? null;
 
-    try {
-      await archive.saveArchivedJob({ ...src, ...job });
-      if (TRACE) console.log("[ARCHIVE] auto-saved:", job.part_number || "(unknown)", "by", job.technician || "(unknown)");
-    } catch (e) {
-      console.error("[ARCHIVE] auto-archive failed:", e.message);
-    }
+      const payload = {
+        part_number: part || sRow?.partNumber || null,
+        technician: username || sRow?.username || null,
+        location: pick(src, ["location", "station", "workstation"]) || null,
+        status: "archived",
+        expected_minutes,
+        total_active_sec:
+          toInt(pick(src, ["total_active_sec", "totalSeconds", "total", "elapsed", "timeActiveSec"])) ??
+          (sRow ? Math.max(0, Math.trunc((sRow.totalActive || 0) / 1000)) // SQLite stores ms
+                : (started_at ? Math.max(0, Math.trunc((new Date(finished_at) - new Date(started_at)) / 1000)) : null)),
+        started_at: sRow ? new Date(sRow.startTime).toISOString() : started_at,
+        finished_at: sRow ? new Date(sRow.endTime).toISOString()   : finished_at,
+        notes: pick(src, ["notes", "comment"]) || sRow?.note || null,
+        job_json: sRow ? JSON.stringify({ printName: null }) : undefined
+      };
+
+      try {
+        await archive.saveArchivedJob(payload);
+        if (TRACE) console.log("[ARCHIVE] saved with totals:", payload.total_active_sec, "sec");
+      } catch (e) {
+        console.error("[ARCHIVE] auto-archive failed:", e.message);
+      }
+    });
   });
 
   next();
@@ -243,44 +246,30 @@ app.use("/api/archive", archiveRouter);
 app.use("/api/users", usersRouter);
 
 // ---------------- Schedule Enforcer -------------------------------------
-// Windows in local time. Edit to taste: HH:MM 24h.
 const WINDOWS = [
-  { start: "10:00", end: "10:15", flag: 1 }, // break -> autoPaused=1
-  { start: "12:00", end: "12:30", flag: 1 }, // lunch -> 1
-  { start: "14:30", end: "14:45", flag: 1 }, // break -> 1
-  { start: "17:00", end: "23:59", flag: 2 }  // day end -> 2 (sticky; no auto-continue)
+  { start: "10:00", end: "10:15", flag: 1 },
+  { start: "12:00", end: "12:30", flag: 1 },
+  { start: "14:30", end: "14:45", flag: 1 },
+  { start: "17:00", end: "23:59", flag: 2 }
 ];
 
 function hmToDateToday(hm) {
   const [H, M] = hm.split(":").map(n => parseInt(n, 10));
-  const d = new Date();
-  d.setHours(H, M, 0, 0);
-  return d.getTime();
+  const d = new Date(); d.setHours(H, M, 0, 0); return d.getTime();
 }
-function nowInWindow(w) {
-  const n = Date.now();
-  const s = hmToDateToday(w.start), e = hmToDateToday(w.end);
-  return n >= s && n < e;
-}
-function currentPolicy() {
-  for (const w of WINDOWS) if (nowInWindow(w)) return { shouldPause: true, flag: w.flag };
-  return { shouldPause: false, flag: 0 };
-}
+function nowInWindow(w) { const n = Date.now(); const s = hmToDateToday(w.start), e = hmToDateToday(w.end); return n >= s && n < e; }
+function currentPolicy() { for (const w of WINDOWS) if (nowInWindow(w)) return { shouldPause: true, flag: w.flag }; return { shouldPause: false, flag: 0 }; }
 
 async function pauseAllActive(flag) {
   const now = Date.now();
   return new Promise((resolve) => {
-    // Only rows not finished and not already paused
     db.all(`SELECT * FROM jobs WHERE endTime IS NULL`, [], (err, rows = []) => {
       if (err || !rows.length) return resolve();
-      const toPause = rows.filter(r => !r.pauseStart); // not already paused
-      let pending = toPause.length;
-      if (!pending) return resolve();
+      const toPause = rows.filter(r => !r.pauseStart);
+      let pending = toPause.length; if (!pending) return resolve();
       toPause.forEach(r => {
         const sql = `UPDATE jobs SET action='Pause', pauseStart=?, autoPaused=? WHERE id=? AND pauseStart IS NULL`;
-        db.run(sql, [now, flag, r.id], () => {
-          if (--pending === 0) resolve();
-        });
+        db.run(sql, [now, flag, r.id], () => { if (--pending === 0) resolve(); });
       });
     });
   });
@@ -288,16 +277,13 @@ async function pauseAllActive(flag) {
 async function continueAutoPaused() {
   const now = Date.now();
   return new Promise((resolve) => {
-    // Only rows we auto-paused for break/lunch (flag=1)
     db.all(`SELECT * FROM jobs WHERE endTime IS NULL AND pauseStart IS NOT NULL AND autoPaused = 1`, [], (err, rows = []) => {
       if (err || !rows.length) return resolve();
       let pending = rows.length;
       rows.forEach(r => {
         const paused = now - (r.pauseStart || now);
         const sql = `UPDATE jobs SET action='Continue', pauseTotal=pauseTotal+?, pauseStart=NULL, autoPaused=0 WHERE id=?`;
-        db.run(sql, [paused, r.id], () => {
-          if (--pending === 0) resolve();
-        });
+        db.run(sql, [paused, r.id], () => { if (--pending === 0) resolve(); });
       });
     });
   });
@@ -307,32 +293,25 @@ let lastState = null;
 async function scheduleTick() {
   const pol = currentPolicy();
   const key = pol.shouldPause ? `P${pol.flag}` : 'RUN';
-  if (key === lastState) return; // only react on state changes
+  if (key === lastState) return;
   lastState = key;
 
-  if (pol.shouldPause) {
-    await pauseAllActive(pol.flag);
-  } else {
-    await continueAutoPaused();
-  }
+  if (pol.shouldPause) await pauseAllActive(pol.flag);
+  else await continueAutoPaused();
 }
 
-setInterval(scheduleTick, 15000); // 15s looks fine
-setTimeout(scheduleTick, 2000);   // prime after boot
+setInterval(scheduleTick, 15000);
+setTimeout(scheduleTick, 2000);
 
-// ---------------- Health -------------------------------------------------
+// ---------------- Health & Static ---------------------------------------
 app.get("/healthz", (_req, res) => {
   res.json({ ok: true, archiveReady, node: process.version, tz: process.env.TZ, now: new Date().toISOString() });
 });
-
-// ---------------- Static frontend ---------------------------------------
 const FRONTEND_DIR = path.join(__dirname, "..", "wireshop-frontend");
 app.use(express.static(FRONTEND_DIR));
 app.get("/archive", (_req, res) => res.sendFile(path.join(FRONTEND_DIR, "archive.html")));
 app.get("/", (_req, res) => res.sendFile(path.join(FRONTEND_DIR, "index.html")));
 
-// ---------------- Errors -------------------------------------------------
-/* eslint-disable no-unused-vars */
 app.use((err, _req, res, _next) => {
   console.error("[ERROR]", err);
   res.status(500).json({ error: "Server error" });
