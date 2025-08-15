@@ -1,69 +1,99 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Dashboard</title>
-  <link rel="stylesheet" href="style.css"/>
+  <title>CZM • Technician Dashboard</title>
+  <link rel="icon" href="czm-logo.png" />
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div class="brand-bar">
-    <div class="brand-inner">
-      <a class="brand-logo" href="dashboard.html">
-        <img src="czm-logo.png" alt="CZM">
-        <h1 class="brand-title">CZM • Wireshop Dashboard</h1>
-      </a>
-      <div class="brand-actions">
-        <button id="liveViewBtn" class="secondary">Live View</button>
-        <button id="logoutBtn" class="dark">Logout</button>
-      </div>
-    </div>
-  </div>
+  <header class="topbar">
+    <div class="title">CZM • Technician Dashboard</div>
+    <div class="spacer"></div>
+    <button id="liveViewBtn" class="btn">Admin Live View</button>
+    <button id="logoutBtn" class="btn danger">Logout</button>
+  </header>
 
-  <main class="page">
-    <!-- Start strip -->
-    <div class="card">
-      <h2>Start Job</h2>
-      <div class="grid cols-3">
-        <div>
-          <label for="partSelect">Part</label>
-          <select id="partSelect">
-            <option value="">-- Select Part --</option>
-          </select>
+  <main class="container">
+    <!-- Select Part -->
+    <section class="card">
+      <h2>Start Work</h2>
+      <div class="row">
+        <label for="partSelect" class="label">Part</label>
+        <select id="partSelect" class="input"></select>
+        <button id="submitLog" class="btn primary">Start</button>
+      </div>
+      <div class="grid grid-4 info-grid">
+        <div class="info">
+          <div class="info-label">Expected (hrs)</div>
+          <div id="expectedTime" class="info-value">--</div>
         </div>
         <div class="info">
-          <p>Expected Time: <span id="expectedTime">--</span> hours</p>
-          <p>Notes: <span id="expectedNotes">--</span></p>
-          <p>Location: <span id="expectedLocation">--</span></p>
-          <p>SA#: <span id="expectedSA">--</span></p>
+          <div class="info-label">Notes</div>
+          <div id="expectedNotes" class="info-value">--</div>
         </div>
-        <div style="display:flex; align-items:end">
-          <button id="submitLog" style="width:100%;">Start Job</button>
+        <div class="info">
+          <div class="info-label">Location</div>
+          <div id="expectedLocation" class="info-value">--</div>
+        </div>
+        <div class="info">
+          <div class="info-label">SA #</div>
+          <div id="expectedSA" class="info-value">--</div>
         </div>
       </div>
-    </div>
+    </section>
 
-    <!-- Active jobs -->
-    <div class="card">
-      <h2>Active Jobs</h2>
-      <table id="logTable" class="sticky-head">
-        <thead>
-          <tr>
-            <th>Part Number</th>
-            <th>Notes (editable)</th>
-            <th>Action</th>
-            <th>Started</th>
-            <th>Total Time</th>
-          </tr>
-        </thead>
-        <tbody id="logTableBody"></tbody>
-      </table>
-      <div style="display:flex; justify-content:flex-end; margin-top:10px;">
-        <button id="deleteAllLogs" class="danger">Delete All Logs</button>
+    <!-- Active Jobs -->
+    <section class="card">
+      <div class="row between">
+        <h2>Active Jobs</h2>
+        <button id="deleteAllLogs" class="btn danger subtle">Delete All My Live Logs</button>
       </div>
-    </div>
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Part #</th>
+              <th>Notes</th>
+              <th>Action</th>
+              <th>Started</th>
+              <th>Time Active</th>
+            </tr>
+          </thead>
+          <tbody id="logTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- My Completed (local only) -->
+    <section class="card">
+      <div class="row between">
+        <h2>My Completed (local view)</h2>
+        <div class="muted">Deleting here only removes your personal view. Admin archive is unaffected.</div>
+      </div>
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Finished</th>
+              <th>Part #</th>
+              <th>Print Name</th>
+              <th>Total Active</th>
+              <th>Delete</th>
+            </tr>
+          </thead>
+          <tbody id="myCompletedBody"></tbody>
+        </table>
+      </div>
+      <div class="row">
+        <button id="clearMyCompleted" class="btn danger subtle">Clear My Completed (local)</button>
+      </div>
+    </section>
   </main>
 
+  <script src="users.js"></script>
   <script src="catalog.js"></script>
   <script src="script.js"></script>
 </body>
