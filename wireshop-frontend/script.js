@@ -1,4 +1,4 @@
-// script.js — dashboard logic with auto-schedule AND "My Completed" local panel
+// script.js — login + dashboard; original look preserved; adds local "My Completed"
 document.addEventListener('DOMContentLoaded', () => {
   const API_ROOT = 'https://wireshop-backend.onrender.com';
   const API_JOBS = `${API_ROOT}/api/jobs`;
@@ -17,14 +17,6 @@ document.addEventListener('DOMContentLoaded', () => {
     return ct.includes('application/json') ? res.json() : res.text();
   }
 
-  const fmtDurationHM = (ms) => {
-    let s = Math.max(0, Math.trunc(ms/1000));
-    const h = Math.floor(s/3600); s%=3600;
-    const m = Math.floor(s/60); s%=60;
-    const pad = (n)=> String(n).padStart(2,'0');
-    return `${pad(h)}:${pad(m)}:${pad(s)}`;
-  };
-
   function fmtDuration(start, end, pauseStart, pauseTotal) {
     if (!start) return '';
     const now = Date.now();
@@ -38,31 +30,9 @@ document.addEventListener('DOMContentLoaded', () => {
     return `${h}h ${m}m ${s}s`;
   }
 
-  // Styles: minor
+  // ---------- Minimal styling helpers you already had ----------
   (function injectStyles(){
     const css = `
-      .btn{padding:.55rem .9rem;border:1px solid #222;border-radius:10px;background:#f4f4f4;cursor:pointer;font-weight:700}
-      .btn.primary{background:#e3f2ff;border-color:#9bc7ff}
-      .btn.danger{background:#ffe3e3;border-color:#f5a5a5}
-      .btn.subtle{opacity:.85}
-      .container{max-width:1200px;margin:0 auto;padding:1rem}
-      .card{background:#fff;border-radius:16px;box-shadow:0 10px 20px rgba(0,0,0,.08);padding:16px;margin:16px 0}
-      .row{display:flex;gap:12px;align-items:center}
-      .row.between{justify-content:space-between}
-      .label{min-width:60px}
-      .input{min-width:320px;padding:.45rem;border-radius:8px;border:1px solid #ccc}
-      .grid{display:grid;gap:10px}
-      .grid-4{grid-template-columns:repeat(4, minmax(0,1fr))}
-      .info{background:#f7f7f7;border:1px solid #e5e5e5;border-radius:12px;padding:10px}
-      .info-label{font-size:.8rem;color:#666}
-      .info-value{font-weight:700}
-      .table-wrap{overflow:auto}
-      .table{width:100%;border-collapse:collapse}
-      .table th,.table td{border-bottom:1px solid #e8e8e8;padding:.55rem;text-align:left}
-      .topbar{display:flex;align-items:center;gap:12px;padding:10px;background:#111;color:#fff}
-      .topbar .title{font-weight:800}
-      .topbar .spacer{flex:1}
-      .muted{color:#666;font-size:.9rem}
       .btn3d{appearance:none;border:1px solid transparent;border-radius:12px;padding:7px 12px;font-weight:700;cursor:pointer;letter-spacing:.2px;
         box-shadow:0 3px 0 rgba(0,0,0,.28),0 10px 18px rgba(0,0,0,.10);transition:transform .06s, box-shadow .06s, filter .15s, opacity .15s;text-shadow:0 1px 0 rgba(255,255,255,.35);}
       .btn3d.small{font-size:.9rem;line-height:1}
@@ -77,7 +47,6 @@ document.addEventListener('DOMContentLoaded', () => {
       .row-selected{outline:2px solid #0072ff33}
       .part-link{background:none;border:none;padding:0;margin:0;color:#0b61ff;cursor:pointer;font-weight:700;text-decoration:underline}
       .part-link:focus{outline:2px solid #0072ff33;border-radius:4px}
-      .trash{background:#ffe3e3;border:1px solid #f3a7a7;border-radius:10px;padding:.35rem .7rem;cursor:pointer}
     `;
     const s = document.createElement('style'); s.textContent = css; document.head.appendChild(s);
   })();
@@ -144,7 +113,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const expLoc = document.getElementById('expectedLocation');
     const expSA = document.getElementById('expectedSA');
 
-    // ---------- Catalog load with pinned tasks ----------
+    // ---------- Catalog load (pin MAINT/CLEAN on top) ----------
     function loadParts(){
       const items = Array.isArray(window.catalog) ? [...window.catalog] : [];
       const special = new Set(["MAINT-0001","CLEAN-0001"]);
@@ -186,6 +155,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }catch(err){ console.error(err); alert('Failed to start job.'); }
     });
 
+    // ----- Notes drafts -----
     const draftKey = (id)=> `draftNotes:${user.username}:${id}`;
     const getDraft = (id)=> localStorage.getItem(draftKey(id)) || '';
     const setDraft = (id,val)=> localStorage.setItem(draftKey(id), val);
@@ -201,12 +171,14 @@ document.addEventListener('DOMContentLoaded', () => {
       fillInfoFromPart(log?.partNumber || '');
     }
 
+    // ----- Interaction guard -----
     let isInteracting = false;
     const beginInteraction = ()=> { isInteracting = true; };
     const endInteraction = ()=> { const inside=tBody.contains(document.activeElement); if (!inside) isInteracting = false; };
     tBody.addEventListener('focusin', beginInteraction);
     tBody.addEventListener('focusout', () => setTimeout(endInteraction, 0));
 
+    // Signature to avoid repaint when nothing changed
     let lastSig = '';
     function makeSignature(rows){
       const minimal = rows.filter(r=>!r.endTime).map(r=>({
@@ -215,6 +187,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return JSON.stringify(minimal);
     }
 
+    // ----- Freeze timer cell during pause -----
     function freezeCell(td){
       if (!td) return;
       td.setAttribute('data-frozen', '1');
@@ -268,190 +241,118 @@ document.addEventListener('DOMContentLoaded', () => {
       };
     }
 
-    // ====== "My Completed" local panel ======
+    // ====== My Completed (local only) ======
     const myCompletedKey = (uname)=> `myCompleted:${uname}`;
-    const readMyCompleted = ()=> {
-      try { return JSON.parse(localStorage.getItem(myCompletedKey(user.username)) || '[]'); }
-      catch { return []; }
-    };
-    const writeMyCompleted = (arr)=> localStorage.setItem(myCompletedKey(user.username), JSON.stringify(arr));
-    const myCompletedBody = document.getElementById('myCompletedBody');
-
-    function renderMyCompleted(){
-      const rows = readMyCompleted();
-      myCompletedBody.innerHTML = rows.map(r => `
+    function readMyCompleted(uname){
+      try { return JSON.parse(localStorage.getItem(myCompletedKey(uname)) || '[]'); } catch { return []; }
+    }
+    function writeMyCompleted(uname, arr){
+      localStorage.setItem(myCompletedKey(uname), JSON.stringify(arr));
+    }
+    function fmtHMS(ms){
+      let s = Math.max(0, Math.trunc(ms/1000));
+      const h = Math.floor(s/3600); s%=3600;
+      const m = Math.floor(s/60); s%=60;
+      const pad = (n)=> String(n).padStart(2,'0');
+      return `${pad(h)}:${pad(m)}:${pad(s)}`;
+    }
+    function renderMyCompleted(uname){
+      const body = document.getElementById('myCompletedBody');
+      if (!body) return;
+      const rows = readMyCompleted(uname);
+      body.innerHTML = rows.map(r => `
         <tr data-id="${r.uid}">
           <td>${new Date(r.finishedAt).toLocaleString()}</td>
           <td>${r.partNumber || ''}</td>
           <td>${r.printName || ''}</td>
-          <td>${fmtDurationHM(r.totalActiveMs || 0)}</td>
-          <td><button class="trash" data-del="${r.uid}">Delete</button></td>
+          <td>${fmtHMS(r.totalActiveMs || 0)}</td>
+          <td><button class="danger" data-del="${r.uid}">Delete</button></td>
         </tr>
       `).join('');
     }
-
-    myCompletedBody.addEventListener('click', (e)=>{
+    // Hook up delete buttons for local list
+    document.getElementById('myCompletedBody')?.addEventListener('click', (e)=>{
       const btn = e.target.closest('button[data-del]');
       if (!btn) return;
       const uid = btn.getAttribute('data-del');
-      const list = readMyCompleted().filter(x => x.uid !== uid);
-      writeMyCompleted(list);
-      renderMyCompleted();
+      const list = readMyCompleted(user.username).filter(x => x.uid !== uid);
+      writeMyCompleted(user.username, list);
+      renderMyCompleted(user.username);
     });
-
     document.getElementById('clearMyCompleted')?.addEventListener('click', ()=>{
       if (!confirm('Clear your local completed list?')) return;
-      writeMyCompleted([]);
-      renderMyCompleted();
+      writeMyCompleted(user.username, []);
+      renderMyCompleted(user.username);
     });
 
-    // Actions (Pause/Continue/Finish) via buttons
-    tBody.addEventListener('click', async (e)=>{
+    // ----- Row actions (Pause/Continue/Finish) -----
+    const tBodyClick = async (e)=>{
       const btn = e.target.closest('button[data-act]');
-      if (btn) {
-        const tr = btn.closest('tr'); if (!tr) return;
-        const logId = Number(tr.dataset.id);
-        const act = btn.getAttribute('data-act');
+      if (!btn) return;
 
-        const group = tr.querySelectorAll('button[data-act]');
-        group.forEach(b=> b.disabled = true);
+      const tr = btn.closest('tr'); if (!tr) return;
+      const logId = Number(tr.dataset.id);
+      const act = btn.getAttribute('data-act');
 
-        // instant local UX (with freeze)
-        const local = applyLocalTiming(tr, act);
+      const group = tr.querySelectorAll('button[data-act]');
+      group.forEach(b=> b.disabled = true);
 
-        try{
-          const body = { action: act };
-          if (act === 'Finish'){
-            body.endTime = Date.now();
-            const latestDraft = tr.querySelector('textarea.notes-box')?.value.trim();
-            if (latestDraft) body.note = latestDraft;
-          }
-          const result = await jobsApi(`/log/${logId}`, { method:'PUT', body: JSON.stringify(body) });
+      const local = applyLocalTiming(tr, act);
 
-          const pauseBtn = tr.querySelector('button[data-act="Pause"]');
-          const contBtn  = tr.querySelector('button[data-act="Continue"]');
-          if (act === 'Pause'){ pauseBtn && (pauseBtn.disabled = true); contBtn && (contBtn.disabled = false); }
-          else if (act === 'Continue'){ contBtn && (contBtn.disabled = true); pauseBtn && (pauseBtn.disabled = false); }
-
-          // If finished, push to My Completed (local only)
-          if (act === 'Finish') {
-            // result may have archive info or not; we can compute safely from row attributes
-            const startMs = Number(tr.querySelector('.dur')?.getAttribute('data-start')) || null;
-            const pT = Number(tr.querySelector('.dur')?.getAttribute('data-paused')) || 0;
-            const endMs = Date.now();
-            const totalActiveMs = startMs ? Math.max(0, endMs - startMs - pT) : 0;
-
-            // best-effort print name
-            const pn = tr.querySelector('.part-link')?.dataset.pn || '';
-            const printName = (window.catalog || []).find(p => p.partNumber === pn)?.printName || '';
-
-            const entry = {
-              uid: `${logId}:${endMs}`,          // local unique id
-              finishedAt: endMs,
-              partNumber: pn,
-              printName,
-              totalActiveMs
-            };
-            const list = readMyCompleted();
-            list.unshift(entry);
-            writeMyCompleted(list.slice(0, 200)); // keep last 200 for sanity
-            renderMyCompleted();
-
-            clearDraft(logId);
-            if (selectedLogId === logId){ selectedLogId = null; fillInfoFromPart(''); }
-            await requestRefresh(true);
-          } else {
-            lastSig = '';
-          }
-        }catch(err){
-          console.error(err);
-          local.revert();
-          alert('Failed to update action.');
-        }finally{
-          group.forEach(b=> b.disabled = false);
+      try{
+        const body = { action: act };
+        if (act === 'Finish'){
+          body.endTime = Date.now();
+          const latestDraft = tr.querySelector('textarea.notes-box')?.value.trim();
+          if (latestDraft) body.note = latestDraft;
         }
-        return;
-      }
+        await jobsApi(`/log/${logId}`, { method:'PUT', body: JSON.stringify(body) });
 
-      const link = e.target.closest('.part-link');
-      if (link) {
-        const tr = link.closest('tr'); if (!tr) return;
-        const id = tr.dataset.id;
-        const pn = link.dataset.pn || link.textContent.trim();
-        selectRow(tr, { id, partNumber: pn });
-      }
-    });
+        const pauseBtn = tr.querySelector('button[data-act="Pause"]');
+        const contBtn  = tr.querySelector('button[data-act="Continue"]');
+        if (act === 'Pause'){ pauseBtn && (pauseBtn.disabled = true); contBtn && (contBtn.disabled = false); }
+        else if (act === 'Continue'){ contBtn && (contBtn.disabled = true); pauseBtn && (pauseBtn.disabled = false); }
 
-    // ===== AUTO-SCHEDULE ENFORCER =====
-    const WINDOWS = [
-      { start: '10:00', end: '10:15', kind: 'break'  },
-      { start: '12:00', end: '12:30', kind: 'lunch'  },
-      { start: '14:30', end: '14:45', kind: 'break'  },
-      { start: '17:00', end: '23:59', kind: 'dayend' }
-    ];
+        // On Finish, add to local My Completed (does NOT touch backend)
+        if (act === 'Finish') {
+          const durTd = tr.querySelector('.dur');
+          const startMs = Number(durTd?.getAttribute('data-start')) || 0;
+          const pauseStart = Number(durTd?.getAttribute('data-pause')) || 0;
+          const pauseTotal = Number(durTd?.getAttribute('data-paused')) || 0;
+          const endMs = Date.now();
+          const extraPause = pauseStart ? Math.max(0, endMs - pauseStart) : 0;
+          const totalActiveMs = Math.max(0, endMs - startMs - (pauseTotal + extraPause));
 
-    const AUTO_PAUSED = new Map(); // logId -> last auto-pause timestamp
+          const pn = tr.querySelector('.part-link')?.dataset.pn || tr.querySelector('.part-link')?.textContent?.trim() || '';
+          const printName = (window.catalog || []).find(p => p.partNumber === pn)?.printName || '';
 
-    function hmToDateToday(hm){
-      const [H,M] = hm.split(':').map(n=>parseInt(n,10));
-      const d = new Date();
-      d.setHours(H, M, 0, 0);
-      return d;
-    }
-    function nowInWindow(w){
-      const n = new Date();
-      const s = hmToDateToday(w.start);
-      const e = hmToDateToday(w.end);
-      return n >= s && n < e;
-    }
-    function currentPolicy(){
-      for (const w of WINDOWS){
-        if (nowInWindow(w)) return { shouldPause: true, sticky: w.kind === 'dayend' };
-      }
-      return { shouldPause: false, sticky: false };
-    }
+          const entry = { uid: `${logId}:${endMs}`, finishedAt: endMs, partNumber: pn, printName, totalActiveMs };
+          const list = readMyCompleted(user.username);
+          list.unshift(entry);
+          writeMyCompleted(user.username, list.slice(0, 200));
+          renderMyCompleted(user.username);
 
-    let CURRENT_ACTIVE = [];
-
-    async function enforceSchedule(){
-      if (!CURRENT_ACTIVE.length) return;
-      const policy = currentPolicy();
-
-      for (const log of CURRENT_ACTIVE){
-        const id = Number(log.id);
-        const current = (log.action || '').trim();
-        const logical = (current === 'Pause' || current === 'Finish') ? current : 'Continue';
-        const isPaused = logical === 'Pause';
-
-        if (policy.shouldPause) {
-          if (!isPaused) {
-            try {
-              await jobsApi(`/log/${id}`, { method:'PUT', body: JSON.stringify({ action:'Pause' }) });
-              AUTO_PAUSED.set(id, Date.now());
-              lastSig = '';
-            } catch (e) { console.error('auto-pause failed', e); }
-          }
+          clearDraft(logId);
+          if (selectedLogId === logId){ selectedLogId = null; fillInfoFromPart(''); }
+          await requestRefresh(true);
         } else {
-          if (AUTO_PAUSED.has(id) && isPaused) {
-            try {
-              await jobsApi(`/log/${id}`, { method:'PUT', body: JSON.stringify({ action:'Continue' }) });
-              AUTO_PAUSED.delete(id);
-              lastSig = '';
-            } catch (e) { console.error('auto-continue failed', e); }
-          }
+          lastSig = '';
         }
-
-        if (policy.sticky && isPaused) {
-          AUTO_PAUSED.delete(id);
-        }
+      }catch(err){
+        console.error(err);
+        local.revert();
+        alert('Failed to update action.');
+      }finally{
+        group.forEach(b=> b.disabled = false);
       }
-    }
+    };
+    document.getElementById('logTableBody').addEventListener('click', tBodyClick);
 
+    // ----- Refresh active table -----
     async function refreshActive(force=false){
       if (isInteracting && !force) return;
       const rows = await jobsApi(`/logs/${encodeURIComponent(user.username)}`, { method:'GET' });
       const active = rows.filter(r=>!r.endTime);
-      CURRENT_ACTIVE = active;
       const sig = makeSignature(rows);
       if (!force && sig === lastSig) return; lastSig = sig;
 
@@ -502,8 +403,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       if (tBody.parentElement) tBody.parentElement.scrollTop = prevScroll;
-
-      enforceSchedule().catch(console.error);
     }
 
     async function requestRefresh(force=false){ await refreshActive(force); }
@@ -521,17 +420,17 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
+    // Delete all user live logs
     deleteAllBtn?.addEventListener('click', async ()=>{
-      if (!confirm('Delete ALL your live logs?')) return;
+      if (!confirm('Delete ALL your logs?')) return;
       try{ await jobsApi(`/delete-logs/${encodeURIComponent(user.username)}`, { method:'DELETE' }); tBody.innerHTML=''; }
       catch(err){ console.error(err); alert('Failed to delete logs.'); }
     });
 
     // Boot
-    renderMyCompleted();
+    renderMyCompleted(user.username);
     requestRefresh(true).catch(console.error);
     setInterval(()=> requestRefresh(false), 5000);
     setInterval(tickDurations, 1000);
-    setInterval(enforceSchedule, 15000);
   })();
 });
