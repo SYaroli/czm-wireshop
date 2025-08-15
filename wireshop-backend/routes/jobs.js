@@ -148,4 +148,176 @@ router.delete('/delete-logs/:username', (req, res) => {
   const requester = currentUser(req);
   const target = (req.params.username || '').toLowerCase();
   if (!ADMIN_USERS.includes(requester) && requester !== target) return res.status(403).json({ error: 'Forbidden' });
-  db.run(`DELETE FROM jobs WHERE username = ?`, [req.params.username]()
+  db.run(`DELETE FROM jobs WHERE username = ?`, [req.params.username], (err) => {
+    if (err) return res.status(500).json({ error: 'Failed to delete user logs' });
+    res.json({ success: true, message: `Logs for ${req.params.username} deleted` });
+  });
+});
+
+// Admin: delete single live log
+router.delete('/log/:id', requireAdmin, (req, res) => {
+  db.run(`DELETE FROM jobs WHERE id = ?`, [req.params.id], (err) => {
+    if (err) return res.status(500).json({ error: 'Failed to delete log' });
+    res.json({ success: true, message: `Log ${req.params.id} deleted` });
+  });
+});
+
+// Admin: clear all live logs
+router.delete('/admin/clear-logs', requireAdmin, (_req, res) => {
+  db.run(`DELETE FROM jobs`, (err) => {
+    if (err) return res.status(500).json({ error: 'Failed to clear logs' });
+    res.json({ success: true, message: 'All logs cleared by admin' });
+  });
+});
+
+// Admin: reassign live fields
+router.post('/log/:id/reassign', requireAdmin, (req, res) => {
+  const id = req.params.id;
+  const { username, partNumber, note } = req.body || {};
+  if (!username && !partNumber && typeof note === 'undefined') {
+    return res.status(400).json({ error: 'nothing to update' });
+  }
+  db.get(`SELECT * FROM jobs WHERE id = ?`, [id], (err, row) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!row) return res.status(404).json({ error: 'Log not found' });
+
+    const updates = [], params = [];
+    if (username)   { updates.push('username = ?');   params.push(username); }
+    if (partNumber) { updates.push('partNumber = ?'); params.push(partNumber); }
+    if (typeof note !== 'undefined') { updates.push('note = ?'); params.push(note || ''); }
+
+    db.run(`UPDATE jobs SET ${updates.join(', ')} WHERE id = ?`, [...params, id], (e2) => {
+      if (e2) return res.status(500).json({ error: 'update failed' });
+      db.get(`SELECT * FROM jobs WHERE id = ?`, [id], (e3, out) => {
+        if (e3) return res.status(500).json({ error: e3.message });
+        res.json({ success: true, log: out });
+      });
+    });
+  });
+});
+
+// Admin: force finish a live log
+router.post('/log/:id/force-finish', requireAdmin, (req, res) => {
+  const id = req.params.id;
+  const { note } = req.body || {};
+  db.get(`SELECT * FROM jobs WHERE id = ?`, [id], (err, row) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!row) return res.status(404).json({ error: 'Log not found' });
+
+    const totals = finalizeTotals(row, Date.now());
+    const updateSql = `UPDATE jobs SET action='Finish', endTime=?, pauseStart=NULL, pauseTotal=?, note=?, autoPaused=0 WHERE id=?`;
+    db.run(updateSql, [totals.endTime, totals.pauseTotal, note ?? row.note ?? '', id], (e2) => {
+      if (e2) return res.status(500).json({ error: 'Failed to finalize' });
+      db.get(`SELECT * FROM jobs WHERE id = ?`, [id], (e3, r) => {
+        if (e3) return res.status(500).json({ error: e3.message });
+        const ins = `
+          INSERT INTO jobs_archive (sourceId, username, partNumber, note, startTime, endTime, pauseTotal, totalActive)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `;
+        db.run(ins, [r.id, r.username, r.partNumber, r.note || '', r.startTime, totals.endTime, totals.pauseTotal, totals.totalActive], function (e4) {
+          if (e4) return res.status(500).json({ error: 'Archive insert failed', details: e4.message });
+          const insertId = this.lastID;
+          db.run(`DELETE FROM jobs WHERE id = ?`, [id], (e5) => {
+            if (e5) return res.status(500).json({ error: 'Failed to remove live row after archive' });
+            db.get(`SELECT * FROM jobs_archive WHERE id = ?`, [insertId], (e6, archived) => {
+              if (e6) return res.status(500).json({ error: e6.message });
+              res.json({ success: true, archived: true, archive: archived });
+            });
+          });
+        });
+      });
+    });
+  });
+});
+
+// ARCHIVE: list (admin; hide deleted by default)
+router.get('/archive', requireAdmin, (req, res) => {
+  const showDeleted = String(req.query.showDeleted || '0') === '1';
+  const where = showDeleted ? '' : 'WHERE isDeleted = 0';
+  db.all(`SELECT * FROM jobs_archive ${where} ORDER BY id DESC`, [], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    getLatestAdjustments((e2, adjs = []) => {
+      if (e2) return res.status(500).json({ error: e2.message });
+      const map = new Map(adjs.map(a => [a.archiveId, a]));
+      const merged = rows.map(r => applyAdj(r, map.get(r.id)));
+      res.json(merged);
+    });
+  });
+});
+
+// ARCHIVE: add adjustment
+router.post('/archive/:id/adjust', requireAdmin, (req, res) => {
+  const archiveId = parseInt(req.params.id, 10);
+  const { startTime, endTime, pauseTotal, partNumber, note, username, reason } = req.body || {};
+  if (!reason) return res.status(400).json({ error: 'reason required' });
+
+  db.get('SELECT * FROM jobs_archive WHERE id = ?', [archiveId], (err, base) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!base || base.isDeleted) return res.status(404).json({ error: 'archive row not found' });
+
+    const u = currentUser(req);
+    const stmt = `
+      INSERT INTO jobs_adjustments
+        (archiveId, overrideStartTime, overrideEndTime, overridePauseTotal, overridePartNumber, overrideNote, overrideUsername, reason, adminUser)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+    db.run(stmt, [
+      archiveId,
+      startTime ?? null,
+      endTime ?? null,
+      pauseTotal ?? null,
+      partNumber ?? null,
+      note ?? null,
+      username ?? null,
+      String(reason),
+      u
+    ], function (e2) {
+      if (e2) return res.status(500).json({ error: e2.message });
+      db.get('SELECT * FROM jobs_adjustments WHERE id = ?', [this.lastID], (e3, adj) => {
+        if (e3) return res.status(500).json({ error: e3.message });
+        const merged = applyAdj(base, adj);
+        res.json({ success: true, adjustmentId: this.lastID, archive: merged });
+      });
+    });
+  });
+});
+
+// ARCHIVE: list adjustments
+router.get('/archive/:id/adjustments', requireAdmin, (req, res) => {
+  db.all('SELECT * FROM jobs_adjustments WHERE archiveId = ? ORDER BY id ASC', [req.params.id], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows);
+  });
+});
+
+// ARCHIVE: soft delete + restore
+router.post('/archive/:id/delete', requireAdmin, (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  const reason = String((req.body && req.body.reason) || '').trim();
+  if (!reason) return res.status(400).json({ error: 'reason required' });
+  const u = currentUser(req);
+  const now = Date.now();
+  db.run(
+    `UPDATE jobs_archive SET isDeleted = 1, deletedAt = ?, deletedBy = ?, deleteReason = ? WHERE id = ? AND isDeleted = 0`,
+    [now, u, reason, id],
+    function (err) {
+      if (err) return res.status(500).json({ error: err.message });
+      if (this.changes === 0) return res.status(404).json({ error: 'not found or already deleted' });
+      res.json({ success: true, id, deletedAt: now, deletedBy: u });
+    }
+  );
+});
+router.post('/archive/:id/restore', requireAdmin, (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  db.run(
+    `UPDATE jobs_archive SET isDeleted = 0, deletedAt = NULL, deletedBy = NULL, deleteReason = NULL WHERE id = ?`,
+    [id],
+    function (err) {
+      if (err) return res.status(500).json({ error: err.message });
+      if (this.changes === 0) return res.status(404).json({ error: 'not found' });
+      res.json({ success: true, id });
+    }
+  );
+});
+
+module.exports = router;
