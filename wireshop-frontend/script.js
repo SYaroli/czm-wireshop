@@ -235,6 +235,51 @@ document.addEventListener('DOMContentLoaded', () => {
       };
     }
 
+    // ===== My Completed (local-only; per user) =====
+    const myCompletedKey = (uname)=> `myCompleted:${uname}`;
+    function readMyCompleted(uname){
+      try { return JSON.parse(localStorage.getItem(myCompletedKey(uname)) || '[]'); } catch { return []; }
+    }
+    function writeMyCompleted(uname, arr){
+      localStorage.setItem(myCompletedKey(uname), JSON.stringify(arr));
+    }
+    function fmtHMS(ms){
+      let s = Math.max(0, Math.trunc(ms/1000));
+      const h = Math.floor(s/3600); s%=3600;
+      const m = Math.floor(s/60); s%=60;
+      const pad = (n)=> String(n).padStart(2,'0');
+      return `${pad(h)}:${pad(m)}:${pad(s)}`;
+    }
+    function renderMyCompleted(uname){
+      const body = document.getElementById('myCompletedBody');
+      if (!body) return;
+      const rows = readMyCompleted(uname);
+      body.innerHTML = rows.map(r => `
+        <tr data-id="${r.uid}">
+          <td>${new Date(r.finishedAt).toLocaleString()}</td>
+          <td>${r.partNumber || ''}</td>
+          <td>${r.printName || ''}</td>
+          <td>${fmtHMS(r.totalActiveMs || 0)}</td>
+          <td><button class="danger" data-del="${r.uid}">Delete</button></td>
+        </tr>
+      `).join('');
+    }
+    // Delete a single item from local list
+    document.getElementById('myCompletedBody')?.addEventListener('click', (e)=>{
+      const btn = e.target.closest('button[data-del]');
+      if (!btn) return;
+      const uid = btn.getAttribute('data-del');
+      const list = readMyCompleted(user.username).filter(x => x.uid !== uid);
+      writeMyCompleted(user.username, list);
+      renderMyCompleted(user.username);
+    });
+    // Clear all local completions
+    document.getElementById('clearMyCompleted')?.addEventListener('click', ()=>{
+      if (!confirm('Clear your local completed list?')) return;
+      writeMyCompleted(user.username, []);
+      renderMyCompleted(user.username);
+    });
+
     // Actions (Pause/Continue/Finish) via buttons
     tBody.addEventListener('click', async (e)=>{
       const btn = e.target.closest('button[data-act]');
@@ -264,6 +309,24 @@ document.addEventListener('DOMContentLoaded', () => {
           else if (act === 'Continue'){ contBtn && (contBtn.disabled = true); pauseBtn && (pauseBtn.disabled = false); }
 
           if (act === 'Finish'){
+            // Add to local "My Completed" (does NOT affect backend)
+            const durTd = tr.querySelector('.dur');
+            const startMs = Number(durTd?.getAttribute('data-start')) || 0;
+            const pauseStart = Number(durTd?.getAttribute('data-pause')) || 0;
+            const pauseTotal = Number(durTd?.getAttribute('data-paused')) || 0;
+            const endMs = Date.now();
+            const extraPause = pauseStart ? Math.max(0, endMs - pauseStart) : 0;
+            const totalActiveMs = Math.max(0, endMs - startMs - (pauseTotal + extraPause));
+
+            const pn = tr.querySelector('.part-link')?.dataset.pn || tr.querySelector('.part-link')?.textContent?.trim() || '';
+            const printName = (window.catalog || []).find(p => p.partNumber === pn)?.printName || '';
+
+            const entry = { uid: `${logId}:${endMs}`, finishedAt: endMs, partNumber: pn, printName, totalActiveMs };
+            const list = readMyCompleted(user.username);
+            list.unshift(entry);
+            writeMyCompleted(user.username, list.slice(0, 200)); // keep last 200
+            renderMyCompleted(user.username);
+
             clearDraft(logId);
             if (selectedLogId === logId){ selectedLogId = null; fillInfoFromPart(''); }
             await requestRefresh(true);
@@ -443,6 +506,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Boot
+    renderMyCompleted(user.username);
     requestRefresh(true).catch(console.error);
     setInterval(()=> requestRefresh(false), 5000);
     setInterval(tickDurations, 1000);
