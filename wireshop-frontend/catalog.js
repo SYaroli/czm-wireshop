@@ -1,7 +1,7 @@
 // Auto-generated from czm-catalog-8-9-25.xlsx
 window.catalog = [
   {
-    partNumber: "MAINT-0001",
+    partNumber: "000-MAINT",
     printName: "Shop Maintenance",
     expectedHours: 1,
     notes: "General upkeep, tools, machines, etc.",
@@ -9,7 +9,7 @@ window.catalog = [
     saNumber: ""
   },
   {
-    partNumber: "CLEAN-0001",
+    partNumber: "001-CLEAN",
     printName: "Cleaning",
     expectedHours: 1,
     notes: "Daily/weekly cleaning tasks.",
