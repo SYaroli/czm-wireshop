@@ -1,99 +1,80 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>CZM • Technician Dashboard</title>
-  <link rel="icon" href="czm-logo.png" />
-  <link rel="stylesheet" href="style.css" />
+  <title>Dashboard</title>
+  <link rel="stylesheet" href="style.css"/>
 </head>
 <body>
-  <header class="topbar">
-    <div class="title">CZM • Technician Dashboard</div>
-    <div class="spacer"></div>
-    <button id="liveViewBtn" class="btn">Admin Live View</button>
-    <button id="logoutBtn" class="btn danger">Logout</button>
-  </header>
+  <div class="brand-bar">
+    <div class="brand-inner">
+      <a class="brand-logo" href="dashboard.html">
+        <img src="czm-logo.png" alt="CZM">
+        <h1 class="brand-title">CZM • Wireshop Dashboard</h1>
+      </a>
+      <div class="brand-actions">
+...
+      </div>
+    </div>
+  </div>
 
   <main class="container">
-    <!-- Select Part -->
-    <section class="card">
+    <div class="card">
       <h2>Start Work</h2>
       <div class="row">
-        <label for="partSelect" class="label">Part</label>
-        <select id="partSelect" class="input"></select>
-        <button id="submitLog" class="btn primary">Start</button>
+        <label for="partSelect">Part</label>
+        <select id="partSelect"></select>
+        <button id="submitLog" class="primary">Start</button>
       </div>
-      <div class="grid grid-4 info-grid">
-        <div class="info">
-          <div class="info-label">Expected (hrs)</div>
-          <div id="expectedTime" class="info-value">--</div>
-        </div>
-        <div class="info">
-          <div class="info-label">Notes</div>
-          <div id="expectedNotes" class="info-value">--</div>
-        </div>
-        <div class="info">
-          <div class="info-label">Location</div>
-          <div id="expectedLocation" class="info-value">--</div>
-        </div>
-        <div class="info">
-          <div class="info-label">SA #</div>
-          <div id="expectedSA" class="info-value">--</div>
-        </div>
+      <div class="info-grid">
+        <div><div class="muted">Expected (hrs)</div><div id="expectedTime">--</div></div>
+        <div><div class="muted">Notes</div><div id="expectedNotes">--</div></div>
+        <div><div class="muted">Location</div><div id="expectedLocation">--</div></div>
+        <div><div class="muted">SA #</div><div id="expectedSA">--</div></div>
       </div>
-    </section>
+    </div>
 
-    <!-- Active Jobs -->
-    <section class="card">
-      <div class="row between">
-        <h2>Active Jobs</h2>
-        <button id="deleteAllLogs" class="btn danger subtle">Delete All My Live Logs</button>
+    <div class="card">
+      <h2>Active Jobs</h2>
+      <table class="sticky-head">
+        <thead>
+          <tr>
+            <th>Part Number</th>
+            <th>Notes</th>
+            <th>Action</th>
+            <th>Started</th>
+            <th>Time Active</th>
+          </tr>
+        </thead>
+        <tbody id="logTableBody"></tbody>
+      </table>
+      <div style="display:flex; justify-content:flex-end; margin-top:10px;">
+        <button id="deleteAllLogs" class="danger">Delete All Logs</button>
       </div>
-      <div class="table-wrap">
-        <table class="table">
-          <thead>
-            <tr>
-              <th>Part #</th>
-              <th>Notes</th>
-              <th>Action</th>
-              <th>Started</th>
-              <th>Time Active</th>
-            </tr>
-          </thead>
-          <tbody id="logTableBody"></tbody>
-        </table>
-      </div>
-    </section>
+    </div>
 
-    <!-- My Completed (local only) -->
-    <section class="card">
-      <div class="row between">
-        <h2>My Completed (local view)</h2>
-        <div class="muted">Deleting here only removes your personal view. Admin archive is unaffected.</div>
+    <!-- My Completed (local only; same styling) -->
+    <div class="card">
+      <h2>My Completed</h2>
+      <table class="sticky-head">
+        <thead>
+          <tr>
+            <th>Finished</th>
+            <th>Part Number</th>
+            <th>Print Name</th>
+            <th>Total Time</th>
+            <th>Delete</th>
+          </tr>
+        </thead>
+        <tbody id="myCompletedBody"></tbody>
+      </table>
+      <div style="display:flex; justify-content:flex-end; margin-top:10px;">
+        <button id="clearMyCompleted" class="danger">Clear My Completed</button>
       </div>
-      <div class="table-wrap">
-        <table class="table">
-          <thead>
-            <tr>
-              <th>Finished</th>
-              <th>Part #</th>
-              <th>Print Name</th>
-              <th>Total Active</th>
-              <th>Delete</th>
-            </tr>
-          </thead>
-          <tbody id="myCompletedBody"></tbody>
-        </table>
-      </div>
-      <div class="row">
-        <button id="clearMyCompleted" class="btn danger subtle">Clear My Completed (local)</button>
-      </div>
-    </section>
+    </div>
   </main>
 
-  <script src="users.js"></script>
   <script src="catalog.js"></script>
   <script src="script.js"></script>
 </body>
