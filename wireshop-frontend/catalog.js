@@ -1,6 +1,22 @@
 // Auto-generated from czm-catalog-8-9-25.xlsx
 window.catalog = [
   {
+    partNumber: "MAINT-0001",
+    printName: "Shop Maintenance",
+    expectedHours: 1,
+    notes: "General upkeep, tools, machines, etc.",
+    location: "SHOP",
+    saNumber: ""
+  },
+  {
+    partNumber: "CLEAN-0001",
+    printName: "Cleaning",
+    expectedHours: 1,
+    notes: "Daily/weekly cleaning tasks.",
+    location: "SHOP",
+    saNumber: ""
+  },
+  {
     "printName": "CROWD PRESSURE 14\"",
     "partNumber": "40602.2080.000",
     "saNumber": "SA-7747",
