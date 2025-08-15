@@ -18,13 +18,15 @@ db.serialize(() => {
     startTime INTEGER,
     endTime INTEGER,
     pauseStart INTEGER DEFAULT NULL,
-    pauseTotal INTEGER DEFAULT 0
+    pauseTotal INTEGER DEFAULT 0,
+    autoPaused INTEGER DEFAULT 0 -- 0=none, 1=auto break/lunch, 2=auto dayend (sticky)
   )`);
-  db.all(`PRAGMA table_info(jobs)`, (err, rows=[]) => {
+  db.all(`PRAGMA table_info(jobs)`, (err, rows = []) => {
     if (err) return console.error('PRAGMA jobs:', err);
     const names = rows.map(c => c.name);
     if (!names.includes('pauseStart')) db.run(`ALTER TABLE jobs ADD COLUMN pauseStart INTEGER DEFAULT NULL`);
     if (!names.includes('pauseTotal')) db.run(`ALTER TABLE jobs ADD COLUMN pauseTotal INTEGER DEFAULT 0`);
+    if (!names.includes('autoPaused')) db.run(`ALTER TABLE jobs ADD COLUMN autoPaused INTEGER DEFAULT 0`);
   });
 
   // ARCHIVE (append-only, soft delete)
@@ -44,14 +46,14 @@ db.serialize(() => {
     deletedBy TEXT,
     deleteReason TEXT
   )`);
-  db.all(`PRAGMA table_info(jobs_archive)`, (err, rows=[]) => {
+  db.all(`PRAGMA table_info(jobs_archive)`, (err, rows = []) => {
     if (err) return console.error('PRAGMA jobs_archive:', err);
     const names = rows.map(c => c.name);
     const add = (c, d) => db.run(`ALTER TABLE jobs_archive ADD COLUMN ${c} ${d}`);
-    if (!names.includes('isDeleted'))    add('isDeleted','INTEGER DEFAULT 0');
-    if (!names.includes('deletedAt'))    add('deletedAt','INTEGER');
-    if (!names.includes('deletedBy'))    add('deletedBy','TEXT');
-    if (!names.includes('deleteReason')) add('deleteReason','TEXT');
+    if (!names.includes('isDeleted')) add('isDeleted', 'INTEGER DEFAULT 0');
+    if (!names.includes('deletedAt')) add('deletedAt', 'INTEGER');
+    if (!names.includes('deletedBy')) add('deletedBy', 'TEXT');
+    if (!names.includes('deleteReason')) add('deleteReason', 'TEXT');
   });
 
   // ADJUSTMENTS ledger
@@ -70,7 +72,7 @@ db.serialize(() => {
   )`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_adj_archive ON jobs_adjustments(archiveId, id)`);
 
-  // USERS (case-insensitive unique)
+  // USERS
   db.run(`CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT NOT NULL UNIQUE COLLATE NOCASE,
