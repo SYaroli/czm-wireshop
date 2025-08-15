@@ -14,14 +14,14 @@
         <h1 class="brand-title">CZM • Admin Live View</h1>
       </a>
       <div class="brand-actions">
-        <button id="backToDashboard" class="secondary">Back</button>
+        <button id="backToDashboard" class="secondary">← Back</button>
         <button id="clearAllLogs" class="danger">Clear All Logs</button>
       </div>
     </div>
   </div>
 
-  <main class="page">
-    <!-- Live activity -->
+  <main class="container">
+    <!-- Live -->
     <div class="card">
       <h2>Live Technician Activity</h2>
       <div class="table-wrap">
@@ -42,19 +42,15 @@
       </div>
     </div>
 
-    <!-- Completed Jobs (Archive) -->
+    <!-- Archive -->
     <div class="card">
       <h2>Completed Jobs (Archive)</h2>
-      <div class="toolbar">
-        <div>
-          <label>Technician<br/>
-            <select id="fltTech">
-              <option value="">All</option>
-            </select>
-          </label>
+
+      <div class="toolbar" style="display:flex;gap:.75rem;flex-wrap:wrap;align-items:end;margin-bottom:.5rem">
+        <div><label>Technician<br/>
+          <select id="fltTech"><option value="">All</option></select></label>
         </div>
-        <div>
-          <label>Part # contains<br/>
+        <div><label>Part # contains<br/>
           <input id="fltPart" type="text" placeholder="e.g. 44602"/></label>
         </div>
         <div><label>From date<br/><input id="fltFrom" type="date"/></label></div>
@@ -92,31 +88,23 @@
     </div>
 
     <!-- Users -->
-    <div class="card">
+    <div class="card" id="usersCard">
       <h2>Users</h2>
-      <div class="grid cols-3">
-        <div><label>Username<br/><input id="uName" type="text" placeholder="firstname.lastname"/></label></div>
-        <div><label>PIN<br/><input id="uPin" type="text" placeholder="1234"/></label></div>
-        <div><label>Role<br/>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:end;margin:.25rem 0 .75rem">
+        <label>Username<br><input id="uName" type="text" placeholder="firstname.lastname"/></label>
+        <label>PIN<br><input id="uPin" type="text" inputmode="numeric" placeholder="1234"/></label>
+        <label>Role<br>
           <select id="uRole">
             <option value="assembler">assembler</option>
             <option value="admin">admin</option>
           </select>
-        </label></div>
-      </div>
-      <div class="row">
+        </label>
         <button id="btnAddUser" class="primary">Add User</button>
-        <div id="uMsg" class="muted" style="margin-left:10px;"></div>
+        <div id="uMsg" style="margin-left:auto;opacity:.8"></div>
       </div>
       <div class="table-wrap">
         <table class="table">
-          <thead>
-            <tr>
-              <th>Username</th>
-              <th>Role</th>
-              <th>Delete</th>
-            </tr>
-          </thead>
+          <thead><tr><th>Username</th><th>Role</th><th>Delete</th></tr></thead>
           <tbody id="usersTableBody"></tbody>
         </table>
       </div>
@@ -124,29 +112,28 @@
   </main>
 
   <!-- Adjust dialog -->
-  <dialog id="adjDialog" class="dialog">
-    <form id="adjForm" method="dialog">
-      <h3>Adjust Completed Job</h3>
-      <div id="adjMeta" class="muted" style="margin-bottom:8px;"></div>
-      <div class="grid cols-2">
-        <label>Technician<br/><input id="adjUser" type="text" /></label>
-        <label>Part Number<br/><input id="adjPart" type="text" /></label>
-        <label style="grid-column:1/-1">Notes<br/><textarea id="adjNote"></textarea></label>
-        <label>Start Time<br/><input id="adjStart" type="datetime-local"/></label>
-        <label>End Time<br/><input id="adjEnd" type="datetime-local"/></label>
-        <label>Pause Total (minutes)<br/><input id="adjPause" type="number" step="1" placeholder="leave blank to keep"/></label>
-        <label style="grid-column:1/-1">Reason (required)<br/><input id="adjReason" type="text" placeholder="e.g. missed punch"/></label>
+  <dialog id="adjDialog" style="max-width:720px;width:clamp(320px,90vw,720px);border:none;border-radius:12px;padding:16px;">
+    <form method="dialog" id="adjForm">
+      <h3 style="margin:0 0 8px 0;">Adjust Completed Job</h3>
+      <div id="adjMeta" style="font-size:.9rem;opacity:.7;margin-bottom:8px;"></div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <label>Technician <input id="adjUser" type="text"/></label>
+        <label>Part Number <input id="adjPart" type="text"/></label>
+        <label style="grid-column:1 / -1">Notes <textarea id="adjNote" rows="2"></textarea></label>
+        <label>Start Time <input id="adjStart" type="datetime-local"/></label>
+        <label>End Time <input id="adjEnd" type="datetime-local"/></label>
+        <label>Pause Total (minutes) <input id="adjPause" type="number" min="0" step="1" placeholder="leave blank to keep"/></label>
+        <label style="grid-column:1 / -1">Reason (required) <input id="adjReason" type="text" required placeholder="e.g. missed punch"/></label>
       </div>
-      <div class="row" style="justify-content:space-between;margin-top:10px;">
-        <div>
-          <button id="adjShowHistory" type="button" class="secondary">History</button>
-        </div>
-        <div>
-          <button id="adjCancel" type="button" class="secondary">Cancel</button>
-          <button id="adjSave" type="submit" class="primary">Save Adjustment</button>
-        </div>
+
+      <div id="adjHistory" style="margin-top:8px;padding:8px;background:#f6f6f6;border-radius:8px;display:none;"></div>
+
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px;">
+        <button id="adjShowHistory" type="button" class="secondary" style="margin-right:auto;">History</button>
+        <button type="button" id="adjCancel" class="secondary">Cancel</button>
+        <button type="submit" id="adjSave" class="primary">Save Adjustment</button>
       </div>
-      <div id="adjHistory" class="muted" style="display:none;margin-top:10px;"></div>
     </form>
   </dialog>
 
@@ -171,7 +158,7 @@
     const liveTbody = document.getElementById('activityTableBody');
     const catByPart = new Map((window.catalog || []).map(p => [String(p.partNumber), p]));
     const fmtExpected = (h)=> h==null?'':`${Math.floor((h*60)/60)}:${String(Math.round(h*60)%60).padStart(2,'0')}`;
-    const fmtDur = (s,e,pS,pT)=>{ if(!s)return''; const now=Date.now(); const end=e||now; let paused=pT||0; if(pS&&!e)paused+=Math.max(0,now-pS); let ms=Math.max(0,end-s-paused); const H=Math.floor(ms/3600000); ms%=3600000; const M=Math.floor(ms/60000); ms%=60000; const S=Math.floor(ms/1000); return `${H}h ${M}m ${S}s`; };
+    const fmtDur = (s,e,pS,pT)=>{ if(!s)return''; const now=Date.now(); const end=e||now; let paused=pT||0; if(pS&&!e)paused+=now-pS; let ms=Math.max(end-s-paused,0); const H=Math.floor(ms/3600000); ms%=3600000; const M=Math.floor(ms/60000); ms%=60000; const S=Math.floor(ms/1000); return `${H}h ${M}m ${S}s`; };
 
     async function loadLive(){
       const res = await fetch(`${API}/api/jobs/logs`, { headers:{'x-user': user.username} });
@@ -217,31 +204,24 @@
       e: document.getElementById('adjEnd'),
       z: document.getElementById('adjPause'),
       r: document.getElementById('adjReason'),
+      cancel: document.getElementById('adjCancel'),
+      histBtn: document.getElementById('adjShowHistory'),
       historyBox: document.getElementById('adjHistory')
     };
 
     const CAT = new Map((window.catalog || []).map(p => [String(p.partNumber), p]));
-    const fmt = (ms)=>{ let s=Math.max(0,Math.trunc(ms/1000)); const h=Math.floor(s/3600); s%=3600; const m=Math.floor(s/60); s%=60; return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`; };
-    const fmtExp = (hours)=> hours==null?'':(()=>{const mins=Math.round(Number(hours||0)*60); return `${Math.floor(mins/60)}:${String(mins%60).padStart(2,'0')}`} )();
-    const toMidnight = (d, end=false)=>{ const t=new Date(d); if(!end) t.setHours(0,0,0,0); else t.setHours(23,59,59,999); return t.getTime(); };
+    const fmt = (ms)=>{ if(!ms||ms<0)return'00:00:00'; let s=Math.floor(ms/1000),h=Math.floor(s/3600); s-=h*3600; const m=Math.floor(s/60); s-=m*60; return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`; };
+    const fmtExp = (hours)=> hours==null?'':(()=>{const mins=Math.round(Number(hours)*60); return `${Math.floor(mins/60)}:${String(mins%60).padStart(2,'0')}`} )();
+    const toMidnight = (d, end=false)=>{ const t=new Date(d); if(!end)t.setHours(0,0,0,0); else t.setHours(23,59,59,999); return t.getTime(); };
 
-    let ALL = [];
-    let VIEW = [];
-
-    function techList(rows){
-      const set = new Set(rows.map(r => r.username).filter(Boolean));
-      const cur = A.tech.value;
-      A.tech.innerHTML = '<option value="">All</option>' + Array.from(set).sort().map(t=>`<option value="${t}">${t}</option>`).join('');
-      if (cur) A.tech.value = cur;
-    }
+    let ALL = [], VIEW = [], current = null;
 
     async function loadArchive(){
       const res = await fetch(`${API}/api/jobs/archive`, { headers:{'x-user': user.username} });
       if (!res.ok) return;
-      const rows = await res.json();
-      ALL = rows;
-      VIEW = rows.slice();
-      techList(rows);
+      ALL = await res.json();
+      const names = [...new Set(ALL.map(r => r.username).filter(Boolean))].sort();
+      A.tech.innerHTML = '<option value="">All</option>' + names.map(n=>`<option>${n}</option>`).join('');
       applyFilters();
     }
 
@@ -284,54 +264,48 @@
         `;
         A.body.appendChild(tr);
       });
+      A.body.querySelectorAll('button[data-adj]').forEach(b=> b.addEventListener('click', ()=> openAdjust(VIEW.find(r=> r.id==b.dataset.adj))));
+      A.body.querySelectorAll('button[data-del]').forEach(b=> b.addEventListener('click', ()=> doDelete(parseInt(b.dataset.del,10))));
     }
 
-    // Adjust dialog wiring
-    let current = null;
-    A.body.addEventListener('click', (e)=>{
-      const adj = e.target.closest('button[data-adj]');
-      const del = e.target.closest('button[data-del]');
-      if (adj){
-        const id = Number(adj.getAttribute('data-adj'));
-        const row = VIEW.find(r => r.id === id);
-        if (!row) return;
-        current = row;
-        const cat = CAT.get(String(row.partNumber)) || {};
-        A.meta.textContent = `Archive #${row.id} • Finished ${new Date(row.finishedAt || row.endTime || Date.now()).toLocaleString()}`;
-        A.u.value = row.username || '';
-        A.p.value = row.partNumber || '';
-        A.n.value = row.note || '';
-        A.s.value = row.startTime ? new Date(row.startTime).toISOString().slice(0,16) : '';
-        A.e.value = row.endTime   ? new Date(row.endTime).toISOString().slice(0,16)   : '';
-        A.z.value = ''; // blank means keep existing
-        A.r.value = '';
-        A.historyBox.style.display='none'; A.historyBox.innerHTML='';
-        A.dlg.showModal();
-      }
-      if (del){
-        const id = Number(del.getAttribute('data-del'));
-        doDelete(id);
-      }
-    });
+    const toLocalDT = (ms)=>{ if(!ms)return''; const d=new Date(ms),pad=n=>String(n).padStart(2,'0'); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+
+    function openAdjust(row){
+      current = row;
+      A.meta.textContent = `Archive #${row.id} • Finished ${new Date(row.finishedAt||row.endTime).toLocaleString()}`;
+      A.u.value = row.username||'';
+      A.p.value = row.partNumber||'';
+      A.n.value = row.note||'';
+      A.s.value = toLocalDT(row.startTime);
+      A.e.value = toLocalDT(row.endTime);
+      A.z.value = (row.pauseTotal!=null && row.pauseTotal>=0)? Math.round(row.pauseTotal/60000):'';
+      A.r.value = '';
+      A.historyBox.style.display='none'; A.historyBox.innerHTML='';
+      A.dlg.showModal();
+    }
 
     A.form.addEventListener('submit', async (e)=>{
       e.preventDefault();
       if (!current) return;
-      const payload = {
-        username: A.u.value || null,
-        partNumber: A.p.value || null,
-        note: A.n.value || null,
-        startTime: A.s.value ? new Date(A.s.value).getTime() : null,
-        endTime:   A.e.value ? new Date(A.e.value).getTime() : null,
-        pauseTotal: A.z.value ? Math.max(0, Math.round(Number(A.z.value)*60000)) : null,
-        reason: (A.r.value||'').trim()
-      };
-      if (!payload.reason){ alert('Reason required'); return; }
+      const toMs = v=> v? new Date(v).getTime(): null;
+      const payload = {};
+      if (A.u.value !== (current.username||'')) payload.username = A.u.value;
+      if (A.p.value !== (current.partNumber||'')) payload.partNumber = A.p.value;
+      if (A.n.value !== (current.note||'')) payload.note = A.n.value;
+      const sMs = toMs(A.s.value), eMs = toMs(A.e.value);
+      if (sMs && sMs !== current.startTime) payload.startTime = sMs;
+      if (eMs && eMs !== current.endTime)   payload.endTime   = eMs;
+      if (A.z.value !== '' && (Math.round((current.pauseTotal||0)/60000) !== Number(A.z.value))) {
+        payload.pauseTotal = Number(A.z.value)*60000;
+      }
+      payload.reason = A.r.value.trim();
+      if (!payload.reason){ A.r.focus(); return; }
+
       const res = await fetch(`${API}/api/jobs/archive/${current.id}/adjust`, {
         method:'POST', headers:{'Content-Type':'application/json','x-user': user.username},
         body: JSON.stringify(payload)
       });
-      if (!res.ok){ alert('Adjust failed'); return; }
+      if (!res.ok){ alert('Failed to save adjustment'); return; }
       A.dlg.close(); loadArchive();
     });
 
@@ -348,7 +322,7 @@
           .filter(k=>a[k]!=null).map(k=>k.replace('override','')).join(', ') || 'none';
         return `<div style="padding:6px 0;border-top:1px solid #ddd">
           <div><strong>${when}</strong> by <code>${a.adminUser||''}</code></div>
-          <div>Reason: ${a.reason||''}</div>
+          <div>Reason: ${a.reason}</div>
           <div style="font-size:.9em;opacity:.8">Overrides: ${fields}</div>
         </div>`;
       }).join('') : '<em>No adjustments yet.</em>';
@@ -366,57 +340,18 @@
 
     A.apply.addEventListener('click', applyFilters);
     A.reset.addEventListener('click', ()=>{ A.tech.value=''; A.part.value=''; A.from.value=''; A.to.value=''; applyFilters(); });
-
     A.csv.addEventListener('click', ()=>{
-      // Helpers
-      const pad = n => String(n).padStart(2,'0');
-      const toLocalParts = ms => {
-        if (!ms) return { date:'', time:'' };
-        const d = new Date(ms);
-        const date = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
-        const time = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-        return { date, time };
-      };
-      const q = s => { s = String(s ?? ''); return /[",\n]/.test(s) ? `"${s.replace(/"/g,'""')}"` : s; };
-      const hms = ms => {
-        let s = Math.max(0, Math.trunc((ms||0)/1000));
-        const h = Math.floor(s/3600); s %= 3600;
-        const m = Math.floor(s/60);   s %= 60;
-        return `${pad(h)}:${pad(m)}:${pad(s)}`;
-      };
-
-      const header = ['start_date','start_time','finish_date','finish_time','username','partNumber','printName','expected','note','totalActive'];
-      const lines = [header.join(',')];
-
+      const header=['finished','username','partNumber','printName','expected','note','totalActive_ms'];
+      const lines=[header.join(',')];
       VIEW.forEach(r=>{
-        const cat = CAT.get(String(r.partNumber)) || {};
-        const expected = fmtExp(cat.expectedHours);
-
-        const finishMs = r.finishedAt || r.endTime || 0;
-        const totalMs  = (r.totalActive != null) ? r.totalActive : Math.max(0,(r.endTime||0)-(r.startTime||0)-(r.pauseTotal||0));
-        const startMs  = r.startTime || (finishMs ? (finishMs - totalMs) : 0);
-
-        const s = toLocalParts(startMs);
-        const f = toLocalParts(finishMs);
-
-        lines.push([
-          s.date, s.time,
-          f.date, f.time,
-          q(r.username),
-          q(r.partNumber),
-          q(r.printName || ''),
-          q(expected),
-          q(r.note),
-          hms(totalMs)
-        ].join(','));
+        const cat=CAT.get(String(r.partNumber))||{}, expected=fmtExp(cat.expectedHours);
+        const total=(r.totalActive!=null)?r.totalActive:Math.max(0,(r.endTime-r.startTime)-(r.pauseTotal||0));
+        const fin=r.finishedAt||r.endTime||0;
+        const q=s=>{s=String(s??'');return /[",\n]/.test(s)?`"${s.replace(/"/g,'""')}"`:s};
+        lines.push([new Date(fin).toISOString(), q(r.username), q(r.partNumber), q(cat.printName||''), expected, q(r.note), String(total)].join(','));
       });
-
-      const blob = new Blob([lines.join('\n')], { type:'text/csv' });
-      const url = URL.createObjectURL(blob);
-      const a = Object.assign(document.createElement('a'), {
-        href: url,
-        download: `wireshop-archive-${new Date().toISOString().slice(0,10)}.csv`
-      });
+      const blob=new Blob([lines.join('\n')],{type:'text/csv'});
+      const url=URL.createObjectURL(blob); const a=Object.assign(document.createElement('a'),{href:url,download:`wireshop-archive-${new Date().toISOString().slice(0,10)}.csv`});
       document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
     });
 
@@ -436,22 +371,18 @@
       if (!res.ok){ U.msg.textContent='Cannot load users (admin only)'; return; }
       const rows = await res.json();
       U.body.innerHTML=''; rows.forEach(r=>{
-        const tr=document.createElement('tr');
-        tr.innerHTML=`
-          <td>${r.username||''}</td>
-          <td>${r.role||''}</td>
-          <td><button class="danger small" data-del="${r.username}">Delete</button></td>
-        `;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${r.username}</td><td>${r.role}</td><td><button class="danger small" data-del="${r.id}">Delete</button></td>`;
         U.body.appendChild(tr);
       });
-      U.body.addEventListener('click', async (e)=>{
-        const btn=e.target.closest('button[data-del]'); if(!btn)return;
-        const who=btn.getAttribute('data-del'); if(!confirm(\`Delete \${who}?\`)) return;
-        const res = await fetch(\`${API}/api/users/\${encodeURIComponent(who)}\`, { method:'DELETE', headers:{'x-user': user.username} });
-        if (!res.ok) alert('Delete failed'); else loadUsers();
-      }, { once:true });
+      U.body.querySelectorAll('button[data-del]').forEach(b=> b.addEventListener('click', async ()=>{
+        if (!confirm('Delete this user?')) return;
+        const resp = await fetch(`${API}/api/users/${b.dataset.del}`, { method:'DELETE', headers:{'x-user': user.username} });
+        if (!resp.ok){ alert('Delete failed'); return; }
+        loadUsers();
+      }));
     }
-    document.getElementById('btnAddUser')?.addEventListener('click', async ()=>{
+    U.add.addEventListener('click', async ()=>{
       const username=(U.name.value||'').trim(), pin=(U.pin.value||'').trim(), role=U.role.value;
       if (!username || !pin){ U.msg.textContent='username & pin required'; return; }
       const res = await fetch(`${API}/api/users`, {
