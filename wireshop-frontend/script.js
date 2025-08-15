@@ -1,4 +1,4 @@
-// script.js — login + dashboard; original look preserved; adds local "My Completed"
+// script.js — login + dashboard; part number is the ONLY selector for details; hard-freeze Pause
 document.addEventListener('DOMContentLoaded', () => {
   const API_ROOT = 'https://wireshop-backend.onrender.com';
   const API_JOBS = `${API_ROOT}/api/jobs`;
@@ -30,7 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
     return `${h}h ${m}m ${s}s`;
   }
 
-  // ---------- Minimal styling helpers you already had ----------
+  // Styles: 3D buttons + clickable part-number link
   (function injectStyles(){
     const css = `
       .btn3d{appearance:none;border:1px solid transparent;border-radius:12px;padding:7px 12px;font-weight:700;cursor:pointer;letter-spacing:.2px;
@@ -100,7 +100,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const deleteAllBtn = document.getElementById('deleteAllLogs');
 
     const isAdmin = String(user.role||'').toLowerCase()==='admin';
-    if (!isAdmin) { liveBtn && (liveBtn.style.display='none'); }
+    if (!isAdmin) { liveBtn && (liveBtn.style.display='none'); deleteAllBtn && (deleteAllBtn.style.display='none'); }
 
     liveBtn?.addEventListener('click', ()=> window.location.href='admin.html');
     logoutBtn?.addEventListener('click', ()=> { clearUser(); window.location.href='index.html'; });
@@ -113,17 +113,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const expLoc = document.getElementById('expectedLocation');
     const expSA = document.getElementById('expectedSA');
 
-    // ---------- Catalog load (pin MAINT/CLEAN on top) ----------
     function loadParts(){
       const items = Array.isArray(window.catalog) ? [...window.catalog] : [];
-      const special = new Set(["MAINT-0001","CLEAN-0001"]);
-      items.sort((a,b) => {
-        const aS = special.has(a.partNumber);
-        const bS = special.has(b.partNumber);
-        if (aS && !bS) return -1;
-        if (!aS && bS) return 1;
-        return String(a.partNumber).localeCompare(String(b.partNumber));
-      });
+      items.sort((a,b)=> String(a.partNumber).localeCompare(String(b.partNumber)));
       partSelect.innerHTML = `<option value="">-- Select Part --</option>` +
         items.map(p => `<option value="${p.partNumber}">${p.partNumber} — ${p.printName || ''}</option>`).join('');
     }
@@ -155,7 +147,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }catch(err){ console.error(err); alert('Failed to start job.'); }
     });
 
-    // ----- Notes drafts -----
     const draftKey = (id)=> `draftNotes:${user.username}:${id}`;
     const getDraft = (id)=> localStorage.getItem(draftKey(id)) || '';
     const setDraft = (id,val)=> localStorage.setItem(draftKey(id), val);
@@ -171,14 +162,16 @@ document.addEventListener('DOMContentLoaded', () => {
       fillInfoFromPart(log?.partNumber || '');
     }
 
-    // ----- Interaction guard -----
+    // Focus guard
     let isInteracting = false;
     const beginInteraction = ()=> { isInteracting = true; };
     const endInteraction = ()=> { const inside=tBody.contains(document.activeElement); if (!inside) isInteracting = false; };
     tBody.addEventListener('focusin', beginInteraction);
     tBody.addEventListener('focusout', () => setTimeout(endInteraction, 0));
 
-    // Signature to avoid repaint when nothing changed
+    // Remove the old "click anywhere" row selector.
+    // Now only clicks on the part number control selection.
+
     let lastSig = '';
     function makeSignature(rows){
       const minimal = rows.filter(r=>!r.endTime).map(r=>({
@@ -187,7 +180,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return JSON.stringify(minimal);
     }
 
-    // ----- Freeze timer cell during pause -----
+    // HARD-FREEZE mechanism: when paused, stop updating the cell completely
     function freezeCell(td){
       if (!td) return;
       td.setAttribute('data-frozen', '1');
@@ -199,6 +192,7 @@ document.addEventListener('DOMContentLoaded', () => {
       td.removeAttribute('data-frozen-text');
     }
 
+    // Local timing tweak for instant UX, paired with freeze
     function applyLocalTiming(tr, act){
       const td = tr.querySelector('.dur');
       if (!td) return { revert: ()=>{} };
@@ -241,118 +235,137 @@ document.addEventListener('DOMContentLoaded', () => {
       };
     }
 
-    // ====== My Completed (local only) ======
-    const myCompletedKey = (uname)=> `myCompleted:${uname}`;
-    function readMyCompleted(uname){
-      try { return JSON.parse(localStorage.getItem(myCompletedKey(uname)) || '[]'); } catch { return []; }
-    }
-    function writeMyCompleted(uname, arr){
-      localStorage.setItem(myCompletedKey(uname), JSON.stringify(arr));
-    }
-    function fmtHMS(ms){
-      let s = Math.max(0, Math.trunc(ms/1000));
-      const h = Math.floor(s/3600); s%=3600;
-      const m = Math.floor(s/60); s%=60;
-      const pad = (n)=> String(n).padStart(2,'0');
-      return `${pad(h)}:${pad(m)}:${pad(s)}`;
-    }
-    function renderMyCompleted(uname){
-      const body = document.getElementById('myCompletedBody');
-      if (!body) return;
-      const rows = readMyCompleted(uname);
-      body.innerHTML = rows.map(r => `
-        <tr data-id="${r.uid}">
-          <td>${new Date(r.finishedAt).toLocaleString()}</td>
-          <td>${r.partNumber || ''}</td>
-          <td>${r.printName || ''}</td>
-          <td>${fmtHMS(r.totalActiveMs || 0)}</td>
-          <td><button class="danger" data-del="${r.uid}">Delete</button></td>
-        </tr>
-      `).join('');
-    }
-    // Hook up delete buttons for local list
-    document.getElementById('myCompletedBody')?.addEventListener('click', (e)=>{
-      const btn = e.target.closest('button[data-del]');
-      if (!btn) return;
-      const uid = btn.getAttribute('data-del');
-      const list = readMyCompleted(user.username).filter(x => x.uid !== uid);
-      writeMyCompleted(user.username, list);
-      renderMyCompleted(user.username);
-    });
-    document.getElementById('clearMyCompleted')?.addEventListener('click', ()=>{
-      if (!confirm('Clear your local completed list?')) return;
-      writeMyCompleted(user.username, []);
-      renderMyCompleted(user.username);
-    });
-
-    // ----- Row actions (Pause/Continue/Finish) -----
-    const tBodyClick = async (e)=>{
+    // Actions (Pause/Continue/Finish) via buttons
+    tBody.addEventListener('click', async (e)=>{
       const btn = e.target.closest('button[data-act]');
-      if (!btn) return;
+      if (btn) {
+        const tr = btn.closest('tr'); if (!tr) return;
+        const logId = Number(tr.dataset.id);
+        const act = btn.getAttribute('data-act');
 
-      const tr = btn.closest('tr'); if (!tr) return;
-      const logId = Number(tr.dataset.id);
-      const act = btn.getAttribute('data-act');
+        const group = tr.querySelectorAll('button[data-act]');
+        group.forEach(b=> b.disabled = true);
 
-      const group = tr.querySelectorAll('button[data-act]');
-      group.forEach(b=> b.disabled = true);
+        // instant local UX (with freeze)
+        const local = applyLocalTiming(tr, act);
 
-      const local = applyLocalTiming(tr, act);
+        try{
+          const body = { action: act };
+          if (act === 'Finish'){
+            body.endTime = Date.now();
+            const latestDraft = tr.querySelector('textarea.notes-box')?.value.trim();
+            if (latestDraft) body.note = latestDraft;
+          }
+          await jobsApi(`/log/${logId}`, { method:'PUT', body: JSON.stringify(body) });
 
-      try{
-        const body = { action: act };
-        if (act === 'Finish'){
-          body.endTime = Date.now();
-          const latestDraft = tr.querySelector('textarea.notes-box')?.value.trim();
-          if (latestDraft) body.note = latestDraft;
+          const pauseBtn = tr.querySelector('button[data-act="Pause"]');
+          const contBtn  = tr.querySelector('button[data-act="Continue"]');
+          if (act === 'Pause'){ pauseBtn && (pauseBtn.disabled = true); contBtn && (contBtn.disabled = false); }
+          else if (act === 'Continue'){ contBtn && (contBtn.disabled = true); pauseBtn && (pauseBtn.disabled = false); }
+
+          if (act === 'Finish'){
+            clearDraft(logId);
+            if (selectedLogId === logId){ selectedLogId = null; fillInfoFromPart(''); }
+            await requestRefresh(true);
+          } else {
+            lastSig = '';
+          }
+        }catch(err){
+          console.error(err);
+          local.revert();
+          alert('Failed to update action.');
+        }finally{
+          group.forEach(b=> b.disabled = false);
         }
-        await jobsApi(`/log/${logId}`, { method:'PUT', body: JSON.stringify(body) });
-
-        const pauseBtn = tr.querySelector('button[data-act="Pause"]');
-        const contBtn  = tr.querySelector('button[data-act="Continue"]');
-        if (act === 'Pause'){ pauseBtn && (pauseBtn.disabled = true); contBtn && (contBtn.disabled = false); }
-        else if (act === 'Continue'){ contBtn && (contBtn.disabled = true); pauseBtn && (pauseBtn.disabled = false); }
-
-        // On Finish, add to local My Completed (does NOT touch backend)
-        if (act === 'Finish') {
-          const durTd = tr.querySelector('.dur');
-          const startMs = Number(durTd?.getAttribute('data-start')) || 0;
-          const pauseStart = Number(durTd?.getAttribute('data-pause')) || 0;
-          const pauseTotal = Number(durTd?.getAttribute('data-paused')) || 0;
-          const endMs = Date.now();
-          const extraPause = pauseStart ? Math.max(0, endMs - pauseStart) : 0;
-          const totalActiveMs = Math.max(0, endMs - startMs - (pauseTotal + extraPause));
-
-          const pn = tr.querySelector('.part-link')?.dataset.pn || tr.querySelector('.part-link')?.textContent?.trim() || '';
-          const printName = (window.catalog || []).find(p => p.partNumber === pn)?.printName || '';
-
-          const entry = { uid: `${logId}:${endMs}`, finishedAt: endMs, partNumber: pn, printName, totalActiveMs };
-          const list = readMyCompleted(user.username);
-          list.unshift(entry);
-          writeMyCompleted(user.username, list.slice(0, 200));
-          renderMyCompleted(user.username);
-
-          clearDraft(logId);
-          if (selectedLogId === logId){ selectedLogId = null; fillInfoFromPart(''); }
-          await requestRefresh(true);
-        } else {
-          lastSig = '';
-        }
-      }catch(err){
-        console.error(err);
-        local.revert();
-        alert('Failed to update action.');
-      }finally{
-        group.forEach(b=> b.disabled = false);
+        return;
       }
-    };
-    document.getElementById('logTableBody').addEventListener('click', tBodyClick);
 
-    // ----- Refresh active table -----
+      // Part-number click handler (the ONLY selector)
+      const link = e.target.closest('.part-link');
+      if (link) {
+        const tr = link.closest('tr'); if (!tr) return;
+        const id = tr.dataset.id;
+        const pn = link.dataset.pn || link.textContent.trim();
+        selectRow(tr, { id, partNumber: pn });
+      }
+    });
+
+    // ===== AUTO-SCHEDULE ENFORCER =====
+    // Windows in local time (HH:MM). Change here if your shop changes.
+    const WINDOWS = [
+      { start: '10:00', end: '10:15', kind: 'break'  },
+      { start: '12:00', end: '12:30', kind: 'lunch'  },
+      { start: '14:30', end: '14:45', kind: 'break'  },
+      { start: '17:00', end: '23:59', kind: 'dayend' } // pause and DO NOT auto-continue
+    ];
+
+    const AUTO_PAUSED = new Map(); // logId -> last auto-pause timestamp
+
+    function hmToDateToday(hm){
+      const [H,M] = hm.split(':').map(n=>parseInt(n,10));
+      const d = new Date();
+      d.setHours(H, M, 0, 0);
+      return d;
+    }
+    function nowInWindow(w){
+      const n = new Date();
+      const s = hmToDateToday(w.start);
+      const e = hmToDateToday(w.end);
+      return n >= s && n < e;
+    }
+    function currentPolicy(){
+      // If inside any window, pause. If dayend, pause sticky.
+      for (const w of WINDOWS){
+        if (nowInWindow(w)) return { shouldPause: true, sticky: w.kind === 'dayend' };
+      }
+      return { shouldPause: false, sticky: false };
+    }
+
+    // Keep the latest active rows for the enforcer
+    let CURRENT_ACTIVE = [];
+
+    async function enforceSchedule(){
+      if (!CURRENT_ACTIVE.length) return;
+      const policy = currentPolicy();
+
+      for (const log of CURRENT_ACTIVE){
+        const id = Number(log.id);
+        const current = (log.action || '').trim();
+        const logical = (current === 'Pause' || current === 'Finish') ? current : 'Continue';
+        const isPaused = logical === 'Pause';
+
+        if (policy.shouldPause) {
+          if (!isPaused) {
+            // Auto-pause
+            try {
+              await jobsApi(`/log/${id}`, { method:'PUT', body: JSON.stringify({ action:'Pause' }) });
+              AUTO_PAUSED.set(id, Date.now());
+              lastSig = ''; // force next render to refresh state
+            } catch (e) { console.error('auto-pause failed', e); }
+          }
+        } else {
+          // Outside enforced windows. Only auto-continue if WE paused it.
+          if (AUTO_PAUSED.has(id) && isPaused) {
+            try {
+              await jobsApi(`/log/${id}`, { method:'PUT', body: JSON.stringify({ action:'Continue' }) });
+              AUTO_PAUSED.delete(id);
+              lastSig = '';
+            } catch (e) { console.error('auto-continue failed', e); }
+          }
+        }
+
+        // If sticky pause window (end of day), never auto-continue again today
+        if (policy.sticky && isPaused) {
+          AUTO_PAUSED.delete(id); // clear marker to avoid accidental continue
+        }
+      }
+    }
+
     async function refreshActive(force=false){
       if (isInteracting && !force) return;
       const rows = await jobsApi(`/logs/${encodeURIComponent(user.username)}`, { method:'GET' });
       const active = rows.filter(r=>!r.endTime);
+      CURRENT_ACTIVE = active; // expose for enforcer
       const sig = makeSignature(rows);
       if (!force && sig === lastSig) return; lastSig = sig;
 
@@ -403,6 +416,9 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       if (tBody.parentElement) tBody.parentElement.scrollTop = prevScroll;
+
+      // After every refresh, try to enforce schedule.
+      enforceSchedule().catch(console.error);
     }
 
     async function requestRefresh(force=false){ await refreshActive(force); }
@@ -420,7 +436,6 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
-    // Delete all user live logs
     deleteAllBtn?.addEventListener('click', async ()=>{
       if (!confirm('Delete ALL your logs?')) return;
       try{ await jobsApi(`/delete-logs/${encodeURIComponent(user.username)}`, { method:'DELETE' }); tBody.innerHTML=''; }
@@ -428,9 +443,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Boot
-    renderMyCompleted(user.username);
     requestRefresh(true).catch(console.error);
     setInterval(()=> requestRefresh(false), 5000);
     setInterval(tickDurations, 1000);
+    setInterval(enforceSchedule, 15000); // check windows repeatedly
   })();
 });
