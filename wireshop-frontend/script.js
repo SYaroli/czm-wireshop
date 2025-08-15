@@ -1,4 +1,4 @@
-// script.js — login + dashboard; part number is the ONLY selector for details; hard-freeze Pause
+// script.js — dashboard logic with auto-schedule AND "My Completed" local panel
 document.addEventListener('DOMContentLoaded', () => {
   const API_ROOT = 'https://wireshop-backend.onrender.com';
   const API_JOBS = `${API_ROOT}/api/jobs`;
@@ -17,6 +17,14 @@ document.addEventListener('DOMContentLoaded', () => {
     return ct.includes('application/json') ? res.json() : res.text();
   }
 
+  const fmtDurationHM = (ms) => {
+    let s = Math.max(0, Math.trunc(ms/1000));
+    const h = Math.floor(s/3600); s%=3600;
+    const m = Math.floor(s/60); s%=60;
+    const pad = (n)=> String(n).padStart(2,'0');
+    return `${pad(h)}:${pad(m)}:${pad(s)}`;
+  };
+
   function fmtDuration(start, end, pauseStart, pauseTotal) {
     if (!start) return '';
     const now = Date.now();
@@ -30,9 +38,31 @@ document.addEventListener('DOMContentLoaded', () => {
     return `${h}h ${m}m ${s}s`;
   }
 
-  // Styles: 3D buttons + clickable part-number link
+  // Styles: minor
   (function injectStyles(){
     const css = `
+      .btn{padding:.55rem .9rem;border:1px solid #222;border-radius:10px;background:#f4f4f4;cursor:pointer;font-weight:700}
+      .btn.primary{background:#e3f2ff;border-color:#9bc7ff}
+      .btn.danger{background:#ffe3e3;border-color:#f5a5a5}
+      .btn.subtle{opacity:.85}
+      .container{max-width:1200px;margin:0 auto;padding:1rem}
+      .card{background:#fff;border-radius:16px;box-shadow:0 10px 20px rgba(0,0,0,.08);padding:16px;margin:16px 0}
+      .row{display:flex;gap:12px;align-items:center}
+      .row.between{justify-content:space-between}
+      .label{min-width:60px}
+      .input{min-width:320px;padding:.45rem;border-radius:8px;border:1px solid #ccc}
+      .grid{display:grid;gap:10px}
+      .grid-4{grid-template-columns:repeat(4, minmax(0,1fr))}
+      .info{background:#f7f7f7;border:1px solid #e5e5e5;border-radius:12px;padding:10px}
+      .info-label{font-size:.8rem;color:#666}
+      .info-value{font-weight:700}
+      .table-wrap{overflow:auto}
+      .table{width:100%;border-collapse:collapse}
+      .table th,.table td{border-bottom:1px solid #e8e8e8;padding:.55rem;text-align:left}
+      .topbar{display:flex;align-items:center;gap:12px;padding:10px;background:#111;color:#fff}
+      .topbar .title{font-weight:800}
+      .topbar .spacer{flex:1}
+      .muted{color:#666;font-size:.9rem}
       .btn3d{appearance:none;border:1px solid transparent;border-radius:12px;padding:7px 12px;font-weight:700;cursor:pointer;letter-spacing:.2px;
         box-shadow:0 3px 0 rgba(0,0,0,.28),0 10px 18px rgba(0,0,0,.10);transition:transform .06s, box-shadow .06s, filter .15s, opacity .15s;text-shadow:0 1px 0 rgba(255,255,255,.35);}
       .btn3d.small{font-size:.9rem;line-height:1}
@@ -47,6 +77,7 @@ document.addEventListener('DOMContentLoaded', () => {
       .row-selected{outline:2px solid #0072ff33}
       .part-link{background:none;border:none;padding:0;margin:0;color:#0b61ff;cursor:pointer;font-weight:700;text-decoration:underline}
       .part-link:focus{outline:2px solid #0072ff33;border-radius:4px}
+      .trash{background:#ffe3e3;border:1px solid #f3a7a7;border-radius:10px;padding:.35rem .7rem;cursor:pointer}
     `;
     const s = document.createElement('style'); s.textContent = css; document.head.appendChild(s);
   })();
@@ -100,7 +131,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const deleteAllBtn = document.getElementById('deleteAllLogs');
 
     const isAdmin = String(user.role||'').toLowerCase()==='admin';
-    if (!isAdmin) { liveBtn && (liveBtn.style.display='none'); deleteAllBtn && (deleteAllBtn.style.display='none'); }
+    if (!isAdmin) { liveBtn && (liveBtn.style.display='none'); }
 
     liveBtn?.addEventListener('click', ()=> window.location.href='admin.html');
     logoutBtn?.addEventListener('click', ()=> { clearUser(); window.location.href='index.html'; });
@@ -113,9 +144,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const expLoc = document.getElementById('expectedLocation');
     const expSA = document.getElementById('expectedSA');
 
+    // ---------- Catalog load with pinned tasks ----------
     function loadParts(){
       const items = Array.isArray(window.catalog) ? [...window.catalog] : [];
-      items.sort((a,b)=> String(a.partNumber).localeCompare(String(b.partNumber)));
+      const special = new Set(["MAINT-0001","CLEAN-0001"]);
+      items.sort((a,b) => {
+        const aS = special.has(a.partNumber);
+        const bS = special.has(b.partNumber);
+        if (aS && !bS) return -1;
+        if (!aS && bS) return 1;
+        return String(a.partNumber).localeCompare(String(b.partNumber));
+      });
       partSelect.innerHTML = `<option value="">-- Select Part --</option>` +
         items.map(p => `<option value="${p.partNumber}">${p.partNumber} — ${p.printName || ''}</option>`).join('');
     }
@@ -162,15 +201,11 @@ document.addEventListener('DOMContentLoaded', () => {
       fillInfoFromPart(log?.partNumber || '');
     }
 
-    // Focus guard
     let isInteracting = false;
     const beginInteraction = ()=> { isInteracting = true; };
     const endInteraction = ()=> { const inside=tBody.contains(document.activeElement); if (!inside) isInteracting = false; };
     tBody.addEventListener('focusin', beginInteraction);
     tBody.addEventListener('focusout', () => setTimeout(endInteraction, 0));
-
-    // Remove the old "click anywhere" row selector.
-    // Now only clicks on the part number control selection.
 
     let lastSig = '';
     function makeSignature(rows){
@@ -180,7 +215,6 @@ document.addEventListener('DOMContentLoaded', () => {
       return JSON.stringify(minimal);
     }
 
-    // HARD-FREEZE mechanism: when paused, stop updating the cell completely
     function freezeCell(td){
       if (!td) return;
       td.setAttribute('data-frozen', '1');
@@ -192,7 +226,6 @@ document.addEventListener('DOMContentLoaded', () => {
       td.removeAttribute('data-frozen-text');
     }
 
-    // Local timing tweak for instant UX, paired with freeze
     function applyLocalTiming(tr, act){
       const td = tr.querySelector('.dur');
       if (!td) return { revert: ()=>{} };
@@ -235,6 +268,43 @@ document.addEventListener('DOMContentLoaded', () => {
       };
     }
 
+    // ====== "My Completed" local panel ======
+    const myCompletedKey = (uname)=> `myCompleted:${uname}`;
+    const readMyCompleted = ()=> {
+      try { return JSON.parse(localStorage.getItem(myCompletedKey(user.username)) || '[]'); }
+      catch { return []; }
+    };
+    const writeMyCompleted = (arr)=> localStorage.setItem(myCompletedKey(user.username), JSON.stringify(arr));
+    const myCompletedBody = document.getElementById('myCompletedBody');
+
+    function renderMyCompleted(){
+      const rows = readMyCompleted();
+      myCompletedBody.innerHTML = rows.map(r => `
+        <tr data-id="${r.uid}">
+          <td>${new Date(r.finishedAt).toLocaleString()}</td>
+          <td>${r.partNumber || ''}</td>
+          <td>${r.printName || ''}</td>
+          <td>${fmtDurationHM(r.totalActiveMs || 0)}</td>
+          <td><button class="trash" data-del="${r.uid}">Delete</button></td>
+        </tr>
+      `).join('');
+    }
+
+    myCompletedBody.addEventListener('click', (e)=>{
+      const btn = e.target.closest('button[data-del]');
+      if (!btn) return;
+      const uid = btn.getAttribute('data-del');
+      const list = readMyCompleted().filter(x => x.uid !== uid);
+      writeMyCompleted(list);
+      renderMyCompleted();
+    });
+
+    document.getElementById('clearMyCompleted')?.addEventListener('click', ()=>{
+      if (!confirm('Clear your local completed list?')) return;
+      writeMyCompleted([]);
+      renderMyCompleted();
+    });
+
     // Actions (Pause/Continue/Finish) via buttons
     tBody.addEventListener('click', async (e)=>{
       const btn = e.target.closest('button[data-act]');
@@ -256,14 +326,37 @@ document.addEventListener('DOMContentLoaded', () => {
             const latestDraft = tr.querySelector('textarea.notes-box')?.value.trim();
             if (latestDraft) body.note = latestDraft;
           }
-          await jobsApi(`/log/${logId}`, { method:'PUT', body: JSON.stringify(body) });
+          const result = await jobsApi(`/log/${logId}`, { method:'PUT', body: JSON.stringify(body) });
 
           const pauseBtn = tr.querySelector('button[data-act="Pause"]');
           const contBtn  = tr.querySelector('button[data-act="Continue"]');
           if (act === 'Pause'){ pauseBtn && (pauseBtn.disabled = true); contBtn && (contBtn.disabled = false); }
           else if (act === 'Continue'){ contBtn && (contBtn.disabled = true); pauseBtn && (pauseBtn.disabled = false); }
 
-          if (act === 'Finish'){
+          // If finished, push to My Completed (local only)
+          if (act === 'Finish') {
+            // result may have archive info or not; we can compute safely from row attributes
+            const startMs = Number(tr.querySelector('.dur')?.getAttribute('data-start')) || null;
+            const pT = Number(tr.querySelector('.dur')?.getAttribute('data-paused')) || 0;
+            const endMs = Date.now();
+            const totalActiveMs = startMs ? Math.max(0, endMs - startMs - pT) : 0;
+
+            // best-effort print name
+            const pn = tr.querySelector('.part-link')?.dataset.pn || '';
+            const printName = (window.catalog || []).find(p => p.partNumber === pn)?.printName || '';
+
+            const entry = {
+              uid: `${logId}:${endMs}`,          // local unique id
+              finishedAt: endMs,
+              partNumber: pn,
+              printName,
+              totalActiveMs
+            };
+            const list = readMyCompleted();
+            list.unshift(entry);
+            writeMyCompleted(list.slice(0, 200)); // keep last 200 for sanity
+            renderMyCompleted();
+
             clearDraft(logId);
             if (selectedLogId === logId){ selectedLogId = null; fillInfoFromPart(''); }
             await requestRefresh(true);
@@ -280,7 +373,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
-      // Part-number click handler (the ONLY selector)
       const link = e.target.closest('.part-link');
       if (link) {
         const tr = link.closest('tr'); if (!tr) return;
@@ -291,12 +383,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // ===== AUTO-SCHEDULE ENFORCER =====
-    // Windows in local time (HH:MM). Change here if your shop changes.
     const WINDOWS = [
       { start: '10:00', end: '10:15', kind: 'break'  },
       { start: '12:00', end: '12:30', kind: 'lunch'  },
       { start: '14:30', end: '14:45', kind: 'break'  },
-      { start: '17:00', end: '23:59', kind: 'dayend' } // pause and DO NOT auto-continue
+      { start: '17:00', end: '23:59', kind: 'dayend' }
     ];
 
     const AUTO_PAUSED = new Map(); // logId -> last auto-pause timestamp
@@ -314,14 +405,12 @@ document.addEventListener('DOMContentLoaded', () => {
       return n >= s && n < e;
     }
     function currentPolicy(){
-      // If inside any window, pause. If dayend, pause sticky.
       for (const w of WINDOWS){
         if (nowInWindow(w)) return { shouldPause: true, sticky: w.kind === 'dayend' };
       }
       return { shouldPause: false, sticky: false };
     }
 
-    // Keep the latest active rows for the enforcer
     let CURRENT_ACTIVE = [];
 
     async function enforceSchedule(){
@@ -336,15 +425,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (policy.shouldPause) {
           if (!isPaused) {
-            // Auto-pause
             try {
               await jobsApi(`/log/${id}`, { method:'PUT', body: JSON.stringify({ action:'Pause' }) });
               AUTO_PAUSED.set(id, Date.now());
-              lastSig = ''; // force next render to refresh state
+              lastSig = '';
             } catch (e) { console.error('auto-pause failed', e); }
           }
         } else {
-          // Outside enforced windows. Only auto-continue if WE paused it.
           if (AUTO_PAUSED.has(id) && isPaused) {
             try {
               await jobsApi(`/log/${id}`, { method:'PUT', body: JSON.stringify({ action:'Continue' }) });
@@ -354,9 +441,8 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         }
 
-        // If sticky pause window (end of day), never auto-continue again today
         if (policy.sticky && isPaused) {
-          AUTO_PAUSED.delete(id); // clear marker to avoid accidental continue
+          AUTO_PAUSED.delete(id);
         }
       }
     }
@@ -365,7 +451,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (isInteracting && !force) return;
       const rows = await jobsApi(`/logs/${encodeURIComponent(user.username)}`, { method:'GET' });
       const active = rows.filter(r=>!r.endTime);
-      CURRENT_ACTIVE = active; // expose for enforcer
+      CURRENT_ACTIVE = active;
       const sig = makeSignature(rows);
       if (!force && sig === lastSig) return; lastSig = sig;
 
@@ -417,7 +503,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (tBody.parentElement) tBody.parentElement.scrollTop = prevScroll;
 
-      // After every refresh, try to enforce schedule.
       enforceSchedule().catch(console.error);
     }
 
@@ -437,15 +522,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     deleteAllBtn?.addEventListener('click', async ()=>{
-      if (!confirm('Delete ALL your logs?')) return;
+      if (!confirm('Delete ALL your live logs?')) return;
       try{ await jobsApi(`/delete-logs/${encodeURIComponent(user.username)}`, { method:'DELETE' }); tBody.innerHTML=''; }
       catch(err){ console.error(err); alert('Failed to delete logs.'); }
     });
 
     // Boot
+    renderMyCompleted();
     requestRefresh(true).catch(console.error);
     setInterval(()=> requestRefresh(false), 5000);
     setInterval(tickDurations, 1000);
-    setInterval(enforceSchedule, 15000); // check windows repeatedly
+    setInterval(enforceSchedule, 15000);
   })();
 });
