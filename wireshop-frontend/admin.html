@@ -340,18 +340,57 @@
 
     A.apply.addEventListener('click', applyFilters);
     A.reset.addEventListener('click', ()=>{ A.tech.value=''; A.part.value=''; A.from.value=''; A.to.value=''; applyFilters(); });
+
+    // ===== CSV Export: start/finish split + HH:MM:SS total (no layout changes) =====
     A.csv.addEventListener('click', ()=>{
-      const header=['finished','username','partNumber','printName','expected','note','totalActive_ms'];
-      const lines=[header.join(',')];
+      const pad = n => String(n).padStart(2,'0');
+      const toLocalParts = ms => {
+        if (!ms) return { date:'', time:'' };
+        const d = new Date(ms);
+        return {
+          date: `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`,
+          time: `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+        };
+      };
+      const q = s => { s = String(s ?? ''); return /[",\n]/.test(s) ? `"${s.replace(/"/g,'""')}"` : s; };
+      const hms = ms => {
+        let s = Math.max(0, Math.trunc((ms||0)/1000));
+        const h = Math.floor(s/3600); s %= 3600;
+        const m = Math.floor(s/60);   s %= 60;
+        return `${pad(h)}:${pad(m)}:${pad(s)}`;
+      };
+      const header = ['start_date','start_time','finish_date','finish_time','username','partNumber','printName','expected','note','totalActive'];
+      const lines = [header.join(',')];
+
       VIEW.forEach(r=>{
-        const cat=CAT.get(String(r.partNumber))||{}, expected=fmtExp(cat.expectedHours);
-        const total=(r.totalActive!=null)?r.totalActive:Math.max(0,(r.endTime-r.startTime)-(r.pauseTotal||0));
-        const fin=r.finishedAt||r.endTime||0;
-        const q=s=>{s=String(s??'');return /[",\n]/.test(s)?`"${s.replace(/"/g,'""')}"`:s};
-        lines.push([new Date(fin).toISOString(), q(r.username), q(r.partNumber), q(cat.printName||''), expected, q(r.note), String(total)].join(','));
+        const cat = CAT.get(String(r.partNumber)) || {};
+        const expected = fmtExp(cat.expectedHours);
+
+        const finishMs = r.finishedAt || r.endTime || 0;
+        const totalMs  = (r.totalActive != null) ? r.totalActive : Math.max(0,(r.endTime||0)-(r.startTime||0)-(r.pauseTotal||0));
+        const startMs  = r.startTime || (finishMs ? (finishMs - totalMs) : 0);
+
+        const s = toLocalParts(startMs);
+        const f = toLocalParts(finishMs);
+
+        lines.push([
+          s.date, s.time,
+          f.date, f.time,
+          q(r.username),
+          q(r.partNumber),
+          q(r.printName || cat.printName || ''),
+          q(expected),
+          q(r.note),
+          hms(totalMs)
+        ].join(','));
       });
-      const blob=new Blob([lines.join('\n')],{type:'text/csv'});
-      const url=URL.createObjectURL(blob); const a=Object.assign(document.createElement('a'),{href:url,download:`wireshop-archive-${new Date().toISOString().slice(0,10)}.csv`});
+
+      const blob = new Blob([lines.join('\n')], { type:'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = Object.assign(document.createElement('a'), {
+        href: url,
+        download: `wireshop-archive-${new Date().toISOString().slice(0,10)}.csv`
+      });
       document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
     });
 
