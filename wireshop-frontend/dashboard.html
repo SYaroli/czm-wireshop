@@ -62,6 +62,26 @@
         <button id="deleteAllLogs" class="danger">Delete All Logs</button>
       </div>
     </div>
+
+    <!-- My Completed (local-only; does NOT affect admin/archive) -->
+    <div class="card">
+      <h2>My Completed</h2>
+      <table class="sticky-head">
+        <thead>
+          <tr>
+            <th>Finished</th>
+            <th>Part Number</th>
+            <th>Print Name</th>
+            <th>Total Time</th>
+            <th>Delete</th>
+          </tr>
+        </thead>
+        <tbody id="myCompletedBody"></tbody>
+      </table>
+      <div style="display:flex; justify-content:flex-end; margin-top:10px;">
+        <button id="clearMyCompleted" class="danger">Clear My Completed</button>
+      </div>
+    </div>
   </main>
 
   <script src="catalog.js"></script>
