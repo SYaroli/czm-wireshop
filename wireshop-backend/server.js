@@ -1,15 +1,16 @@
 // wireshop-backend/server.js
-// WireShop backend with robust auto-archive + legacy aliases.
-// TRACE logging is off unless env JOBS_TRACE=1.
+// WireShop backend with robust auto-archive + legacy aliases + schedule enforcer.
 
 const path = require("path");
 const express = require("express");
 const cors = require("cors");
+process.env.TZ = process.env.TZ || "America/New_York"; // Savannah time by default
 
 const usersRouter = require("./routes/users");
 const jobsRouter = require("./routes/jobs");
 const archiveRouter = require("./routes/archive");
 const archive = require("./archiveStore");
+const db = require("./db"); // needed for scheduler queries
 
 const TRACE = String(process.env.JOBS_TRACE || "").trim() === "1";
 
@@ -30,8 +31,6 @@ app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true }));
 
 // ---------------- Legacy aliases for admin/backup BEFORE jobs router -----
-// Your UI calls these: /api/jobs/archive, /api/jobs/archive/:id/adjust, etc.
-// Put them here so they don't get intercepted by the jobs middleware.
 const { listArchivedJobs, deleteArchivedJob, getArchivedJob, updateArchivedJob } = archive;
 
 function parseJSON(value) {
@@ -77,7 +76,7 @@ app.post("/api/jobs/archive/:id/delete", async (req, res) => {
   }
 });
 
-// POST adjust (minimal: update fields in archive row)
+// POST adjust (minimal)
 app.post("/api/jobs/archive/:id/adjust", async (req, res) => {
   try {
     const id = req.params.id;
@@ -89,15 +88,13 @@ app.post("/api/jobs/archive/:id/adjust", async (req, res) => {
     res.status(500).json({ error: "Failed to adjust archive row" });
   }
 });
-
-// GET adjustments history (stub so UI doesn't break)
 app.get("/api/jobs/archive/:id/adjustments", async (_req, res) => {
-  res.json([]); // no history table yet
+  res.json([]);
 });
 
 // ---------------- In-memory hints to fill Finish payloads ----------------
-const lastStartByUser = new Map();   // username -> { part_number, technician, started_at, expected_minutes, ts }
-const lastUserByClient = new Map();  // clientId -> { username, ts }
+const lastStartByUser = new Map();
+const lastUserByClient = new Map();
 
 function clientId(req) {
   const xff = String(req.headers["x-forwarded-for"] || "").split(",")[0].trim();
@@ -110,11 +107,11 @@ function rememberClientUser(req, username) {
 }
 function getClientUser(req) {
   const rec = lastUserByClient.get(clientId(req));
-  if (rec && Date.now() - rec.ts < 10 * 60 * 1000) return rec.username; // 10 min
+  if (rec && Date.now() - rec.ts < 10 * 60 * 1000) return rec.username;
   return null;
 }
 function pruneOld() {
-  const cutoff = Date.now() - 12 * 60 * 60 * 1000; // 12h
+  const cutoff = Date.now() - 12 * 60 * 60 * 1000;
   for (const [u, v] of lastStartByUser) if (v.ts < cutoff) lastStartByUser.delete(u);
   for (const [c, v] of lastUserByClient) if (v.ts < cutoff) lastUserByClient.delete(c);
 }
@@ -211,12 +208,12 @@ app.use("/api/jobs", (req, res, next) => {
       (username && lastStartByUser.get(username)?.part_number) || null;
 
     const job = {
-      part_number: part, // archiveStore coerces null -> "(unknown)"
+      part_number: part,
       technician: username || null,
       location: pick(src, ["location", "station", "workstation"]),
       status: "archived",
       expected_minutes:
-        toInt(pick(src, ["expected_minutes", "expected", "expectedMin", "expectedMinutes"])) ?? 
+        toInt(pick(src, ["expected_minutes", "expected", "expectedMin", "expectedMinutes"])) ??
         (username && lastStartByUser.get(username)?.expected_minutes) ?? null,
       total_active_sec:
         toInt(pick(src, ["total_active_sec", "totalSeconds", "total", "elapsed", "timeActiveSec"])) ?? null,
@@ -245,9 +242,87 @@ app.use("/api/archive", archiveRouter);
 // ---------------- Users API ---------------------------------------------
 app.use("/api/users", usersRouter);
 
+// ---------------- Schedule Enforcer -------------------------------------
+// Windows in local time. Edit to taste: HH:MM 24h.
+const WINDOWS = [
+  { start: "10:00", end: "10:15", flag: 1 }, // break -> autoPaused=1
+  { start: "12:00", end: "12:30", flag: 1 }, // lunch -> 1
+  { start: "14:30", end: "14:45", flag: 1 }, // break -> 1
+  { start: "17:00", end: "23:59", flag: 2 }  // day end -> 2 (sticky; no auto-continue)
+];
+
+function hmToDateToday(hm) {
+  const [H, M] = hm.split(":").map(n => parseInt(n, 10));
+  const d = new Date();
+  d.setHours(H, M, 0, 0);
+  return d.getTime();
+}
+function nowInWindow(w) {
+  const n = Date.now();
+  const s = hmToDateToday(w.start), e = hmToDateToday(w.end);
+  return n >= s && n < e;
+}
+function currentPolicy() {
+  for (const w of WINDOWS) if (nowInWindow(w)) return { shouldPause: true, flag: w.flag };
+  return { shouldPause: false, flag: 0 };
+}
+
+async function pauseAllActive(flag) {
+  const now = Date.now();
+  return new Promise((resolve) => {
+    // Only rows not finished and not already paused
+    db.all(`SELECT * FROM jobs WHERE endTime IS NULL`, [], (err, rows = []) => {
+      if (err || !rows.length) return resolve();
+      const toPause = rows.filter(r => !r.pauseStart); // not already paused
+      let pending = toPause.length;
+      if (!pending) return resolve();
+      toPause.forEach(r => {
+        const sql = `UPDATE jobs SET action='Pause', pauseStart=?, autoPaused=? WHERE id=? AND pauseStart IS NULL`;
+        db.run(sql, [now, flag, r.id], () => {
+          if (--pending === 0) resolve();
+        });
+      });
+    });
+  });
+}
+async function continueAutoPaused() {
+  const now = Date.now();
+  return new Promise((resolve) => {
+    // Only rows we auto-paused for break/lunch (flag=1)
+    db.all(`SELECT * FROM jobs WHERE endTime IS NULL AND pauseStart IS NOT NULL AND autoPaused = 1`, [], (err, rows = []) => {
+      if (err || !rows.length) return resolve();
+      let pending = rows.length;
+      rows.forEach(r => {
+        const paused = now - (r.pauseStart || now);
+        const sql = `UPDATE jobs SET action='Continue', pauseTotal=pauseTotal+?, pauseStart=NULL, autoPaused=0 WHERE id=?`;
+        db.run(sql, [paused, r.id], () => {
+          if (--pending === 0) resolve();
+        });
+      });
+    });
+  });
+}
+
+let lastState = null;
+async function scheduleTick() {
+  const pol = currentPolicy();
+  const key = pol.shouldPause ? `P${pol.flag}` : 'RUN';
+  if (key === lastState) return; // only react on state changes
+  lastState = key;
+
+  if (pol.shouldPause) {
+    await pauseAllActive(pol.flag);
+  } else {
+    await continueAutoPaused();
+  }
+}
+
+setInterval(scheduleTick, 15000); // 15s looks fine
+setTimeout(scheduleTick, 2000);   // prime after boot
+
 // ---------------- Health -------------------------------------------------
 app.get("/healthz", (_req, res) => {
-  res.json({ ok: true, archiveReady, node: process.version, now: new Date().toISOString() });
+  res.json({ ok: true, archiveReady, node: process.version, tz: process.env.TZ, now: new Date().toISOString() });
 });
 
 // ---------------- Static frontend ---------------------------------------
