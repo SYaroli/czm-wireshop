@@ -171,7 +171,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Remove the old "click anywhere" row selector.
     // Now only clicks on the part number control selection.
-    // (No mousedown listener on rows.)
 
     let lastSig = '';
     function makeSignature(rows){
@@ -236,9 +235,8 @@ document.addEventListener('DOMContentLoaded', () => {
       };
     }
 
-    // Actions (Pause/Continue/Finish)
+    // Actions (Pause/Continue/Finish) via buttons
     tBody.addEventListener('click', async (e)=>{
-      // Action buttons handler
       const btn = e.target.closest('button[data-act]');
       if (btn) {
         const tr = btn.closest('tr'); if (!tr) return;
@@ -260,7 +258,6 @@ document.addEventListener('DOMContentLoaded', () => {
           }
           await jobsApi(`/log/${logId}`, { method:'PUT', body: JSON.stringify(body) });
 
-          // toggle button states
           const pauseBtn = tr.querySelector('button[data-act="Pause"]');
           const contBtn  = tr.querySelector('button[data-act="Continue"]');
           if (act === 'Pause'){ pauseBtn && (pauseBtn.disabled = true); contBtn && (contBtn.disabled = false); }
@@ -293,10 +290,82 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
+    // ===== AUTO-SCHEDULE ENFORCER =====
+    // Windows in local time (HH:MM). Change here if your shop changes.
+    const WINDOWS = [
+      { start: '10:00', end: '10:15', kind: 'break'  },
+      { start: '12:00', end: '12:30', kind: 'lunch'  },
+      { start: '14:30', end: '14:45', kind: 'break'  },
+      { start: '17:00', end: '23:59', kind: 'dayend' } // pause and DO NOT auto-continue
+    ];
+
+    const AUTO_PAUSED = new Map(); // logId -> last auto-pause timestamp
+
+    function hmToDateToday(hm){
+      const [H,M] = hm.split(':').map(n=>parseInt(n,10));
+      const d = new Date();
+      d.setHours(H, M, 0, 0);
+      return d;
+    }
+    function nowInWindow(w){
+      const n = new Date();
+      const s = hmToDateToday(w.start);
+      const e = hmToDateToday(w.end);
+      return n >= s && n < e;
+    }
+    function currentPolicy(){
+      // If inside any window, pause. If dayend, pause sticky.
+      for (const w of WINDOWS){
+        if (nowInWindow(w)) return { shouldPause: true, sticky: w.kind === 'dayend' };
+      }
+      return { shouldPause: false, sticky: false };
+    }
+
+    // Keep the latest active rows for the enforcer
+    let CURRENT_ACTIVE = [];
+
+    async function enforceSchedule(){
+      if (!CURRENT_ACTIVE.length) return;
+      const policy = currentPolicy();
+
+      for (const log of CURRENT_ACTIVE){
+        const id = Number(log.id);
+        const current = (log.action || '').trim();
+        const logical = (current === 'Pause' || current === 'Finish') ? current : 'Continue';
+        const isPaused = logical === 'Pause';
+
+        if (policy.shouldPause) {
+          if (!isPaused) {
+            // Auto-pause
+            try {
+              await jobsApi(`/log/${id}`, { method:'PUT', body: JSON.stringify({ action:'Pause' }) });
+              AUTO_PAUSED.set(id, Date.now());
+              lastSig = ''; // force next render to refresh state
+            } catch (e) { console.error('auto-pause failed', e); }
+          }
+        } else {
+          // Outside enforced windows. Only auto-continue if WE paused it.
+          if (AUTO_PAUSED.has(id) && isPaused) {
+            try {
+              await jobsApi(`/log/${id}`, { method:'PUT', body: JSON.stringify({ action:'Continue' }) });
+              AUTO_PAUSED.delete(id);
+              lastSig = '';
+            } catch (e) { console.error('auto-continue failed', e); }
+          }
+        }
+
+        // If sticky pause window (end of day), never auto-continue again today
+        if (policy.sticky && isPaused) {
+          AUTO_PAUSED.delete(id); // clear marker to avoid accidental continue
+        }
+      }
+    }
+
     async function refreshActive(force=false){
       if (isInteracting && !force) return;
       const rows = await jobsApi(`/logs/${encodeURIComponent(user.username)}`, { method:'GET' });
       const active = rows.filter(r=>!r.endTime);
+      CURRENT_ACTIVE = active; // expose for enforcer
       const sig = makeSignature(rows);
       if (!force && sig === lastSig) return; lastSig = sig;
 
@@ -331,7 +400,6 @@ document.addEventListener('DOMContentLoaded', () => {
           </td>
         `;
 
-        // If server says it's paused, freeze exactly at pauseStart
         const td = tr.querySelector('.dur');
         if (pausedNow) freezeCell(td);
 
@@ -348,6 +416,9 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       if (tBody.parentElement) tBody.parentElement.scrollTop = prevScroll;
+
+      // After every refresh, try to enforce schedule.
+      enforceSchedule().catch(console.error);
     }
 
     async function requestRefresh(force=false){ await refreshActive(force); }
@@ -371,8 +442,10 @@ document.addEventListener('DOMContentLoaded', () => {
       catch(err){ console.error(err); alert('Failed to delete logs.'); }
     });
 
+    // Boot
     requestRefresh(true).catch(console.error);
     setInterval(()=> requestRefresh(false), 5000);
     setInterval(tickDurations, 1000);
+    setInterval(enforceSchedule, 15000); // check windows repeatedly
   })();
 });
