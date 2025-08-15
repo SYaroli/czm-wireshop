@@ -14,63 +14,52 @@
         <h1 class="brand-title">CZM • Wireshop Dashboard</h1>
       </a>
       <div class="brand-actions">
-...
+        <button id="liveViewBtn" class="secondary">Live View</button>
+        <button id="logoutBtn" class="dark">Logout</button>
       </div>
     </div>
   </div>
 
-  <main class="container">
+  <main class="page">
+    <!-- Start strip -->
     <div class="card">
-      <h2>Start Work</h2>
-      <div class="row">
-        <label for="partSelect">Part</label>
-        <select id="partSelect"></select>
-        <button id="submitLog" class="primary">Start</button>
-      </div>
-      <div class="info-grid">
-        <div><div class="muted">Expected (hrs)</div><div id="expectedTime">--</div></div>
-        <div><div class="muted">Notes</div><div id="expectedNotes">--</div></div>
-        <div><div class="muted">Location</div><div id="expectedLocation">--</div></div>
-        <div><div class="muted">SA #</div><div id="expectedSA">--</div></div>
+      <h2>Start Job</h2>
+      <div class="grid cols-3">
+        <div>
+          <label for="partSelect">Part</label>
+          <select id="partSelect">
+            <option value="">-- Select Part --</option>
+          </select>
+        </div>
+        <div class="info">
+          <p>Expected Time: <span id="expectedTime">--</span> hours</p>
+          <p>Notes: <span id="expectedNotes">--</span></p>
+          <p>Location: <span id="expectedLocation">--</span></p>
+          <p>SA#: <span id="expectedSA">--</span></p>
+        </div>
+        <div style="display:flex; align-items:end">
+          <button id="submitLog" style="width:100%;">Start Job</button>
+        </div>
       </div>
     </div>
 
+    <!-- Active jobs -->
     <div class="card">
       <h2>Active Jobs</h2>
-      <table class="sticky-head">
+      <table id="logTable" class="sticky-head">
         <thead>
           <tr>
             <th>Part Number</th>
-            <th>Notes</th>
+            <th>Notes (editable)</th>
             <th>Action</th>
             <th>Started</th>
-            <th>Time Active</th>
+            <th>Total Time</th>
           </tr>
         </thead>
         <tbody id="logTableBody"></tbody>
       </table>
       <div style="display:flex; justify-content:flex-end; margin-top:10px;">
         <button id="deleteAllLogs" class="danger">Delete All Logs</button>
-      </div>
-    </div>
-
-    <!-- My Completed (local only; same styling) -->
-    <div class="card">
-      <h2>My Completed</h2>
-      <table class="sticky-head">
-        <thead>
-          <tr>
-            <th>Finished</th>
-            <th>Part Number</th>
-            <th>Print Name</th>
-            <th>Total Time</th>
-            <th>Delete</th>
-          </tr>
-        </thead>
-        <tbody id="myCompletedBody"></tbody>
-      </table>
-      <div style="display:flex; justify-content:flex-end; margin-top:10px;">
-        <button id="clearMyCompleted" class="danger">Clear My Completed</button>
       </div>
     </div>
   </main>
