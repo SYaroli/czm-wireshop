@@ -168,6 +168,7 @@
               <tbody id="myAssignmentsBody"></tbody>
             </table>
           </div>
+          <div class="muted" id="techMsg" style="margin-top:6px"></div>
         </div>
 
         <div class="card">
@@ -242,7 +243,8 @@
     const API = {
       users: `${API_ROOT}/api/users`,
       assignments: `${API_ROOT}/api/assignments`,
-      requests: `${API_ROOT}/api/assignments/requests`
+      requests: `${API_ROOT}/api/assignments/requests`,
+      jobs: `${API_ROOT}/api/jobs`               // ← live logs API
     };
 
     // Roles treated as technicians
@@ -450,7 +452,7 @@
           <td>${r.username||''}</td>
           <td>${r.partNumber||''}</td>
           <td>${r.printName||''}</td>
-          <td>${fmtHMM(r.expectedMinutes)}</td>
+          <td>${r.expectedMinutes!=null ? (r.expectedMinutes/60) : ''}</td>
           <td>${r.dueDate ? new Date(r.dueDate).toLocaleDateString() : ''}</td>
           <td>${r.status||''}</td>
           <td>${r.notes||''}</td>
@@ -475,7 +477,7 @@
         tr.innerHTML = `
           <td>${r.username||''}</td>
           <td>${r.description || r.partNumber || ''}</td>
-          <td>${fmtHMM(r.minutes)}</td>
+          <td>${r.minutes!=null ? (r.minutes/60) : ''}</td>
           <td>${r.notes||''}</td>
           <td>${r.updatedAt ? new Date(r.updatedAt).toLocaleString() : ''}</td>
           <td>
@@ -490,41 +492,95 @@
       const me = getUser();
       const isAdmin = String(me?.role||'').toLowerCase()==='admin';
       if(isAdmin) return;
+
       const myBody = el('myAssignmentsBody'); myBody.innerHTML='';
       const rows = await apiGet(`${API.assignments}/me`);
+      if (!rows.length) el('techMsg').textContent = 'No assignments yet.';
+      else el('techMsg').textContent = '';
+
       rows.forEach(r=>{
         const tr = document.createElement('tr');
+        tr.dataset.id = r.id;
+        tr.dataset.pn = r.partNumber || '';
+        tr.dataset.print = r.printName || '';
+        tr.dataset.minutes = (r.expectedMinutes!=null ? r.expectedMinutes : '');
+        tr.dataset.notes = r.notes || '';
+
         tr.innerHTML = `
           <td>${new Date(r.createdAt).toLocaleString()}</td>
           <td>${r.partNumber||''}</td>
           <td>${r.printName||''}</td>
-          <td>${fmtHMM(r.expectedMinutes)}</td>
+          <td>${r.expectedMinutes!=null ? (r.expectedMinutes/60) : ''}</td>
           <td>${r.dueDate ? new Date(r.dueDate).toLocaleDateString() : ''}</td>
           <td>${r.status||''}</td>
           <td>${r.notes||''}</td>
           <td>
             ${r.status==='Open' ? '<button class="primary small" data-act="start">Start</button>' : ''}
-            ${r.status==='InProgress' ? '<button class="primary small" data-act="complete">Complete</button>' : ''}
+            ${r.status==='InProgress' ? '<span class="muted">In progress</span>' : ''}
+            ${r.status==='Completed' ? '<span class="muted">Completed</span>' : ''}
           </td>`;
         myBody.append(tr);
-      });
-
-      const reqBody = el('myRequestsBody'); reqBody.innerHTML='';
-      const reqs = await apiGet(`${API.requests}/me`);
-      reqs.forEach(r=>{
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${r.description || r.partNumber || ''}</td>
-          <td>${fmtHMM(r.minutes)}</td>
-          <td>${r.notes||''}</td>
-          <td>${r.status||''}</td>
-          <td>${r.updatedAt ? new Date(r.updatedAt).toLocaleString() : ''}</td>`;
-        reqBody.append(tr);
       });
     }
 
     // --------- Actions ----------
     async function bindActions(){
+      // Admin table actions
+      document.getElementById('assignmentsBody')?.addEventListener('click', async (e)=>{
+        const t = e.target;
+        if(t.dataset.act==='delete'){
+          try{ await apiJson(`${API.assignments}/${t.dataset.id}`, 'DELETE'); await loadAssignments(); }catch{}
+        }else if(t.dataset.act==='status'){
+          try{ await apiJson(`${API.assignments}/${t.dataset.id}`, 'PATCH', { status: t.dataset.status }); await loadAssignments(); }catch{}
+        }
+      });
+
+      document.getElementById('requestsBody')?.addEventListener('click', async (e)=>{
+        const t = e.target;
+        if(t.dataset.req==='approve'){
+          try{ await apiJson(`${API.requests}/${t.dataset.id}/approve`, 'PATCH', {}); await Promise.all([loadRequests(), loadAssignments()]); }catch{}
+        }else if(t.dataset.req==='reject'){
+          try{ await apiJson(`${API.requests}/${t.dataset.id}/reject`, 'PATCH', {}); await loadRequests(); }catch{}
+        }
+      });
+
+      // TECH: Start from My Assignments -> create LIVE log + flip status
+      document.getElementById('myAssignmentsBody')?.addEventListener('click', async (e)=>{
+        const btn = e.target.closest('button[data-act="start"]'); if (!btn) return;
+        const row = btn.closest('tr'); if (!row) return;
+
+        const me = getUser();
+        const id = Number(row.dataset.id);
+        const partNumber = row.dataset.pn || '';
+        const printName = row.dataset.print || '';
+        const expectedMinutes = row.dataset.minutes ? Number(row.dataset.minutes) : null;
+        const notes = row.dataset.notes || '';
+
+        // Optimistic UI
+        btn.disabled = true; btn.textContent = 'Starting...';
+
+        try{
+          // 1) Create live log
+          await apiJson(`${API.jobs}/log`, 'POST', {
+            username: me.username,
+            partNumber,
+            action: 'Start',
+            note: printName ? `From assignment • ${printName}${notes ? ' • ' + notes : ''}` : (notes || 'From assignment'),
+            startTime: Date.now(),
+            expectedMinutes
+          });
+
+          // 2) Flip assignment to InProgress
+          await apiJson(`${API.assignments}/${id}`, 'PATCH', { status: 'InProgress' });
+
+          // 3) Refresh my list
+          await loadMine();
+        }catch{
+          btn.disabled = false; btn.textContent = 'Start';
+          alert('Failed to start. Check connection.');
+        }
+      });
+
       document.getElementById('a_create')?.addEventListener('click', async ()=>{
         const tech = document.getElementById('a_user').value.trim();
         const pnSel = document.getElementById('a_part_select').value.trim();
@@ -534,13 +590,13 @@
         const minutes = hoursVal ? Math.round(parseFloat(hoursVal) * 60) : null;
 
         const dueVal = document.getElementById('a_due').value;
-        const dueEpoch = dueVal ? new Date(dueVal + 'T00:00:00').getTime() : null; // backend expects number :contentReference[oaicite:1]{index=1}
+        const dueEpoch = dueVal ? new Date(dueVal + 'T00:00:00').getTime() : null;
 
         const data = {
           username: tech,
           partNumber: pnSel || null,
           printName: document.getElementById('a_print').value.trim() || null,
-          expectedMinutes: minutes, // API takes minutes :contentReference[oaicite:2]{index=2}
+          expectedMinutes: minutes,
           dueDate: dueEpoch,
           notes: document.getElementById('a_notes').value.trim() || null,
         };
@@ -561,36 +617,6 @@
         document.getElementById('flt_user').value='';
         document.getElementById('flt_status').value='';
         loadAssignments();
-      });
-
-      document.getElementById('assignmentsBody')?.addEventListener('click', async (e)=>{
-        const t = e.target;
-        if(t.dataset.act==='delete'){
-          try{ await apiJson(`${API.assignments}/${t.dataset.id}`, 'DELETE'); await loadAssignments(); }catch{}
-        }else if(t.dataset.act==='status'){
-          try{ await apiJson(`${API.assignments}/${t.dataset.id}`, 'PATCH', { status: t.dataset.status }); await loadAssignments(); }catch{}
-        }
-      });
-
-      document.getElementById('myAssignmentsBody')?.addEventListener('click', async (e)=>{
-        const btn = e.target.closest('button[data-act]'); if (!btn) return;
-        const row = btn.closest('tr'); if (!row) return;
-        const id = row.dataset.id || row.getAttribute('data-id'); // in case we add later
-        const map = { start:'InProgress', complete:'Completed' };
-        const status = map[btn.dataset.act]; if (!status || !id) return;
-        try{
-          await apiJson(`${API.assignments}/${id}`, 'PATCH', { status });
-          await loadMine();
-        }catch{}
-      });
-
-      document.getElementById('requestsBody')?.addEventListener('click', async (e)=>{
-        const t = e.target;
-        if(t.dataset.req==='approve'){
-          try{ await apiJson(`${API.requests}/${t.dataset.id}/approve`, 'PATCH', {}); await Promise.all([loadRequests(), loadAssignments()]); }catch{}
-        }else if(t.dataset.req==='reject'){
-          try{ await apiJson(`${API.requests}/${t.dataset.id}/reject`, 'PATCH', {}); await loadRequests(); }catch{}
-        }
       });
 
       document.getElementById('r_submit')?.addEventListener('click', async ()=>{
