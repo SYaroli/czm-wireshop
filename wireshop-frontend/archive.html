@@ -1,338 +1,432 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>CZM • Archive Backup</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="stylesheet" href="style.css" />
+  <meta charset="utf-8"/>
+  <title>CZM • Completed Jobs</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <link rel="stylesheet" href="style.css"/>
+  <style>
+    .brand-actions .navbtn{
+      display:inline-block !important;
+      background:var(--red) !important;
+      color:#fff !important;
+      padding:8px 12px !important;
+      border-radius:9px !important;
+      text-decoration:none !important;
+      border:0 !important;
+      font-weight:700 !important;
+      cursor:pointer !important;
+    }
+    .brand-actions .navbtn:hover{ filter:brightness(.92) }
+    .table-wrap{overflow:auto}
+
+    /* Modal */
+    .modal-backdrop{
+      position:fixed; inset:0; background:rgba(0,0,0,.5);
+      display:none; align-items:center; justify-content:center; z-index:1000;
+    }
+    .modal{
+      background:#fff; border-radius:12px; width:min(900px, 94vw);
+      box-shadow:0 10px 30px rgba(0,0,0,.25); padding:16px 16px 12px;
+    }
+    .modal header{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+    .modal h3{margin:0}
+    .modal .grid.cols-3{grid-template-columns:1fr 1fr 1fr}
+    .modal .grid.cols-2{grid-template-columns:1fr 1fr}
+    .modal footer{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
+    .danger-outline{
+      background:#fff !important; color:var(--red) !important; border:2px solid var(--red) !important;
+    }
+    .muted-sm{opacity:.8; font-size:.9rem}
+    .inline-input{width:100%; box-sizing:border-box}
+  </style>
 </head>
 <body>
   <div class="brand-bar">
     <div class="brand-inner">
       <a class="brand-logo" href="dashboard.html">
-        <img src="czm-logo.png" alt="CZM" />
-        <h1 class="brand-title">Archive Backup</h1>
+        <img src="czm-logo.png" alt="CZM"/>
+        <h1 class="brand-title">CZM • Completed Jobs</h1>
       </a>
-      <div class="brand-actions">
-        <a class="secondary" href="admin.html">← Admin</a>
+      <div class="brand-actions" id="navActions">
+        <a class="navbtn" href="dashboard.html">Dashboard</a>
+        <a class="navbtn" href="assignments.html">Assignments</a>
+        <!-- Admin button appears only for admins -->
       </div>
     </div>
   </div>
 
-  <main class="container">
+  <main class="page">
     <div class="card">
-      <div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap">
-        <strong>Status:</strong>
-        <span id="status" class="muted">checking…</span>
-        <button id="refresh" class="secondary">Refresh</button>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <div><strong>User:</strong> <span id="who"></span></div>
+        <div class="muted">•</div>
+        <div><strong>Role:</strong> <span id="role"></span></div>
         <div class="spacer"></div>
-        <button id="exportBtn" class="secondary">Export JSON</button>
-        <label>
-          <input type="file" id="importFile" accept="application/json" style="display:none;" />
-          <button id="importBtn" class="secondary" type="button">Import JSON</button>
-        </label>
+        <button id="refresh" class="secondary">Refresh</button>
+        <button id="exportCsv" class="secondary">Export CSV</button>
       </div>
+    </div>
 
-      <div class="toolbar" style="display:flex;gap:.75rem;flex-wrap:wrap;align-items:end;margin:12px 0">
-        <div><label>Part number<br/><input id="fltPart" type="text" placeholder="Part number"/></label></div>
-        <div><label>Technician<br/><input id="fltTech" type="text" placeholder="Technician"/></label></div>
-        <div><label>Location<br/><input id="fltLoc" type="text" placeholder="Location"/></label></div>
-        <div><label>Expected minutes<br/><input id="fltMins" type="number" min="0" placeholder="e.g. 8 or 480"/></label></div>
-        <button id="apply" class="primary">Apply</button>
-        <button id="reset" class="secondary">Reset</button>
+    <div class="card">
+      <h2>Completed Jobs</h2>
+
+      <!-- Filters -->
+      <div class="toolbar" style="display:flex;gap:.75rem;flex-wrap:wrap;align-items:end;margin:8px 0 12px">
+        <label>Technician<br/>
+          <select id="fltTech"><option value="">All</option></select>
+        </label>
+        <label>Part # contains<br/>
+          <input id="fltPart" type="text" placeholder="e.g. 44602"/>
+        </label>
+        <label>From date<br/><input id="fltFrom" type="date"/></label>
+        <label>To date<br/><input id="fltTo" type="date"/></label>
+        <button id="btnApply" class="primary">Apply</button>
+        <button id="btnReset" class="secondary">Reset</button>
         <div class="spacer"></div>
         <div class="muted"><span id="rowCount">0</span> records</div>
       </div>
 
+      <!-- Table -->
       <div class="table-wrap">
         <table class="table">
           <thead>
-            <tr>
-              <th>Finished</th>
-              <th>Technician</th>
-              <th>Part Number</th>
-              <th>Print Name</th>
-              <th>Expected</th>
-              <th>Notes</th>
-              <th>Total Active</th>
-              <th>Adjust</th>
-              <th>Delete</th>
-            </tr>
+          <tr>
+            <th>Finished</th>
+            <th>Technician</th>
+            <th>Part #</th>
+            <th>Print Name</th>
+            <th>Expected (hrs)</th>
+            <th>Notes</th>
+            <th>Total Active</th>
+            <th>Actions</th>
+          </tr>
           </thead>
-          <tbody id="rows"></tbody>
+          <tbody id="archiveTableBody"></tbody>
         </table>
       </div>
+      <div class="muted-sm" id="status"></div>
     </div>
   </main>
 
-  <dialog id="adjDialog" style="max-width:720px;width:clamp(320px,90vw,720px);border:none;border-radius:12px;padding:16px;">
-    <form method="dialog" id="adjForm">
-      <h3 style="margin:0 0 8px 0;">Adjust Completed Job</h3>
-      <div id="adjMeta" style="font-size:.9rem;opacity:.7;margin-bottom:8px;"></div>
+  <!-- Edit Modal -->
+  <div id="editBackdrop" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="editTitle">
+    <div class="modal">
+      <header>
+        <h3 id="editTitle">Edit Completed Job</h3>
+        <div class="muted-sm" id="editId"></div>
+        <div class="spacer"></div>
+        <button id="closeEdit" class="secondary">Close</button>
+      </header>
 
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-        <label>Technician <input id="adjUser" type="text"/></label>
-        <label>Part Number <input id="adjPart" type="text"/></label>
-        <label style="grid-column:1 / -1">Notes <textarea id="adjNote" rows="2"></textarea></label>
-        <label>Start Time <input id="adjStart" type="datetime-local"/></label>
-        <label>End Time <input id="adjEnd" type="datetime-local"/></label>
-        <label>Pause Total (minutes) <input id="adjPause" type="number" min="0" step="1" placeholder="leave blank to keep"/></label>
-        <label style="grid-column:1 / -1">Reason (required) <input id="adjReason" type="text" required placeholder="e.g. missed punch"/></label>
+      <div class="grid cols-3">
+        <label>Technician
+          <input id="e_user" type="text" class="inline-input" />
+        </label>
+        <label>Part Number
+          <input id="e_part" type="text" class="inline-input" />
+        </label>
+        <label>Print Name
+          <input id="e_print" type="text" class="inline-input" />
+        </label>
+
+        <label>Expected Hours
+          <input id="e_expected_hours" type="number" step="0.25" min="0" class="inline-input"/>
+        </label>
+        <label>Total Active (hh:mm)
+          <input id="e_total_hhmm" type="text" placeholder="e.g. 1:30" class="inline-input"/>
+        </label>
+        <label>Notes
+          <input id="e_note" type="text" class="inline-input"/>
+        </label>
+
+        <label>Started (local)
+          <input id="e_start" type="datetime-local" class="inline-input"/>
+        </label>
+        <label>Finished (local)
+          <input id="e_end" type="datetime-local" class="inline-input"/>
+        </label>
+        <div></div>
       </div>
 
-      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px;">
-        <button type="button" id="adjCancel" class="secondary">Cancel</button>
-        <button type="submit" id="adjSave" class="primary">Save Adjustment</button>
-      </div>
-    </form>
-  </dialog>
+      <footer>
+        <button id="deleteRow" class="danger-outline">Delete</button>
+        <button id="saveEdit" class="primary">Save Changes</button>
+      </footer>
+    </div>
+  </div>
 
-  <script src="catalog.js"></script>
   <script>
-    // Use the stable archive API (NOT /api/jobs/...).
-    const API_BASE = ''; // same origin
-    const $ = (s) => document.querySelector(s);
-
-    const statusEl = $('#status');
-    const rowsEl = $('#rows');
-    const countEl = $('#rowCount');
-
-    const filters = {
-      part: $('#fltPart'),
-      tech: $('#fltTech'),
-      loc:  $('#fltLoc'),
-      mins: $('#fltMins'),
+  (function(){
+    const API_ROOT = 'https://wireshop-backend.onrender.com';
+    const API = {
+      archive:  API_ROOT + '/api/jobs/archive',
+      users:    API_ROOT + '/api/users'
     };
 
-    const state = { all: [], view: [], current: null };
+    // --- helpers ---
+    const el = (id)=>document.getElementById(id);
+    const getUser = ()=>{ try { return JSON.parse(localStorage.getItem('user')) || null; } catch { return null; } };
+    const username = ()=> (getUser()?.username || '');
+    const isAdmin = ()=> String(getUser()?.role||'').toLowerCase()==='admin';
+    const headers = ()=> ({ 'Content-Type': 'application/json', 'x-user': username() });
 
-    const catByPart = new Map((window.catalog || []).map(p => [String(p.partNumber), p]));
-
-    const z2 = n => String(n).padStart(2, '0');
-    const fmtHM = (mins) => {
-      if (mins == null || mins === '') return '';
-      const m = Number(mins);
-      return `${Math.floor(m/60)}:${z2(m%60)}`;
+    function fmtMS(ms){
+      if (!Number.isFinite(ms) || ms < 0) ms = 0;
+      const s = Math.floor(ms/1000);
+      const h = Math.floor(s/3600);
+      const m = Math.floor((s%3600)/60);
+      const sec = s%60;
+      return h + ':' + String(m).padStart(2,'0') + ':' + String(sec).padStart(2,'0');
+    }
+    function hhmmToMinutes(hhmm){
+      if (!hhmm) return null;
+      const m = String(hhmm).trim().match(/^(\d+)(?::(\d{1,2}))?$/);
+      if (!m) return null;
+      const h = parseInt(m[1],10);
+      const mm = parseInt(m[2]||'0',10);
+      if (mm>=60) return null;
+      return h*60 + mm;
+    }
+    const toLocalInput = (ts)=>{
+      if (!ts) return '';
+      const d = new Date(ts);
+      const off = d.getTimezoneOffset();
+      const local = new Date(d.getTime() - off*60000).toISOString().slice(0,16);
+      return local; // yyyy-MM-ddTHH:mm
     };
-    const fmtHMS = (sec) => {
-      if (sec == null) return '00:00:00';
-      let s = Math.max(0, Number(sec));
-      const h = Math.floor(s/3600); s -= h*3600;
-      const m = Math.floor(s/60);   s -= m*60;
-      return `${z2(h)}:${z2(m)}:${z2(s)}`;
+    const fromLocalInput = (val)=>{
+      if (!val) return null;
+      // treat the input as local time
+      const t = new Date(val);
+      if (Number.isNaN(t.getTime())) return null;
+      return t.getTime();
     };
-    const toLocal = (t) => t ? new Date(t).toLocaleString() : '';
 
-    async function ping() {
-      try {
-        const r = await fetch(`${API_BASE}/healthz`);
-        const j = await r.json();
-        statusEl.textContent = j.archiveReady ? 'archiveReady = true' : 'archiveReady = false';
-        statusEl.className = j.archiveReady ? 'ok' : 'err';
-      } catch {
-        statusEl.textContent = 'healthz failed';
-        statusEl.className = 'err';
-      }
+    // --- page gate + header ---
+    document.addEventListener('DOMContentLoaded', ()=>{
+      if (!isAdmin()) { window.location.href = 'dashboard.html'; return; }
+      el('who').textContent  = getUser()?.username || '';
+      el('role').textContent = getUser()?.role || '';
+
+      // admin nav
+      const nav = el('navActions');
+      const a = document.createElement('a'); a.textContent='Admin'; a.href='admin.html'; a.className='navbtn';
+      el('navActions')?.appendChild(a);
+    });
+
+    // --- data cache ---
+    let ARCH = [];   // raw
+    let EDIT = null; // row being edited
+
+    // --- load + render ---
+    async function fetchArchive(){
+      const res = await fetch(API.archive, { headers: headers() });
+      if (!res.ok) throw new Error('Archive fetch failed');
+      const list = await res.json();
+      ARCH = Array.isArray(list) ? list : [];
+      // normalize field names across backends
+      ARCH = ARCH.map(r => ({
+        id: r.id ?? r.i ?? r._id ?? r.rowid,
+        username: r.username || r.technician || '',
+        partNumber: r.partNumber || r.part_number || '',
+        printName: r.printName || r.print_name || '',
+        expectedMinutes: r.expectedMinutes ?? r.expected_minutes ?? (Number.isFinite(r.expectedHours) ? Math.round(r.expectedHours*60) : null),
+        note: r.note ?? r.notes ?? '',
+        startTime: r.startTime ?? r.startedAt ?? r.started_at ?? null,
+        endTime: r.endTime ?? r.finishedAt ?? r.finished_at ?? null,
+        totalActiveMs: (r.totalActive ?? r.total_active_ms ?? (Number.isFinite(r.total_active_sec) ? r.total_active_sec*1000 : null)) ?? null,
+        finishedAt: r.finishedAt ?? r.finished_at ?? r.endTime ?? null
+      }));
     }
 
-    async function load() {
-      const r = await fetch(`${API_BASE}/api/archive?limit=5000`);
-      if (!r.ok) {
-        rowsEl.innerHTML = `<tr><td colspan="9" class="muted">GET /api/archive failed</td></tr>`;
-        countEl.textContent = '0';
-        return;
-      }
-      const data = await r.json();
-      const arr = Array.isArray(data) ? data : (Array.isArray(data.jobs) ? data.jobs : []);
-      state.all = arr.map(x => {
-        const part = x.part_number ?? x.partNumber ?? '';
-        const cat = catByPart.get(String(part));
-        const expectedMin = (cat && typeof cat.expectedHours === 'number')
-          ? Math.round(cat.expectedHours * 60)
-          : (x.expected_minutes ?? x.expected ?? null);
-        const totalActiveSec = (x.total_active_sec ?? x.totalActive ?? null);
-        return {
-          id: x.id,
-          finishedAt: x.finished_at ?? x.finished ?? x.endTime ?? null,
-          username: x.technician ?? x.username ?? '',
-          partNumber: part,
-          printName: cat?.printName ?? x.printName ?? '',
-          expectedMin,
-          note: x.notes ?? x.note ?? '',
-          totalActiveSec,
-          startTime: x.started_at ?? x.startTime ?? null,
-          endTime: x.finished_at ?? x.endTime ?? null
-        };
+    function applyFilters(){
+      const tech = el('fltTech').value.trim().toLowerCase();
+      const part = el('fltPart').value.trim().toLowerCase();
+      const from = el('fltFrom').value ? new Date(el('fltFrom').value).getTime() : -Infinity;
+      const to   = el('fltTo').value   ? new Date(el('fltTo').value).getTime()+86400000 : Infinity;
+
+      let rows = ARCH.slice();
+      if (tech) rows = rows.filter(r => String(r.username||'').toLowerCase() === tech);
+      if (part) rows = rows.filter(r => String(r.partNumber||'').toLowerCase().includes(part));
+      rows = rows.filter(r => {
+        const t = r.finishedAt || r.endTime || 0;
+        return t >= from && t < to;
       });
-      apply();
+      return rows;
     }
 
-    function apply() {
-      const p = (filters.part.value || '').toLowerCase();
-      const t = (filters.tech.value || '').toLowerCase();
-      const l = (filters.loc.value  || '').toLowerCase();
-      const m = filters.mins.value ? Number(filters.mins.value) : null;
-
-      state.view = state.all.filter(r => {
-        if (p && !String(r.partNumber).toLowerCase().includes(p)) return false;
-        if (t && !String(r.username).toLowerCase().includes(t)) return false;
-        if (l && !(r.location ? String(r.location).toLowerCase().includes(l) : false)) return false;
-        if (m != null && r.expectedMin != null && Math.abs(r.expectedMin - m) > 0.5) return false;
-        return true;
-      });
-
-      render();
+    function renderTechFilter(){
+      const sel = el('fltTech');
+      const names = Array.from(new Set(ARCH.map(r=>String(r.username||'')).filter(Boolean))).sort();
+      sel.innerHTML = '<option value="">All</option>' + names.map(n=>`<option value="${n}">${n}</option>`).join('');
     }
 
-    function render() {
-      rowsEl.innerHTML = '';
-      countEl.textContent = String(state.view.length);
-
-      if (state.view.length === 0) {
-        rowsEl.innerHTML = `<tr><td colspan="9" class="muted">No archived jobs yet.</td></tr>`;
-        return;
-      }
-
-      for (const r of state.view) {
+    function renderTable(){
+      const rows = applyFilters();
+      const tbody = el('archiveTableBody');
+      tbody.innerHTML = '';
+      rows.forEach(r=>{
         const tr = document.createElement('tr');
+        const expectedHours = Number.isFinite(r.expectedMinutes) ? (r.expectedMinutes/60) : '';
         tr.innerHTML = `
-          <td>${toLocal(r.finishedAt)}</td>
-          <td>${r.username}</td>
-          <td>${r.partNumber}</td>
-          <td>${r.printName || ''}</td>
-          <td>${fmtHM(r.expectedMin)}</td>
-          <td>${r.note || ''}</td>
-          <td>${fmtHMS(r.totalActiveSec)}</td>
-          <td><button class="secondary small" data-adj="${r.id}">Adjust</button></td>
-          <td><button class="danger small" data-del="${r.id}">Delete</button></td>
-        `;
-        rowsEl.appendChild(tr);
+          <td>${r.finishedAt ? new Date(r.finishedAt).toLocaleString() : ''}</td>
+          <td>${r.username||''}</td>
+          <td>${r.partNumber||''}</td>
+          <td>${r.printName||''}</td>
+          <td>${expectedHours!=='' ? expectedHours : ''}</td>
+          <td>${r.note ? String(r.note).replace(/\n/g,' ') : ''}</td>
+          <td>${r.totalActiveMs!=null ? fmtMS(r.totalActiveMs) : ''}</td>
+          <td>
+            <button class="secondary" data-edit="${r.id}">Edit</button>
+            <button class="danger" data-del="${r.id}">Delete</button>
+          </td>`;
+        tbody.appendChild(tr);
+      });
+      el('rowCount').textContent = String(rows.length);
+    }
+
+    async function load(){
+      try{
+        el('status').textContent = 'Loading...';
+        await fetchArchive();
+        renderTechFilter();
+        renderTable();
+        el('status').textContent = '';
+      }catch(e){
+        el('status').textContent = 'Failed to load archive';
+      }
+    }
+
+    // --- CSV ---
+    function exportCsv(){
+      const rows = applyFilters();
+      const header = ['Finished','Technician','Part Number','Print Name','Expected Hours','Notes','Total Active'];
+      const csvRows = rows.map(r=>{
+        const h = Number.isFinite(r.expectedMinutes) ? (r.expectedMinutes/60) : '';
+        const total = r.totalActiveMs!=null ? fmtMS(r.totalActiveMs) : '';
+        const vals = [
+          r.finishedAt ? new Date(r.finishedAt).toLocaleString() : '',
+          r.username||'',
+          r.partNumber||'',
+          r.printName||'',
+          h,
+          (r.note||'').replace(/\n/g,' '),
+          total
+        ];
+        return vals.map(x=>`"${String(x).replace(/"/g,'""')}"`).join(',');
+      });
+      const blob = new Blob([[header.join(','), ...csvRows].join('\n')], { type:'text/csv' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `completed_jobs_${Date.now()}.csv`;
+      a.click();
+    }
+
+    // --- modal open/fill ---
+    function openEdit(id){
+      const row = ARCH.find(r=>String(r.id)===String(id));
+      if (!row) return;
+      EDIT = row;
+      el('editId').textContent = `ID: ${row.id}`;
+
+      el('e_user').value = row.username || '';
+      el('e_part').value = row.partNumber || '';
+      el('e_print').value = row.printName || '';
+      el('e_expected_hours').value = Number.isFinite(row.expectedMinutes) ? (row.expectedMinutes/60) : '';
+      el('e_note').value = row.note || '';
+      el('e_total_hhmm').value = row.totalActiveMs!=null ? (()=>{ const s=Math.round(row.totalActiveMs/1000); const h=Math.floor(s/3600), m=Math.floor((s%3600)/60); return `${h}:${String(m).padStart(2,'0')}`; })() : '';
+
+      el('e_start').value = toLocalInput(row.startTime);
+      el('e_end').value   = toLocalInput(row.endTime || row.finishedAt);
+
+      el('editBackdrop').style.display='flex';
+    }
+    function closeEdit(){
+      el('editBackdrop').style.display='none';
+      EDIT = null;
+    }
+
+    // --- modal actions ---
+    async function saveEdit(){
+      if (!EDIT) return;
+      const id = EDIT.id;
+
+      const username = el('e_user').value.trim();
+      const partNumber = el('e_part').value.trim();
+      const printName = el('e_print').value.trim();
+      const expectedHours = el('e_expected_hours').value ? Number(el('e_expected_hours').value) : null;
+      const note = el('e_note').value.trim();
+      const totalHHMM = el('e_total_hhmm').value.trim();
+      const startTime = fromLocalInput(el('e_start').value);
+      const endTime   = fromLocalInput(el('e_end').value);
+
+      // build body with flexible field names to fit whatever backend route you’re running
+      const body = {
+        username: username || null,
+        partNumber: partNumber || null,
+        printName: printName || null,
+        note: note || null
+      };
+      if (expectedHours!=null && !Number.isNaN(expectedHours)) body.expectedMinutes = Math.round(expectedHours*60);
+      if (Number.isFinite(startTime))  body.startTime  = startTime;
+      if (Number.isFinite(endTime))    body.endTime    = endTime;
+      const mins = hhmmToMinutes(totalHHMM);
+      if (mins!=null) body.totalSec = Math.round(mins*60); // some backends want seconds
+
+      // try PATCH /:id first; fallback to POST /:id/adjust
+      let ok = false;
+      try{
+        const r = await fetch(`${API.archive}/${id}`, { method:'PATCH', headers: headers(), body: JSON.stringify(body) });
+        ok = r.ok;
+      }catch{}
+
+      if (!ok){
+        try{
+          const r2 = await fetch(`${API.archive}/${id}/adjust`, { method:'POST', headers: headers(), body: JSON.stringify(body) });
+          ok = r2.ok;
+        }catch{}
       }
 
-      rowsEl.querySelectorAll('button[data-adj]').forEach(b =>
-        b.addEventListener('click', () => openAdjust(Number(b.dataset.adj)))
-      );
-      rowsEl.querySelectorAll('button[data-del]').forEach(b =>
-        b.addEventListener('click', () => doDelete(Number(b.dataset.del)))
-      );
-    }
-
-    // Adjust dialog
-    const dlg = document.getElementById('adjDialog');
-    const adj = {
-      form: document.getElementById('adjForm'),
-      meta: document.getElementById('adjMeta'),
-      user: document.getElementById('adjUser'),
-      part: document.getElementById('adjPart'),
-      note: document.getElementById('adjNote'),
-      start: document.getElementById('adjStart'),
-      end: document.getElementById('adjEnd'),
-      pause: document.getElementById('adjPause'),
-      reason: document.getElementById('adjReason'),
-      cancel: document.getElementById('adjCancel')
-    };
-    const toLocalDT = (ms)=>{ if(!ms)return''; const d=new Date(ms),pad=n=>String(n).padStart(2,'0'); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`; };
-
-    function openAdjust(id) {
-      const r = state.view.find(x => x.id === id); if (!r) return;
-      state.current = r;
-      adj.meta.textContent = `Archive #${r.id} • Finished ${toLocal(r.finishedAt)}`;
-      adj.user.value = r.username || '';
-      adj.part.value = r.partNumber || '';
-      adj.note.value = r.note || '';
-      adj.start.value = toLocalDT(r.startTime);
-      adj.end.value = toLocalDT(r.endTime);
-      adj.pause.value = '';
-      adj.reason.value = '';
-      dlg.showModal();
-    }
-
-    adj.cancel.addEventListener('click', () => dlg.close());
-    adj.form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const r = state.current; if (!r) return;
-      const toMs = v => v ? new Date(v).getTime() : null;
-
-      const payload = {};
-      if (adj.user.value !== r.username) payload.username = adj.user.value;
-      if (adj.part.value !== r.partNumber) payload.partNumber = adj.part.value;
-      if (adj.note.value !== (r.note || '')) payload.note = adj.note.value;
-      const sMs = toMs(adj.start.value), eMs = toMs(adj.end.value);
-      if (sMs && sMs !== r.startTime) payload.startTime = sMs;
-      if (eMs && eMs !== r.endTime)   payload.endTime   = eMs;
-      if (adj.pause.value !== '') payload.pauseTotal = Number(adj.pause.value) * 60000;
-      payload.reason = adj.reason.value.trim();
-      if (!payload.reason) { adj.reason.focus(); return; }
-
-      const res = await fetch(`${API_BASE}/api/archive/${r.id}/adjust`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      if (!res.ok) { alert('Adjustment failed'); return; }
-      dlg.close();
-      await load();
-    });
-
-    async function doDelete(id) {
-      const reason = prompt('Delete reason (required):');
-      if (!reason) return;
-      const res = await fetch(`${API_BASE}/api/archive/${id}/delete`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reason })
-      });
-      if (!res.ok) { alert('Delete failed'); return; }
-      await load();
-    }
-
-    // Export / Import using stable archive endpoints
-    document.getElementById('exportBtn').addEventListener('click', async () => {
-      const res = await fetch(`${API_BASE}/api/archive?limit=500000`);
-      if (!res.ok) return alert('Export failed');
-      const data = await res.json();
-      const blob = new Blob([JSON.stringify({ exported_at: new Date().toISOString(), jobs: data }, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = Object.assign(document.createElement('a'), {
-        href: url,
-        download: `wireshop-archive-${new Date().toISOString().replace(/[:.]/g,'-')}.json`
-      });
-      document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-    });
-
-    document.getElementById('importBtn').addEventListener('click', () => document.getElementById('importFile').click());
-    document.getElementById('importFile').addEventListener('change', async (e) => {
-      const file = e.target.files?.[0]; if (!file) return;
-      try {
-        const text = await file.text();
-        const parsed = JSON.parse(text);
-        const jobs = Array.isArray(parsed?.jobs) ? parsed.jobs : (Array.isArray(parsed) ? parsed : []);
-        if (jobs.length === 0) return alert('No jobs found in file.');
-        const res = await fetch(`${API_BASE}/api/archive/bulk`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ jobs })
-        });
-        if (!res.ok) throw new Error('Bulk import failed');
+      if (ok){
+        closeEdit();
         await load();
-      } catch (err) {
-        alert('Import failed: ' + err.message);
-      } finally {
-        e.target.value = '';
+      }else{
+        alert('Update failed.');
       }
-    });
+    }
 
-    // Filter buttons
-    document.getElementById('apply').addEventListener('click', apply);
-    document.getElementById('reset').addEventListener('click', () => {
-      filters.part.value = ''; filters.tech.value = ''; filters.loc.value = ''; filters.mins.value = '';
-      apply();
+    async function deleteRow(){
+      if (!EDIT) return;
+      if (!confirm('Delete this archive record?')) return;
+      try{
+        const r = await fetch(`${API.archive}/${EDIT.id}`, { method:'DELETE', headers: headers() });
+        if (r.ok){ closeEdit(); await load(); } else { alert('Delete failed.'); }
+      }catch{ alert('Delete failed.'); }
+    }
+
+    // --- events ---
+    document.getElementById('archiveTableBody').addEventListener('click', (e)=>{
+      const ed = e.target?.dataset?.edit;
+      const del = e.target?.dataset?.del || e.target?.dataset?.delete;
+      if (ed) openEdit(ed);
+      if (del) { EDIT = { id: del }; deleteRow(); }
     });
-    document.getElementById('refresh').addEventListener('click', load);
+    el('btnApply').addEventListener('click', renderTable);
+    el('btnReset').addEventListener('click', ()=>{
+      el('fltTech').value=''; el('fltPart').value=''; el('fltFrom').value=''; el('fltTo').value='';
+      renderTable();
+    });
+    el('refresh').addEventListener('click', load);
+    el('exportCsv').addEventListener('click', exportCsv);
+
+    el('closeEdit').addEventListener('click', closeEdit);
+    el('saveEdit').addEventListener('click', saveEdit);
+    el('deleteRow').addEventListener('click', deleteRow);
 
     // boot
-    ping();
     load();
+  })();
   </script>
 </body>
 </html>
