@@ -5,6 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Dashboard</title>
   <link rel="stylesheet" href="style.css"/>
+  <style>
+    /* Red buttons with white lettering for nav */
+    .brand-actions .navbtn{
+      display:inline-block !important;
+      background:var(--red) !important;
+      color:#fff !important;
+      padding:8px 12px !important;
+      border-radius:9px !important;
+      text-decoration:none !important;
+      border:0 !important;
+      font-weight:700 !important;
+      cursor:pointer !important;
+    }
+    .brand-actions .navbtn:hover{ filter:brightness(.92) }
+  </style>
 </head>
 <body>
   <div class="brand-bar">
@@ -14,19 +29,25 @@
         <h1 class="brand-title">CZM • Wireshop Dashboard</h1>
       </a>
       <div class="brand-actions">
-        <!-- New: Assignments shortcut -->
-        <a href="assignments.html" class="secondary"
-           style="padding:8px 12px;display:inline-block;text-decoration:none;border-radius:9px;border:1px solid transparent;">
-          Assignments
-        </a>
+        <!-- Assignments link stays visible to everyone -->
+        <a href="assignments.html" class="navbtn">Assignments</a>
+        <!-- Live View keeps the secondary look -->
         <button id="liveViewBtn" class="secondary">Live View</button>
-        <button id="logoutBtn" class="dark">Logout</button>
+        <!-- Logout now red/white -->
+        <button id="logoutBtn" class="navbtn">Logout</button>
       </div>
     </div>
   </div>
 
   <main class="page">
-    <!-- Start strip -->
+    <!-- Welcome strip -->
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <div><strong>Welcome,</strong> <span id="welcomeName"></span></div>
+      </div>
+    </div>
+
+    <!-- Start Job -->
     <div class="card">
       <h2>Start Job</h2>
       <div class="grid cols-3">
@@ -48,7 +69,7 @@
       </div>
     </div>
 
-    <!-- Active jobs -->
+    <!-- Active Jobs -->
     <div class="card">
       <h2>Active Jobs</h2>
       <table id="logTable" class="sticky-head">
@@ -89,6 +110,15 @@
     </div>
   </main>
 
+  <script>
+    // Set the welcome name from stored login
+    document.addEventListener('DOMContentLoaded', function(){
+      try{
+        var u = JSON.parse(localStorage.getItem('user')||'{}');
+        document.getElementById('welcomeName').textContent = u?.username || '';
+      }catch(e){}
+    });
+  </script>
   <script src="catalog.js"></script>
   <script src="script.js"></script>
 </body>
