@@ -27,10 +27,10 @@
         <img src="czm-logo.png" alt="CZM">
         <h1 class="brand-title">CZM • Assignments</h1>
       </a>
-      <div class="brand-actions">
+      <div class="brand-actions" id="navActions">
+        <!-- Always visible -->
         <a class="navbtn" href="dashboard.html">Dashboard</a>
-        <a class="navbtn admin-only" href="admin.html">Admin</a>
-        <a class="navbtn admin-only" href="archive.html">Archive</a>
+        <!-- Admin & Archive will be appended here at runtime ONLY for admins -->
       </div>
     </div>
   </div>
@@ -225,6 +225,7 @@
     };
 
     const el = (id) => document.getElementById(id);
+    const navActions = () => document.getElementById('navActions');
     const getUser = () => { try { return JSON.parse(localStorage.getItem('user')) || null; } catch { return null; } };
     const setUser = (u) => localStorage.setItem('user', JSON.stringify(u));
     const username = () => (getUser()?.username || '');
@@ -238,14 +239,11 @@
       if (!res.ok) throw new Error(await res.text().catch(()=>`${res.status}`));
       return res.json();
     }
-
     async function apiJson(url, method, data){
       const res = await fetch(url, { method, headers: headers(), body: JSON.stringify(data) });
       if (!res.ok) throw new Error(await res.text().catch(()=>`${res.status}`));
       return res.json();
     }
-
-    function fmtDate(ts){ if(!ts) return ''; const d = new Date(ts); return d.toLocaleString(); }
     function opt(v,t){ const o = document.createElement('option'); o.value=v; o.textContent=t||v; return o; }
 
     // --------- Login gate ----------
@@ -281,14 +279,26 @@
     // --------- App init ----------
     async function init(){
       const me = getUser();
+      const isAdmin = String(me?.role||'').toLowerCase()==='admin';
+
+      // Update header info
       el('who').textContent = me?.username || '';
       el('role').textContent = me?.role || '';
 
-      const isAdmin = String(me?.role||'').toLowerCase()==='admin';
+      // Render admin nav buttons only for admins
+      // First, nuke any existing extra buttons (defensive)
+      const bar = navActions();
+      [...bar.querySelectorAll('.navbtn[data-dyn="1"]')].forEach(n => n.remove());
+      if (isAdmin) {
+        bar.appendChild(makeNav('admin.html', 'Admin'));
+        bar.appendChild(makeNav('archive.html', 'Archive'));
+      }
+
+      // Toggle views
       document.getElementById('adminView').style.display = isAdmin ? 'block' : 'none';
       document.getElementById('techView').style.display = isAdmin ? 'none' : 'block';
 
-      // Fill tech list for admin assign form/filter
+      // Fill tech list for admin forms
       if(isAdmin){
         try{
           const list = await apiGet(`${API.users}/list`);
@@ -299,6 +309,15 @@
 
       // Load data
       await Promise.all([loadAssignments(), loadRequests(), loadMine(), bindActions()]);
+    }
+
+    function makeNav(href, label){
+      const a = document.createElement('a');
+      a.href = href;
+      a.textContent = label;
+      a.className = 'navbtn';
+      a.dataset.dyn = '1';
+      return a;
     }
 
     // --------- Loaders ----------
@@ -466,17 +485,6 @@
       });
     }
   })();
-  </script>
-
-  <script>
-    // Hide Admin/Archive nav for non-admin roles (defensive duplicate for instant UX)
-    document.addEventListener("DOMContentLoaded", function(){
-      try{
-        var u = JSON.parse(localStorage.getItem("user")||"{}");
-        var isAdmin = String(u.role||"").toLowerCase()==="admin";
-        if(!isAdmin){ document.querySelectorAll(".admin-only").forEach(function(el){ el.style.display="none"; }); }
-      }catch(e){}
-    });
   </script>
 </body>
 </html>
