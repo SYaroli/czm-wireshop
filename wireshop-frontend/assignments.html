@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CZM • Assignments</title>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+  <div class="brand-bar">
+    <div class="brand-inner">
+      <a class="brand-logo" href="dashboard.html">
+        <img src="czm-logo.png" alt="CZM">
+        <h1 class="brand-title">CZM • Assignments</h1>
+      </a>
+      <div class="brand-actions">
+        <a class="secondary" href="dashboard.html">Dashboard</a>
+        <a class="secondary" href="admin.html">Admin</a>
+        <a class="secondary" href="archive.html">Archive</a>
+      </div>
+    </div>
+  </div>
+
+  <main class="container">
+    <div id="gate" class="card" style="display:none;">
+      <p class="muted">You are not signed in.</p>
+      <div><a class="primary" href="index.html">Return to sign in</a></div>
+    </div>
+
+    <div id="app" style="display:none;">
+      <div class="card">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <div><strong>User:</strong> <span id="who"></span></div>
+          <div class="muted">•</div>
+          <div><strong>Role:</strong> <span id="role"></span></div>
+          <div class="spacer"></div>
+          <button id="refresh" class="secondary">Refresh</button>
+        </div>
+      </div>
+
+      <div id="adminView" style="display:none;">
+        <div class="card">
+          <h3 style="margin:0 0 8px;">Create Assignment</h3>
+          <div class="grid-2" style="display:grid;grid-template-columns:repeat(2,minmax(220px,1fr));gap:12px;">
+            <label>Technician
+              <select id="asUser"></select>
+            </label>
+            <label>Part Number
+              <input id="asPart" list="pnList" placeholder="Type to search…">
+              <datalist id="pnList"></datalist>
+            </label>
+            <label>Expected (hours)
+              <input id="asHours" type="number" min="0" step="0.25" placeholder="e.g. 4">
+            </label>
+            <label>Due Date
+              <input id="asDue" type="date">
+            </label>
+            <label style="grid-column:1 / -1">Notes
+              <textarea id="asNotes" rows="2" placeholder="Context, prints, priority, etc."></textarea>
+            </label>
+          </div>
+          <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">
+            <button id="asCreate" class="primary">Create</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;gap:12px;align-items:end;flex-wrap:wrap;">
+            <h3 style="margin:0;flex:1 1 auto;">Assignments</h3>
+            <label>Tech
+              <select id="fltTech"></select>
+            </label>
+            <label>Status
+              <select id="fltStatus">
+                <option value="">Any</option>
+                <option>Open</option>
+                <option>InProgress</option>
+                <option>Completed</option>
+                <option>Canceled</option>
+              </select>
+            </label>
+            <button id="fltApply" class="secondary">Apply</button>
+            <button id="fltReset" class="secondary">Reset</button>
+          </div>
+
+          <div class="table-wrap" style="margin-top:8px;">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Created</th>
+                  <th>Tech</th>
+                  <th>Part</th>
+                  <th>Print Name</th>
+                  <th>Expected</th>
+                  <th>Due</th>
+                  <th>Status</th>
+                  <th>Notes</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="adminTable"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <h3 style="margin:0;flex:1">Requests</h3>
+            <button id="rqRefresh" class="secondary">Refresh</button>
+          </div>
+          <div class="table-wrap" style="margin-top:8px;">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>When</th>
+                  <th>Tech</th>
+                  <th>Description</th>
+                  <th>Part</th>
+                  <th>Hours</th>
+                  <th>Notes</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="rqTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div id="techView" style="display:none;">
+        <div class="card">
+          <h3 style="margin:0 0 8px;">My Assignments</h3>
+          <div class="table-wrap">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Created</th>
+                  <th>Part</th>
+                  <th>Print</th>
+                  <th>Expected</th>
+                  <th>Due</th>
+                  <th>Status</th>
+                  <th>Notes</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="myTable"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3 style="margin:0 0 8px;">Request Credit</h3>
+          <div class="grid-2" style="display:grid;grid-template-columns:repeat(2,minmax(220px,1fr));gap:12px;">
+            <label>Description
+              <input id="rqDesc" type="text" placeholder="What did you do?">
+            </label>
+            <label>Part Number
+              <input id="rqPart" list="pnList" placeholder="Optional">
+            </label>
+            <label>Hours
+              <input id="rqHours" type="number" min="0" step="0.25" placeholder="e.g. 1.5">
+            </label>
+            <label style="grid-column:1 / -1">Notes
+              <textarea id="rqNotes" rows="2" placeholder="Anything else worth noting"></textarea>
+            </label>
+          </div>
+          <div style="display:flex;justify-content:flex-end;margin-top:8px;">
+            <button id="rqSubmit" class="primary">Submit Request</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="users.js"></script>
+  <script src="catalog.js"></script>
+  <script>
+  (function(){
+    const API_ROOT = 'https://wireshop-backend.onrender.com';
+    const H = {
+      who: document.getElementById('who'),
+      role: document.getElementById('role'),
+      app: document.getElementById('app'),
+      gate: document.getElementById('gate'),
+      adminView: document.getElementById('adminView'),
+      techView: document.getElementById('techView'),
+      refresh: document.getElementById('refresh'),
+      adminTable: document.getElementById('adminTable'),
+      myTable: document.getElementById('myTable'),
+      pnList: document.getElementById('pnList')
+    };
+
+    const getUser = () => { try { return JSON.parse(localStorage.getItem('user'))||null; } catch { return null; } };
+    const user = getUser();
+    if (!user) { H.gate.style.display='block'; return; }
+
+    H.app.style.display='block';
+    H.who.textContent = user.username;
+    H.role.textContent = user.role;
+
+    // build part list
+    const catalog = Array.isArray(window.catalog) ? window.catalog : [];
+    for (const item of catalog) {
+      const opt = document.createElement('option');
+      opt.value = item.partNumber;
+      H.pnList.appendChild(opt);
+    }
+
+    // populate tech selects
+    const users = Array.isArray(window.users) ? window.users : [];
+    const techOptions = users.filter(u=>u.role!=='disabled').map(u=>({label:u.username,value:u.username}));
+
+    function fillSelect(sel, withAll) {
+      sel.innerHTML='';
+      if (withAll) { const o=document.createElement('option'); o.value=''; o.textContent='Any'; sel.appendChild(o); }
+      for(const t of techOptions){
+        const o=document.createElement('option'); o.value=t.value; o.textContent=t.label; sel.appendChild(o);
+      }
+    }
+
+    // Admin vs Tech view
+    if (user.role === 'admin') {
+      H.adminView.style.display='block';
+      // create form refs
+      const asUser = document.getElementById('asUser');
+      const asPart = document.getElementById('asPart');
+      const asHours = document.getElementById('asHours');
+      const asDue = document.getElementById('asDue');
+      const asNotes = document.getElementById('asNotes');
+      fillSelect(asUser, false);
+
+      const fltTech = document.getElementById('fltTech');
+      const fltStatus = document.getElementById('fltStatus');
+      fillSelect(fltTech, true);
+
+      document.getElementById('asCreate').addEventListener('click', async ()=>{
+        const payload = {
+          username: asUser.value,
+          partNumber: asPart.value || null,
+          expectedMinutes: asHours.value ? Math.round(parseFloat(asHours.value)*60) : null,
+          dueDate: asDue.value ? new Date(asDue.value+'T00:00:00').getTime() : null,
+          notes: asNotes.value || ''
+        };
+        if (!payload.username) return alert('Pick a technician');
+
+        const res = await fetch(`${API_ROOT}/api/assignments`, {
+          method:'POST',
+          headers:{'Content-Type':'application/json','x-user': user.username},
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok){ alert('Create failed'); return; }
+        asPart.value=''; asHours.value=''; asDue.value=''; asNotes.value='';
+        await loadAssignments();
+      });
+
+      document.getElementById('fltApply').addEventListener('click', loadAssignments);
+      document.getElementById('fltReset').addEventListener('click', ()=>{
+        fltTech.value=''; fltStatus.value='';
+        loadAssignments();
+      });
+
+      async function loadAssignments(){
+        const params = new URLSearchParams();
+        if (fltTech.value) params.set('username', fltTech.value);
+        if (fltStatus.value) params.set('status', fltStatus.value);
+        const res = await fetch(`${API_ROOT}/api/assignments?${params.toString()}`, { headers:{'x-user': user.username} });
+        if (!res.ok){ H.adminTable.innerHTML = `<tr><td colspan="9" class="muted">Failed to load assignments</td></tr>`; return; }
+        const rows = await res.json();
+        H.adminTable.innerHTML = rows.map(r=>{
+          const cat = catalog.find(c=>c.partNumber===r.partNumber);
+          const printName = r.printName || cat?.printName || '';
+          const expected = r.expectedMinutes!=null ? `${Math.floor(r.expectedMinutes/60)}:${String(r.expectedMinutes%60).padStart(2,'0')}` : '';
+          const due = r.dueDate ? new Date(r.dueDate).toLocaleDateString() : '';
+          return `
+            <tr data-id="${r.id}">
+              <td>${new Date(r.createdAt).toLocaleString()}</td>
+              <td>${r.username}</td>
+              <td>${r.partNumber||''}</td>
+              <td>${printName}</td>
+              <td>${expected}</td>
+              <td>${due}</td>
+              <td>${r.status}</td>
+              <td>${r.notes||''}</td>
+              <td>
+                <button class="secondary small" data-act="start">Start</button>
+                <button class="secondary small" data-act="complete">Complete</button>
+                <button class="secondary small" data-act="cancel">Cancel</button>
+                <button class="danger small" data-act="delete">Delete</button>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      }
+
+      H.adminTable.addEventListener('click', async (e)=>{
+        const btn = e.target.closest('button[data-act]'); if (!btn) return;
+        const tr = btn.closest('tr'); const id = tr?.dataset.id; if (!id) return;
+        const act = btn.dataset.act;
+        if (act==='delete'){
+          if(!confirm('Delete assignment?')) return;
+          const res = await fetch(`${API_ROOT}/api/assignments/${id}`, { method:'DELETE', headers:{'x-user': user.username} });
+          if(!res.ok) return alert('Delete failed');
+          return loadAssignments();
+        }
+        const map = { start:'InProgress', complete:'Completed', cancel:'Canceled' };
+        const status = map[act]; if (!status) return;
+        const res = await fetch(`${API_ROOT}/api/assignments/${id}`, {
+          method:'PATCH',
+          headers:{'Content-Type':'application/json','x-user': user.username},
+          body: JSON.stringify({ status })
+        });
+        if (!res.ok) return alert('Update failed');
+        loadAssignments();
+      });
+
+      // Requests panel
+      const rqTable = document.getElementById('rqTable');
+      async function loadRequests(){
+        const res = await fetch(`${API_ROOT}/api/assignments/requests`, { headers:{'x-user': user.username} });
+        if (!res.ok){ rqTable.innerHTML = `<tr><td colspan="7" class="muted">Failed to load requests</td></tr>`; return; }
+        const rows = await res.json();
+        rqTable.innerHTML = rows.map(r=>{
+          const hours = r.minutes!=null ? (r.minutes/60).toFixed(2) : '';
+          return `
+            <tr data-id="${r.id}">
+              <td>${new Date(r.createdAt).toLocaleString()}</td>
+              <td>${r.username}</td>
+              <td>${r.description||''}</td>
+              <td>${r.partNumber||''}</td>
+              <td>${hours}</td>
+              <td>${r.notes||''}</td>
+              <td>
+                <button class="primary small" data-act="approve">Approve</button>
+                <button class="secondary small" data-act="reject">Reject</button>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      }
+      document.getElementById('rqRefresh').addEventListener('click', loadRequests);
+      H.refresh.addEventListener('click', ()=>{ loadAssignments(); loadRequests(); });
+      // initial
+      loadAssignments(); loadRequests();
+
+      rqTable.addEventListener('click', async (e)=>{
+        const btn = e.target.closest('button[data-act]'); if (!btn) return;
+        const id = btn.closest('tr')?.dataset.id; if (!id) return;
+        const act = btn.dataset.act;
+        if (act==='approve' || act==='reject'){
+          const res = await fetch(`${API_ROOT}/api/assignments/requests/${id}/${act}`, {
+            method:'PATCH',
+            headers:{'x-user': user.username}
+          });
+          if (!res.ok) return alert('Action failed');
+          await loadRequests(); await loadAssignments();
+        }
+      });
+
+    } else {
+      // Tech view
+      H.techView.style.display='block';
+
+      async function loadMine(){
+        const res = await fetch(`${API_ROOT}/api/assignments/me`, { headers:{'x-user': user.username} });
+        if (!res.ok){ H.myTable.innerHTML = `<tr><td colspan="8" class="muted">Failed to load</td></tr>`; return; }
+        const rows = await res.json();
+        H.myTable.innerHTML = rows.map(r=>{
+          const cat = catalog.find(c=>c.partNumber===r.partNumber);
+          const printName = r.printName || cat?.printName || '';
+          const expected = r.expectedMinutes!=null ? `${Math.floor(r.expectedMinutes/60)}:${String(r.expectedMinutes%60).padStart(2,'0')}` : '';
+          const due = r.dueDate ? new Date(r.dueDate).toLocaleDateString() : '';
+          const actions = r.status==='Open'
+            ? '<button class="primary small" data-act="start">Start</button>'
+            : r.status==='InProgress'
+              ? '<button class="primary small" data-act="complete">Complete</button>'
+              : '';
+          return `
+            <tr data-id="${r.id}">
+              <td>${new Date(r.createdAt).toLocaleString()}</td>
+              <td>${r.partNumber||''}</td>
+              <td>${printName}</td>
+              <td>${expected}</td>
+              <td>${due}</td>
+              <td>${r.status}</td>
+              <td>${r.notes||''}</td>
+              <td>${actions}</td>
+            </tr>
+          `;
+        }).join('');
+      }
+      H.refresh.addEventListener('click', loadMine);
+      loadMine();
+
+      // Update my assignment status
+      H.myTable.addEventListener('click', async (e)=>{
+        const btn = e.target.closest('button[data-act]'); if (!btn) return;
+        const id = btn.closest('tr')?.dataset.id; if (!id) return;
+        const act = btn.dataset.act;
+        const map = { start:'InProgress', complete:'Completed' };
+        const status = map[act]; if (!status) return;
+        const res = await fetch(`${API_ROOT}/api/assignments/${id}`, {
+          method:'PATCH',
+          headers:{'Content-Type':'application/json','x-user': user.username},
+          body: JSON.stringify({ status })
+        });
+        if (!res.ok) return alert('Update failed');
+        loadMine();
+      });
+
+      // Submit request
+      document.getElementById('rqSubmit').addEventListener('click', async ()=>{
+        const payload = {
+          description: document.getElementById('rqDesc').value || '',
+          partNumber: document.getElementById('rqPart').value || null,
+          minutes: document.getElementById('rqHours').value ? Math.round(parseFloat(document.getElementById('rqHours').value)*60) : null,
+          notes: document.getElementById('rqNotes').value || ''
+        };
+        if (!payload.description && !payload.partNumber){ return alert('Give at least a description or part number'); }
+        const res = await fetch(`${API_ROOT}/api/assignments/requests`, {
+          method:'POST',
+          headers:{'Content-Type':'application/json','x-user': user.username},
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) return alert('Submit failed');
+        document.getElementById('rqDesc').value='';
+        document.getElementById('rqPart').value='';
+        document.getElementById('rqHours').value='';
+        document.getElementById('rqNotes').value='';
+        alert('Request submitted');
+      });
+    }
+  })();
+  </script>
+</body>
+</html>
