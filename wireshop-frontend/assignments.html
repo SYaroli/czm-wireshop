@@ -16,6 +16,7 @@
       width:auto !important;
       border:0 !important;
       font-weight:700 !important;
+      cursor:pointer !important;
     }
     .brand-actions .navbtn:hover{ filter:brightness(.92) }
   </style>
@@ -29,7 +30,7 @@
       </a>
       <div class="brand-actions" id="navActions">
         <a class="navbtn" href="dashboard.html">Dashboard</a>
-        <!-- Admin-only buttons get appended at runtime if user is admin -->
+        <!-- Admin-only buttons will be appended at runtime -->
       </div>
     </div>
   </div>
@@ -50,7 +51,7 @@
       <div id="adminView" style="display:none;">
         <div class="card">
           <h3 style="margin:0 0 8px;">Create Assignment</h3>
-        <div class="grid cols-4">
+          <div class="grid cols-4">
             <label>Technician
               <select id="a_user">
                 <option value="">-- Select technician --</option>
@@ -219,18 +220,19 @@
     </div>
   </main>
 
+  <!-- Fallback user list if the API is empty or blocked -->
+  <script src="users.js"></script>
+
   <script>
   (function(){
     const API_ROOT = 'https://wireshop-backend.onrender.com';
     const API = {
       users: `${API_ROOT}/api/users`,
       assignments: `${API_ROOT}/api/assignments`,
-      requests: `${API_ROOT}/api/assignments/requests`,
-      jobs: `${API_ROOT}/api/jobs`,            // for fallback
-      archive: `${API_ROOT}/api/jobs/archive`  // for fallback
+      requests: `${API_ROOT}/api/assignments/requests`
     };
 
-    // Roles considered "technicians" for the dropdown
+    // Roles treated as technicians
     const TECH_ROLES = new Set(['assembler','tech','technician','assembler-tech','assembler/tech']);
 
     const el = (id) => document.getElementById(id);
@@ -242,7 +244,6 @@
     function headers(){
       return { 'Content-Type': 'application/json', 'x-user': username() };
     }
-
     async function apiGet(url){
       const res = await fetch(url, { headers: headers() });
       if (!res.ok) throw new Error(await res.text().catch(()=>`${res.status}`));
@@ -322,53 +323,52 @@
       return a;
     }
 
-    // --------- Technician loader (robust) ----------
+    // --------- Technician loader ----------
     async function loadTechs(){
+      const me = getUser();
+      const meIsAdmin = String(me?.role||'').toLowerCase() === 'admin';
+
       let techs = [];
-      // Primary: from /api/users/list
-      try{
-        const raw = await apiGet(`${API.users}/list`);
-        const list = Array.isArray(raw) ? raw : (raw.users || raw.list || []);
-        techs = (list || []).filter(u => TECH_ROLES.has(String(u.role||'').toLowerCase()));
-      }catch(e){
-        // ignored, we have a fallback
+      // Primary: DB users
+      try {
+        const list = await apiGet(`${API.users}`);
+        if (Array.isArray(list)) {
+          techs = list.filter(u => TECH_ROLES.has(String(u.role||'').toLowerCase()));
+        }
+      } catch (_) {
+        // ignored; fallback below
       }
 
-      // Fallback: seen in live logs + archive (exclude obvious admins)
-      if (!techs.length){
-        try{
-          const [live, arc] = await Promise.allSettled([
-            apiGet(`${API.jobs}/logs`),
-            apiGet(`${API.archive}`)
-          ]);
-          const names = new Set();
-          const add = (rows=[]) => rows.forEach(r=>{
-            const n = String(r.username||'').trim();
-            if (n && n.toLowerCase() !== 'admin') names.add(n);
-          });
-          if (live.status === 'fulfilled' && Array.isArray(live.value)) add(live.value);
-          if (arc.status === 'fulfilled' && Array.isArray(arc.value))   add(arc.value);
-          techs = Array.from(names).map(username => ({ username, role: 'assembler' }));
-        }catch(e){}
+      // Fallback: static users.js
+      if (!techs.length && Array.isArray(window.users)) {
+        techs = window.users.filter(u => TECH_ROLES.has(String(u.role||'').toLowerCase()));
       }
 
-      // Render into selects
-      techs.sort((a,b)=>a.username.localeCompare(b.username));
+      // Clean up and exclude admins and the logged-in admin
+      const seen = new Set();
+      techs = techs
+        .filter(u => String(u.role||'').toLowerCase() !== 'admin')
+        .filter(u => {
+          const key = String(u.username||'').trim();
+          if (!key || seen.has(key)) return false;
+          seen.add(key); return true;
+        })
+        .sort((a,b)=> String(a.username).localeCompare(String(b.username)));
 
       const aSel = el('a_user');
-      aSel.innerHTML = '<option value="">-- Select technician --</option>';
-      techs.forEach(u => aSel.append(opt(u.username)));
-
       const fSel = el('flt_user');
+
+      aSel.innerHTML = '<option value="">-- Select technician --</option>';
       fSel.innerHTML = '';
       fSel.append(opt('', 'All'));
-      techs.forEach(u => fSel.append(opt(u.username)));
 
-      if (!techs.length){
-        el('a_msg').textContent = 'No technicians found. Add users in Admin → Users.';
-      } else {
-        el('a_msg').textContent = '';
+      for (const u of techs) {
+        if (meIsAdmin && String(u.username).toLowerCase() === String(me?.username||'').toLowerCase()) continue;
+        aSel.append(opt(u.username));
+        fSel.append(opt(u.username));
       }
+
+      el('a_msg').textContent = techs.length ? '' : 'No technicians found. Add techs in Admin → Users.';
     }
 
     // --------- Loaders ----------
