@@ -5,22 +5,36 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>CZM • Admin Live + Archive</title>
   <link rel="stylesheet" href="style.css"/>
+  <style>
+    /* Red/white header buttons */
+    .brand-actions .navbtn{
+      display:inline-block !important;
+      background:var(--red) !important;
+      color:#fff !important;
+      padding:8px 12px !important;
+      border-radius:9px !important;
+      text-decoration:none !important;
+      border:0 !important;
+      font-weight:700 !important;
+      cursor:pointer !important;
+    }
+    .brand-actions .navbtn:hover{ filter:brightness(.92) }
+    .toolbar .muted{opacity:.75}
+    .table-wrap{overflow:auto}
+    .inline-input{width:100%; box-sizing:border-box}
+  </style>
 </head>
 <body>
   <div class="brand-bar">
     <div class="brand-inner">
       <a class="brand-logo" href="dashboard.html">
         <img src="czm-logo.png" alt="CZM"/>
-        <h1 class="brand-title">CZM • Admin Live View</h1>
+        <h1 class="brand-title">CZM • Admin</h1>
       </a>
-      <div class="brand-actions">
-        <!-- New: Assignments shortcut -->
-        <a href="assignments.html" class="secondary"
-           style="padding:8px 12px;display:inline-block;text-decoration:none;border-radius:9px;border:1px solid transparent;">
-          Assignments
-        </a>
-        <button id="backToDashboard" class="secondary">← Back</button>
-        <button id="clearAllLogs" class="danger">Clear All Logs</button>
+      <div class="brand-actions" id="navActions">
+        <a href="dashboard.html" class="navbtn">Dashboard</a>
+        <a href="assignments.html" class="navbtn">Assignments</a>
+        <button id="clearAllLogs" class="navbtn">Clear Live Logs</button>
       </div>
     </div>
   </div>
@@ -45,6 +59,7 @@
           <tbody id="activityTableBody"></tbody>
         </table>
       </div>
+      <div class="muted" id="liveStatus" style="margin-top:.5rem"></div>
     </div>
 
     <!-- Archive -->
@@ -60,15 +75,12 @@
         </div>
         <div><label>From date<br/><input id="fltFrom" type="date"/></label></div>
         <div><label>To date<br/><input id="fltTo" type="date"/></label></div>
-        <button id="btnApply" class="primary">Apply</button>
-        <button id="btnReset" class="secondary">Reset</button>
-        <button id="btnCsv" class="secondary">Export CSV</button>
+        <button id="btnApply" class="navbtn">Apply</button>
+        <button id="btnReset" class="navbtn">Reset</button>
+        <button id="btnCsv" class="navbtn">Export CSV</button>
         <a href="https://wireshop-backend.onrender.com/archive"
            target="_blank" rel="noopener"
-           class="secondary"
-           style="padding:8px 12px;display:inline-block;text-decoration:none;border-radius:6px;border:1px solid transparent;">
-          Archive Backup
-        </a>
+           class="navbtn">Archive Backup</a>
         <div style="margin-left:auto;opacity:.8"><span id="rowCount">0</span> records</div>
       </div>
 
@@ -104,7 +116,7 @@
             <option value="admin">admin</option>
           </select>
         </label>
-        <button id="btnAddUser" class="primary">Add User</button>
+        <button id="btnAddUser" class="navbtn">Add User</button>
         <div id="uMsg" style="margin-left:auto;opacity:.8"></div>
       </div>
       <div class="table-wrap">
@@ -116,7 +128,275 @@
     </div>
   </main>
 
-  <script src="script.js"></script>
+  <script>
+  (function(){
+    const API_ROOT = 'https://wireshop-backend.onrender.com';
+    const API = {
+      jobs: `${API_ROOT}/api/jobs`,
+      users: `${API_ROOT}/api/users`,
+      archive: `${API_ROOT}/api/jobs/archive`
+    };
+
+    // ---------- auth helpers ----------
+    const getUser = () => { try { return JSON.parse(localStorage.getItem('user')) || null; } catch { return null; } };
+    const username = () => (getUser()?.username || '');
+    const isAdmin = () => String(getUser()?.role||'').toLowerCase() === 'admin';
+    const headers = () => ({ 'Content-Type': 'application/json', 'x-user': username() });
+
+    // Gate: only admins here
+    document.addEventListener('DOMContentLoaded', () => {
+      if (!isAdmin()) { window.location.href = 'dashboard.html'; }
+    });
+
+    // ---------- utils ----------
+    function fmtMS(ms){
+      if (!Number.isFinite(ms) || ms < 0) ms = 0;
+      const s = Math.floor(ms/1000);
+      const h = Math.floor(s/3600);
+      const m = Math.floor((s%3600)/60);
+      const sec = s%60;
+      return `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+    }
+    function lookupPart(pn){
+      try{
+        const cat = (window.catalog || []);
+        const f = cat.find(x => (x.partNumber||'').toLowerCase() === String(pn||'').toLowerCase());
+        return f ? { printName: f.printName || '', expected: f.expectedHours ?? '' } : { printName:'', expected:'' };
+      }catch{ return { printName:'', expected:'' }; }
+    }
+
+    // ---------- LIVE VIEW ----------
+    let liveTimer = null;
+    async function loadLive(){
+      const stat = document.getElementById('liveStatus');
+      try{
+        const res = await fetch(`${API.jobs}/logs`, { headers: headers() });
+        if (!res.ok){ stat.textContent = 'Live fetch failed'; return; }
+        const rows = await res.json();
+
+        // populate tech filter from live users too
+        const tset = new Set();
+        rows.forEach(r => tset.add(r.username||''));
+
+        const tbody = document.getElementById('activityTableBody');
+        tbody.innerHTML = '';
+
+        const now = Date.now();
+        rows.forEach(r=>{
+          const pausedExtra = r.pauseStart ? (now - (r.pauseStart||now)) : 0;
+          const totalActive = Math.max(0, (now - (r.startTime||now)) - (r.pauseTotal||0) - pausedExtra);
+          const { printName, expected } = lookupPart(r.partNumber);
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${r.username||''}</td>
+            <td>${r.partNumber||''}</td>
+            <td>${printName||''}</td>
+            <td>${expected!=='' ? expected : ''}</td>
+            <td>${r.action||''}</td>
+            <td>${r.note||''}</td>
+            <td>${fmtMS(totalActive)}</td>`;
+          tbody.appendChild(tr);
+        });
+
+        stat.textContent = rows.length ? `Updated ${new Date().toLocaleTimeString()}` : 'No active jobs';
+      }catch(e){
+        document.getElementById('liveStatus').textContent = 'Live fetch error';
+      }
+    }
+    function startLivePolling(){
+      clearInterval(liveTimer);
+      loadLive();
+      liveTimer = setInterval(loadLive, 4000);
+    }
+
+    // Clear all live logs
+    document.getElementById('clearAllLogs').addEventListener('click', async ()=>{
+      if (!confirm('Clear ALL live logs?')) return;
+      try{
+        const res = await fetch(`${API.jobs}/admin/clear-logs`, { method:'DELETE', headers: headers() });
+        if (res.ok) loadLive();
+      }catch{}
+    });
+
+    // ---------- ARCHIVE ----------
+    let archiveCache = [];
+    async function fetchArchive(){
+      const res = await fetch(API.archive, { headers: headers() });
+      if (!res.ok) return [];
+      const list = await res.json();
+      archiveCache = Array.isArray(list) ? list : [];
+      return archiveCache;
+    }
+    function applyArchiveFilters(){
+      const tech = document.getElementById('fltTech').value.trim().toLowerCase();
+      const part = document.getElementById('fltPart').value.trim().toLowerCase();
+      const from = document.getElementById('fltFrom').value ? new Date(document.getElementById('fltFrom').value).getTime() : -Infinity;
+      const to = document.getElementById('fltTo').value ? new Date(document.getElementById('fltTo').value).getTime()+86400000 : Infinity;
+
+      let rows = archiveCache.slice();
+      if (tech) rows = rows.filter(r => String(r.username||'').toLowerCase() === tech);
+      if (part) rows = rows.filter(r => String(r.partNumber||'').toLowerCase().includes(part));
+      rows = rows.filter(r => {
+        const t = r.finishedAt || r.endTime || 0;
+        return t >= from && t < to;
+      });
+      return rows;
+    }
+    function renderArchive(){
+      const rows = applyArchiveFilters();
+      const tbody = document.getElementById('archiveTableBody');
+      tbody.innerHTML = '';
+      rows.forEach(r=>{
+        const tr = document.createElement('tr');
+        const finished = r.finishedAt || r.endTime || null;
+        const { printName, expected } = lookupPart(r.partNumber);
+        const total = r.totalActive ?? Math.max(0, ( (r.endTime||0) - (r.startTime||0) ) - (r.pauseTotal||0) );
+        tr.innerHTML = `
+          <td>${finished ? new Date(finished).toLocaleString() : ''}</td>
+          <td>${r.username||''}</td>
+          <td>${r.partNumber||''}</td>
+          <td>${r.printName || printName || ''}</td>
+          <td>${r.expected ?? expected ?? ''}</td>
+          <td>${r.note||''}</td>
+          <td>${fmtMS(total)}</td>
+          <td><button class="secondary" data-adj="${r.id}">Adjust</button></td>
+          <td><button class="danger" data-del="${r.id}">Delete</button></td>`;
+        tbody.appendChild(tr);
+      });
+      document.getElementById('rowCount').textContent = String(rows.length);
+
+      // tech dropdown from archive set
+      const sel = document.getElementById('fltTech');
+      const seen = new Set(['']);
+      for (const opt of Array.from(sel.options)) seen.add(opt.value);
+      const names = Array.from(new Set(archiveCache.map(r => String(r.username||'')))).sort();
+      sel.innerHTML = '<option value="">All</option>' + names.map(n=>`<option value="${n}">${n}</option>`).join('');
+    }
+    async function loadArchive(){
+      await fetchArchive();
+      renderArchive();
+    }
+
+    // Archive actions
+    document.getElementById('btnApply').addEventListener('click', renderArchive);
+    document.getElementById('btnReset').addEventListener('click', ()=>{
+      document.getElementById('fltTech').value='';
+      document.getElementById('fltPart').value='';
+      document.getElementById('fltFrom').value='';
+      document.getElementById('fltTo').value='';
+      renderArchive();
+    });
+    document.getElementById('btnCsv').addEventListener('click', ()=>{
+      const rows = applyArchiveFilters();
+      const header = ['Finished','Technician','Part Number','Print Name','Expected','Notes','Total Active'];
+      const body = rows.map(r=>{
+        const finished = r.finishedAt || r.endTime || null;
+        const { printName, expected } = lookupPart(r.partNumber);
+        const total = r.totalActive ?? Math.max(0, ( (r.endTime||0) - (r.startTime||0) ) - (r.pauseTotal||0) );
+        return [
+          finished ? new Date(finished).toLocaleString() : '',
+          r.username||'',
+          r.partNumber||'',
+          r.printName || printName || '',
+          r.expected ?? expected ?? '',
+          (r.note||'').replace(/\n/g,' '),
+          fmtMS(total)
+        ].map(x=>`"${String(x).replace(/"/g,'""')}"`).join(',');
+      });
+      const csv = [header.join(','), ...body].join('\n');
+      const blob = new Blob([csv], { type:'text/csv' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `archive_export_${Date.now()}.csv`;
+      a.click();
+    });
+
+    document.getElementById('archiveTableBody').addEventListener('click', async (e)=>{
+      const idAdj = e.target?.dataset?.adj;
+      const idDel = e.target?.dataset?.del;
+      if (idDel){
+        const reason = prompt('Delete reason (optional):','admin request');
+        try{
+          const res = await fetch(`${API.archive}/${idDel}/delete`, { method:'POST', headers: headers(), body: JSON.stringify({ reason: reason||'' }) });
+          if (res.ok) loadArchive();
+        }catch{}
+      } else if (idAdj){
+        const row = archiveCache.find(r=>String(r.id)===String(idAdj));
+        if (!row) return;
+        const start = prompt('New start time (ISO or blank to keep current):', row.startTime ? new Date(row.startTime).toISOString() : '');
+        const end = prompt('New end time (ISO or blank to keep current):', row.endTime ? new Date(row.endTime).toISOString() : '');
+        const note = prompt('Notes (blank to keep):', row.note || '');
+        const body = {};
+        if (start && !Number.isNaN(Date.parse(start))) body.startTime = Date.parse(start);
+        if (end && !Number.isNaN(Date.parse(end))) body.endTime = Date.parse(end);
+        if (note !== null) body.note = note;
+        try{
+          const res = await fetch(`${API.archive}/${idAdj}/adjust`, { method:'POST', headers: headers(), body: JSON.stringify(body) });
+          if (res.ok) loadArchive();
+        }catch{}
+      }
+    });
+
+    // ---------- USERS ----------
+    async function loadUsers(){
+      try{
+        const res = await fetch(`${API.users}/list`, { headers: headers() });
+        if (!res.ok) return;
+        const list = await res.json();
+        const tbody = document.getElementById('usersTableBody');
+        tbody.innerHTML = '';
+        list.forEach(u=>{
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${u.username}</td>
+            <td>${u.role}</td>
+            <td><button class="danger" data-uid="${u.id}">Delete</button></td>`;
+          tbody.appendChild(tr);
+        });
+      }catch{}
+    }
+    document.getElementById('btnAddUser').addEventListener('click', async ()=>{
+      const name = document.getElementById('uName').value.trim();
+      const pin  = document.getElementById('uPin').value.trim();
+      const role = document.getElementById('uRole').value;
+      if (!name || !pin){ document.getElementById('uMsg').textContent='username & pin required'; return; }
+      try{
+        const res = await fetch(`${API.users}`, {
+          method:'POST', headers: headers(),
+          body: JSON.stringify({ username: name, pin, role })
+        });
+        if (res.ok){
+          document.getElementById('uMsg').textContent='User added';
+          document.getElementById('uName').value='';
+          document.getElementById('uPin').value='';
+          document.getElementById('uRole').value='assembler';
+          loadUsers();
+        }else{
+          const j = await res.json().catch(()=>({}));
+          document.getElementById('uMsg').textContent = j.error || 'Add failed';
+        }
+      }catch{}
+    });
+    document.getElementById('usersTableBody').addEventListener('click', async (e)=>{
+      const id = e.target?.dataset?.uid;
+      if (!id) return;
+      if (!confirm('Delete this user?')) return;
+      try{
+        const res = await fetch(`${API.users}/${id}`, { method:'DELETE', headers: headers() });
+        if (res.ok) loadUsers();
+      }catch{}
+    });
+
+    // ---------- boot ----------
+    async function boot(){
+      if (!isAdmin()) return;
+      await Promise.all([loadUsers(), loadArchive()]);
+      startLivePolling();
+    }
+    boot();
+  })();
+  </script>
+
   <script src="catalog.js"></script>
 </body>
 </html>
