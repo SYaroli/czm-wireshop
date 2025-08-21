@@ -5,6 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>CZM • Assignments</title>
   <link rel="stylesheet" href="style.css"/>
+  <style>
+    .brand-actions .navbtn{
+      display:inline-block !important;
+      background:var(--red) !important;
+      color:#fff !important;
+      padding:8px 12px !important;
+      border-radius:9px !important;
+      text-decoration:none !important;
+      width:auto !important;
+      border:0 !important;
+      font-weight:700 !important;
+    }
+    .brand-actions .navbtn:hover{ filter:brightness(.92) }
+  </style>
 </head>
 <body>
   <div class="brand-bar">
@@ -14,19 +28,14 @@
         <h1 class="brand-title">CZM • Assignments</h1>
       </a>
       <div class="brand-actions">
-        <a class="secondary" href="dashboard.html">Dashboard</a>
-        <a class="secondary" href="admin.html">Admin</a>
-        <a class="secondary" href="archive.html">Archive</a>
+        <a class="navbtn" href="dashboard.html">Dashboard</a>
+        <a class="navbtn admin-only" href="admin.html">Admin</a>
+        <a class="navbtn admin-only" href="archive.html">Archive</a>
       </div>
     </div>
   </div>
 
-  <main class="container">
-    <div id="gate" class="card" style="display:none;">
-      <p class="muted">You are not signed in.</p>
-      <div><a class="primary" href="index.html">Return to sign in</a></div>
-    </div>
-
+  <main class="page">
     <div id="app" style="display:none;">
       <div class="card">
         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
@@ -41,87 +50,84 @@
       <div id="adminView" style="display:none;">
         <div class="card">
           <h3 style="margin:0 0 8px;">Create Assignment</h3>
-          <div class="grid-2" style="display:grid;grid-template-columns:repeat(2,minmax(220px,1fr));gap:12px;">
+          <div class="grid cols-4">
             <label>Technician
-              <select id="asUser"></select>
+              <select id="a_user"></select>
             </label>
             <label>Part Number
-              <input id="asPart" list="pnList" placeholder="Type to search…">
-              <datalist id="pnList"></datalist>
+              <input id="a_part" type="text" placeholder="e.g. 44602.0000.000"/>
             </label>
-            <label>Expected (hours)
-              <input id="asHours" type="number" min="0" step="0.25" placeholder="e.g. 4">
+            <label>Print Name
+              <input id="a_print" type="text" placeholder="optional"/>
+            </label>
+            <label>Expected Minutes
+              <input id="a_minutes" type="number" min="0" step="5" placeholder="e.g. 90"/>
             </label>
             <label>Due Date
-              <input id="asDue" type="date">
+              <input id="a_due" type="date"/>
             </label>
-            <label style="grid-column:1 / -1">Notes
-              <textarea id="asNotes" rows="2" placeholder="Context, prints, priority, etc."></textarea>
+            <label>Notes
+              <input id="a_notes" type="text" placeholder="optional"/>
             </label>
+            <div class="spacer"></div>
+            <button id="a_create" class="primary">Assign</button>
           </div>
-          <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">
-            <button id="asCreate" class="primary">Create</button>
-          </div>
+          <div id="a_msg" class="muted" style="margin-top:6px"></div>
         </div>
 
         <div class="card">
-          <div style="display:flex;gap:12px;align-items:end;flex-wrap:wrap;">
-            <h3 style="margin:0;flex:1 1 auto;">Assignments</h3>
-            <label>Tech
-              <select id="fltTech"></select>
+          <h3 style="margin:0 0 8px;">Assignments</h3>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin-bottom:8px">
+            <label>Filter by tech
+              <select id="flt_user"><option value="">All</option></select>
             </label>
             <label>Status
-              <select id="fltStatus">
-                <option value="">Any</option>
-                <option>Open</option>
-                <option>InProgress</option>
-                <option>Completed</option>
-                <option>Canceled</option>
+              <select id="flt_status">
+                <option value="">All</option>
+                <option value="open">Open</option>
+                <option value="in_progress">In Progress</option>
+                <option value="done">Done</option>
+                <option value="rejected">Rejected</option>
               </select>
             </label>
-            <button id="fltApply" class="secondary">Apply</button>
-            <button id="fltReset" class="secondary">Reset</button>
+            <button id="applyFilters" class="secondary">Apply</button>
+            <button id="resetFilters" class="secondary">Reset</button>
           </div>
 
-          <div class="table-wrap" style="margin-top:8px;">
+          <div class="table-wrap">
             <table class="table">
               <thead>
                 <tr>
-                  <th>Created</th>
                   <th>Tech</th>
-                  <th>Part</th>
-                  <th>Print Name</th>
-                  <th>Expected</th>
+                  <th>Part #</th>
+                  <th>Print</th>
+                  <th>Minutes</th>
                   <th>Due</th>
                   <th>Status</th>
                   <th>Notes</th>
                   <th>Actions</th>
                 </tr>
               </thead>
-              <tbody id="adminTable"></tbody>
+              <tbody id="assignmentsBody"></tbody>
             </table>
           </div>
         </div>
 
         <div class="card">
-          <div style="display:flex;align-items:center;gap:8px;">
-            <h3 style="margin:0;flex:1">Requests</h3>
-            <button id="rqRefresh" class="secondary">Refresh</button>
-          </div>
-          <div class="table-wrap" style="margin-top:8px;">
+          <h3 style="margin:0 0 8px;">Requests Queue</h3>
+          <div class="table-wrap">
             <table class="table">
               <thead>
                 <tr>
-                  <th>When</th>
-                  <th>Tech</th>
-                  <th>Description</th>
-                  <th>Part</th>
-                  <th>Hours</th>
+                  <th>Submitted By</th>
+                  <th>Description / Part</th>
+                  <th>Minutes</th>
                   <th>Notes</th>
-                  <th>Actions</th>
+                  <th>Submitted</th>
+                  <th>Action</th>
                 </tr>
               </thead>
-              <tbody id="rqTable"></tbody>
+              <tbody id="requestsBody"></tbody>
             </table>
           </div>
         </div>
@@ -134,303 +140,343 @@
             <table class="table">
               <thead>
                 <tr>
-                  <th>Created</th>
-                  <th>Part</th>
+                  <th>Part #</th>
                   <th>Print</th>
-                  <th>Expected</th>
+                  <th>Minutes</th>
                   <th>Due</th>
                   <th>Status</th>
                   <th>Notes</th>
-                  <th>Actions</th>
+                  <th>Update</th>
                 </tr>
               </thead>
-              <tbody id="myTable"></tbody>
+              <tbody id="myAssignmentsBody"></tbody>
             </table>
           </div>
         </div>
 
         <div class="card">
           <h3 style="margin:0 0 8px;">Request Credit</h3>
-          <div class="grid-2" style="display:grid;grid-template-columns:repeat(2,minmax(220px,1fr));gap:12px;">
-            <label>Description
-              <input id="rqDesc" type="text" placeholder="What did you do?">
+          <div class="grid cols-3">
+            <label>Part or Description
+              <input id="r_part" type="text" placeholder="e.g. cabinet cleanup, quick fix"/>
             </label>
-            <label>Part Number
-              <input id="rqPart" list="pnList" placeholder="Optional">
+            <label>Minutes
+              <input id="r_minutes" type="number" min="0" step="5" placeholder="e.g. 30"/>
             </label>
-            <label>Hours
-              <input id="rqHours" type="number" min="0" step="0.25" placeholder="e.g. 1.5">
+            <label>Notes
+              <input id="r_notes" type="text" placeholder="optional"/>
             </label>
-            <label style="grid-column:1 / -1">Notes
-              <textarea id="rqNotes" rows="2" placeholder="Anything else worth noting"></textarea>
-            </label>
+            <div class="spacer"></div>
+            <button id="r_submit" class="primary">Submit Request</button>
           </div>
-          <div style="display:flex;justify-content:flex-end;margin-top:8px;">
-            <button id="rqSubmit" class="primary">Submit Request</button>
+          <div id="r_msg" class="muted" style="margin-top:6px"></div>
+        </div>
+
+        <div class="card">
+          <h3 style="margin:0 0 8px;">My Requests</h3>
+          <div class="table-wrap">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Description / Part</th>
+                  <th>Minutes</th>
+                  <th>Notes</th>
+                  <th>Status</th>
+                  <th>Updated</th>
+                </tr>
+              </thead>
+              <tbody id="myRequestsBody"></tbody>
+            </table>
           </div>
         </div>
       </div>
     </div>
+
+    <div id="loginGate" class="login-wrap">
+      <div class="login-card">
+        <div class="login-top">
+          <img src="czm-logo.png" alt="CZM">
+          <h1 class="login-title">CZM • Wireshop</h1>
+        </div>
+        <p class="login-sub">Sign in to view and manage assignments.</p>
+        <form id="login-form">
+          <div class="row">
+            <label>Username
+              <input type="text" id="username" required placeholder="firstname.lastname"/>
+            </label>
+            <label>PIN
+              <input type="password" id="pin" required placeholder="1234" inputmode="numeric"/>
+            </label>
+          </div>
+          <button type="submit">Login</button>
+          <div id="error-message"></div>
+        </form>
+      </div>
+    </div>
   </main>
 
-  <script src="users.js"></script>
-  <script src="catalog.js"></script>
   <script>
   (function(){
     const API_ROOT = 'https://wireshop-backend.onrender.com';
-    const H = {
-      who: document.getElementById('who'),
-      role: document.getElementById('role'),
-      app: document.getElementById('app'),
-      gate: document.getElementById('gate'),
-      adminView: document.getElementById('adminView'),
-      techView: document.getElementById('techView'),
-      refresh: document.getElementById('refresh'),
-      adminTable: document.getElementById('adminTable'),
-      myTable: document.getElementById('myTable'),
-      pnList: document.getElementById('pnList')
+    const API = {
+      users: `${API_ROOT}/api/users`,
+      assignments: `${API_ROOT}/api/assignments`,
+      requests: `${API_ROOT}/api/assignments/requests`,
     };
 
-    const getUser = () => { try { return JSON.parse(localStorage.getItem('user'))||null; } catch { return null; } };
-    const user = getUser();
-    if (!user) { H.gate.style.display='block'; return; }
+    const el = (id) => document.getElementById(id);
+    const getUser = () => { try { return JSON.parse(localStorage.getItem('user')) || null; } catch { return null; } };
+    const setUser = (u) => localStorage.setItem('user', JSON.stringify(u));
+    const username = () => (getUser()?.username || '');
 
-    H.app.style.display='block';
-    H.who.textContent = user.username;
-    H.role.textContent = user.role;
-
-    // build part list
-    const catalog = Array.isArray(window.catalog) ? window.catalog : [];
-    for (const item of catalog) {
-      const opt = document.createElement('option');
-      opt.value = item.partNumber;
-      H.pnList.appendChild(opt);
+    function headers(){
+      return { 'Content-Type': 'application/json', 'x-user': username() };
     }
 
-    // populate tech selects
-    const users = Array.isArray(window.users) ? window.users : [];
-    const techOptions = users.filter(u=>u.role!=='disabled').map(u=>({label:u.username,value:u.username}));
-
-    function fillSelect(sel, withAll) {
-      sel.innerHTML='';
-      if (withAll) { const o=document.createElement('option'); o.value=''; o.textContent='Any'; sel.appendChild(o); }
-      for(const t of techOptions){
-        const o=document.createElement('option'); o.value=t.value; o.textContent=t.label; sel.appendChild(o);
-      }
+    async function apiGet(url){
+      const res = await fetch(url, { headers: headers() });
+      if (!res.ok) throw new Error(await res.text().catch(()=>`${res.status}`));
+      return res.json();
     }
 
-    // Admin vs Tech view
-    if (user.role === 'admin') {
-      H.adminView.style.display='block';
-      // create form refs
-      const asUser = document.getElementById('asUser');
-      const asPart = document.getElementById('asPart');
-      const asHours = document.getElementById('asHours');
-      const asDue = document.getElementById('asDue');
-      const asNotes = document.getElementById('asNotes');
-      fillSelect(asUser, false);
+    async function apiJson(url, method, data){
+      const res = await fetch(url, { method, headers: headers(), body: JSON.stringify(data) });
+      if (!res.ok) throw new Error(await res.text().catch(()=>`${res.status}`));
+      return res.json();
+    }
 
-      const fltTech = document.getElementById('fltTech');
-      const fltStatus = document.getElementById('fltStatus');
-      fillSelect(fltTech, true);
+    function fmtDate(ts){ if(!ts) return ''; const d = new Date(ts); return d.toLocaleString(); }
+    function opt(v,t){ const o = document.createElement('option'); o.value=v; o.textContent=t||v; return o; }
 
-      document.getElementById('asCreate').addEventListener('click', async ()=>{
-        const payload = {
-          username: asUser.value,
-          partNumber: asPart.value || null,
-          expectedMinutes: asHours.value ? Math.round(parseFloat(asHours.value)*60) : null,
-          dueDate: asDue.value ? new Date(asDue.value+'T00:00:00').getTime() : null,
-          notes: asNotes.value || ''
-        };
-        if (!payload.username) return alert('Pick a technician');
-
-        const res = await fetch(`${API_ROOT}/api/assignments`, {
-          method:'POST',
-          headers:{'Content-Type':'application/json','x-user': user.username},
-          body: JSON.stringify(payload)
+    // --------- Login gate ----------
+    const loginForm = document.getElementById('login-form');
+    loginForm.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const u = el('username').value.trim();
+      const p = el('pin').value.trim();
+      try{
+        const res = await fetch(`${API.users}/login`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: u, pin: p })
         });
-        if (!res.ok){ alert('Create failed'); return; }
-        asPart.value=''; asHours.value=''; asDue.value=''; asNotes.value='';
-        await loadAssignments();
+        if(res.ok){
+          const data = await res.json();
+          setUser({ username: data.username, role: data.role });
+          document.getElementById('loginGate').style.display='none';
+          document.getElementById('app').style.display='block';
+          init();
+          return;
+        }
+      }catch{}
+      document.getElementById('error-message').textContent='Invalid username or PIN.';
+    });
+
+    // Auto-login if already set
+    if(getUser()){
+      document.getElementById('loginGate').style.display='none';
+      document.getElementById('app').style.display='block';
+      init();
+    }
+
+    // --------- App init ----------
+    async function init(){
+      const me = getUser();
+      el('who').textContent = me?.username || '';
+      el('role').textContent = me?.role || '';
+
+      const isAdmin = String(me?.role||'').toLowerCase()==='admin';
+      document.getElementById('adminView').style.display = isAdmin ? 'block' : 'none';
+      document.getElementById('techView').style.display = isAdmin ? 'none' : 'block';
+
+      // Fill tech list for admin assign form/filter
+      if(isAdmin){
+        try{
+          const list = await apiGet(`${API.users}/list`);
+          const selects = [el('a_user'), el('flt_user')];
+          selects.forEach(s => { s.innerHTML=''; s.append(opt('', 'All')); list.forEach(u => s.append(opt(u.username))); });
+        }catch(e){}
+      }
+
+      // Load data
+      await Promise.all([loadAssignments(), loadRequests(), loadMine(), bindActions()]);
+    }
+
+    // --------- Loaders ----------
+    async function loadAssignments(){
+      if (String(getUser()?.role||'').toLowerCase()!=='admin') return;
+      const user = el('flt_user').value;
+      const status = el('flt_status').value;
+      const qs = new URLSearchParams(); if(user) qs.set('username', user); if(status) qs.set('status', status);
+      const rows = await apiGet(`${API.assignments}${qs.toString() ? `?${qs}` : ''}`);
+      const tbody = el('assignmentsBody'); tbody.innerHTML='';
+      rows.forEach(r=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${r.username||''}</td>
+          <td>${r.partNumber||''}</td>
+          <td>${r.printName||''}</td>
+          <td>${r.expectedMinutes ?? ''}</td>
+          <td>${r.dueDate ? new Date(r.dueDate).toLocaleDateString() : ''}</td>
+          <td>${r.status||''}</td>
+          <td>${r.notes||''}</td>
+          <td>
+            <button data-act="status" data-id="${r.id}" data-status="in_progress" class="secondary">Start</button>
+            <button data-act="status" data-id="${r.id}" data-status="done" class="primary">Done</button>
+            <button data-act="delete" data-id="${r.id}" class="danger">Delete</button>
+          </td>`;
+        tbody.append(tr);
+      });
+    }
+
+    async function loadRequests(){
+      const me = getUser();
+      const isAdmin = String(me?.role||'').toLowerCase()==='admin';
+      const tbody = el('requestsBody'); tbody.innerHTML='';
+      if(!isAdmin) return;
+      const rows = await apiGet(API.requests);
+      rows.forEach(r=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${r.username||''}</td>
+          <td>${r.description || r.partNumber || ''}</td>
+          <td>${r.minutes ?? ''}</td>
+          <td>${r.notes||''}</td>
+          <td>${r.updatedAt ? new Date(r.updatedAt).toLocaleString() : ''}</td>
+          <td>
+            <button data-req="approve" data-id="${r.id}" class="primary">Approve</button>
+            <button data-req="reject" data-id="${r.id}" class="danger">Reject</button>
+          </td>`;
+        tbody.append(tr);
+      });
+    }
+
+    async function loadMine(){
+      const me = getUser();
+      const isAdmin = String(me?.role||'').toLowerCase()==='admin';
+      if(isAdmin) return;
+      const myBody = el('myAssignmentsBody'); myBody.innerHTML='';
+      const rows = await apiGet(`${API.assignments}/me`);
+      rows.forEach(r=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${r.partNumber||''}</td>
+          <td>${r.printName||''}</td>
+          <td>${r.expectedMinutes ?? ''}</td>
+          <td>${r.dueDate ? new Date(r.dueDate).toLocaleDateString() : ''}</td>
+          <td>${r.status||''}</td>
+          <td>${r.notes||''}</td>
+          <td>
+            <select data-mid="${r.id}" class="inline">
+              <option value="open" ${r.status==='open'?'selected':''}>Open</option>
+              <option value="in_progress" ${r.status==='in_progress'?'selected':''}>In Progress</option>
+              <option value="done" ${r.status==='done'?'selected':''}>Done</option>
+            </select>
+          </td>`;
+        myBody.append(tr);
       });
 
-      document.getElementById('fltApply').addEventListener('click', loadAssignments);
-      document.getElementById('fltReset').addEventListener('click', ()=>{
-        fltTech.value=''; fltStatus.value='';
+      const reqBody = el('myRequestsBody'); reqBody.innerHTML='';
+      const reqs = await apiGet(`${API.requests}/me`);
+      reqs.forEach(r=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${r.description || r.partNumber || ''}</td>
+          <td>${r.minutes ?? ''}</td>
+          <td>${r.notes||''}</td>
+          <td>${r.status||''}</td>
+          <td>${r.updatedAt ? new Date(r.updatedAt).toLocaleString() : ''}</td>`;
+        reqBody.append(tr);
+      });
+    }
+
+    // --------- Actions ----------
+    async function bindActions(){
+      document.getElementById('a_create')?.addEventListener('click', async ()=>{
+        const data = {
+          username: document.getElementById('a_user').value.trim(),
+          partNumber: document.getElementById('a_part').value.trim() || null,
+          printName: document.getElementById('a_print').value.trim() || null,
+          expectedMinutes: Number(document.getElementById('a_minutes').value || 0) || null,
+          dueDate: document.getElementById('a_due').value || null,
+          notes: document.getElementById('a_notes').value.trim() || null,
+        };
+        try{
+          await apiJson(API.assignments, 'POST', data);
+          document.getElementById('a_msg').textContent='Assigned.';
+          document.getElementById('a_part').value='';
+          document.getElementById('a_print').value='';
+          document.getElementById('a_minutes').value='';
+          document.getElementById('a_due').value='';
+          document.getElementById('a_notes').value='';
+          await loadAssignments();
+        }catch(e){ document.getElementById('a_msg').textContent='Failed to assign.'; }
+      });
+
+      document.getElementById('applyFilters')?.addEventListener('click', loadAssignments);
+      document.getElementById('resetFilters')?.addEventListener('click', ()=>{
+        document.getElementById('flt_user').value='';
+        document.getElementById('flt_status').value='';
         loadAssignments();
       });
 
-      async function loadAssignments(){
-        const params = new URLSearchParams();
-        if (fltTech.value) params.set('username', fltTech.value);
-        if (fltStatus.value) params.set('status', fltStatus.value);
-        const res = await fetch(`${API_ROOT}/api/assignments?${params.toString()}`, { headers:{'x-user': user.username} });
-        if (!res.ok){ H.adminTable.innerHTML = `<tr><td colspan="9" class="muted">Failed to load assignments</td></tr>`; return; }
-        const rows = await res.json();
-        H.adminTable.innerHTML = rows.map(r=>{
-          const cat = catalog.find(c=>c.partNumber===r.partNumber);
-          const printName = r.printName || cat?.printName || '';
-          const expected = r.expectedMinutes!=null ? `${Math.floor(r.expectedMinutes/60)}:${String(r.expectedMinutes%60).padStart(2,'0')}` : '';
-          const due = r.dueDate ? new Date(r.dueDate).toLocaleDateString() : '';
-          return `
-            <tr data-id="${r.id}">
-              <td>${new Date(r.createdAt).toLocaleString()}</td>
-              <td>${r.username}</td>
-              <td>${r.partNumber||''}</td>
-              <td>${printName}</td>
-              <td>${expected}</td>
-              <td>${due}</td>
-              <td>${r.status}</td>
-              <td>${r.notes||''}</td>
-              <td>
-                <button class="secondary small" data-act="start">Start</button>
-                <button class="secondary small" data-act="complete">Complete</button>
-                <button class="secondary small" data-act="cancel">Cancel</button>
-                <button class="danger small" data-act="delete">Delete</button>
-              </td>
-            </tr>
-          `;
-        }).join('');
-      }
-
-      H.adminTable.addEventListener('click', async (e)=>{
-        const btn = e.target.closest('button[data-act]'); if (!btn) return;
-        const tr = btn.closest('tr'); const id = tr?.dataset.id; if (!id) return;
-        const act = btn.dataset.act;
-        if (act==='delete'){
-          if(!confirm('Delete assignment?')) return;
-          const res = await fetch(`${API_ROOT}/api/assignments/${id}`, { method:'DELETE', headers:{'x-user': user.username} });
-          if(!res.ok) return alert('Delete failed');
-          return loadAssignments();
-        }
-        const map = { start:'InProgress', complete:'Completed', cancel:'Canceled' };
-        const status = map[act]; if (!status) return;
-        const res = await fetch(`${API_ROOT}/api/assignments/${id}`, {
-          method:'PATCH',
-          headers:{'Content-Type':'application/json','x-user': user.username},
-          body: JSON.stringify({ status })
-        });
-        if (!res.ok) return alert('Update failed');
-        loadAssignments();
-      });
-
-      // Requests panel
-      const rqTable = document.getElementById('rqTable');
-      async function loadRequests(){
-        const res = await fetch(`${API_ROOT}/api/assignments/requests`, { headers:{'x-user': user.username} });
-        if (!res.ok){ rqTable.innerHTML = `<tr><td colspan="7" class="muted">Failed to load requests</td></tr>`; return; }
-        const rows = await res.json();
-        rqTable.innerHTML = rows.map(r=>{
-          const hours = r.minutes!=null ? (r.minutes/60).toFixed(2) : '';
-          return `
-            <tr data-id="${r.id}">
-              <td>${new Date(r.createdAt).toLocaleString()}</td>
-              <td>${r.username}</td>
-              <td>${r.description||''}</td>
-              <td>${r.partNumber||''}</td>
-              <td>${hours}</td>
-              <td>${r.notes||''}</td>
-              <td>
-                <button class="primary small" data-act="approve">Approve</button>
-                <button class="secondary small" data-act="reject">Reject</button>
-              </td>
-            </tr>
-          `;
-        }).join('');
-      }
-      document.getElementById('rqRefresh').addEventListener('click', loadRequests);
-      H.refresh.addEventListener('click', ()=>{ loadAssignments(); loadRequests(); });
-      // initial
-      loadAssignments(); loadRequests();
-
-      rqTable.addEventListener('click', async (e)=>{
-        const btn = e.target.closest('button[data-act]'); if (!btn) return;
-        const id = btn.closest('tr')?.dataset.id; if (!id) return;
-        const act = btn.dataset.act;
-        if (act==='approve' || act==='reject'){
-          const res = await fetch(`${API_ROOT}/api/assignments/requests/${id}/${act}`, {
-            method:'PATCH',
-            headers:{'x-user': user.username}
-          });
-          if (!res.ok) return alert('Action failed');
-          await loadRequests(); await loadAssignments();
+      document.getElementById('assignmentsBody')?.addEventListener('click', async (e)=>{
+        const t = e.target;
+        if(t.dataset.act==='delete'){
+          try{ await apiJson(`${API.assignments}/${t.dataset.id}`, 'DELETE'); await loadAssignments(); }catch{}
+        }else if(t.dataset.act==='status'){
+          try{ await apiJson(`${API.assignments}/${t.dataset.id}`, 'PATCH', { status: t.dataset.status }); await loadAssignments(); }catch{}
         }
       });
 
-    } else {
-      // Tech view
-      H.techView.style.display='block';
-
-      async function loadMine(){
-        const res = await fetch(`${API_ROOT}/api/assignments/me`, { headers:{'x-user': user.username} });
-        if (!res.ok){ H.myTable.innerHTML = `<tr><td colspan="8" class="muted">Failed to load</td></tr>`; return; }
-        const rows = await res.json();
-        H.myTable.innerHTML = rows.map(r=>{
-          const cat = catalog.find(c=>c.partNumber===r.partNumber);
-          const printName = r.printName || cat?.printName || '';
-          const expected = r.expectedMinutes!=null ? `${Math.floor(r.expectedMinutes/60)}:${String(r.expectedMinutes%60).padStart(2,'0')}` : '';
-          const due = r.dueDate ? new Date(r.dueDate).toLocaleDateString() : '';
-          const actions = r.status==='Open'
-            ? '<button class="primary small" data-act="start">Start</button>'
-            : r.status==='InProgress'
-              ? '<button class="primary small" data-act="complete">Complete</button>'
-              : '';
-          return `
-            <tr data-id="${r.id}">
-              <td>${new Date(r.createdAt).toLocaleString()}</td>
-              <td>${r.partNumber||''}</td>
-              <td>${printName}</td>
-              <td>${expected}</td>
-              <td>${due}</td>
-              <td>${r.status}</td>
-              <td>${r.notes||''}</td>
-              <td>${actions}</td>
-            </tr>
-          `;
-        }).join('');
-      }
-      H.refresh.addEventListener('click', loadMine);
-      loadMine();
-
-      // Update my assignment status
-      H.myTable.addEventListener('click', async (e)=>{
-        const btn = e.target.closest('button[data-act]'); if (!btn) return;
-        const id = btn.closest('tr')?.dataset.id; if (!id) return;
-        const act = btn.dataset.act;
-        const map = { start:'InProgress', complete:'Completed' };
-        const status = map[act]; if (!status) return;
-        const res = await fetch(`${API_ROOT}/api/assignments/${id}`, {
-          method:'PATCH',
-          headers:{'Content-Type':'application/json','x-user': user.username},
-          body: JSON.stringify({ status })
-        });
-        if (!res.ok) return alert('Update failed');
-        loadMine();
+      document.getElementById('requestsBody')?.addEventListener('click', async (e)=>{
+        const t = e.target;
+        if(t.dataset.req==='approve'){
+          try{ await apiJson(`${API.requests}/${t.dataset.id}/approve`, 'PATCH', {}); await Promise.all([loadRequests(), loadAssignments()]); }catch{}
+        }else if(t.dataset.req==='reject'){
+          try{ await apiJson(`${API.requests}/${t.dataset.id}/reject`, 'PATCH', {}); await loadRequests(); }catch{}
+        }
       });
 
-      // Submit request
-      document.getElementById('rqSubmit').addEventListener('click', async ()=>{
-        const payload = {
-          description: document.getElementById('rqDesc').value || '',
-          partNumber: document.getElementById('rqPart').value || null,
-          minutes: document.getElementById('rqHours').value ? Math.round(parseFloat(document.getElementById('rqHours').value)*60) : null,
-          notes: document.getElementById('rqNotes').value || ''
+      document.getElementById('myAssignmentsBody')?.addEventListener('change', async (e)=>{
+        const sel = e.target;
+        if(sel.tagName==='SELECT' && sel.dataset.mid){
+          try{ await apiJson(`${API.assignments}/${sel.dataset.mid}`, 'PATCH', { status: sel.value }); }catch{}
+        }
+      });
+
+      document.getElementById('r_submit')?.addEventListener('click', async ()=>{
+        const data = {
+          partNumber: document.getElementById('r_part').value.trim() || null,
+          description: document.getElementById('r_part').value.trim() || null,
+          minutes: Number(document.getElementById('r_minutes').value || 0) || null,
+          notes: document.getElementById('r_notes').value.trim() || null
         };
-        if (!payload.description && !payload.partNumber){ return alert('Give at least a description or part number'); }
-        const res = await fetch(`${API_ROOT}/api/assignments/requests`, {
-          method:'POST',
-          headers:{'Content-Type':'application/json','x-user': user.username},
-          body: JSON.stringify(payload)
-        });
-        if (!res.ok) return alert('Submit failed');
-        document.getElementById('rqDesc').value='';
-        document.getElementById('rqPart').value='';
-        document.getElementById('rqHours').value='';
-        document.getElementById('rqNotes').value='';
-        alert('Request submitted');
+        try{
+          await apiJson(API.requests, 'POST', data);
+          document.getElementById('r_msg').textContent='Sent.';
+          document.getElementById('r_part').value='';
+          document.getElementById('r_minutes').value='';
+          document.getElementById('r_notes').value='';
+          await loadMine();
+        }catch(e){ document.getElementById('r_msg').textContent='Failed to send.'; }
+      });
+
+      document.getElementById('refresh')?.addEventListener('click', async ()=>{
+        await Promise.all([loadAssignments(), loadRequests(), loadMine()]);
       });
     }
   })();
+  </script>
+
+  <script>
+    // Hide Admin/Archive nav for non-admin roles (defensive duplicate for instant UX)
+    document.addEventListener("DOMContentLoaded", function(){
+      try{
+        var u = JSON.parse(localStorage.getItem("user")||"{}");
+        var isAdmin = String(u.role||"").toLowerCase()==="admin";
+        if(!isAdmin){ document.querySelectorAll(".admin-only").forEach(function(el){ el.style.display="none"; }); }
+      }catch(e){}
+    });
   </script>
 </body>
 </html>
