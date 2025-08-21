@@ -22,6 +22,26 @@
     .toolbar .muted{opacity:.75}
     .table-wrap{overflow:auto}
     .inline-input{width:100%; box-sizing:border-box}
+    .muted-sm{opacity:.85; font-size:.9rem}
+    .small{ font-size:.85rem; padding:6px 10px; }
+
+    /* Modal */
+    .modal-backdrop{
+      position:fixed; inset:0; background:rgba(0,0,0,.5);
+      display:none; align-items:center; justify-content:center; z-index:1000;
+    }
+    .modal{
+      background:#fff; border-radius:12px; width:min(900px, 94vw);
+      box-shadow:0 10px 30px rgba(0,0,0,.25); padding:16px 16px 12px;
+    }
+    .modal header{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+    .modal h3{margin:0}
+    .modal .grid.cols-3{grid-template-columns:1fr 1fr 1fr}
+    .modal .grid.cols-2{grid-template-columns:1fr 1fr}
+    .modal footer{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
+    .danger-outline{
+      background:#fff !important; color:var(--red) !important; border:2px solid var(--red) !important;
+    }
   </style>
 </head>
 <body>
@@ -75,12 +95,12 @@
         </div>
         <div><label>From date<br/><input id="fltFrom" type="date"/></label></div>
         <div><label>To date<br/><input id="fltTo" type="date"/></label></div>
-        <button id="btnApply" class="navbtn">Apply</button>
-        <button id="btnReset" class="navbtn">Reset</button>
-        <button id="btnCsv" class="navbtn">Export CSV</button>
+        <button id="btnApply" class="navbtn small">Apply</button>
+        <button id="btnReset" class="navbtn small">Reset</button>
+        <button id="btnCsv" class="navbtn small">Export CSV</button>
         <a href="https://wireshop-backend.onrender.com/archive"
            target="_blank" rel="noopener"
-           class="navbtn">Archive Backup</a>
+           class="navbtn small">Archive Backup</a>
         <div style="margin-left:auto;opacity:.8"><span id="rowCount">0</span> records</div>
       </div>
 
@@ -92,16 +112,16 @@
               <th>Technician</th>
               <th>Part Number</th>
               <th>Print Name</th>
-              <th>Expected</th>
+              <th>Expected (hrs)</th>
               <th>Notes</th>
               <th>Total Active</th>
-              <th>Adjust</th>
-              <th>Delete</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody id="archiveTableBody"></tbody>
         </table>
       </div>
+      <div class="muted-sm" id="archStatus" style="margin-top:.5rem"></div>
     </div>
 
     <!-- Users -->
@@ -113,6 +133,7 @@
         <label>Role<br>
           <select id="uRole">
             <option value="assembler">assembler</option>
+            <option value="tech">tech</option>
             <option value="admin">admin</option>
           </select>
         </label>
@@ -128,12 +149,59 @@
     </div>
   </main>
 
+  <!-- EDIT MODAL -->
+  <div id="editBackdrop" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="editTitle">
+    <div class="modal">
+      <header>
+        <h3 id="editTitle">Edit Completed Job</h3>
+        <div class="muted-sm" id="editId"></div>
+        <div class="spacer"></div>
+        <button id="closeEdit" class="secondary">Close</button>
+      </header>
+
+      <div class="grid cols-3">
+        <label>Technician
+          <input id="e_user" type="text" class="inline-input" />
+        </label>
+        <label>Part Number
+          <input id="e_part" type="text" class="inline-input" />
+        </label>
+        <label>Print Name
+          <input id="e_print" type="text" class="inline-input" />
+        </label>
+
+        <label>Expected Hours
+          <input id="e_expected_hours" type="number" step="0.25" min="0" class="inline-input"/>
+        </label>
+        <label>Total Active (hh:mm)
+          <input id="e_total_hhmm" type="text" placeholder="e.g. 1:30" class="inline-input"/>
+        </label>
+        <label>Notes
+          <input id="e_note" type="text" class="inline-input"/>
+        </label>
+
+        <label>Started (local)
+          <input id="e_start" type="datetime-local" class="inline-input"/>
+        </label>
+        <label>Finished (local)
+          <input id="e_end" type="datetime-local" class="inline-input"/>
+        </label>
+        <div></div>
+      </div>
+
+      <footer>
+        <button id="deleteRow" class="danger-outline">Delete</button>
+        <button id="saveEdit" class="primary">Save Changes</button>
+      </footer>
+    </div>
+  </div>
+
   <script>
   (function(){
     const API_ROOT = 'https://wireshop-backend.onrender.com';
     const API = {
-      jobs: `${API_ROOT}/api/jobs`,
-      users: `${API_ROOT}/api/users`,
+      jobs:    `${API_ROOT}/api/jobs`,
+      users:   `${API_ROOT}/api/users`,
       archive: `${API_ROOT}/api/jobs/archive`
     };
 
@@ -157,12 +225,32 @@
       const sec = s%60;
       return `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
     }
-    function lookupPart(pn){
-      try{
-        const cat = (window.catalog || []);
-        const f = cat.find(x => (x.partNumber||'').toLowerCase() === String(pn||'').toLowerCase());
-        return f ? { printName: f.printName || '', expected: f.expectedHours ?? '' } : { printName:'', expected:'' };
-      }catch{ return { printName:'', expected:'' }; }
+    function fmtHMM(mins){
+      if (mins==null || isNaN(mins)) return '';
+      const h = Math.floor(mins/60), m = Math.abs(mins%60);
+      return `${h}:${String(m).padStart(2,'0')}`;
+    }
+    const toLocalInput = (ts)=>{
+      if (!ts) return '';
+      const d = new Date(ts);
+      const off = d.getTimezoneOffset();
+      const local = new Date(d.getTime() - off*60000).toISOString().slice(0,16);
+      return local; // yyyy-MM-ddTHH:mm
+    };
+    const fromLocalInput = (val)=>{
+      if (!val) return null;
+      const t = new Date(val);
+      if (Number.isNaN(t.getTime())) return null;
+      return t.getTime();
+    };
+    function hhmmToMinutes(hhmm){
+      if (!hhmm) return null;
+      const m = String(hhmm).trim().match(/^(\d+)(?::(\d{1,2}))?$/);
+      if (!m) return null;
+      const h = parseInt(m[1],10);
+      const mm = parseInt(m[2]||'0',10);
+      if (mm>=60) return null;
+      return h*60 + mm;
     }
 
     // ---------- LIVE VIEW ----------
@@ -174,10 +262,6 @@
         if (!res.ok){ stat.textContent = 'Live fetch failed'; return; }
         const rows = await res.json();
 
-        // populate tech filter from live users too
-        const tset = new Set();
-        rows.forEach(r => tset.add(r.username||''));
-
         const tbody = document.getElementById('activityTableBody');
         tbody.innerHTML = '';
 
@@ -185,13 +269,12 @@
         rows.forEach(r=>{
           const pausedExtra = r.pauseStart ? (now - (r.pauseStart||now)) : 0;
           const totalActive = Math.max(0, (now - (r.startTime||now)) - (r.pauseTotal||0) - pausedExtra);
-          const { printName, expected } = lookupPart(r.partNumber);
           const tr = document.createElement('tr');
           tr.innerHTML = `
             <td>${r.username||''}</td>
             <td>${r.partNumber||''}</td>
-            <td>${printName||''}</td>
-            <td>${expected!=='' ? expected : ''}</td>
+            <td>${r.printName||''}</td>
+            <td>${r.expected ?? ''}</td>
             <td>${r.action||''}</td>
             <td>${r.note||''}</td>
             <td>${fmtMS(totalActive)}</td>`;
@@ -220,11 +303,25 @@
 
     // ---------- ARCHIVE ----------
     let archiveCache = [];
+    function normalizeRow(r){
+      return {
+        id: r.id ?? r.i ?? r._id ?? r.rowid,
+        username: r.username || r.technician || '',
+        partNumber: r.partNumber || r.part_number || '',
+        printName: r.printName || r.print_name || '',
+        expectedMinutes: r.expectedMinutes ?? r.expected_minutes ?? (Number.isFinite(r.expectedHours) ? Math.round(r.expectedHours*60) : null),
+        note: r.note ?? r.notes ?? '',
+        startTime: r.startTime ?? r.startedAt ?? r.started_at ?? null,
+        endTime: r.endTime ?? r.finishedAt ?? r.finished_at ?? null,
+        totalActiveMs: (r.totalActive ?? r.total_active_ms ?? (Number.isFinite(r.total_active_sec) ? r.total_active_sec*1000 : null)) ?? null,
+        finishedAt: r.finishedAt ?? r.finished_at ?? r.endTime ?? null
+      };
+    }
     async function fetchArchive(){
       const res = await fetch(API.archive, { headers: headers() });
       if (!res.ok) return [];
       const list = await res.json();
-      archiveCache = Array.isArray(list) ? list : [];
+      archiveCache = Array.isArray(list) ? list.map(normalizeRow) : [];
       return archiveCache;
     }
     function applyArchiveFilters(){
@@ -242,65 +339,58 @@
       });
       return rows;
     }
+    function renderTechFilter(){
+      const sel = document.getElementById('fltTech');
+      const names = Array.from(new Set(archiveCache.map(r=>String(r.username||'')).filter(Boolean))).sort();
+      sel.innerHTML = '<option value="">All</option>' + names.map(n=>`<option value="${n}">${n}</option>`).join('');
+    }
     function renderArchive(){
       const rows = applyArchiveFilters();
       const tbody = document.getElementById('archiveTableBody');
       tbody.innerHTML = '';
       rows.forEach(r=>{
         const tr = document.createElement('tr');
-        const finished = r.finishedAt || r.endTime || null;
-        const { printName, expected } = lookupPart(r.partNumber);
-        const total = r.totalActive ?? Math.max(0, ( (r.endTime||0) - (r.startTime||0) ) - (r.pauseTotal||0) );
+        const expectedHours = Number.isFinite(r.expectedMinutes) ? (r.expectedMinutes/60) : '';
         tr.innerHTML = `
-          <td>${finished ? new Date(finished).toLocaleString() : ''}</td>
+          <td>${r.finishedAt ? new Date(r.finishedAt).toLocaleString() : ''}</td>
           <td>${r.username||''}</td>
           <td>${r.partNumber||''}</td>
-          <td>${r.printName || printName || ''}</td>
-          <td>${r.expected ?? expected ?? ''}</td>
-          <td>${r.note||''}</td>
-          <td>${fmtMS(total)}</td>
-          <td><button class="secondary" data-adj="${r.id}">Adjust</button></td>
-          <td><button class="danger" data-del="${r.id}">Delete</button></td>`;
+          <td>${r.printName||''}</td>
+          <td>${expectedHours!=='' ? expectedHours : ''}</td>
+          <td>${r.note ? String(r.note).replace(/\n/g,' ') : ''}</td>
+          <td>${r.totalActiveMs!=null ? fmtMS(r.totalActiveMs) : ''}</td>
+          <td>
+            <button class="secondary small" data-edit="${r.id}">Edit</button>
+            <button class="danger small" data-del="${r.id}">Delete</button>
+          </td>`;
         tbody.appendChild(tr);
       });
       document.getElementById('rowCount').textContent = String(rows.length);
-
-      // tech dropdown from archive set
-      const sel = document.getElementById('fltTech');
-      const seen = new Set(['']);
-      for (const opt of Array.from(sel.options)) seen.add(opt.value);
-      const names = Array.from(new Set(archiveCache.map(r => String(r.username||'')))).sort();
-      sel.innerHTML = '<option value="">All</option>' + names.map(n=>`<option value="${n}">${n}</option>`).join('');
+      document.getElementById('archStatus').textContent = rows.length ? '' : 'No records with current filters.';
     }
     async function loadArchive(){
+      document.getElementById('archStatus').textContent = 'Loading...';
       await fetchArchive();
+      renderTechFilter();
       renderArchive();
+      document.getElementById('archStatus').textContent = '';
     }
 
-    // Archive actions
-    document.getElementById('btnApply').addEventListener('click', renderArchive);
-    document.getElementById('btnReset').addEventListener('click', ()=>{
-      document.getElementById('fltTech').value='';
-      document.getElementById('fltPart').value='';
-      document.getElementById('fltFrom').value='';
-      document.getElementById('fltTo').value='';
-      renderArchive();
-    });
+    // CSV
     document.getElementById('btnCsv').addEventListener('click', ()=>{
       const rows = applyArchiveFilters();
-      const header = ['Finished','Technician','Part Number','Print Name','Expected','Notes','Total Active'];
+      const header = ['Finished','Technician','Part Number','Print Name','Expected Hours','Notes','Total Active'];
       const body = rows.map(r=>{
-        const finished = r.finishedAt || r.endTime || null;
-        const { printName, expected } = lookupPart(r.partNumber);
-        const total = r.totalActive ?? Math.max(0, ( (r.endTime||0) - (r.startTime||0) ) - (r.pauseTotal||0) );
+        const h = Number.isFinite(r.expectedMinutes) ? (r.expectedMinutes/60) : '';
+        const total = r.totalActiveMs!=null ? fmtMS(r.totalActiveMs) : '';
         return [
-          finished ? new Date(finished).toLocaleString() : '',
+          r.finishedAt ? new Date(r.finishedAt).toLocaleString() : '',
           r.username||'',
           r.partNumber||'',
-          r.printName || printName || '',
-          r.expected ?? expected ?? '',
+          r.printName||'',
+          h,
           (r.note||'').replace(/\n/g,' '),
-          fmtMS(total)
+          total
         ].map(x=>`"${String(x).replace(/"/g,'""')}"`).join(',');
       });
       const csv = [header.join(','), ...body].join('\n');
@@ -310,37 +400,126 @@
       a.download = `archive_export_${Date.now()}.csv`;
       a.click();
     });
+    document.getElementById('btnApply').addEventListener('click', renderArchive);
+    document.getElementById('btnReset').addEventListener('click', ()=>{
+      document.getElementById('fltTech').value='';
+      document.getElementById('fltPart').value='';
+      document.getElementById('fltFrom').value='';
+      document.getElementById('fltTo').value='';
+      renderArchive();
+    });
 
-    document.getElementById('archiveTableBody').addEventListener('click', async (e)=>{
-      const idAdj = e.target?.dataset?.adj;
-      const idDel = e.target?.dataset?.del;
-      if (idDel){
-        const reason = prompt('Delete reason (optional):','admin request');
+    // Modal wiring
+    const $back = document.getElementById('editBackdrop');
+    const $id    = document.getElementById('editId');
+    const $user  = document.getElementById('e_user');
+    const $part  = document.getElementById('e_part');
+    const $print = document.getElementById('e_print');
+    const $expH  = document.getElementById('e_expected_hours');
+    const $note  = document.getElementById('e_note');
+    const $hhmm  = document.getElementById('e_total_hhmm');
+    const $start = document.getElementById('e_start');
+    const $end   = document.getElementById('e_end');
+
+    let EDIT = null;
+    function openEditById(id){
+      const row = archiveCache.find(r=>String(r.id)===String(id));
+      if (!row) return;
+      EDIT = row;
+      $id.textContent = `ID: ${row.id}`;
+      $user.value  = row.username || '';
+      $part.value  = row.partNumber || '';
+      $print.value = row.printName || '';
+      $expH.value  = Number.isFinite(row.expectedMinutes) ? (row.expectedMinutes/60) : '';
+      $note.value  = row.note || '';
+      $hhmm.value  = row.totalActiveMs!=null ? fmtHMM(Math.round(row.totalActiveMs/60000)) : '';
+      $start.value = toLocalInput(row.startTime);
+      $end.value   = toLocalInput(row.endTime || row.finishedAt);
+      $back.style.display = 'flex';
+    }
+    function closeEdit(){
+      $back.style.display = 'none';
+      EDIT = null;
+    }
+    async function saveEdit(){
+      if (!EDIT) return;
+      const id = EDIT.id;
+
+      const body = {
+        username: ($user.value.trim() || null),
+        partNumber: ($part.value.trim() || null),
+        printName: ($print.value.trim() || null),
+        note: ($note.value.trim() || null)
+      };
+      const hours = $expH.value ? Number($expH.value) : null;
+      if (hours!=null && !Number.isNaN(hours)) body.expectedMinutes = Math.round(hours*60);
+
+      const startTime = fromLocalInput($start.value);
+      const endTime   = fromLocalInput($end.value);
+      if (Number.isFinite(startTime)) body.startTime = startTime;
+      if (Number.isFinite(endTime))   body.endTime   = endTime;
+
+      const mins = hhmmToMinutes($hhmm.value.trim());
+      if (mins!=null) body.totalSec = Math.round(mins*60); // some backends want seconds
+
+      let ok = false;
+      try{
+        const r = await fetch(`${API.archive}/${id}`, { method:'PATCH', headers: headers(), body: JSON.stringify(body) });
+        ok = r.ok;
+      }catch{}
+      if (!ok){
         try{
-          const res = await fetch(`${API.archive}/${idDel}/delete`, { method:'POST', headers: headers(), body: JSON.stringify({ reason: reason||'' }) });
-          if (res.ok) loadArchive();
-        }catch{}
-      } else if (idAdj){
-        const row = archiveCache.find(r=>String(r.id)===String(idAdj));
-        if (!row) return;
-        const start = prompt('New start time (ISO or blank to keep current):', row.startTime ? new Date(row.startTime).toISOString() : '');
-        const end = prompt('New end time (ISO or blank to keep current):', row.endTime ? new Date(row.endTime).toISOString() : '');
-        const note = prompt('Notes (blank to keep):', row.note || '');
-        const body = {};
-        if (start && !Number.isNaN(Date.parse(start))) body.startTime = Date.parse(start);
-        if (end && !Number.isNaN(Date.parse(end))) body.endTime = Date.parse(end);
-        if (note !== null) body.note = note;
-        try{
-          const res = await fetch(`${API.archive}/${idAdj}/adjust`, { method:'POST', headers: headers(), body: JSON.stringify(body) });
-          if (res.ok) loadArchive();
+          const r2 = await fetch(`${API.archive}/${id}/adjust`, { method:'POST', headers: headers(), body: JSON.stringify(body) });
+          ok = r2.ok;
         }catch{}
       }
+      if (ok){
+        closeEdit();
+        await loadArchive();
+      }else{
+        alert('Update failed.');
+      }
+    }
+    async function deleteEdit(){
+      if (!EDIT) return;
+      if (!confirm('Delete this archive record?')) return;
+      let ok = false;
+      try{
+        const r = await fetch(`${API.archive}/${EDIT.id}`, { method:'DELETE', headers: headers() });
+        ok = r.ok;
+      }catch{}
+      if (!ok){
+        try{
+          const reason = 'admin delete';
+          const r2 = await fetch(`${API.archive}/${EDIT.id}/delete`, { method:'POST', headers: headers(), body: JSON.stringify({ reason }) });
+          ok = r2.ok;
+        }catch{}
+      }
+      if (ok){
+        closeEdit();
+        await loadArchive();
+      }else{
+        alert('Delete failed.');
+      }
+    }
+
+    document.getElementById('archiveTableBody').addEventListener('click', (e)=>{
+      const idEdit = e.target?.dataset?.edit;
+      const idDel  = e.target?.dataset?.del;
+      if (idEdit) openEditById(idEdit);
+      if (idDel){
+        EDIT = { id: idDel };
+        deleteEdit();
+      }
     });
+    document.getElementById('closeEdit').addEventListener('click', closeEdit);
+    document.getElementById('saveEdit').addEventListener('click', saveEdit);
+    document.getElementById('deleteRow').addEventListener('click', deleteEdit);
 
     // ---------- USERS ----------
     async function loadUsers(){
       try{
-        const res = await fetch(`${API.users}/list`, { headers: headers() });
+        const res = await fetch(`${API.users}`, { headers: headers() });
         if (!res.ok) return;
         const list = await res.json();
         const tbody = document.getElementById('usersTableBody');
@@ -350,7 +529,7 @@
           tr.innerHTML = `
             <td>${u.username}</td>
             <td>${u.role}</td>
-            <td><button class="danger" data-uid="${u.id}">Delete</button></td>`;
+            <td><button class="danger small" data-uid="${u.id}">Delete</button></td>`;
           tbody.appendChild(tr);
         });
       }catch{}
