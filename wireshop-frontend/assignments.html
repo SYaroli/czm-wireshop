@@ -57,21 +57,29 @@
                 <option value="">-- Select technician --</option>
               </select>
             </label>
-            <label>Part Number
-              <input id="a_part" type="text" placeholder="e.g. 44602.0000.000"/>
+
+            <label>Part
+              <select id="a_part_select">
+                <option value="">-- Select part --</option>
+              </select>
             </label>
+
             <label>Print Name
-              <input id="a_print" type="text" placeholder="optional"/>
+              <input id="a_print" type="text" placeholder="auto from part or enter manually"/>
             </label>
+
             <label>Expected Minutes
-              <input id="a_minutes" type="number" min="0" step="5" placeholder="e.g. 90"/>
+              <input id="a_minutes" type="number" min="0" step="5" placeholder="auto from part"/>
             </label>
+
             <label>Due Date
               <input id="a_due" type="date"/>
             </label>
+
             <label>Notes
-              <input id="a_notes" type="text" placeholder="optional"/>
+              <input id="a_notes" type="text" placeholder="auto from part; editable"/>
             </label>
+
             <div class="spacer"></div>
             <button id="a_create" class="primary">Assign</button>
           </div>
@@ -220,8 +228,9 @@
     </div>
   </main>
 
-  <!-- Fallback user list if the API is empty or blocked -->
+  <!-- Fallback user list + the catalog used for part dropdown -->
   <script src="users.js"></script>
+  <script src="catalog.js"></script>
 
   <script>
   (function(){
@@ -307,8 +316,11 @@
       document.getElementById('adminView').style.display = isAdmin ? 'block' : 'none';
       document.getElementById('techView').style.display   = isAdmin ? 'none' : 'block';
 
-      // Load technicians for admin UI
-      if (isAdmin) await loadTechs();
+      // Load technicians and parts for admin UI
+      if (isAdmin){
+        await Promise.all([loadTechs(), loadParts()]);
+        wirePartAutoFill();
+      }
 
       // Data
       await Promise.all([loadAssignments(), loadRequests(), loadMine(), bindActions()]);
@@ -329,22 +341,17 @@
       const meIsAdmin = String(me?.role||'').toLowerCase() === 'admin';
 
       let techs = [];
-      // Primary: DB users
       try {
         const list = await apiGet(`${API.users}`);
         if (Array.isArray(list)) {
           techs = list.filter(u => TECH_ROLES.has(String(u.role||'').toLowerCase()));
         }
-      } catch (_) {
-        // ignored; fallback below
-      }
+      } catch (_) {}
 
-      // Fallback: static users.js
       if (!techs.length && Array.isArray(window.users)) {
         techs = window.users.filter(u => TECH_ROLES.has(String(u.role||'').toLowerCase()));
       }
 
-      // Clean up and exclude admins and the logged-in admin
       const seen = new Set();
       techs = techs
         .filter(u => String(u.role||'').toLowerCase() !== 'admin')
@@ -369,6 +376,55 @@
       }
 
       el('a_msg').textContent = techs.length ? '' : 'No technicians found. Add techs in Admin → Users.';
+    }
+
+    // --------- Part dropdown loader (from catalog.js) ----------
+    async function loadParts(){
+      const select = el('a_part_select');
+      select.innerHTML = '<option value="">-- Select part --</option>';
+
+      const list = Array.isArray(window.catalog) ? window.catalog : [];
+      if (!list.length) {
+        select.innerHTML = '<option value="">(no catalog loaded)</option>';
+        return;
+      }
+
+      // Build "PN — Print" labels, keep value=partNumber
+      const items = list
+        .filter(p => p && p.partNumber)
+        .map(p => ({
+          pn: String(p.partNumber),
+          label: `${String(p.partNumber)} — ${p.printName ? String(p.printName) : ''}`.trim(),
+          printName: p.printName || '',
+          expectedMinutes: typeof p.expectedHours === 'number' ? Math.round(p.expectedHours * 60) : '',
+          notes: p.notes || ''
+        }))
+        .sort((a,b)=> a.pn.localeCompare(b.pn));
+
+      for (const it of items) {
+        const o = document.createElement('option');
+        o.value = it.pn;
+        o.textContent = it.label;
+        o.dataset.print = it.printName;
+        o.dataset.minutes = it.expectedMinutes;
+        o.dataset.notes = it.notes || '';
+        select.appendChild(o);
+      }
+    }
+
+    function wirePartAutoFill(){
+      const sel = el('a_part_select');
+      const print = el('a_print');
+      const mins = el('a_minutes');
+      const notes = el('a_notes');
+
+      sel.addEventListener('change', () => {
+        const opt = sel.selectedOptions && sel.selectedOptions[0];
+        if (!opt || !opt.value) { return; }
+        if (opt.dataset.print)  print.value = opt.dataset.print;
+        if (opt.dataset.minutes) mins.value  = opt.dataset.minutes;
+        if (opt.dataset.notes && !notes.value) notes.value = opt.dataset.notes;
+      });
     }
 
     // --------- Loaders ----------
@@ -463,10 +519,12 @@
     async function bindActions(){
       document.getElementById('a_create')?.addEventListener('click', async ()=>{
         const tech = document.getElementById('a_user').value.trim();
+        const pnSel = document.getElementById('a_part_select').value.trim();
         if(!tech){ el('a_msg').textContent='Select a technician.'; return; }
+
         const data = {
           username: tech,
-          partNumber: document.getElementById('a_part').value.trim() || null,
+          partNumber: pnSel || null,
           printName: document.getElementById('a_print').value.trim() || null,
           expectedMinutes: Number(document.getElementById('a_minutes').value || 0) || null,
           dueDate: document.getElementById('a_due').value || null,
@@ -475,7 +533,7 @@
         try{
           await apiJson(API.assignments, 'POST', data);
           el('a_msg').textContent='Assigned.';
-          document.getElementById('a_part').value='';
+          document.getElementById('a_part_select').value='';
           document.getElementById('a_print').value='';
           document.getElementById('a_minutes').value='';
           document.getElementById('a_due').value='';
