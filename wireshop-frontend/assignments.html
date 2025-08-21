@@ -19,6 +19,8 @@
       cursor:pointer !important;
     }
     .brand-actions .navbtn:hover{ filter:brightness(.92) }
+    .small{ font-size:.85rem; padding:6px 10px; }
+    .table td, .table th { vertical-align: middle; }
   </style>
 </head>
 <body>
@@ -68,8 +70,8 @@
               <input id="a_print" type="text" placeholder="auto from part or enter manually"/>
             </label>
 
-            <label>Expected Minutes
-              <input id="a_minutes" type="number" min="0" step="5" placeholder="auto from part"/>
+            <label>Expected Hours
+              <input id="a_hours" type="number" min="0" step="0.25" placeholder="auto from part"/>
             </label>
 
             <label>Due Date
@@ -95,10 +97,10 @@
             <label>Status
               <select id="flt_status">
                 <option value="">All</option>
-                <option value="open">Open</option>
-                <option value="in_progress">In Progress</option>
-                <option value="done">Done</option>
-                <option value="rejected">Rejected</option>
+                <option value="Open">Open</option>
+                <option value="InProgress">InProgress</option>
+                <option value="Completed">Completed</option>
+                <option value="Canceled">Canceled</option>
               </select>
             </label>
             <button id="applyFilters" class="secondary">Apply</button>
@@ -109,10 +111,11 @@
             <table class="table">
               <thead>
                 <tr>
+                  <th>Created</th>
                   <th>Tech</th>
                   <th>Part #</th>
                   <th>Print</th>
-                  <th>Minutes</th>
+                  <th>Hours</th>
                   <th>Due</th>
                   <th>Status</th>
                   <th>Notes</th>
@@ -132,7 +135,7 @@
                 <tr>
                   <th>Submitted By</th>
                   <th>Description / Part</th>
-                  <th>Minutes</th>
+                  <th>Hours</th>
                   <th>Notes</th>
                   <th>Submitted</th>
                   <th>Action</th>
@@ -152,13 +155,14 @@
             <table class="table">
               <thead>
                 <tr>
+                  <th>Created</th>
                   <th>Part #</th>
                   <th>Print</th>
-                  <th>Minutes</th>
+                  <th>Hours</th>
                   <th>Due</th>
                   <th>Status</th>
                   <th>Notes</th>
-                  <th>Update</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody id="myAssignmentsBody"></tbody>
@@ -172,8 +176,8 @@
             <label>Part or Description
               <input id="r_part" type="text" placeholder="e.g. cabinet cleanup, quick fix"/>
             </label>
-            <label>Minutes
-              <input id="r_minutes" type="number" min="0" step="5" placeholder="e.g. 30"/>
+            <label>Hours
+              <input id="r_hours" type="number" min="0" step="0.25" placeholder="e.g. 1.5"/>
             </label>
             <label>Notes
               <input id="r_notes" type="text" placeholder="optional"/>
@@ -191,7 +195,7 @@
               <thead>
                 <tr>
                   <th>Description / Part</th>
-                  <th>Minutes</th>
+                  <th>Hours</th>
                   <th>Notes</th>
                   <th>Status</th>
                   <th>Updated</th>
@@ -264,6 +268,11 @@
       return res.json();
     }
     function opt(v,t){ const o = document.createElement('option'); o.value=v; o.textContent=t||v; return o; }
+    const fmtHMM = (mins) => {
+      if (mins == null || isNaN(mins)) return '';
+      const h = Math.floor(mins/60), m = Math.abs(mins%60);
+      return `${h}:${String(m).padStart(2,'0')}`;
+    };
 
     // --------- Login gate ----------
     const loginForm = document.getElementById('login-form');
@@ -389,14 +398,13 @@
         return;
       }
 
-      // Build "PN — Print" labels, keep value=partNumber
       const items = list
         .filter(p => p && p.partNumber)
         .map(p => ({
           pn: String(p.partNumber),
           label: `${String(p.partNumber)} — ${p.printName ? String(p.printName) : ''}`.trim(),
           printName: p.printName || '',
-          expectedMinutes: typeof p.expectedHours === 'number' ? Math.round(p.expectedHours * 60) : '',
+          hours: typeof p.expectedHours === 'number' && !Number.isNaN(p.expectedHours) ? p.expectedHours : '',
           notes: p.notes || ''
         }))
         .sort((a,b)=> a.pn.localeCompare(b.pn));
@@ -406,7 +414,7 @@
         o.value = it.pn;
         o.textContent = it.label;
         o.dataset.print = it.printName;
-        o.dataset.minutes = it.expectedMinutes;
+        o.dataset.hours = it.hours;
         o.dataset.notes = it.notes || '';
         select.appendChild(o);
       }
@@ -415,14 +423,14 @@
     function wirePartAutoFill(){
       const sel = el('a_part_select');
       const print = el('a_print');
-      const mins = el('a_minutes');
+      const hours = el('a_hours');
       const notes = el('a_notes');
 
       sel.addEventListener('change', () => {
         const opt = sel.selectedOptions && sel.selectedOptions[0];
         if (!opt || !opt.value) { return; }
         if (opt.dataset.print)  print.value = opt.dataset.print;
-        if (opt.dataset.minutes) mins.value  = opt.dataset.minutes;
+        if (opt.dataset.hours !== undefined && opt.dataset.hours !== '') hours.value = opt.dataset.hours;
         if (opt.dataset.notes && !notes.value) notes.value = opt.dataset.notes;
       });
     }
@@ -438,17 +446,19 @@
       rows.forEach(r=>{
         const tr = document.createElement('tr');
         tr.innerHTML = `
+          <td>${new Date(r.createdAt).toLocaleString()}</td>
           <td>${r.username||''}</td>
           <td>${r.partNumber||''}</td>
           <td>${r.printName||''}</td>
-          <td>${r.expectedMinutes ?? ''}</td>
+          <td>${fmtHMM(r.expectedMinutes)}</td>
           <td>${r.dueDate ? new Date(r.dueDate).toLocaleDateString() : ''}</td>
           <td>${r.status||''}</td>
           <td>${r.notes||''}</td>
           <td>
-            <button data-act="status" data-id="${r.id}" data-status="in_progress" class="secondary">Start</button>
-            <button data-act="status" data-id="${r.id}" data-status="done" class="primary">Done</button>
-            <button data-act="delete" data-id="${r.id}" class="danger">Delete</button>
+            <button data-act="status" data-id="${r.id}" data-status="InProgress" class="secondary small">Start</button>
+            <button data-act="status" data-id="${r.id}" data-status="Completed" class="primary small">Complete</button>
+            <button data-act="status" data-id="${r.id}" data-status="Canceled" class="secondary small">Cancel</button>
+            <button data-act="delete" data-id="${r.id}" class="danger small">Delete</button>
           </td>`;
         tbody.append(tr);
       });
@@ -465,12 +475,12 @@
         tr.innerHTML = `
           <td>${r.username||''}</td>
           <td>${r.description || r.partNumber || ''}</td>
-          <td>${r.minutes ?? ''}</td>
+          <td>${fmtHMM(r.minutes)}</td>
           <td>${r.notes||''}</td>
           <td>${r.updatedAt ? new Date(r.updatedAt).toLocaleString() : ''}</td>
           <td>
-            <button data-req="approve" data-id="${r.id}" class="primary">Approve</button>
-            <button data-req="reject" data-id="${r.id}" class="danger">Reject</button>
+            <button data-req="approve" data-id="${r.id}" class="primary small">Approve</button>
+            <button data-req="reject" data-id="${r.id}" class="danger small">Reject</button>
           </td>`;
         tbody.append(tr);
       });
@@ -485,18 +495,16 @@
       rows.forEach(r=>{
         const tr = document.createElement('tr');
         tr.innerHTML = `
+          <td>${new Date(r.createdAt).toLocaleString()}</td>
           <td>${r.partNumber||''}</td>
           <td>${r.printName||''}</td>
-          <td>${r.expectedMinutes ?? ''}</td>
+          <td>${fmtHMM(r.expectedMinutes)}</td>
           <td>${r.dueDate ? new Date(r.dueDate).toLocaleDateString() : ''}</td>
           <td>${r.status||''}</td>
           <td>${r.notes||''}</td>
           <td>
-            <select data-mid="${r.id}" class="inline">
-              <option value="open" ${r.status==='open'?'selected':''}>Open</option>
-              <option value="in_progress" ${r.status==='in_progress'?'selected':''}>In Progress</option>
-              <option value="done" ${r.status==='done'?'selected':''}>Done</option>
-            </select>
+            ${r.status==='Open' ? '<button class="primary small" data-act="start">Start</button>' : ''}
+            ${r.status==='InProgress' ? '<button class="primary small" data-act="complete">Complete</button>' : ''}
           </td>`;
         myBody.append(tr);
       });
@@ -507,7 +515,7 @@
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td>${r.description || r.partNumber || ''}</td>
-          <td>${r.minutes ?? ''}</td>
+          <td>${fmtHMM(r.minutes)}</td>
           <td>${r.notes||''}</td>
           <td>${r.status||''}</td>
           <td>${r.updatedAt ? new Date(r.updatedAt).toLocaleString() : ''}</td>`;
@@ -522,12 +530,18 @@
         const pnSel = document.getElementById('a_part_select').value.trim();
         if(!tech){ el('a_msg').textContent='Select a technician.'; return; }
 
+        const hoursVal = document.getElementById('a_hours').value;
+        const minutes = hoursVal ? Math.round(parseFloat(hoursVal) * 60) : null;
+
+        const dueVal = document.getElementById('a_due').value;
+        const dueEpoch = dueVal ? new Date(dueVal + 'T00:00:00').getTime() : null; // backend expects number :contentReference[oaicite:1]{index=1}
+
         const data = {
           username: tech,
           partNumber: pnSel || null,
           printName: document.getElementById('a_print').value.trim() || null,
-          expectedMinutes: Number(document.getElementById('a_minutes').value || 0) || null,
-          dueDate: document.getElementById('a_due').value || null,
+          expectedMinutes: minutes, // API takes minutes :contentReference[oaicite:2]{index=2}
+          dueDate: dueEpoch,
           notes: document.getElementById('a_notes').value.trim() || null,
         };
         try{
@@ -535,7 +549,7 @@
           el('a_msg').textContent='Assigned.';
           document.getElementById('a_part_select').value='';
           document.getElementById('a_print').value='';
-          document.getElementById('a_minutes').value='';
+          document.getElementById('a_hours').value='';
           document.getElementById('a_due').value='';
           document.getElementById('a_notes').value='';
           await loadAssignments();
@@ -558,6 +572,18 @@
         }
       });
 
+      document.getElementById('myAssignmentsBody')?.addEventListener('click', async (e)=>{
+        const btn = e.target.closest('button[data-act]'); if (!btn) return;
+        const row = btn.closest('tr'); if (!row) return;
+        const id = row.dataset.id || row.getAttribute('data-id'); // in case we add later
+        const map = { start:'InProgress', complete:'Completed' };
+        const status = map[btn.dataset.act]; if (!status || !id) return;
+        try{
+          await apiJson(`${API.assignments}/${id}`, 'PATCH', { status });
+          await loadMine();
+        }catch{}
+      });
+
       document.getElementById('requestsBody')?.addEventListener('click', async (e)=>{
         const t = e.target;
         if(t.dataset.req==='approve'){
@@ -567,25 +593,18 @@
         }
       });
 
-      document.getElementById('myAssignmentsBody')?.addEventListener('change', async (e)=>{
-        const sel = e.target;
-        if(sel.tagName==='SELECT' && sel.dataset.mid){
-          try{ await apiJson(`${API.assignments}/${sel.dataset.mid}`, 'PATCH', { status: sel.value }); }catch{}
-        }
-      });
-
       document.getElementById('r_submit')?.addEventListener('click', async ()=>{
         const data = {
           partNumber: document.getElementById('r_part').value.trim() || null,
           description: document.getElementById('r_part').value.trim() || null,
-          minutes: Number(document.getElementById('r_minutes').value || 0) || null,
+          minutes: (document.getElementById('r_hours').value ? Math.round(parseFloat(document.getElementById('r_hours').value)*60) : null),
           notes: document.getElementById('r_notes').value.trim() || null
         };
         try{
           await apiJson(API.requests, 'POST', data);
           document.getElementById('r_msg').textContent='Sent.';
           document.getElementById('r_part').value='';
-          document.getElementById('r_minutes').value='';
+          document.getElementById('r_hours').value='';
           document.getElementById('r_notes').value='';
           await loadMine();
         }catch(e){ document.getElementById('r_msg').textContent='Failed to send.'; }
