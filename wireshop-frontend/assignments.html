@@ -28,9 +28,8 @@
         <h1 class="brand-title">CZM • Assignments</h1>
       </a>
       <div class="brand-actions" id="navActions">
-        <!-- Always visible -->
         <a class="navbtn" href="dashboard.html">Dashboard</a>
-        <!-- Admin & Archive will be appended here at runtime ONLY for admins -->
+        <!-- Admin-only buttons get appended at runtime if user is admin -->
       </div>
     </div>
   </div>
@@ -47,12 +46,15 @@
         </div>
       </div>
 
+      <!-- ADMIN VIEW -->
       <div id="adminView" style="display:none;">
         <div class="card">
           <h3 style="margin:0 0 8px;">Create Assignment</h3>
           <div class="grid cols-4">
             <label>Technician
-              <select id="a_user"></select>
+              <select id="a_user">
+                <option value="">-- Select technician --</option>
+              </select>
             </label>
             <label>Part Number
               <input id="a_part" type="text" placeholder="e.g. 44602.0000.000"/>
@@ -133,6 +135,7 @@
         </div>
       </div>
 
+      <!-- TECH VIEW -->
       <div id="techView" style="display:none;">
         <div class="card">
           <h3 style="margin:0 0 8px;">My Assignments</h3>
@@ -192,6 +195,7 @@
       </div>
     </div>
 
+    <!-- LOGIN GATE -->
     <div id="loginGate" class="login-wrap">
       <div class="login-card">
         <div class="login-top">
@@ -224,6 +228,8 @@
       requests: `${API_ROOT}/api/assignments/requests`,
     };
 
+    const TECH_ROLES = new Set(['assembler','tech','technician','assembler-tech','assembler/tech']);
+
     const el = (id) => document.getElementById(id);
     const navActions = () => document.getElementById('navActions');
     const getUser = () => { try { return JSON.parse(localStorage.getItem('user')) || null; } catch { return null; } };
@@ -239,11 +245,13 @@
       if (!res.ok) throw new Error(await res.text().catch(()=>`${res.status}`));
       return res.json();
     }
+
     async function apiJson(url, method, data){
       const res = await fetch(url, { method, headers: headers(), body: JSON.stringify(data) });
       if (!res.ok) throw new Error(await res.text().catch(()=>`${res.status}`));
       return res.json();
     }
+
     function opt(v,t){ const o = document.createElement('option'); o.value=v; o.textContent=t||v; return o; }
 
     // --------- Login gate ----------
@@ -285,8 +293,7 @@
       el('who').textContent = me?.username || '';
       el('role').textContent = me?.role || '';
 
-      // Render admin nav buttons only for admins
-      // First, nuke any existing extra buttons (defensive)
+      // Render admin-only nav buttons
       const bar = navActions();
       [...bar.querySelectorAll('.navbtn[data-dyn="1"]')].forEach(n => n.remove());
       if (isAdmin) {
@@ -296,15 +303,29 @@
 
       // Toggle views
       document.getElementById('adminView').style.display = isAdmin ? 'block' : 'none';
-      document.getElementById('techView').style.display = isAdmin ? 'none' : 'block';
+      document.getElementById('techView').style.display   = isAdmin ? 'none' : 'block';
 
-      // Fill tech list for admin forms
+      // Populate users for admin forms and filters
       if(isAdmin){
         try{
           const list = await apiGet(`${API.users}/list`);
-          const selects = [el('a_user'), el('flt_user')];
-          selects.forEach(s => { s.innerHTML=''; s.append(opt('', 'All')); list.forEach(u => s.append(opt(u.username))); });
-        }catch(e){}
+          const techs = (Array.isArray(list) ? list : [])
+            .filter(u => TECH_ROLES.has(String(u.role||'').toLowerCase()))
+            .sort((a,b)=>a.username.localeCompare(b.username));
+
+          // Create Assignment dropdown: techs only, no "All"
+          const aSel = el('a_user');
+          aSel.innerHTML = '<option value="">-- Select technician --</option>';
+          techs.forEach(u => aSel.append(opt(u.username)));
+
+          // Filter dropdown: techs only (All + names)
+          const fSel = el('flt_user');
+          fSel.innerHTML = '';
+          fSel.append(opt('', 'All'));
+          techs.forEach(u => fSel.append(opt(u.username)));
+        }catch(e){
+          el('a_msg').textContent = 'Failed to load technicians.';
+        }
       }
 
       // Load data
@@ -411,8 +432,10 @@
     // --------- Actions ----------
     async function bindActions(){
       document.getElementById('a_create')?.addEventListener('click', async ()=>{
+        const tech = document.getElementById('a_user').value.trim();
+        if(!tech){ el('a_msg').textContent='Select a technician.'; return; }
         const data = {
-          username: document.getElementById('a_user').value.trim(),
+          username: tech,
           partNumber: document.getElementById('a_part').value.trim() || null,
           printName: document.getElementById('a_print').value.trim() || null,
           expectedMinutes: Number(document.getElementById('a_minutes').value || 0) || null,
@@ -421,14 +444,14 @@
         };
         try{
           await apiJson(API.assignments, 'POST', data);
-          document.getElementById('a_msg').textContent='Assigned.';
+          el('a_msg').textContent='Assigned.';
           document.getElementById('a_part').value='';
           document.getElementById('a_print').value='';
           document.getElementById('a_minutes').value='';
           document.getElementById('a_due').value='';
           document.getElementById('a_notes').value='';
           await loadAssignments();
-        }catch(e){ document.getElementById('a_msg').textContent='Failed to assign.'; }
+        }catch(e){ el('a_msg').textContent='Failed to assign.'; }
       });
 
       document.getElementById('applyFilters')?.addEventListener('click', loadAssignments);
