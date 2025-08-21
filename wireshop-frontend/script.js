@@ -1,15 +1,15 @@
-// script.js — login + dashboard + assignment sync
+// script.js — robust login + dashboard + assignment sync (un-compacted, backward-compatible)
 document.addEventListener('DOMContentLoaded', () => {
-  const API_ROOT = 'https://wireshop-backend.onrender.com';
-  const API_JOBS = `${API_ROOT}/api/jobs`;
+  const API_ROOT   = 'https://wireshop-backend.onrender.com';
+  const API_JOBS   = `${API_ROOT}/api/jobs`;
   const API_ASSIGN = `${API_ROOT}/api/assignments`;
-  const API_USERS = `${API_ROOT}/api/users`;
+  const API_USERS  = `${API_ROOT}/api/users`;
 
-  // --------- Shared helpers ---------
-  const getUser = () => { try { return JSON.parse(localStorage.getItem('user')) || null; } catch { return null; } };
-  const setUser = (u) => localStorage.setItem('user', JSON.stringify(u));
+  // ------------------- shared helpers -------------------
+  const getUser   = () => { try { return JSON.parse(localStorage.getItem('user')) || null; } catch { return null; } };
+  const setUser   = (u) => localStorage.setItem('user', JSON.stringify(u));
   const clearUser = () => localStorage.removeItem('user');
-  const username = () => (getUser()?.username || '');
+  const username  = () => (getUser()?.username || '');
 
   async function apiFetch(url, options = {}) {
     const headers = { 'Content-Type': 'application/json', 'x-user': username() };
@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!res.ok) {
       let msg = '';
       try { msg = await res.text(); } catch {}
-      throw new Error(`HTTP ${res.status} ${res.statusText} ${msg ? `- ${msg}` : ''}`);
+      throw new Error(`HTTP ${res.status} ${res.statusText}${msg ? ` - ${msg}` : ''}`);
     }
     const ct = res.headers.get('content-type') || '';
     return ct.includes('application/json') ? res.json() : res.text();
@@ -43,60 +43,73 @@ document.addEventListener('DOMContentLoaded', () => {
     return `${h}h ${m}m ${s}s`;
   }
 
-  // ===== LOGIN PAGE (index.html) =====
-  const loginForm = document.getElementById('login-form');
+  // ------------------- LOGIN PAGE (supports both forms) -------------------
+  const loginForm = document.getElementById('login-form') || document.getElementById('loginForm');
   if (loginForm) {
-    const $u = document.getElementById('usernameInput');
-    const $p = document.getElementById('pinInput');
-    const $err = document.getElementById('error-message');
+    // accept both id sets
+    const $u = document.getElementById('usernameInput') || document.getElementById('username');
+    const $p = document.getElementById('pinInput')       || document.getElementById('pin');
+    const $err = document.getElementById('error-message') || document.getElementById('errorMessage');
+
+    async function usersLogin(uname, pin){
+      // no x-user on login, some servers choke on it
+      const res = await fetch(`${API_USERS}/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: uname, pin })
+      });
+      if (!res.ok) throw new Error('bad creds');
+      return res.json();
+    }
 
     loginForm.addEventListener('submit', async (e)=>{
       e.preventDefault();
-      const uname = ($u.value||'').trim();
-      const pin   = ($p.value||'').trim();
-      $err.textContent = '';
+      if ($err) $err.textContent = '';
+      const uname = ($u?.value || '').trim();
+      const pin   = ($p?.value || '').trim();
+      if (!uname || !pin) { if ($err) $err.textContent = 'Enter username and PIN.'; return; }
       try{
-        const data = await apiFetch(`${API_USERS}/login`, {
-          method:'POST',
-          body: JSON.stringify({ username: uname, pin })
-        });
+        const data = await usersLogin(uname, pin);
         setUser({ username: data.username, role: data.role });
         window.location.href = 'dashboard.html';
-      }catch(err){
-        $err.textContent = 'Invalid username or PIN.';
+      }catch{
+        if ($err) $err.textContent = 'Invalid username or PIN.';
       }
     });
-    return; // Stop here on login page
+
+    // Login page doesn’t need dashboard code
+    return;
   }
 
-  // ===== DASHBOARD (dashboard.html) =====
-  // Guard: must be logged in
+  // ------------------- DASHBOARD (dashboard.html) -------------------
+  // Must be logged in to be here
   if (!getUser()) { window.location.href = 'index.html'; return; }
 
-  // Header bits, if present
+  // header actions
   const logoutBtn = document.getElementById('logoutBtn');
   if (logoutBtn) logoutBtn.addEventListener('click', ()=>{ clearUser(); window.location.href='index.html'; });
 
-  // Part picker + info cards
-  const partSelect       = document.getElementById('partSelect');
-  const expectedTimeEl   = document.getElementById('expectedTime');
-  const expectedSAEl     = document.getElementById('expectedSA');
-  const expectedLocEl    = document.getElementById('expectedLocation');
-  const expectedNotesEl  = document.getElementById('expectedNotes');
+  // Part picker + info
+  const partSelect      = document.getElementById('partSelect');
+  const expectedTimeEl  = document.getElementById('expectedTime');
+  const expectedSAEl    = document.getElementById('expectedSA');
+  const expectedLocEl   = document.getElementById('expectedLocation');
+  const expectedNotesEl = document.getElementById('expectedNotes');
+  const submitLogBtn    = document.getElementById('submitLog');
 
   function getCatalog(){ return Array.isArray(window.catalog) ? window.catalog : []; }
   function partByPN(pn){ return getCatalog().find(p => String(p.partNumber) === String(pn)); }
 
   function fillInfoFromPart(pn){
     const p = partByPN(pn) || {};
-    if (expectedTimeEl) expectedTimeEl.textContent = typeof p.expectedHours === 'number' ? `${p.expectedHours}` : '';
-    if (expectedSAEl)   expectedSAEl.textContent   = p.saNumber ?? '';
-    if (expectedLocEl)  expectedLocEl.textContent  = p.location ?? '';
-    if (expectedNotesEl)expectedNotesEl.textContent= p.notes ?? '';
+    if (expectedTimeEl) expectedTimeEl.textContent  = typeof p.expectedHours === 'number' ? `${p.expectedHours}` : '--';
+    if (expectedSAEl)   expectedSAEl.textContent    = p.saNumber ?? '--';
+    if (expectedLocEl)  expectedLocEl.textContent   = p.location ?? '--';
+    if (expectedNotesEl)expectedNotesEl.textContent = p.notes ?? '--';
   }
 
   if (partSelect) {
-    // Build the dropdown
+    // Build dropdown once
     const items = getCatalog()
       .filter(p => p && p.partNumber)
       .map(p => ({
@@ -108,7 +121,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }))
       .sort((a,b)=> a.pn.localeCompare(b.pn));
 
-    partSelect.innerHTML = '<option value="">-- Select part --</option>';
+    partSelect.innerHTML = '<option value="">-- Select Part --</option>';
     for (const it of items) {
       const o = document.createElement('option');
       o.value = it.pn;
@@ -121,16 +134,15 @@ document.addEventListener('DOMContentLoaded', () => {
     partSelect.addEventListener('change', ()=> fillInfoFromPart(partSelect.value));
   }
 
-  // ===== Assignments sync helpers =====
-  // Find the earliest assignment for this user/part with a given status
+  // ------------------- assignments sync helpers -------------------
   async function findAssignment(user, partNumber, status) {
-    const qs = `?username=${encodeURIComponent(user)}&status=${encodeURIComponent(status)}`;
     try{
-      const rows = await assignApi(qs, { method:'GET' });
+      const qs = `?username=${encodeURIComponent(user)}&status=${encodeURIComponent(status)}`;
+      const rows = await assignApi(qs, { method: 'GET' });
       if (!Array.isArray(rows)) return null;
       const matches = rows.filter(r => String(r.partNumber||'') === String(partNumber||''));
       if (!matches.length) return null;
-      matches.sort((a,b)=> (a.createdAt||0) - (b.createdAt||0)); // earliest first
+      matches.sort((a,b)=> (a.createdAt||0) - (b.createdAt||0)); // earliest
       return matches[0];
     }catch { return null; }
   }
@@ -148,21 +160,13 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch {}
   }
 
-  // ===== Live logs (mine) =====
-  const logTbody = document.getElementById('logTableBody');
-  const submitLogBtn = document.getElementById('submitLog');
-  const deleteAllBtn = document.getElementById('deleteAllLogs');
-  const myCompletedBody = document.getElementById('myCompletedBody');
-  const clearMyCompletedBtn = document.getElementById('clearMyCompleted');
-
-  // Local "My Completed" tracker
+  // ------------------- My Completed (local list) -------------------
+  const myCompletedBody    = document.getElementById('myCompletedBody');
+  const clearMyCompletedBtn= document.getElementById('clearMyCompleted');
   const MYC_KEY = 'myCompleted.v1';
-  function loadMyCompleted(){
-    try{ return JSON.parse(localStorage.getItem(MYC_KEY)) || []; }catch{ return []; }
-  }
-  function saveMyCompleted(list){
-    localStorage.setItem(MYC_KEY, JSON.stringify(list.slice(0, 200)));
-  }
+
+  function loadMyCompleted(){ try{ return JSON.parse(localStorage.getItem(MYC_KEY)) || []; }catch{ return []; } }
+  function saveMyCompleted(list){ localStorage.setItem(MYC_KEY, JSON.stringify(list.slice(0, 200))); }
   function pushMyCompleted(row){
     const list = loadMyCompleted();
     list.unshift({
@@ -186,55 +190,20 @@ document.addEventListener('DOMContentLoaded', () => {
         <td>${r.partNumber||''}</td>
         <td>${r.printName||''}</td>
         <td>${r.expectedMinutes!=null ? (r.expectedMinutes/60) : ''}</td>
-        <td>${(r.notes||'').toString().replace(/\n/g,' ')}</td>`;
+        <td><button class="danger" data-del="1">Delete</button></td>`;
       myCompletedBody.appendChild(tr);
     });
   }
   if (clearMyCompletedBtn) clearMyCompletedBtn.addEventListener('click', ()=>{ saveMyCompleted([]); renderMyCompleted(); });
+  if (myCompletedBody) myCompletedBody.addEventListener('click', (e)=>{
+    const btn = e.target.closest('button[data-del]'); if (!btn) return;
+    const rows = loadMyCompleted(); rows.shift(); saveMyCompleted(rows); renderMyCompleted();
+  });
 
-  // Submit new log (Start)
-  if (submitLogBtn && partSelect) {
-    submitLogBtn.addEventListener('click', async ()=>{
-      const pn = partSelect.value;
-      if (!pn){ alert('Select a part.'); return; }
-      const opt = partSelect.selectedOptions[0];
-      const printName = opt?.dataset?.print || '';
-      const expectedMinutes = opt?.dataset?.hours ? Math.round(parseFloat(opt.dataset.hours)*60) : null;
-      const notes = opt?.dataset?.notes || '';
+  // ------------------- Live logs (mine) -------------------
+  const logTbody = document.getElementById('logTableBody');
 
-      submitLogBtn.disabled = true; submitLogBtn.textContent = 'Starting...';
-      try{
-        await jobsApi(`/log`, {
-          method:'POST',
-          body: JSON.stringify({
-            username: username(),
-            partNumber: pn,
-            action: 'Start',
-            note: printName ? `From dashboard • ${printName}${notes ? ' • ' + notes : ''}` : (notes || ''),
-            startTime: Date.now(),
-            expectedMinutes
-          })
-        });
-
-        // Sync assignment to InProgress for this part
-        await maybeMarkAssignmentInProgress(username(), pn);
-
-        // Reset UI and reload
-        partSelect.value = '';
-        fillInfoFromPart('');
-        await requestRefresh(true);
-      }catch(err){
-        console.error(err);
-        alert('Failed to start log.');
-      }finally{
-        submitLogBtn.disabled = false; submitLogBtn.textContent = 'Start';
-      }
-    });
-  }
-
-  // Render my active logs
   async function fetchMyLogs(){
-    // pull all then filter by current user
     const rows = await jobsApi('/logs', { method:'GET' });
     return Array.isArray(rows) ? rows.filter(r => String(r.username||'') === username()) : [];
   }
@@ -244,7 +213,6 @@ document.addEventListener('DOMContentLoaded', () => {
     try { rows = await fetchMyLogs(); } catch { rows = []; }
 
     logTbody.innerHTML = '';
-    const now = Date.now();
     rows.forEach(r=>{
       const tr = document.createElement('tr');
       tr.dataset.id = r.id;
@@ -277,14 +245,13 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Poller
-  let pollTimer = null;
+  // Update durations every second
+  let ticker = null;
   async function requestRefresh(restart=false){
     await renderMyLogs();
     if (restart) {
-      clearInterval(pollTimer);
-      pollTimer = setInterval(async ()=>{
-        // update durations live
+      clearInterval(ticker);
+      ticker = setInterval(()=>{
         document.querySelectorAll('#logTableBody .dur').forEach(td=>{
           const s = Number(td.getAttribute('data-start')) || 0;
           const e = Number(td.getAttribute('data-end'))   || 0;
@@ -296,7 +263,47 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Actions in live table
+  // Start from part picker
+  if (submitLogBtn && partSelect) {
+    submitLogBtn.addEventListener('click', async ()=>{
+      const pn = partSelect.value;
+      if (!pn){ alert('Select a part.'); return; }
+      const opt = partSelect.selectedOptions[0];
+      const printName = opt?.dataset?.print || '';
+      const expectedMinutes = opt?.dataset?.hours ? Math.round(parseFloat(opt.dataset.hours)*60) : null;
+      const notes = opt?.dataset?.notes || '';
+
+      submitLogBtn.disabled = true; submitLogBtn.textContent = 'Starting...';
+      try{
+        await jobsApi(`/log`, {
+          method:'POST',
+          body: JSON.stringify({
+            username: username(),
+            partNumber: pn,
+            action: 'Start',
+            note: printName ? `From dashboard • ${printName}${notes ? ' • ' + notes : ''}` : (notes || ''),
+            startTime: Date.now(),
+            expectedMinutes
+          })
+        });
+
+        // Sync assignment to InProgress
+        await maybeMarkAssignmentInProgress(username(), pn);
+
+        // Reset and refresh
+        partSelect.value = '';
+        fillInfoFromPart('');
+        await requestRefresh(true);
+      }catch(err){
+        console.error(err);
+        alert('Failed to start log.');
+      }finally{
+        submitLogBtn.disabled = false; submitLogBtn.textContent = 'Start Job';
+      }
+    });
+  }
+
+  // Click handlers inside live table
   if (logTbody) {
     logTbody.addEventListener('click', async (e)=>{
       const btn = e.target.closest('button[data-act]');
@@ -310,7 +317,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // If finished: mirror to assignments and push to "My Completed"
         if (act === 'Finish') {
-          // fetch the row to know PN and note; fall back to DOM if needed
           let pn = '';
           try {
             const all = await fetchMyLogs();
@@ -325,11 +331,9 @@ document.addEventListener('DOMContentLoaded', () => {
           } catch {
             const tr = btn.closest('tr');
             pn = tr?.dataset?.pn || '';
-            // push minimal if we had to
             pushMyCompleted({ partNumber: pn, printName:'', expectedMinutes:null, note:'' });
           }
 
-          // Complete the assignment for this user+part
           if (pn) await maybeMarkAssignmentCompleted(username(), pn);
         }
       }catch(err){
@@ -341,7 +345,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
-    // Update note on blur
+    // Save note on change
     logTbody.addEventListener('change', async (e)=>{
       const input = e.target.closest('.note-input'); if (!input) return;
       const tr = input.closest('tr'); if (!tr) return;
@@ -352,18 +356,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Delete all logs (if present; admin-only on backend, so may fail for techs)
-  if (deleteAllBtn) {
-    deleteAllBtn.addEventListener('click', async ()=>{
-      if (!confirm('Delete ALL live logs?')) return;
-      try{
-        await jobsApi(`/admin/clear-logs`, { method:'DELETE' });
-        await renderMyLogs();
-      }catch(err){ alert('Failed to clear logs.'); }
-    });
-  }
-
-  // Boot dashboard
+  // Kick everything off
   renderMyCompleted();
   requestRefresh(true);
 });
