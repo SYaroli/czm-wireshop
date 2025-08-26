@@ -3,14 +3,32 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 
+// ---------- auth helpers ----------
+function currentUser(req) {
+  return (req.header('x-user') || '').trim();
+}
 function requireUser(req, res, next){
-  const u = (req.header('x-user') || '').trim();
+  const u = currentUser(req);
   if (!u) return res.status(401).json({ error: 'x-user required' });
   req.user = u;
   next();
 }
+function requireAdmin(req, res, next){
+  const u = currentUser(req);
+  if (!u) return res.status(401).json({ error: 'x-user required' });
+  db.get(
+    `SELECT role FROM users WHERE username = ? COLLATE NOCASE`,
+    [u],
+    (err, row) => {
+      if (err) return res.status(500).json({ error: err.message });
+      if (!row || row.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
+      req.user = u;
+      next();
+    }
+  );
+}
 
-// Helpers
+// ---------- helpers ----------
 function getOne(partNumber) {
   return new Promise((resolve, reject) => {
     db.get(
@@ -46,7 +64,7 @@ function insertTxn(partNumber, delta, before, after, note, user) {
   });
 }
 
-// GET current snapshot
+// ---------- API: snapshot ----------
 router.get('/inventory/:part', requireUser, async (req, res) => {
   try {
     const part = String(req.params.part).trim();
@@ -57,13 +75,13 @@ router.get('/inventory/:part', requireUser, async (req, res) => {
   }
 });
 
-// POST adjust { delta, note }
+// ---------- API: adjust ----------
 router.post('/inventory/:part/adjust', requireUser, async (req, res) => {
   try {
     const part = String(req.params.part).trim();
     const delta = parseInt(req.body?.delta, 10);
     const note  = String(req.body?.note || '');
-    if (!Number.isFinite(delta) || delta === 0) {
+    if (!Number.isInteger(delta) || delta === 0) {
       return res.status(400).json({ error: 'delta must be a non-zero integer' });
     }
     const current = await getOne(part) || { qty: 0 };
@@ -80,7 +98,7 @@ router.post('/inventory/:part/adjust', requireUser, async (req, res) => {
   }
 });
 
-// GET recent txns
+// ---------- API: recent txns ----------
 router.get('/inventory/:part/txns', requireUser, (req, res) => {
   const part = String(req.params.part).trim();
   const limit = Math.min(200, Math.max(1, parseInt(req.query.limit || '50', 10)));
@@ -94,6 +112,20 @@ router.get('/inventory/:part/txns', requireUser, (req, res) => {
     (err, rows) => {
       if (err) return res.status(500).json({ error: 'Failed to list txns' });
       res.json(rows);
+    }
+  );
+});
+
+// ---------- API: admin list (whole inventory) ----------
+router.get('/inventory', requireAdmin, (_req, res) => {
+  db.all(
+    `SELECT partNumber, qty, updatedAt, updatedBy
+     FROM inventory
+     ORDER BY partNumber COLLATE NOCASE ASC`,
+    [],
+    (err, rows) => {
+      if (err) return res.status(500).json({ error: 'Failed to list inventory' });
+      res.json(rows || []);
     }
   );
 });
