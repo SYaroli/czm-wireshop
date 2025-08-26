@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CZM • Inventory List</title>
+  <link rel="stylesheet" href="/style.css"/>
+  <style>
+    .brand-actions .navbtn{display:inline-block;background:var(--red);color:#fff;padding:8px 12px;border-radius:9px;text-decoration:none;font-weight:700}
+    .brand-actions .navbtn:hover{filter:brightness(.92)}
+    .toolbar{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+    .badge{background:#eee;border:1px solid #ddd;border-radius:8px;padding:4px 8px;font-weight:700}
+  </style>
+</head>
+<body>
+  <div class="brand-bar">
+    <div class="brand-inner">
+      <a class="brand-logo" href="/dashboard.html">
+        <img src="/czm-logo.png" alt="CZM">
+        <h1 class="brand-title">CZM • Inventory</h1>
+      </a>
+      <div class="brand-actions">
+        <a class="navbtn" href="/dashboard.html">Dashboard</a>
+        <a class="navbtn" href="/assignments.html">Assignments</a>
+        <a class="navbtn" href="/inventory-list.html">Inventory</a>
+        <button id="logoutBtn" class="navbtn">Logout</button>
+      </div>
+    </div>
+  </div>
+
+  <main class="page">
+    <div class="card">
+      <h2>Inventory — Snapshot</h2>
+      <div class="toolbar">
+        <div style="flex:1">
+          <label for="q">Filter</label>
+          <input id="q" type="text" placeholder="part number, print name, or location">
+        </div>
+        <div style="display:flex;align-items:end;gap:10px">
+          <label class="badge"><input type="checkbox" id="onlyNonZero"> only non-zero</label>
+          <span class="badge" id="countBadge">0 items</span>
+        </div>
+      </div>
+
+      <table class="sticky-head">
+        <thead>
+          <tr>
+            <th style="width:210px">Part Number</th>
+            <th>Print Name</th>
+            <th style="width:180px">Location</th>
+            <th style="width:90px">Qty</th>
+            <th style="width:210px">Updated</th>
+            <th style="width:160px">By</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </main>
+
+  <script src="/catalog.js"></script>
+  <script>
+    const API_ROOT = 'https://wireshop-backend.onrender.com';
+
+    // auth gate (admin only view)
+    const user = (() => { try { return JSON.parse(localStorage.getItem('user')||'{}'); } catch { return {}; } })();
+    if (!user || !user.username) { window.location.href = '/index.html'; }
+    if (String(user.role).toLowerCase() !== 'admin') { window.location.href = '/dashboard.html'; }
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      localStorage.removeItem('user'); window.location.href = '/index.html';
+    });
+
+    function fmtTs(ms){ if (!ms) return ''; const d = new Date(ms); return d.toLocaleString(); }
+
+    async function api(path){
+      const res = await fetch(API_ROOT + path, { headers: { 'x-user': user.username }});
+      if (!res.ok) throw new Error('HTTP '+res.status);
+      return res.json();
+    }
+
+    const tbody = document.getElementById('tbody');
+    const qEl = document.getElementById('q');
+    const onlyNonZeroEl = document.getElementById('onlyNonZero');
+    const countBadge = document.getElementById('countBadge');
+
+    let rows = []; // merged rows to display
+
+    function build(){
+      const q = qEl.value.trim().toLowerCase();
+      const onlyNZ = !!onlyNonZeroEl.checked;
+      const filtered = rows.filter(r => {
+        if (onlyNZ && (r.qty|0) === 0) return false;
+        if (!q) return true;
+        return (
+          String(r.partNumber||'').toLowerCase().includes(q) ||
+          String(r.printName||'').toLowerCase().includes(q) ||
+          String(r.location||'').toLowerCase().includes(q)
+        );
+      });
+
+      countBadge.textContent = `${filtered.length} items`;
+      tbody.innerHTML = filtered.map(r => `
+        <tr>
+          <td><a href="/inv/${encodeURIComponent(r.partNumber)}">${r.partNumber}</a></td>
+          <td>${(r.printName||'').replace(/</g,'&lt;')}</td>
+          <td>${(r.location||'').replace(/</g,'&lt;')}</td>
+          <td style="font-weight:900;text-align:right">${r.qty|0}</td>
+          <td>${fmtTs(r.updatedAt)}</td>
+          <td>${(r.updatedBy||'').replace(/</g,'&lt;')}</td>
+        </tr>
+      `).join('');
+    }
+
+    async function load(){
+      const snap = await api('/api/inventory'); // [{partNumber, qty, updatedAt, updatedBy}]
+      const invMap = new Map(snap.map(r => [String(r.partNumber), r]));
+      const cat = Array.isArray(window.catalog) ? window.catalog : [];
+
+      // include every catalog part (qty 0 if not in DB), then any extra inventory rows not in catalog
+      const merged = [];
+      for (const c of cat) {
+        const pn = String(c.partNumber||'').trim();
+        if (!pn) continue;
+        const s = invMap.get(pn);
+        merged.push({
+          partNumber: pn,
+          printName: c.printName || '',
+          location: c.location || '',
+          qty: s ? (s.qty|0) : 0,
+          updatedAt: s ? s.updatedAt : null,
+          updatedBy: s ? s.updatedBy : null
+        });
+        invMap.delete(pn);
+      }
+      // inventory parts not in catalog
+      for (const [pn, s] of invMap) {
+        merged.push({
+          partNumber: pn,
+          printName: '',
+          location: '',
+          qty: s.qty|0,
+          updatedAt: s.updatedAt,
+          updatedBy: s.updatedBy
+        });
+      }
+      rows = merged.sort((a,b) => a.partNumber.localeCompare(b.partNumber, undefined, {numeric:true}));
+      build();
+    }
+
+    qEl.addEventListener('input', build);
+    onlyNonZeroEl.addEventListener('change', build);
+
+    load().catch(() => alert('Failed to load inventory list'));
+  </script>
+</body>
+</html>
