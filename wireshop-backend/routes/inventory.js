@@ -13,15 +13,22 @@ function requireUser(req, res, next){
   req.user = u;
   next();
 }
+function isAdminRole(val) {
+  return String(val || '').toLowerCase() === 'admin';
+}
 function requireAdmin(req, res, next){
   const u = currentUser(req);
   if (!u) return res.status(401).json({ error: 'x-user required' });
+
   db.get(
     `SELECT role FROM users WHERE username = ? COLLATE NOCASE`,
     [u],
     (err, row) => {
       if (err) return res.status(500).json({ error: err.message });
-      if (!row || row.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
+      if (!row) return res.status(403).json({ error: `Admin only (no such user: ${u})` });
+      if (!isAdminRole(row.role)) {
+        return res.status(403).json({ error: `Admin only (role=${row.role})` });
+      }
       req.user = u;
       next();
     }
