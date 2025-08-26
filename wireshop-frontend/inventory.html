@@ -4,7 +4,7 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>CZM • Inventory</title>
-  <link rel="stylesheet" href="style.css"/>
+  <link rel="stylesheet" href="/style.css"/>
   <style>
     .brand-actions .navbtn{display:inline-block;background:var(--red);color:#fff;padding:8px 12px;border-radius:9px;text-decoration:none;font-weight:700}
     .brand-actions .navbtn:hover{filter:brightness(.92)}
@@ -19,22 +19,21 @@
 <body>
   <div class="brand-bar">
     <div class="brand-inner">
-      <a class="brand-logo" href="dashboard.html">
-        <img src="czm-logo.png" alt="CZM">
+      <a class="brand-logo" href="/dashboard.html">
+        <img src="/czm-logo.png" alt="CZM">
         <h1 class="brand-title">CZM • Inventory</h1>
       </a>
       <div class="brand-actions">
-        <a class="navbtn" href="dashboard.html">Dashboard</a>
-        <a class="navbtn" href="assignments.html">Assignments</a>
+        <a class="navbtn" href="/dashboard.html">Dashboard</a>
+        <a class="navbtn" href="/assignments.html">Assignments</a>
         <button id="logoutBtn" class="navbtn">Logout</button>
       </div>
     </div>
   </div>
 
   <main class="page">
-    <!-- Header / Part -->
     <div class="card">
-      <h2 id="partTitle">Part</h2>
+      <h2 id="partTitle">Inventory</h2>
       <div class="info" style="margin-top:8px">
         <p>Part Number: <span id="partNumber">--</span></p>
         <p>Print Name: <span id="printName">--</span></p>
@@ -44,14 +43,12 @@
       </div>
     </div>
 
-    <!-- Current qty -->
     <div class="card">
       <h2>Quantity</h2>
       <p class="qty-big"><span id="qty">0</span></p>
       <p class="muted mini">Last update: <span id="updatedMeta">never</span></p>
     </div>
 
-    <!-- Adjust -->
     <div class="card">
       <h2>Adjust</h2>
       <div class="qty-row" style="margin-bottom:10px">
@@ -77,7 +74,6 @@
       </div>
     </div>
 
-    <!-- Recent activity -->
     <div class="card">
       <h2>Recent Activity</h2>
       <table class="sticky-head">
@@ -95,26 +91,26 @@
     </div>
   </main>
 
-  <script src="catalog.js"></script>
+  <script src="/catalog.js"></script>
   <script>
-    // auth gate
+    // auth gate (same as your other pages) 
     const user = (() => { try { return JSON.parse(localStorage.getItem('user')||'{}'); } catch { return {}; } })();
     if (!user || !user.username) {
-      window.location.href = 'index.html';
+      window.location.href = '/index.html';
     }
-
-    // logout
     document.getElementById('logoutBtn').addEventListener('click', () => {
-      localStorage.removeItem('user');
-      window.location.href = 'index.html';
+      localStorage.removeItem('user'); window.location.href = '/index.html';
     });
 
-    // part from /inv/<part>
-    const partNumber = decodeURIComponent(location.pathname.split('/').pop() || '').trim();
+    // part from /inv/<part> OR ?part=
+    const segs = location.pathname.split('/').filter(Boolean);
+    let partNumber = '';
+    if (segs[0] === 'inv') partNumber = decodeURIComponent(segs.slice(1).join('/')).trim();
+    if (!partNumber) partNumber = new URLSearchParams(location.search).get('part') || '';
     document.getElementById('partNumber').textContent = partNumber || '(missing)';
-    document.getElementById('partTitle').textContent = `Inventory — ${partNumber}`;
+    document.getElementById('partTitle').textContent = `Inventory — ${partNumber || '—'}`;
 
-    // fill catalog details if present
+    // catalog extras
     (function fillCatalog(){
       try {
         const row = (window.catalog || []).find(c => String(c.partNumber||'').trim() === partNumber);
@@ -130,19 +126,12 @@
     const metaEl = document.getElementById('updatedMeta');
     const txnBody = document.getElementById('txnBody');
 
-    function fmtTs(ms){
-      if (!ms) return '—';
-      const d = new Date(ms);
-      return d.toLocaleString();
-    }
+    function fmtTs(ms){ if (!ms) return '—'; const d = new Date(ms); return d.toLocaleString(); }
 
     async function api(path, opts={}){
       const res = await fetch(path, {
         method: opts.method || 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-user': user.username
-        },
+        headers: { 'Content-Type': 'application/json', 'x-user': user.username },
         body: opts.body ? JSON.stringify(opts.body) : undefined
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -154,7 +143,6 @@
       qtyEl.textContent = data.qty ?? 0;
       metaEl.textContent = data.updatedAt ? `${fmtTs(data.updatedAt)} by ${data.updatedBy||'unknown'}` : 'never';
     }
-
     async function loadTxns(){
       const rows = await api(`/api/inventory/${encodeURIComponent(partNumber)}/txns?limit=50`);
       txnBody.innerHTML = rows.map(r => `
@@ -167,34 +155,24 @@
         </tr>
       `).join('');
     }
-
     async function adjust(delta){
       const note = document.getElementById('note').value.trim();
-      await api(`/api/inventory/${encodeURIComponent(partNumber)}/adjust`, {
-        method: 'POST',
-        body: { delta, note }
-      });
+      await api(`/api/inventory/${encodeURIComponent(partNumber)}/adjust`, { method: 'POST', body: { delta, note } });
       document.getElementById('customDelta').value = '';
-      await loadSnapshot();
-      await loadTxns();
+      await loadSnapshot(); await loadTxns();
     }
-
-    // preset buttons
     document.querySelectorAll('.pill[data-delta]').forEach(btn => {
       btn.addEventListener('click', () => {
         const delta = parseInt(btn.getAttribute('data-delta'), 10);
         adjust(delta).catch(() => alert('Failed to adjust'));
       });
     });
-
-    // custom apply
     document.getElementById('applyBtn').addEventListener('click', () => {
       const v = parseInt(document.getElementById('customDelta').value, 10);
       if (!Number.isFinite(v) || v === 0) return alert('Enter a non-zero integer');
       adjust(v).catch(() => alert('Failed to adjust'));
     });
 
-    // initial load
     loadSnapshot().catch(()=>{});
     loadTxns().catch(()=>{});
   </script>
