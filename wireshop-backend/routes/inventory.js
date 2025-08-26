@@ -13,22 +13,17 @@ function requireUser(req, res, next){
   req.user = u;
   next();
 }
-function isAdminRole(val) {
-  return String(val || '').toLowerCase() === 'admin';
-}
+function isAdminRole(val) { return String(val || '').toLowerCase() === 'admin'; }
 function requireAdmin(req, res, next){
   const u = currentUser(req);
   if (!u) return res.status(401).json({ error: 'x-user required' });
-
   db.get(
     `SELECT role FROM users WHERE username = ? COLLATE NOCASE`,
     [u],
     (err, row) => {
       if (err) return res.status(500).json({ error: err.message });
       if (!row) return res.status(403).json({ error: `Admin only (no such user: ${u})` });
-      if (!isAdminRole(row.role)) {
-        return res.status(403).json({ error: `Admin only (role=${row.role})` });
-      }
+      if (!isAdminRole(row.role)) return res.status(403).json({ error: `Admin only (role=${row.role})` });
       req.user = u;
       next();
     }
@@ -123,8 +118,22 @@ router.get('/inventory/:part/txns', requireUser, (req, res) => {
   );
 });
 
-// ---------- API: admin list (whole inventory) ----------
+// ---------- API: admin list (locked) ----------
 router.get('/inventory', requireAdmin, (_req, res) => {
+  db.all(
+    `SELECT partNumber, qty, updatedAt, updatedBy
+     FROM inventory
+     ORDER BY partNumber COLLATE NOCASE ASC`,
+    [],
+    (err, rows) => {
+      if (err) return res.status(500).json({ error: 'Failed to list inventory' });
+      res.json(rows || []);
+    }
+  );
+});
+
+// ---------- API: list for any logged-in user (read-only) ----------
+router.get('/inventory-all', requireUser, (_req, res) => {
   db.all(
     `SELECT partNumber, qty, updatedAt, updatedBy
      FROM inventory
