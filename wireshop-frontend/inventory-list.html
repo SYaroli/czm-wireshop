@@ -62,10 +62,9 @@
   <script>
     const API_ROOT = 'https://wireshop-backend.onrender.com';
 
-    // auth gate (admin only view)
+    // auth gate
     const user = (() => { try { return JSON.parse(localStorage.getItem('user')||'{}'); } catch { return {}; } })();
     if (!user || !user.username) { window.location.href = '/index.html'; }
-    if (String(user.role).toLowerCase() !== 'admin') { window.location.href = '/dashboard.html'; }
     document.getElementById('logoutBtn').addEventListener('click', () => {
       localStorage.removeItem('user'); window.location.href = '/index.html';
     });
@@ -83,7 +82,7 @@
     const onlyNonZeroEl = document.getElementById('onlyNonZero');
     const countBadge = document.getElementById('countBadge');
 
-    let rows = []; // merged rows to display
+    let rows = [];
 
     function build(){
       const q = qEl.value.trim().toLowerCase();
@@ -112,11 +111,11 @@
     }
 
     async function load(){
-      const snap = await api('/api/inventory'); // [{partNumber, qty, updatedAt, updatedBy}]
+      // read-only list for any logged-in user
+      const snap = await api('/api/inventory-all');
       const invMap = new Map(snap.map(r => [String(r.partNumber), r]));
       const cat = Array.isArray(window.catalog) ? window.catalog : [];
 
-      // include every catalog part (qty 0 if not in DB), then any extra inventory rows not in catalog
       const merged = [];
       for (const c of cat) {
         const pn = String(c.partNumber||'').trim();
@@ -132,7 +131,6 @@
         });
         invMap.delete(pn);
       }
-      // inventory parts not in catalog
       for (const [pn, s] of invMap) {
         merged.push({
           partNumber: pn,
