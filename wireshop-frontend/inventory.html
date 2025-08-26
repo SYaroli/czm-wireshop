@@ -4,17 +4,20 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>CZM • Inventory</title>
-  <!-- root-absolute so /inv/* rewrite doesn't hijack assets -->
+  <!-- root-absolute so /inv/* rewrite doesn’t hijack assets -->
   <link rel="stylesheet" href="/style.css"/>
   <style>
     .brand-actions .navbtn{display:inline-block;background:var(--red);color:#fff;padding:8px 12px;border-radius:9px;text-decoration:none;font-weight:700}
     .brand-actions .navbtn:hover{filter:brightness(.92)}
     .qty-big{font-size:40px;font-weight:900;margin:0}
     .qty-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-    .pill{padding:10px 14px;border:1px solid #d3d8e1;border-radius:10px;background:#fff;cursor:pointer;font-weight:800}
+    .pill{
+      padding:10px 14px;border:1px solid #d3d8e1;border-radius:10px;background:#fff;
+      cursor:pointer;font-weight:800;min-width:56px;text-align:center;color:var(--ink);
+      user-select:none;
+    }
     .pill:hover{filter:brightness(1.03)}
-    .muted{color:var(--muted)}
-    .mini{font-size:12px}
+    .mini{font-size:12px;color:var(--muted)}
   </style>
 </head>
 <body>
@@ -40,19 +43,19 @@
         <p>Print Name: <span id="printName">--</span></p>
         <p>Location: <span id="location">--</span></p>
         <p>Expected Hours: <span id="expected">--</span></p>
-        <p class="muted mini">If any of this looks wrong, fix the catalog later; inventory will still work.</p>
+        <p class="mini">If any of this looks wrong, fix the catalog later; inventory will still work.</p>
       </div>
     </div>
 
     <div class="card">
       <h2>Quantity</h2>
       <p class="qty-big"><span id="qty">0</span></p>
-      <p class="muted mini">Last update: <span id="updatedMeta">never</span></p>
+      <p class="mini">Last update: <span id="updatedMeta">never</span></p>
     </div>
 
     <div class="card">
       <h2>Adjust</h2>
-      <div class="qty-row" style="margin-bottom:10px">
+      <div class="qty-row" id="presetRow" style="margin-bottom:10px">
         <button class="pill" data-delta="-10">−10</button>
         <button class="pill" data-delta="-5">−5</button>
         <button class="pill" data-delta="-1">−1</button>
@@ -60,17 +63,18 @@
         <button class="pill" data-delta="+5">+5</button>
         <button class="pill" data-delta="+10">+10</button>
       </div>
+      <p class="mini" style="margin:0 0 8px 2px">Preset buttons post immediately. “Apply” is only for a custom number.</p>
       <div class="grid cols-3">
         <div>
           <label for="customDelta">Custom Delta</label>
-          <input id="customDelta" type="number" step="1" placeholder="e.g. 12 or -3">
+          <input id="customDelta" type="number" step="1" placeholder="e.g. 12 or -3" inputmode="numeric">
         </div>
         <div>
           <label for="note">Reason/Note</label>
           <input id="note" type="text" placeholder="optional">
         </div>
         <div style="display:flex;align-items:end">
-          <button id="applyBtn" style="width:100%">Apply</button>
+          <button id="applyBtn" style="width:100%" disabled>Apply custom</button>
         </div>
       </div>
     </div>
@@ -92,10 +96,8 @@
     </div>
   </main>
 
-  <!-- root-absolute so the QR /inv/* path doesn't break it -->
   <script src="/catalog.js"></script>
   <script>
-    // Use the same absolute backend as the rest of your app
     const API_ROOT = 'https://wireshop-backend.onrender.com';
 
     // auth gate
@@ -128,8 +130,18 @@
     const qtyEl = document.getElementById('qty');
     const metaEl = document.getElementById('updatedMeta');
     const txnBody = document.getElementById('txnBody');
+    const customDeltaEl = document.getElementById('customDelta');
+    const applyBtn = document.getElementById('applyBtn');
 
     function fmtTs(ms){ if (!ms) return '—'; const d = new Date(ms); return d.toLocaleString(); }
+
+    function validInt(v){ const n = Number(v); return Number.isInteger(n) && n !== 0; }
+
+    function toggleApply(){
+      applyBtn.disabled = !validInt(customDeltaEl.value);
+    }
+    customDeltaEl.addEventListener('input', toggleApply);
+    toggleApply();
 
     async function api(path, opts={}){
       const res = await fetch(API_ROOT + path, {
@@ -161,18 +173,23 @@
     async function adjust(delta){
       const note = document.getElementById('note').value.trim();
       await api(`/api/inventory/${encodeURIComponent(partNumber)}/adjust`, { method: 'POST', body: { delta, note } });
-      document.getElementById('customDelta').value = '';
       await loadSnapshot(); await loadTxns();
     }
+
+    // Preset buttons POST immediately (with whatever note is typed)
     document.querySelectorAll('.pill[data-delta]').forEach(btn => {
       btn.addEventListener('click', () => {
         const delta = parseInt(btn.getAttribute('data-delta'), 10);
         adjust(delta).catch(() => alert('Failed to adjust'));
       });
     });
-    document.getElementById('applyBtn').addEventListener('click', () => {
-      const v = parseInt(document.getElementById('customDelta').value, 10);
-      if (!Number.isFinite(v) || v === 0) return alert('Enter a non-zero integer');
+
+    // Custom apply
+    applyBtn.addEventListener('click', () => {
+      const v = parseInt(customDeltaEl.value, 10);
+      if (!validInt(v)) return; // button should be disabled anyway
+      customDeltaEl.value = '';
+      toggleApply();
       adjust(v).catch(() => alert('Failed to adjust'));
     });
 
