@@ -1,200 +1,133 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>CZM • Inventory</title>
-  <!-- root-absolute so /inv/* rewrite doesn’t hijack assets -->
-  <link rel="stylesheet" href="/style.css"/>
-  <style>
-    .brand-actions .navbtn{display:inline-block;background:var(--red);color:#fff;padding:8px 12px;border-radius:9px;text-decoration:none;font-weight:700}
-    .brand-actions .navbtn:hover{filter:brightness(.92)}
-    .qty-big{font-size:40px;font-weight:900;margin:0}
-    .qty-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-    .pill{
-      padding:10px 14px;border:1px solid #d3d8e1;border-radius:10px;background:#fff;
-      cursor:pointer;font-weight:800;min-width:56px;text-align:center;color:var(--ink);
-      user-select:none;
+// routes/inventory.js
+const express = require('express');
+const router = express.Router();
+const db = require('../db');
+
+// ---------- auth helpers ----------
+function currentUser(req) {
+  return (req.header('x-user') || '').trim();
+}
+function requireUser(req, res, next){
+  const u = currentUser(req);
+  if (!u) return res.status(401).json({ error: 'x-user required' });
+  req.user = u;
+  next();
+}
+function requireAdmin(req, res, next){
+  const u = currentUser(req);
+  if (!u) return res.status(401).json({ error: 'x-user required' });
+  db.get(
+    `SELECT role FROM users WHERE username = ? COLLATE NOCASE`,
+    [u],
+    (err, row) => {
+      if (err) return res.status(500).json({ error: err.message });
+      if (!row || row.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
+      req.user = u;
+      next();
     }
-    .pill:hover{filter:brightness(1.03)}
-    .mini{font-size:12px;color:var(--muted)}
-  </style>
-</head>
-<body>
-  <div class="brand-bar">
-    <div class="brand-inner">
-      <a class="brand-logo" href="/dashboard.html">
-        <img src="/czm-logo.png" alt="CZM">
-        <h1 class="brand-title">CZM • Inventory</h1>
-      </a>
-      <div class="brand-actions">
-        <a class="navbtn" href="/dashboard.html">Dashboard</a>
-        <a class="navbtn" href="/assignments.html">Assignments</a>
-        <button id="logoutBtn" class="navbtn">Logout</button>
-      </div>
-    </div>
-  </div>
+  );
+}
 
-  <main class="page">
-    <div class="card">
-      <h2 id="partTitle">Inventory</h2>
-      <div class="info" style="margin-top:8px">
-        <p>Part Number: <span id="partNumber">--</span></p>
-        <p>Print Name: <span id="printName">--</span></p>
-        <p>Location: <span id="location">--</span></p>
-        <p>Expected Hours: <span id="expected">--</span></p>
-        <p class="mini">If any of this looks wrong, fix the catalog later; inventory will still work.</p>
-      </div>
-    </div>
+// ---------- helpers ----------
+function getOne(partNumber) {
+  return new Promise((resolve, reject) => {
+    db.get(
+      `SELECT partNumber, qty, updatedAt, updatedBy FROM inventory WHERE partNumber = ?`,
+      [partNumber],
+      (err, row) => err ? reject(err) : resolve(row || null)
+    );
+  });
+}
+function upsert(partNumber, qty, user) {
+  const now = Date.now();
+  return new Promise((resolve, reject) => {
+    db.run(
+      `INSERT INTO inventory (partNumber, qty, updatedAt, updatedBy)
+       VALUES (?, ?, ?, ?)
+       ON CONFLICT(partNumber) DO UPDATE SET
+         qty = excluded.qty,
+         updatedAt = excluded.updatedAt,
+         updatedBy = excluded.updatedBy`,
+      [partNumber, qty, now, user],
+      (err) => err ? reject(err) : resolve()
+    );
+  });
+}
+function insertTxn(partNumber, delta, before, after, note, user) {
+  return new Promise((resolve, reject) => {
+    db.run(
+      `INSERT INTO inventory_txns (partNumber, delta, qtyBefore, qtyAfter, note, user, ts)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [partNumber, delta, before, after, note || '', user, Date.now()],
+      function(err){ return err ? reject(err) : resolve(this.lastID); }
+    );
+  });
+}
 
-    <div class="card">
-      <h2>Quantity</h2>
-      <p class="qty-big"><span id="qty">0</span></p>
-      <p class="mini">Last update: <span id="updatedMeta">never</span></p>
-    </div>
+// ---------- API: snapshot ----------
+router.get('/inventory/:part', requireUser, async (req, res) => {
+  try {
+    const part = String(req.params.part).trim();
+    const row = await getOne(part);
+    res.json(row || { partNumber: part, qty: 0, updatedAt: null, updatedBy: null });
+  } catch {
+    res.status(500).json({ error: 'Failed to fetch inventory' });
+  }
+});
 
-    <div class="card">
-      <h2>Adjust</h2>
-      <div class="qty-row" id="presetRow" style="margin-bottom:10px">
-        <button class="pill" data-delta="-10">−10</button>
-        <button class="pill" data-delta="-5">−5</button>
-        <button class="pill" data-delta="-1">−1</button>
-        <button class="pill" data-delta="+1">+1</button>
-        <button class="pill" data-delta="+5">+5</button>
-        <button class="pill" data-delta="+10">+10</button>
-      </div>
-      <p class="mini" style="margin:0 0 8px 2px">Preset buttons post immediately. “Apply” is only for a custom number.</p>
-      <div class="grid cols-3">
-        <div>
-          <label for="customDelta">Custom Delta</label>
-          <input id="customDelta" type="number" step="1" placeholder="e.g. 12 or -3" inputmode="numeric">
-        </div>
-        <div>
-          <label for="note">Reason/Note</label>
-          <input id="note" type="text" placeholder="optional">
-        </div>
-        <div style="display:flex;align-items:end">
-          <button id="applyBtn" style="width:100%" disabled>Apply custom</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2>Recent Activity</h2>
-      <table class="sticky-head">
-        <thead>
-          <tr>
-            <th>When</th>
-            <th>User</th>
-            <th>Δ</th>
-            <th>Before → After</th>
-            <th>Note</th>
-          </tr>
-        </thead>
-        <tbody id="txnBody"></tbody>
-      </table>
-    </div>
-  </main>
-
-  <script src="/catalog.js"></script>
-  <script>
-    const API_ROOT = 'https://wireshop-backend.onrender.com';
-
-    // auth gate
-    const user = (() => { try { return JSON.parse(localStorage.getItem('user')||'{}'); } catch { return {}; } })();
-    if (!user || !user.username) { window.location.href = '/index.html'; }
-    document.getElementById('logoutBtn').addEventListener('click', () => {
-      localStorage.removeItem('user'); window.location.href = '/index.html';
-    });
-
-    // part from /inv/<part> OR ?part=
-    const segs = location.pathname.split('/').filter(Boolean);
-    let partNumber = '';
-    if (segs[0] === 'inv') partNumber = decodeURIComponent(segs.slice(1).join('/')).trim();
-    if (!partNumber) partNumber = new URLSearchParams(location.search).get('part') || '';
-    document.getElementById('partNumber').textContent = partNumber || '(missing)';
-    document.getElementById('partTitle').textContent = `Inventory — ${partNumber || '—'}`;
-
-    // catalog extras
-    (function fillCatalog(){
-      try {
-        const row = (window.catalog || []).find(c => String(c.partNumber||'').trim() === partNumber);
-        if (row) {
-          document.getElementById('printName').textContent = row.printName || '--';
-          document.getElementById('location').textContent = row.location || '--';
-          document.getElementById('expected').textContent = (row.expectedHours ?? '--');
-        }
-      } catch {}
-    })();
-
-    const qtyEl = document.getElementById('qty');
-    const metaEl = document.getElementById('updatedMeta');
-    const txnBody = document.getElementById('txnBody');
-    const customDeltaEl = document.getElementById('customDelta');
-    const applyBtn = document.getElementById('applyBtn');
-
-    function fmtTs(ms){ if (!ms) return '—'; const d = new Date(ms); return d.toLocaleString(); }
-
-    function validInt(v){ const n = Number(v); return Number.isInteger(n) && n !== 0; }
-
-    function toggleApply(){
-      applyBtn.disabled = !validInt(customDeltaEl.value);
+// ---------- API: adjust ----------
+router.post('/inventory/:part/adjust', requireUser, async (req, res) => {
+  try {
+    const part = String(req.params.part).trim();
+    const delta = parseInt(req.body?.delta, 10);
+    const note  = String(req.body?.note || '');
+    if (!Number.isInteger(delta) || delta === 0) {
+      return res.status(400).json({ error: 'delta must be a non-zero integer' });
     }
-    customDeltaEl.addEventListener('input', toggleApply);
-    toggleApply();
+    const current = await getOne(part) || { qty: 0 };
+    const before = current.qty | 0;
+    const after  = before + delta;
+    if (after < 0) return res.status(400).json({ error: 'resulting qty cannot be negative' });
 
-    async function api(path, opts={}){
-      const res = await fetch(API_ROOT + path, {
-        method: opts.method || 'GET',
-        headers: { 'Content-Type': 'application/json', 'x-user': user.username },
-        body: opts.body ? JSON.stringify(opts.body) : undefined
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return res.json();
+    await upsert(part, after, req.user);
+    await insertTxn(part, delta, before, after, note, req.user);
+
+    res.json({ ok: true, partNumber: part, qty: after, updatedBy: req.user, updatedAt: Date.now() });
+  } catch {
+    res.status(500).json({ error: 'Failed to adjust inventory' });
+  }
+});
+
+// ---------- API: recent txns ----------
+router.get('/inventory/:part/txns', requireUser, (req, res) => {
+  const part = String(req.params.part).trim();
+  const limit = Math.min(200, Math.max(1, parseInt(req.query.limit || '50', 10)));
+  db.all(
+    `SELECT id, delta, qtyBefore, qtyAfter, note, user, ts
+     FROM inventory_txns
+     WHERE partNumber = ?
+     ORDER BY id DESC
+     LIMIT ?`,
+    [part, limit],
+    (err, rows) => {
+      if (err) return res.status(500).json({ error: 'Failed to list txns' });
+      res.json(rows);
     }
+  );
+});
 
-    async function loadSnapshot(){
-      const data = await api(`/api/inventory/${encodeURIComponent(partNumber)}`);
-      qtyEl.textContent = data.qty ?? 0;
-      metaEl.textContent = data.updatedAt ? `${fmtTs(data.updatedAt)} by ${data.updatedBy||'unknown'}` : 'never';
+// ---------- API: admin list (whole inventory) ----------
+router.get('/inventory', requireAdmin, (_req, res) => {
+  db.all(
+    `SELECT partNumber, qty, updatedAt, updatedBy
+     FROM inventory
+     ORDER BY partNumber COLLATE NOCASE ASC`,
+    [],
+    (err, rows) => {
+      if (err) return res.status(500).json({ error: 'Failed to list inventory' });
+      res.json(rows || []);
     }
-    async function loadTxns(){
-      const rows = await api(`/api/inventory/${encodeURIComponent(partNumber)}/txns?limit=50`);
-      txnBody.innerHTML = rows.map(r => `
-        <tr>
-          <td>${fmtTs(r.ts)}</td>
-          <td>${r.user || ''}</td>
-          <td>${r.delta > 0 ? '+'+r.delta : r.delta}</td>
-          <td>${r.qtyBefore} → ${r.qtyAfter}</td>
-          <td>${(r.note||'').replace(/</g,'&lt;')}</td>
-        </tr>
-      `).join('');
-    }
-    async function adjust(delta){
-      const note = document.getElementById('note').value.trim();
-      await api(`/api/inventory/${encodeURIComponent(partNumber)}/adjust`, { method: 'POST', body: { delta, note } });
-      await loadSnapshot(); await loadTxns();
-    }
+  );
+});
 
-    // Preset buttons POST immediately (with whatever note is typed)
-    document.querySelectorAll('.pill[data-delta]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const delta = parseInt(btn.getAttribute('data-delta'), 10);
-        adjust(delta).catch(() => alert('Failed to adjust'));
-      });
-    });
-
-    // Custom apply
-    applyBtn.addEventListener('click', () => {
-      const v = parseInt(customDeltaEl.value, 10);
-      if (!validInt(v)) return; // button should be disabled anyway
-      customDeltaEl.value = '';
-      toggleApply();
-      adjust(v).catch(() => alert('Failed to adjust'));
-    });
-
-    loadSnapshot().catch(()=>{});
-    loadTxns().catch(()=>{});
-  </script>
-</body>
-</html>
+module.exports = router;
