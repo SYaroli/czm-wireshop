@@ -1,5 +1,5 @@
 // wireshop-backend/server.js
-// WireShop backend with robust auto-archive, schedule enforcer, fixed admin mapping, and Assignments API mounted.
+// WireShop backend with robust auto-archive, schedule enforcer, fixed admin mapping, Assignments API, and Inventory API.
 
 const path = require("path");
 const express = require("express");
@@ -11,7 +11,8 @@ process.env.TZ = process.env.TZ || "America/New_York";
 const usersRouter = require("./routes/users");
 const jobsRouter = require("./routes/jobs");
 const archiveRouter = require("./routes/archive");
-const assignmentsRouter = require("./routes/assignments"); // ← NEW
+const assignmentsRouter = require("./routes/assignments");
+const inventoryRouter = require("./routes/inventory"); // ← NEW
 const archive = require("./archiveStore");
 const db = require("./db"); // for scheduler + sqlite lookups
 
@@ -48,7 +49,6 @@ function mapRow(r) {
   const start = ms(r.started_at);
   const end   = ms(r.finished_at);
 
-  // Admin expects milliseconds. Convert seconds -> ms. Fallback to end-start if missing.
   const totalMs =
     (r.total_active_sec != null && Number.isFinite(Number(r.total_active_sec)))
       ? Number(r.total_active_sec) * 1000
@@ -184,7 +184,7 @@ app.post("/api/jobs/logs", (req, _res, next) => {
   next();
 });
 
-// ---------- Auto-archive middleware (pulls totals from SQLite if possible) ----------
+// ---------- Auto-archive middleware ----------
 function looksLikeFinish(src = {}, url = "") {
   const u = (url || "").toLowerCase();
   if (u.includes("/finish") || (u.endsWith("/log") && (src.action || "").toLowerCase() === "finish")) return true;
@@ -258,36 +258,29 @@ app.use("/api/jobs", (req, res, next) => {
   next();
 }, jobsRouter);
 
-// ---------- Native archive API (SQLite-powered routes) ----------
+// ---------- Native archive API ----------
 app.use("/api/archive", archiveRouter);
 
 // ---------- Users API ----------
 app.use("/api/users", usersRouter);
 
-// ---------- Assignments API (NEW) ----------
+// ---------- Assignments API ----------
 app.use("/api", assignmentsRouter);
 
-// ---------- Schedule Enforcer (server-side auto pause/continue) ----------
+// ---------- Inventory API (NEW) ----------
+app.use("/api", inventoryRouter);
+
+// ---------- Schedule Enforcer ----------
 const WINDOWS = [
-  { start: "10:00", end: "10:15", flag: 1 }, // break -> autoPaused=1
-  { start: "12:00", end: "12:30", flag: 1 }, // lunch
-  { start: "14:30", end: "14:45", flag: 1 }, // break
-  { start: "17:00", end: "23:59", flag: 2 }  // end of day -> sticky
+  { start: "10:00", end: "10:15", flag: 1 },
+  { start: "12:00", end: "12:30", flag: 1 },
+  { start: "14:30", end: "14:45", flag: 1 },
+  { start: "17:00", end: "23:59", flag: 2 }
 ];
 
-function hmToDateToday(hm) {
-  const [H, M] = hm.split(":").map(n => parseInt(n, 10));
-  const d = new Date(); d.setHours(H, M, 0, 0); return d.getTime();
-}
-function nowInWindow(w) {
-  const n = Date.now();
-  const s = hmToDateToday(w.start), e = hmToDateToday(w.end);
-  return n >= s && n < e;
-}
-function currentPolicy() {
-  for (const w of WINDOWS) if (nowInWindow(w)) return { shouldPause: true, flag: w.flag };
-  return { shouldPause: false, flag: 0 };
-}
+function hmToDateToday(hm) { const [H, M] = hm.split(":").map(n => parseInt(n, 10)); const d = new Date(); d.setHours(H, M, 0, 0); return d.getTime(); }
+function nowInWindow(w) { const n = Date.now(); const s = hmToDateToday(w.start), e = hmToDateToday(w.end); return n >= s && n < e; }
+function currentPolicy() { for (const w of WINDOWS) if (nowInWindow(w)) return { shouldPause: true, flag: w.flag }; return { shouldPause: false, flag: 0 }; }
 
 async function pauseAllActive(flag) {
   const now = Date.now();
@@ -322,7 +315,7 @@ let lastState = null;
 async function scheduleTick() {
   const pol = currentPolicy();
   const key = pol.shouldPause ? `P${pol.flag}` : 'RUN';
-  if (key === lastState) return; // only on state changes
+  if (key === lastState) return;
   lastState = key;
 
   if (pol.shouldPause) await pauseAllActive(pol.flag);
@@ -339,7 +332,8 @@ app.get("/healthz", (_req, res) => {
 const FRONTEND_DIR = path.join(__dirname, "..", "wireshop-frontend");
 app.use(express.static(FRONTEND_DIR));
 app.get("/archive", (_req, res) => res.sendFile(path.join(FRONTEND_DIR, "archive.html")));
-app.get("/assignments", (_req, res) => res.sendFile(path.join(FRONTEND_DIR, "assignments.html"))); // ← NEW
+app.get("/assignments", (_req, res) => res.sendFile(path.join(FRONTEND_DIR, "assignments.html")));
+app.get("/inv/:part", (_req, res) => res.sendFile(path.join(FRONTEND_DIR, "inventory.html"))); // ← NEW
 app.get("/", (_req, res) => res.sendFile(path.join(FRONTEND_DIR, "index.html")));
 
 // ---------- Errors ----------
