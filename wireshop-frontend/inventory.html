@@ -4,6 +4,7 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>CZM • Inventory</title>
+  <!-- root-absolute so /inv/* rewrite doesn't hijack assets -->
   <link rel="stylesheet" href="/style.css"/>
   <style>
     .brand-actions .navbtn{display:inline-block;background:var(--red);color:#fff;padding:8px 12px;border-radius:9px;text-decoration:none;font-weight:700}
@@ -91,13 +92,15 @@
     </div>
   </main>
 
+  <!-- root-absolute so the QR /inv/* path doesn't break it -->
   <script src="/catalog.js"></script>
   <script>
-    // auth gate (same as your other pages) 
+    // Use the same absolute backend as the rest of your app
+    const API_ROOT = 'https://wireshop-backend.onrender.com';
+
+    // auth gate
     const user = (() => { try { return JSON.parse(localStorage.getItem('user')||'{}'); } catch { return {}; } })();
-    if (!user || !user.username) {
-      window.location.href = '/index.html';
-    }
+    if (!user || !user.username) { window.location.href = '/index.html'; }
     document.getElementById('logoutBtn').addEventListener('click', () => {
       localStorage.removeItem('user'); window.location.href = '/index.html';
     });
@@ -129,7 +132,7 @@
     function fmtTs(ms){ if (!ms) return '—'; const d = new Date(ms); return d.toLocaleString(); }
 
     async function api(path, opts={}){
-      const res = await fetch(path, {
+      const res = await fetch(API_ROOT + path, {
         method: opts.method || 'GET',
         headers: { 'Content-Type': 'application/json', 'x-user': user.username },
         body: opts.body ? JSON.stringify(opts.body) : undefined
