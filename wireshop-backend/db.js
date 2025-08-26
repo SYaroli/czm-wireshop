@@ -79,6 +79,25 @@ db.serialize(() => {
     pin TEXT NOT NULL,
     role TEXT NOT NULL CHECK (role IN ('admin','assembler'))
   )`);
+
+  // ===== INVENTORY (snapshot + ledger) =====
+  db.run(`CREATE TABLE IF NOT EXISTS inventory (
+    partNumber TEXT PRIMARY KEY,
+    qty INTEGER NOT NULL DEFAULT 0,
+    updatedAt INTEGER,
+    updatedBy TEXT
+  )`);
+  db.run(`CREATE TABLE IF NOT EXISTS inventory_txns (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    partNumber TEXT NOT NULL,
+    delta INTEGER NOT NULL,
+    qtyBefore INTEGER NOT NULL,
+    qtyAfter INTEGER NOT NULL,
+    note TEXT,
+    user TEXT,
+    ts INTEGER DEFAULT (strftime('%s','now')*1000)
+  )`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_inv_txn_part_ts ON inventory_txns(partNumber, ts DESC)`);
 });
 
 module.exports = db;
