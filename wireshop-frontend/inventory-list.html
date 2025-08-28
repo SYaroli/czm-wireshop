@@ -6,8 +6,8 @@
   <title>CZM • Inventory List</title>
   <link rel="stylesheet" href="/style.css"/>
   <style>
-    .brand-actions .navbtn{display:inline-block;background:var(--red);color:#fff;padding:8px 12px;border-radius:9px;text-decoration:none;font-weight:700}
-    .brand-actions .navbtn:hover{filter:brightness(.92)}
+    .brand-actions .navbtn{display:inline-block;background:#1a1c20;color:#bbb;padding:6px 12px;border-radius:10px;text-decoration:none;border:1px solid #3a3f44;font-weight:600;font-size:.9rem;margin-left:8px}
+    .brand-actions .navbtn.active{background:#b30000;color:#fff;border-color:#ff4d4d}
     .toolbar{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:10px}
     .badge{background:#eee;border:1px solid #ddd;border-radius:8px;padding:4px 8px;font-weight:700}
     .qtycell{font-weight:900;text-align:right}
@@ -32,7 +32,9 @@
       <div class="brand-actions">
         <a class="navbtn" href="/dashboard.html">Dashboard</a>
         <a class="navbtn" href="/assignments.html">Assignments</a>
-        <a class="navbtn" href="/inventory-list.html">Inventory</a>
+        <a class="navbtn active" href="/inventory">Inventory</a>
+        <a class="navbtn" href="/archive.html">Archive</a>
+        <a class="navbtn" href="/admin.html">Admin</a>
         <button id="logoutBtn" class="navbtn">Logout</button>
       </div>
     </div>
@@ -75,7 +77,6 @@
   <script>
     const API_ROOT = 'https://wireshop-backend.onrender.com';
 
-    // auth
     const user = (() => { try { return JSON.parse(localStorage.getItem('user')||'{}'); } catch { return {}; } })();
     if (!user || !user.username) { window.location.href = '/index.html'; }
     document.getElementById('logoutBtn')?.addEventListener('click', () => { localStorage.removeItem('user'); window.location.href = '/index.html'; });
@@ -102,7 +103,6 @@
     async function load(){
       statusEl.textContent = 'Loading…';
 
-      // Catalog baseline
       const catalog = (window.catalog || []).map(c => ({
         pn: String(c.partNumber||'').trim(),
         name: c.printName || '',
@@ -110,7 +110,7 @@
         min: Number(c.minQty || c.min || 0) || 0
       })).filter(r => r.pn);
 
-      // Snapshots from backend
+      // Get snapshots for all parts
       const snap = await api('/api/inventory-all'); // [{partNumber, qty, updatedAt, updatedBy}]
       const invMap = new Map(snap.map(r => [String(r.partNumber), r]));
 
@@ -120,14 +120,13 @@
         return { ...r, qty: s ? (s.qty|0) : 0, updatedAt: s?.updatedAt || 0, updatedBy: s?.updatedBy || '' };
       });
 
-      // any inventory items not present in catalog
       for(const [pn,s] of invMap){
         rows.push({ pn, name:'', loc:'', min:0, qty: s.qty|0, updatedAt:s.updatedAt||0, updatedBy:s.updatedBy||'' });
       }
 
       rows.sort((a,b)=> a.pn.localeCompare(b.pn, undefined, {numeric:true}));
-      statusEl.textContent = `Loaded ${rows.length} items`;
       build();
+      statusEl.textContent = `Loaded ${rows.length} items`;
     }
 
     function rowHtml(r){
@@ -175,11 +174,10 @@
       tbody.innerHTML = filtered.map(rowHtml).join('');
     }
 
-    // event delegation for adjust buttons
+    // adjust handlers (event delegation)
     tbody.addEventListener('click', async (e)=>{
       const btn = e.target.closest('button');
       if(!btn) return;
-
       const tr = e.target.closest('tr');
       const pn = tr?.dataset?.pn;
       if(!pn) return;
@@ -187,27 +185,23 @@
       let delta = null;
       if(btn.classList.contains('apply')){
         const inp = tr.querySelector('input.customDelta');
-        delta = parseInt(inp?.value || '0', 10);
-        if(!Number.isInteger(delta) || delta === 0) return;
-        inp.value = '';
+        delta = parseInt(inp?.value||'0',10);
+        if(!Number.isInteger(delta) || delta===0) return;
+        inp.value='';
       }else{
-        delta = parseInt(btn.getAttribute('data-delta')||'0', 10);
+        delta = parseInt(btn.getAttribute('data-delta')||'0',10);
       }
 
       try{
         await api(`/api/inventory/${encodeURIComponent(pn)}/adjust`, { method:'POST', body:{ delta, note:'' } });
         const d = await api(`/api/inventory/${encodeURIComponent(pn)}`);
-        // update the row live
         tr.querySelector('.qtycell').textContent = d.qty|0;
         tr.querySelector('.qtycell').classList.toggle('low', (d.qty|0) < (rows.find(r=>r.pn===pn)?.min||0));
         tr.querySelector('.updated').textContent = fmtTs(d.updatedAt);
         tr.querySelector('.updatedBy').textContent = d.updatedBy || '';
-        // update cached rows
         const r = rows.find(x=>x.pn===pn);
         if(r){ r.qty = d.qty|0; r.updatedAt = d.updatedAt||0; r.updatedBy = d.updatedBy||''; }
-      }catch(err){
-        alert('Adjust failed.');
-      }
+      }catch(err){ alert('Adjust failed.'); }
     });
 
     qEl.addEventListener('input', build);

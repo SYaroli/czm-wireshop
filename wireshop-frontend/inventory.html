@@ -6,56 +6,35 @@
   <title>CZM • Wireshop Inventory</title>
   <link rel="stylesheet" href="/style.css"/>
   <style>
-    .brand-actions .navbtn{display:inline-block;background:var(--red);color:#fff;padding:8px 12px;border-radius:9px;text-decoration:none;font-weight:700}
-    .brand-actions .navbtn:hover{filter:brightness(.92)}
+    .brand-actions .navbtn{display:inline-block;background:#1a1c20;color:#bbb;padding:6px 12px;border-radius:10px;text-decoration:none;border:1px solid #3a3f44;font-weight:600;font-size:.9rem;margin-left:8px}
+    .brand-actions .navbtn.active{background:#b30000;color:#fff;border-color:#ff4d4d}
     .qty-big{font-size:40px;font-weight:900;margin:0}
     .qty-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-    .pill{
-      padding:14px 20px;border:1px solid #d3d8e1;border-radius:12px;background:#fff;
-      cursor:pointer;font-weight:900;min-width:80px;text-align:center;color:var(--ink);
-      user-select:none;font-size:18px;
-    }
+    .pill{padding:14px 20px;border:1px solid #d3d8e1;border-radius:12px;background:#fff;cursor:pointer;font-weight:900;min-width:80px;text-align:center;color:var(--ink);user-select:none;font-size:18px}
     .pill:hover{filter:brightness(1.03)}
     .mini{font-size:12px;color:var(--muted)}
     .hide{display:none !important}
-
-    /* Top nav pills - smaller version (canonical) */
-    .brand-actions .navbtn{
-      display:inline-block !important;
-      background:#1a1c20 !important;
-      color:#bbb !important;
-      padding:6px 12px !important;
-      border-radius:10px !important;
-      text-decoration:none !important;
-      border:1px solid #3a3f44 !important;
-      font-weight:600 !important;
-      font-size:0.9rem !important;
-      cursor:pointer !important;
-      margin-left:8px !important;
-    }
-    .brand-actions .navbtn:hover{ filter:brightness(1.1) }
-    .brand-actions .navbtn.active{
-      background:#b30000 !important;
-      color:#fff !important;
-      border-color:#ff4d4d !important;
-    }
+    .pnPrompt{display:none;margin-top:10px}
+    .pnPrompt .row{display:flex;gap:8px;margin-top:6px}
+    .pnPrompt input{flex:1;padding:10px;border:1px solid #d3d8e1;border-radius:10px}
+    .pnPrompt button{padding:10px 12px;border-radius:10px;border:1px solid #d3d8e1;background:#f5f7fb;cursor:pointer}
   </style>
 </head>
 <body>
   <div class="brand-bar">
     <div class="brand-inner">
-      <a class="brand-logo" href="dashboard.html">
-        <img src="czm-logo.png" alt="CZM">
+      <a class="brand-logo" href="/dashboard.html">
+        <img src="/czm-logo.png" alt="CZM">
         <h1 class="brand-title">CZM • Wireshop Inventory</h1>
       </a>
       <div class="brand-actions" id="navActions">
-        <a href="dashboard.html" class="navbtn">Dashboard</a>
-        <a href="assignments.html" class="navbtn">Assignments</a>
-        <a href="inventory.html" class="navbtn active">Inventory</a>
-        <a href="archive.html" class="navbtn">Archive</a>
-        <a href="admin.html" class="navbtn">Admin</a>
-        <!-- give logout an id so the listener attaches -->
-        <a id="logoutBtn" href="index.html" class="navbtn">Logout</a>
+        <a href="/dashboard.html" class="navbtn">Dashboard</a>
+        <a href="/assignments.html" class="navbtn">Assignments</a>
+        <!-- Desktop inventory goes to list view; QR keeps using /inv/<pn> which rewrites here -->
+        <a href="/inventory" class="navbtn active">Inventory</a>
+        <a href="/archive.html" class="navbtn">Archive</a>
+        <a href="/admin.html" class="navbtn">Admin</a>
+        <a id="logoutBtn" href="/index.html" class="navbtn">Logout</a>
       </div>
     </div>
   </div>
@@ -69,6 +48,16 @@
         <p>Location: <span id="location">--</span></p>
         <p>Expected Hours: <span id="expected">--</span></p>
         <p class="mini">If any of this looks wrong, fix the catalog later; inventory will still work.</p>
+      </div>
+
+      <!-- Prompt shown when the page is opened directly without a PN -->
+      <div id="pnPrompt" class="info pnPrompt">
+        <label for="pnInput">Enter a Part Number</label>
+        <div class="row">
+          <input id="pnInput" type="text" placeholder="e.g. 40602.5460.000" inputmode="text">
+          <button id="pnGo">Go</button>
+        </div>
+        <p class="mini">Tip: you can also use <code>/inventory.html?part=PN</code> or <code>/inv/PN</code>.</p>
       </div>
     </div>
 
@@ -138,36 +127,23 @@
   <script>
     const API_ROOT = 'https://wireshop-backend.onrender.com';
 
-    // auth gate
+    // auth
     const user = (() => { try { return JSON.parse(localStorage.getItem('user')||'{}'); } catch { return {}; } })();
     if (!user || !user.username) {
       const redir = encodeURIComponent(location.pathname + location.search + location.hash);
       window.location.href = '/index.html?redirect=' + redir;
     }
 
-    // hook logout if present (be null-safe)
-    const logoutBtn = document.getElementById('logoutBtn');
-    if (logoutBtn) {
-      logoutBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        localStorage.removeItem('user');
-        window.location.href = '/index.html';
-      });
-    }
+    // logout
+    document.getElementById('logoutBtn')?.addEventListener('click', (e)=>{
+      e.preventDefault(); localStorage.removeItem('user'); window.location.href='/index.html';
+    });
 
-    // hide optional link by role only if it exists
-    const invListLink = document.getElementById('invListLink');
-    if (invListLink && String(user.role).toLowerCase() !== 'admin') {
-      invListLink.classList.add('hide');
-    }
-
-    // Robust PN extraction: works under subfolders + query fallback + hash
+    // Robust PN extraction: /inv/<pn>, ?part= / ?pn=, or #pn=
     let partNumber = '';
     const segs = location.pathname.split('/').filter(Boolean);
     const invIdx = segs.findIndex(s => s.toLowerCase() === 'inv');
-    if (invIdx >= 0) {
-      partNumber = decodeURIComponent(segs.slice(invIdx + 1).join('/')).trim();
-    }
+    if (invIdx >= 0) partNumber = decodeURIComponent(segs.slice(invIdx + 1).join('/')).trim();
     if (!partNumber) {
       const qs = new URLSearchParams(location.search);
       partNumber = (qs.get('part') || qs.get('pn') || '').trim();
@@ -180,7 +156,29 @@
     document.getElementById('partNumber').textContent = partNumber || '(missing)';
     document.getElementById('partTitle').textContent = `Inventory — ${partNumber || '—'}`;
 
-    // catalog extras (safe)
+    // If no PN, show prompt and remember last PN
+    if (!partNumber) {
+      let last = '';
+      try { last = localStorage.getItem('lastPN') || ''; } catch {}
+      const prompt = document.getElementById('pnPrompt');
+      if (prompt) {
+        prompt.style.display = 'block';
+        const inp = document.getElementById('pnInput');
+        const go = document.getElementById('pnGo');
+        if (inp && last) inp.value = last;
+        function jump(){
+          const pn = (inp?.value || '').trim();
+          if (!pn) return;
+          location.href = '/inv/' + encodeURIComponent(pn);
+        }
+        go?.addEventListener('click', jump);
+        inp?.addEventListener('keydown', e => { if (e.key === 'Enter') jump(); });
+      }
+    } else {
+      try { localStorage.setItem('lastPN', partNumber); } catch {}
+    }
+
+    // catalog extras
     (function fillCatalog(){
       try {
         const row = (window.catalog || []).find(c => String(c.partNumber||'').trim() === partNumber);
@@ -197,17 +195,13 @@
     const txnBody = document.getElementById('txnBody');
     const customDeltaEl = document.getElementById('customDelta');
     const applyBtn = document.getElementById('applyBtn');
-
     const isAdmin = String(user.role).toLowerCase() === 'admin';
-    if (!isAdmin) {
-      document.getElementById('adminExtras').classList.add('hide');
-      document.getElementById('cardHistory').classList.add('hide');
-    }
+    if (!isAdmin) { document.getElementById('adminExtras').classList.add('hide'); document.getElementById('cardHistory').classList.add('hide'); }
 
     function fmtTs(ms){ if (!ms) return '—'; const d = new Date(ms); return d.toLocaleString(); }
     function validInt(v){ const n = Number(v); return Number.isInteger(n) && n !== 0; }
     function toggleApply(){ if (applyBtn) applyBtn.disabled = !validInt(customDeltaEl.value); }
-    if (customDeltaEl) customDeltaEl.addEventListener('input', toggleApply);
+    customDeltaEl?.addEventListener('input', toggleApply);
 
     async function api(path, opts={}){
       const res = await fetch(API_ROOT + path, {
@@ -252,16 +246,13 @@
         adjust(delta).catch(() => alert('Failed to adjust'));
       });
     });
-
-    if (applyBtn) {
-      applyBtn.addEventListener('click', () => {
-        const v = parseInt(customDeltaEl.value, 10);
-        if (!validInt(v)) return;
-        customDeltaEl.value = '';
-        toggleApply();
-        adjust(v).catch(() => alert('Failed to adjust'));
-      });
-    }
+    applyBtn?.addEventListener('click', () => {
+      const v = parseInt(customDeltaEl.value, 10);
+      if (!validInt(v)) return;
+      customDeltaEl.value = '';
+      toggleApply();
+      adjust(v).catch(() => alert('Failed to adjust'));
+    });
 
     loadSnapshot().catch(()=>{});
     loadTxns().catch(()=>{});

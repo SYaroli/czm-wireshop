@@ -1,35 +1,25 @@
-# Wireshop Frontend
+# Wireshop Inventory Patch
 
-Frontend for the Wireshop application, providing user interfaces for dashboard, admin views, catalog, and more. Built with vanilla HTML, CSS, and JavaScript.
+This zip contains two updated pages:
 
-## Tech Stack
-- HTML5
-- CSS3
-- JavaScript (ES6+)
-- Assets: Includes images like czm-logo.png for branding
+- `inventory.html` — robust QR/URL part-number parsing, plus a desktop prompt when opened without a PN. The top nav "Inventory" now points to `/inventory` (list view); QR codes keep using `/inv/<pn>` which Render rewrites to this page.
+- `inventory-list.html` — upgraded list view with inline **adjust** buttons (−5/−1/+1/+5 and custom delta), live updates, and links to the single-item page for scans.
 
-## Installation
-1. Clone the repo: `git clone https://github.com/Syaroli/wireshop-frontend.git`
-2. Open `index.html` in your browser to view locally (no build step needed for now).
-3. For development, use a local server like Live Server in VS Code or `npx http-server` for hot reloading.
+## What changed
+- **inventory.html**
+  - Parses PN from `/inv/<pn>`, `?part=`/`?pn=`, or `#pn=` and tolerates subfolders.
+  - If no PN is present, shows an **Enter Part Number** prompt and remembers the last PN.
+  - Nav "Inventory" links to `/inventory` so desktop users go to the list.
+- **inventory-list.html**
+  - Loads catalog, merges backend snapshots (`/api/inventory-all`), shows Min and Qty.
+  - Inline adjustments post to `/api/inventory/:pn/adjust` and update the row.
 
-## Features
-- **index.html**: Landing page with basic navigation and logo.
-- **dashboard.html**: Main dashboard for summaries and links.
-- **admin.html**: Admin panel for live technician activity monitoring.
-- **catalog.js**: Handles catalog/inventory display logic.
-- **users.js**: User-related functions (e.g., authentication or profiles).
-- **script.js**: Global scripts for API calls and DOM manipulation.
-- **style.css**: Site-wide styling.
+## How to deploy
+1. Back up your current `inventory.html` and `inventory-list.html`.
+2. Replace them with the versions in this zip.
+3. Your Render rules are already set:
+   - `/inv/*` → `/inventory.html`
+   - `/inventory` → `/inventory-list.html`
+4. Hard refresh (Ctrl+F5) after deploy to bust caches.
 
-## Integration with Backend
-- Fetches data from the backend API (e.g., via `fetch()` in script.js).
-- Example: Connect to backend endpoints like `/users` or `/catalog` at `http://localhost:3000` (update base URL as needed).
-
-## Development
-- Environment: No dependencies required, but consider adding tools like ESLint for JS linting.
-- Run locally: Open files in a browser or use a dev server.
-- Testing: Manually test pages or add simple JS unit tests.
-
-## Contributing
-Pull requests welcome! See issues for open tasks.
+Phones keep scanning to `/inv/<pn>` and work as before. Desktop users hit `/inventory` and get the full list with inline edits.
