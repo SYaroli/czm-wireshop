@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8"/>
-  <title>CZM • Wireshop Archive</title>
+  <title>CZM • Completed Jobs</title>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <link rel="stylesheet" href="style.css"/>
   <style>
@@ -39,59 +39,40 @@
     }
     .muted-sm{opacity:.8; font-size:.9rem}
     .inline-input{width:100%; box-sizing:border-box}
-  
-
-    
-/* Top nav pills - smaller version (canonical) */
-.brand-actions .navbtn{
-  display:inline-block !important;
-  background:#1a1c20 !important;
-  color:#bbb !important;
-  padding:6px 12px !important;
-  border-radius:10px !important;
-  text-decoration:none !important;
-  border:1px solid #3a3f44 !important;
-  font-weight:600 !important;
-  font-size:0.9rem !important;
-  cursor:pointer !important;
-  margin-left:8px !important;
-}
-.brand-actions .navbtn:hover{ filter:brightness(1.1) }
-.brand-actions .navbtn.active{
-  background:#b30000 !important;
-  color:#fff !important;
-  border-color:#ff4d4d !important;
-}
-
   </style>
 </head>
 <body>
 
 <script>
-  const isAdmin = (localStorage.getItem('role') || '').toLowerCase() === 'admin';
-  if (!isAdmin) location.replace('dashboard.html');
+(function(){
+  function getRole(){
+    try {
+      var r = (localStorage.getItem('role') || sessionStorage.getItem('role') || '').trim().toLowerCase();
+      return r;
+    } catch(e){ return ''; }
+  }
+  function enforce(){
+    var r = getRole();
+    if (!r) { setTimeout(enforce, 150); return; }  // wait for login script to populate role
+    if (r !== 'admin') location.replace('dashboard.html');
+  }
+  enforce();
+})();
 </script>
 
   <div class="brand-bar">
     <div class="brand-inner">
       <a class="brand-logo" href="dashboard.html">
-        <img src="czm-logo.png" alt="CZM">
-        <h1 class="brand-title">CZM • Wireshop Archive</h1>
+        <img src="czm-logo.png" alt="CZM"/>
+        <h1 class="brand-title">CZM • Completed Jobs</h1>
       </a>
       <div class="brand-actions" id="navActions">
-
-        <a href="dashboard.html" class="navbtn">Dashboard</a>
-        <a href="assignments.html" class="navbtn">Assignments</a>
-        <a href="inventory.html" class="navbtn">Inventory</a>
-        <a href="archive.html" class="navbtn active">Archive</a>
-        <a href="admin.html" class="navbtn">Admin</a>
-        <a href="index.html" class="navbtn">Logout</a>
-    
+        <a class="navbtn" href="dashboard.html">Dashboard</a>
+        <a class="navbtn" href="assignments.html">Assignments</a>
+        <!-- Admin button appears only for admins -->
       </div>
     </div>
   </div>
-
-  
 
   <main class="page">
     <div class="card">
@@ -248,10 +229,8 @@
 
       // admin nav
       const nav = el('navActions');
-      if (nav && !nav.querySelector('.navbtn[href="admin.html"]')) {
-        const a = document.createElement('a'); a.textContent='Admin'; a.href='admin.html'; a.className='navbtn';
-        nav.appendChild(a);
-      }
+      const a = document.createElement('a'); a.textContent='Admin'; a.href='admin.html'; a.className='navbtn';
+      el('navActions')?.appendChild(a);
     });
 
     // --- data cache ---
