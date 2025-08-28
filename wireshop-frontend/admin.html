@@ -43,6 +43,30 @@
       background:#fff !important; color:var(--red) !important; border:2px solid var(--red) !important;
     }
   </style>
+
+<style id="nav-pill-override">
+/* Compact pill buttons, high-specificity, no logic changes */
+.brand-bar .brand-inner .brand-actions a.navbtn{
+  display:inline-block !important;
+  background:#1a1c20 !important;
+  color:#bbb !important;
+  padding:6px 12px !important;
+  border-radius:10px !important;
+  text-decoration:none !important;
+  border:1px solid #3a3f44 !important;
+  font-weight:600 !important;
+  font-size:0.9rem !important;
+  margin-left:8px !important;
+  cursor:pointer !important;
+}
+.brand-bar .brand-inner .brand-actions a.navbtn:hover{ filter:brightness(1.1) !important; }
+.brand-bar .brand-inner .brand-actions a.navbtn.active{
+  background:#b30000 !important;
+  color:#fff !important;
+  border-color:#ff4d4d !important;
+}
+</style>
+
 </head>
 <body>
 
