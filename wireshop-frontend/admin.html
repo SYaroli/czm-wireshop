@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>CZM • Wireshop Admin</title>
+  <title>CZM • Admin Live + Archive</title>
   <link rel="stylesheet" href="style.css"/>
   <style>
     /* Red/white header buttons */
@@ -42,17 +42,6 @@
     .danger-outline{
       background:#fff !important; color:var(--red) !important; border:2px solid var(--red) !important;
     }
-  
-/* Top nav pills - compact */
-.brand-actions .navbtn{
-  display:inline-block;background:#1a1c20;color:#bbb;
-  padding:6px 12px;border-radius:10px;text-decoration:none;
-  border:1px solid #3a3f44;font-weight:600;font-size:.9rem;
-  margin-left:8px;cursor:pointer
-}
-.brand-actions .navbtn:hover{filter:brightness(1.1)}
-.brand-actions .navbtn.active{background:#b30000;color:#fff;border-color:#ff4d4d}
-
   </style>
 </head>
 <body>
@@ -65,11 +54,8 @@
       <div class="brand-actions" id="navActions">
         <a href="dashboard.html" class="navbtn">Dashboard</a>
         <a href="assignments.html" class="navbtn">Assignments</a>
-        <a href="inventory.html" class="navbtn">Inventory</a>
-        <a href="archive.html" class="navbtn">Archive</a>
-        <a href="admin.html" class="navbtn active">Admin</a>
-        <a href="index.html" class="navbtn">Logout</a>
-</div>
+        <button id="clearAllLogs" class="navbtn">Clear Live Logs</button>
+      </div>
     </div>
   </div>
 
