@@ -42,7 +42,31 @@
   border-color:#ff4d4d !important;
 }
 
-  </style>
+  
+/* Inventory compact layout */
+.layout{display:grid;grid-template-columns: 420px 1fr;gap:16px;align-items:start}
+.pane-left .card{margin:0}
+.pane-right .toolbar{display:flex;gap:10px;flex-wrap:wrap;margin:8px 0}
+.pane-right .tablewrap{max-height:60vh;overflow:auto;border:1px solid #e4e7ec;border-radius:12px;background:#fff}
+.pane-right .table{width:100%;border-collapse:separate;border-spacing:0}
+.pane-right .table th,.pane-right .table td{padding:8px 10px;border-bottom:1px solid #eef1f5;font-size:14px}
+.pane-right .table th{position:sticky;top:0;background:#f8f9fb;z-index:1;text-align:left}
+.pane-right .table td:nth-child(4){text-align:right;font-weight:800}
+.badge{background:#eef1f5;border:1px solid #d9dee8;border-radius:8px;padding:4px 8px;font-weight:700}
+.softlink{font-weight:700;text-decoration:none;border:1px dashed #c7cdd8;padding:4px 8px;border-radius:8px;color:#374151}
+.softlink:hover{background:#f6f7fb}
+.totals{margin-bottom:8px}
+.totals-grid{display:grid;grid-template-columns: repeat(5, minmax(0,1fr));gap:10px}
+.totals-card{background:#ffffff;border:1px solid #e4e7ec;border-radius:12px;padding:10px 12px}
+.totals-label{font-size:12px;color:#6b7280;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
+.totals-value{font-size:22px;font-weight:900;color:#111827}
+.totals-value.small{font-size:14px;font-weight:800;color:#374151;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media (max-width: 1100px){
+  .layout{grid-template-columns:1fr}
+  .pane-right .tablewrap{max-height:none}
+  .totals-grid{grid-template-columns: repeat(2, minmax(0,1fr));}
+}
+</style>
 </head>
 <body>
   <div class="brand-bar">
@@ -67,6 +91,9 @@
   
 
   <main class="page">
+<div class="layout">
+  <section class="pane-left">
+
     <div class="card">
       <h2 id="partTitle">Inventory</h2>
       <div class="info" style="margin-top:8px">
@@ -141,9 +168,154 @@
         <tbody id="txnBody"></tbody>
       </table>
     </div>
-  </main>
+  
+  </section>
+  
+    <aside class="pane-right">
+      <section class="totals">
+        <div class="totals-grid">
+          <div class="totals-card">
+            <div class="totals-label">Total SKUs</div>
+            <div class="totals-value" id="t_totalSkus">—</div>
+          </div>
+          <div class="totals-card">
+            <div class="totals-label">On‑hand Qty</div>
+            <div class="totals-value" id="t_totalQty">—</div>
+          </div>
+          <div class="totals-card">
+            <div class="totals-label">Non‑zero</div>
+            <div class="totals-value" id="t_nonZero">—</div>
+          </div>
+          <div class="totals-card">
+            <div class="totals-label">Zero qty</div>
+            <div class="totals-value" id="t_zero">—</div>
+          </div>
+          <div class="totals-card">
+            <div class="totals-label">Last update</div>
+            <div class="totals-value small" id="t_lastUpdate">—</div>
+          </div>
+        </div>
+      </section>
 
-  <script src="/catalog.js"></script>
+      <section class="invlist">
+        <div class="toolbar">
+          <input id="q" placeholder="Search part, name, location" />
+          <label style="font-weight:700"><input type="checkbox" id="nz"> non‑zero only</label>
+          <span class="badge" id="countBadge">0 items</span>
+          <a id="invListLink" href="/inventory-list.html" class="softlink">Open full list</a>
+        </div>
+        <div class="tablewrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Part</th>
+                <th>Name</th>
+                <th>Loc</th>
+                <th style="text-align:right">Qty</th>
+                <th>Updated</th>
+                <th>By</th>
+              </tr>
+            </thead>
+            <tbody id="invBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </aside>
+
+</div>
+</main>
+
+  <script src="/catalog.js">
+// ---- Right pane: totals + list ----
+(function(){
+  const qEl = document.getElementById('q');
+  const nzEl = document.getElementById('nz');
+  const bodyEl = document.getElementById('invBody');
+  const countBadge = document.getElementById('countBadge');
+
+  function fmtTs(ms){ if (!ms) return ''; const d = new Date(ms); return d.toLocaleString(); }
+
+  async function apiList(){
+    const res = await fetch(API_ROOT + '/api/inventory-all', { headers: { 'x-user': user.username }});
+    if (!res.ok) throw new Error('HTTP '+res.status);
+    return res.json();
+  }
+
+  let rows = [];
+
+  function rebuild(){
+    const q = (qEl.value||'').trim().toLowerCase();
+    const onlyNZ = !!nzEl.checked;
+    const filtered = rows.filter(r => {
+      if (onlyNZ && (r.qty|0) === 0) return false;
+      if (!q) return true;
+      return (
+        String(r.partNumber||'').toLowerCase().includes(q) ||
+        String(r.printName||'').toLowerCase().includes(q) ||
+        String(r.location||'').toLowerCase().includes(q)
+      );
+    });
+
+    countBadge.textContent = `${filtered.length} items`;
+    bodyEl.innerHTML = filtered.map(r => `
+      <tr>
+        <td><a href="/inv/${encodeURIComponent(r.partNumber)}">${r.partNumber}</a></td>
+        <td>${(r.printName||'').replace(/</g,'&lt;')}</td>
+        <td>${(r.location||'').replace(/</g,'&lt;')}</td>
+        <td>${r.qty|0}</td>
+        <td>${fmtTs(r.updatedAt)}</td>
+        <td>${(r.updatedBy||'').replace(/</g,'&lt;')}</td>
+      </tr>
+    `).join('');
+  }
+
+  function fillTotals(list){
+    const skuSet = new Set(list.map(r => String(r.partNumber)));
+    const totalQty = list.reduce((a,b)=>a + (b.qty|0), 0);
+    const nonZero = list.filter(r => (r.qty|0) > 0).length;
+    const zero = skuSet.size - nonZero;
+    const last = list.reduce((m,r)=> Math.max(m, r.updatedAt||0), 0);
+
+    document.getElementById('t_totalSkus').textContent = skuSet.size;
+    document.getElementById('t_totalQty').textContent = totalQty;
+    document.getElementById('t_nonZero').textContent = nonZero;
+    document.getElementById('t_zero').textContent = zero;
+    document.getElementById('t_lastUpdate').textContent = last ? fmtTs(last) : '—';
+  }
+
+  async function loadRight(){
+    // merge catalog with current snapshot so we can show name/location even if qty 0
+    const snap = await apiList();
+    const invMap = new Map(snap.map(r => [String(r.partNumber), r]));
+    const cat = Array.isArray(window.catalog) ? window.catalog : [];
+    const merged = [];
+
+    const set = new Set([...invMap.keys(), ...cat.map(c => String(c.partNumber))]);
+    for (const pn of set) {
+      const s = invMap.get(pn) || {};
+      const c = cat.find(x => String(x.partNumber) === pn) || {};
+      merged.push({
+        partNumber: pn,
+        printName: c.printName || '',
+        location: c.location || '',
+        qty: s.qty|0,
+        updatedAt: s.updatedAt || 0,
+        updatedBy: s.updatedBy || ''
+      });
+    }
+
+    rows = merged.sort((a,b)=> a.partNumber.localeCompare(b.partNumber, undefined, {numeric:true}));
+    fillTotals(rows);
+    rebuild();
+  }
+
+  qEl && qEl.addEventListener('input', rebuild);
+  nzEl && nzEl.addEventListener('change', rebuild);
+
+  loadRight().catch(()=>{ /* silent to avoid blocking left pane */ });
+})();
+
+</script>
   <script>
     const API_ROOT = 'https://wireshop-backend.onrender.com';
 
