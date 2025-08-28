@@ -18,30 +18,27 @@
     .pill:hover{filter:brightness(1.03)}
     .mini{font-size:12px;color:var(--muted)}
     .hide{display:none !important}
-  
 
-    
-/* Top nav pills - smaller version (canonical) */
-.brand-actions .navbtn{
-  display:inline-block !important;
-  background:#1a1c20 !important;
-  color:#bbb !important;
-  padding:6px 12px !important;
-  border-radius:10px !important;
-  text-decoration:none !important;
-  border:1px solid #3a3f44 !important;
-  font-weight:600 !important;
-  font-size:0.9rem !important;
-  cursor:pointer !important;
-  margin-left:8px !important;
-}
-.brand-actions .navbtn:hover{ filter:brightness(1.1) }
-.brand-actions .navbtn.active{
-  background:#b30000 !important;
-  color:#fff !important;
-  border-color:#ff4d4d !important;
-}
-
+    /* Top nav pills - smaller version (canonical) */
+    .brand-actions .navbtn{
+      display:inline-block !important;
+      background:#1a1c20 !important;
+      color:#bbb !important;
+      padding:6px 12px !important;
+      border-radius:10px !important;
+      text-decoration:none !important;
+      border:1px solid #3a3f44 !important;
+      font-weight:600 !important;
+      font-size:0.9rem !important;
+      cursor:pointer !important;
+      margin-left:8px !important;
+    }
+    .brand-actions .navbtn:hover{ filter:brightness(1.1) }
+    .brand-actions .navbtn.active{
+      background:#b30000 !important;
+      color:#fff !important;
+      border-color:#ff4d4d !important;
+    }
   </style>
 </head>
 <body>
@@ -52,19 +49,16 @@
         <h1 class="brand-title">CZM • Wireshop Inventory</h1>
       </a>
       <div class="brand-actions" id="navActions">
-
         <a href="dashboard.html" class="navbtn">Dashboard</a>
         <a href="assignments.html" class="navbtn">Assignments</a>
         <a href="inventory.html" class="navbtn active">Inventory</a>
         <a href="archive.html" class="navbtn">Archive</a>
         <a href="admin.html" class="navbtn">Admin</a>
-        <a href="index.html" class="navbtn">Logout</a>
-    
+        <!-- give logout an id so the listener attaches -->
+        <a id="logoutBtn" href="index.html" class="navbtn">Logout</a>
       </div>
     </div>
   </div>
-
-  
 
   <main class="page">
     <div class="card">
@@ -87,7 +81,6 @@
     <div class="card" id="cardAdjust">
       <h2>Adjust</h2>
 
-      <!-- TECH simple: only these four buttons + note -->
       <div class="qty-row" id="techRow" style="margin-bottom:10px">
         <button class="pill" data-delta="-5">−5</button>
         <button class="pill" data-delta="-1">−1</button>
@@ -96,7 +89,6 @@
       </div>
       <p class="mini" id="techHint" style="margin:0 0 8px 2px">Tap a button to post. No extra step.</p>
 
-      <!-- ADMIN extras -->
       <div id="adminExtras">
         <div class="qty-row" style="margin:12px 0 10px">
           <button class="pill" data-delta="-10">−10</button>
@@ -117,7 +109,6 @@
         </div>
       </div>
 
-      <!-- Note field is shared for tech/admin -->
       <div id="noteRow" class="grid cols-1" style="margin-top:10px">
         <div>
           <label for="noteTech" class="mini">Optional Note</label>
@@ -149,34 +140,47 @@
 
     // auth gate
     const user = (() => { try { return JSON.parse(localStorage.getItem('user')||'{}'); } catch { return {}; } })();
-    if (!user || !user.username) { const redir = encodeURIComponent(location.pathname + location.search + location.hash); window.location.href = '/index.html?redirect=' + redir; }
-    document.getElementById('logoutBtn').addEventListener('click', () => {
-      localStorage.removeItem('user'); window.location.href = '/index.html';
-    });
-
-    // show/hide admin link
-    if (String(user.role).toLowerCase() !== 'admin') {
-      document.getElementById('invListLink').classList.add('hide');
+    if (!user || !user.username) {
+      const redir = encodeURIComponent(location.pathname + location.search + location.hash);
+      window.location.href = '/index.html?redirect=' + redir;
     }
 
-   // part from /inv/<part> OR ?part=... (works under subfolders too)
-let partNumber = '';
-const segs = location.pathname.split('/').filter(Boolean);
-const invIdx = segs.indexOf('inv');
-if (invIdx >= 0) {
-  partNumber = decodeURIComponent(segs.slice(invIdx + 1).join('/')).trim();
-}
-// fallback: query param ?part=...
-if (!partNumber) partNumber = new URLSearchParams(location.search).get('part') || '';
-// last resort: hash #pn=<value>
-if (!partNumber && location.hash.startsWith('#pn=')) {
-  partNumber = decodeURIComponent(location.hash.slice(4)).trim();
-}
-document.getElementById('partNumber').textContent = partNumber || '(missing)';
-document.getElementById('partTitle').textContent = `Inventory — ${partNumber || '—'}`;
+    // hook logout if present (be null-safe)
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        localStorage.removeItem('user');
+        window.location.href = '/index.html';
+      });
+    }
 
+    // hide optional link by role only if it exists
+    const invListLink = document.getElementById('invListLink');
+    if (invListLink && String(user.role).toLowerCase() !== 'admin') {
+      invListLink.classList.add('hide');
+    }
 
-    // catalog extras
+    // Robust PN extraction: works under subfolders + query fallback + hash
+    let partNumber = '';
+    const segs = location.pathname.split('/').filter(Boolean);
+    const invIdx = segs.findIndex(s => s.toLowerCase() === 'inv');
+    if (invIdx >= 0) {
+      partNumber = decodeURIComponent(segs.slice(invIdx + 1).join('/')).trim();
+    }
+    if (!partNumber) {
+      const qs = new URLSearchParams(location.search);
+      partNumber = (qs.get('part') || qs.get('pn') || '').trim();
+    }
+    if (!partNumber && location.hash.toLowerCase().startsWith('#pn=')) {
+      partNumber = decodeURIComponent(location.hash.slice(4)).trim();
+    }
+
+    // Update header
+    document.getElementById('partNumber').textContent = partNumber || '(missing)';
+    document.getElementById('partTitle').textContent = `Inventory — ${partNumber || '—'}`;
+
+    // catalog extras (safe)
     (function fillCatalog(){
       try {
         const row = (window.catalog || []).find(c => String(c.partNumber||'').trim() === partNumber);
@@ -195,7 +199,6 @@ document.getElementById('partTitle').textContent = `Inventory — ${partNumber |
     const applyBtn = document.getElementById('applyBtn');
 
     const isAdmin = String(user.role).toLowerCase() === 'admin';
-    // tech view: hide admin extras + history
     if (!isAdmin) {
       document.getElementById('adminExtras').classList.add('hide');
       document.getElementById('cardHistory').classList.add('hide');
@@ -217,12 +220,13 @@ document.getElementById('partTitle').textContent = `Inventory — ${partNumber |
     }
 
     async function loadSnapshot(){
+      if (!partNumber) return;
       const data = await api(`/api/inventory/${encodeURIComponent(partNumber)}`);
       qtyEl.textContent = data.qty ?? 0;
       metaEl.textContent = data.updatedAt ? `${fmtTs(data.updatedAt)} by ${data.updatedBy||'unknown'}` : 'never';
     }
     async function loadTxns(){
-      if (!isAdmin) return;
+      if (!isAdmin || !partNumber) return;
       const rows = await api(`/api/inventory/${encodeURIComponent(partNumber)}/txns?limit=50`);
       txnBody.innerHTML = rows.map(r => `
         <tr>
@@ -236,12 +240,12 @@ document.getElementById('partTitle').textContent = `Inventory — ${partNumber |
     }
 
     async function adjust(delta){
+      if (!partNumber) return alert('Missing part number in URL.');
       const note = (document.getElementById('noteTech')?.value || document.getElementById('note')?.value || '').trim();
       await api(`/api/inventory/${encodeURIComponent(partNumber)}/adjust`, { method: 'POST', body: { delta, note } });
       await loadSnapshot(); await loadTxns();
     }
 
-    // preset buttons (both tech + admin)
     document.querySelectorAll('.pill[data-delta]').forEach(btn => {
       btn.addEventListener('click', () => {
         const delta = parseInt(btn.getAttribute('data-delta'), 10);
@@ -249,7 +253,6 @@ document.getElementById('partTitle').textContent = `Inventory — ${partNumber |
       });
     });
 
-    // custom apply (admin only)
     if (applyBtn) {
       applyBtn.addEventListener('click', () => {
         const v = parseInt(customDeltaEl.value, 10);
