@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>CZM • Wireshop Admin</title>
+  <title>CZM • Admin Live + Archive</title>
   <link rel="stylesheet" href="style.css"/>
   <style>
     /* Red/white header buttons */
@@ -42,53 +42,22 @@
     .danger-outline{
       background:#fff !important; color:var(--red) !important; border:2px solid var(--red) !important;
     }
-  
-
-    
-/* Top nav pills - smaller version (canonical) */
-.brand-actions .navbtn{
-  display:inline-block !important;
-  background:#1a1c20 !important;
-  color:#bbb !important;
-  padding:6px 12px !important;
-  border-radius:10px !important;
-  text-decoration:none !important;
-  border:1px solid #3a3f44 !important;
-  font-weight:600 !important;
-  font-size:0.9rem !important;
-  cursor:pointer !important;
-  margin-left:8px !important;
-}
-.brand-actions .navbtn:hover{ filter:brightness(1.1) }
-.brand-actions .navbtn.active{
-  background:#b30000 !important;
-  color:#fff !important;
-  border-color:#ff4d4d !important;
-}
-
   </style>
 </head>
 <body>
   <div class="brand-bar">
     <div class="brand-inner">
       <a class="brand-logo" href="dashboard.html">
-        <img src="czm-logo.png" alt="CZM">
-        <h1 class="brand-title">CZM • Wireshop Admin</h1>
+        <img src="czm-logo.png" alt="CZM"/>
+        <h1 class="brand-title">CZM • Admin</h1>
       </a>
       <div class="brand-actions" id="navActions">
-
         <a href="dashboard.html" class="navbtn">Dashboard</a>
         <a href="assignments.html" class="navbtn">Assignments</a>
-        <a href="inventory.html" class="navbtn">Inventory</a>
-        <a href="archive.html" class="navbtn">Archive</a>
-        <a href="admin.html" class="navbtn active">Admin</a>
-        <a href="index.html" class="navbtn">Logout</a>
-    
+        <button id="clearAllLogs" class="navbtn">Clear Live Logs</button>
       </div>
     </div>
   </div>
-
-  
 
   <main class="container">
     <!-- Live -->
