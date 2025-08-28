@@ -71,7 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (res.ok){
           const data = await res.json();
           setUser({ username: data.username, role: data.role });
-          window.location.href = 'dashboard.html'; return;
+          const _p=new URLSearchParams(location.search);const _r=_p.get('redirect');window.location.href=_r?_r:'dashboard.html';return;
         }
       }catch{}
 
@@ -83,7 +83,7 @@ document.addEventListener('DOMContentLoaded', () => {
       );
       if (!u){ err.textContent='Invalid username or PIN.'; return; }
       err.textContent=''; setUser({ username: u.username, role: u.role });
-      window.location.href='dashboard.html';
+      const _p=new URLSearchParams(location.search);const _r=_p.get('redirect');window.location.href=_r?_r:'dashboard.html';
     });
   })();
 
