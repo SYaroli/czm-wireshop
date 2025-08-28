@@ -3,22 +3,35 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Dashboard</title>
+  <title>CZM • Wireshop Dashboard</title>
   <link rel="stylesheet" href="style.css"/>
   <style>
-    /* Red buttons with white lettering for nav */
-    .brand-actions .navbtn{
-      display:inline-block !important;
-      background:var(--red) !important;
-      color:#fff !important;
-      padding:8px 12px !important;
-      border-radius:9px !important;
-      text-decoration:none !important;
-      border:0 !important;
-      font-weight:700 !important;
-      cursor:pointer !important;
-    }
+    
     .brand-actions .navbtn:hover{ filter:brightness(.92) }
+  
+
+    
+/* Top nav pills - smaller version (canonical) */
+.brand-actions .navbtn{
+  display:inline-block !important;
+  background:#1a1c20 !important;
+  color:#bbb !important;
+  padding:6px 12px !important;
+  border-radius:10px !important;
+  text-decoration:none !important;
+  border:1px solid #3a3f44 !important;
+  font-weight:600 !important;
+  font-size:0.9rem !important;
+  cursor:pointer !important;
+  margin-left:8px !important;
+}
+.brand-actions .navbtn:hover{ filter:brightness(1.1) }
+.brand-actions .navbtn.active{
+  background:#b30000 !important;
+  color:#fff !important;
+  border-color:#ff4d4d !important;
+}
+
   </style>
 </head>
 <body>
@@ -28,16 +41,20 @@
         <img src="czm-logo.png" alt="CZM">
         <h1 class="brand-title">CZM • Wireshop Dashboard</h1>
       </a>
-      <div class="brand-actions">
-        <!-- Assignments link stays visible to everyone -->
+      <div class="brand-actions" id="navActions">
+
+        <a href="dashboard.html" class="navbtn active">Dashboard</a>
         <a href="assignments.html" class="navbtn">Assignments</a>
-        <!-- Live View keeps the secondary look -->
-        <button id="liveViewBtn" class="secondary">Live View</button>
-        <!-- Logout now red/white -->
-        <button id="logoutBtn" class="navbtn">Logout</button>
+        <a href="inventory.html" class="navbtn">Inventory</a>
+        <a href="archive.html" class="navbtn">Archive</a>
+        <a href="admin.html" class="navbtn">Admin</a>
+        <a href="index.html" class="navbtn">Logout</a>
+    
       </div>
     </div>
   </div>
+
+  
 
   <main class="page">
     <!-- Welcome strip -->

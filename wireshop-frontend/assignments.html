@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>CZM • Assignments</title>
+  <title>CZM • Wireshop Assignments</title>
   <link rel="stylesheet" href="style.css"/>
   <style>
     .brand-actions .navbtn{
@@ -21,6 +21,30 @@
     .brand-actions .navbtn:hover{ filter:brightness(.92) }
     .small{ font-size:.85rem; padding:6px 10px; }
     .table td, .table th { vertical-align: middle; }
+  
+
+    
+/* Top nav pills - smaller version (canonical) */
+.brand-actions .navbtn{
+  display:inline-block !important;
+  background:#1a1c20 !important;
+  color:#bbb !important;
+  padding:6px 12px !important;
+  border-radius:10px !important;
+  text-decoration:none !important;
+  border:1px solid #3a3f44 !important;
+  font-weight:600 !important;
+  font-size:0.9rem !important;
+  cursor:pointer !important;
+  margin-left:8px !important;
+}
+.brand-actions .navbtn:hover{ filter:brightness(1.1) }
+.brand-actions .navbtn.active{
+  background:#b30000 !important;
+  color:#fff !important;
+  border-color:#ff4d4d !important;
+}
+
   </style>
 </head>
 <body>
@@ -28,14 +52,22 @@
     <div class="brand-inner">
       <a class="brand-logo" href="dashboard.html">
         <img src="czm-logo.png" alt="CZM">
-        <h1 class="brand-title">CZM • Assignments</h1>
+        <h1 class="brand-title">CZM • Wireshop Assignments</h1>
       </a>
       <div class="brand-actions" id="navActions">
-        <a class="navbtn" href="dashboard.html">Dashboard</a>
-        <!-- Admin-only buttons will be appended at runtime -->
+
+        <a href="dashboard.html" class="navbtn">Dashboard</a>
+        <a href="assignments.html" class="navbtn active">Assignments</a>
+        <a href="inventory.html" class="navbtn">Inventory</a>
+        <a href="archive.html" class="navbtn">Archive</a>
+        <a href="admin.html" class="navbtn">Admin</a>
+        <a href="index.html" class="navbtn">Logout</a>
+    
       </div>
     </div>
   </div>
+
+  
 
   <main class="page">
     <div id="app" style="display:none;">
@@ -316,22 +348,23 @@
       el('role').textContent = me?.role || '';
 
       // Admin-only nav
-      const bar = navActions();
-      [...bar.querySelectorAll('.navbtn[data-dyn="1"]')].forEach(n => n.remove());
-      if (isAdmin) {
-        bar.appendChild(makeNav('admin.html', 'Admin'));
-        bar.appendChild(makeNav('archive.html', 'Archive'));
-      }
-
+      try {
+        const bar = document.getElementById('navActions');
+        if (isAdmin && bar) {
+          const want = [['admin.html','Admin'], ['archive.html','Archive']];
+          for (const [href,label] of want) {
+            if (!bar.querySelector(`.navbtn[href="${href}"]`)) {
+              const a = document.createElement('a');
+              a.href = href; a.textContent = label; a.className = 'navbtn'; a.dataset.dyn='1';
+              bar.appendChild(a);
+            }
+          }
+        }
+      } catch {}
       // Views
       document.getElementById('adminView').style.display = isAdmin ? 'block' : 'none';
       document.getElementById('techView').style.display   = isAdmin ? 'none' : 'block';
 
-      // Load technicians and parts for admin UI
-      if (isAdmin){
-        await Promise.all([loadTechs(), loadParts()]);
-        wirePartAutoFill();
-      }
 
       // Data
       await Promise.all([loadAssignments(), loadRequests(), loadMine(), bindActions()]);
