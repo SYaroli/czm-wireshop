@@ -3,61 +3,123 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>CZM • Wireshop Dashboard</title>
+  <title>Dashboard</title>
   <link rel="stylesheet" href="style.css"/>
   <style>
-    .navbar {
-      display: flex;
-      align-items: center;
-      background: #0b0d10;
-      padding: 10px 20px;
+    /* Red buttons with white lettering for nav */
+    .brand-actions .navbtn{
+      display:inline-block !important;
+      background:var(--red) !important;
+      color:#fff !important;
+      padding:8px 12px !important;
+      border-radius:9px !important;
+      text-decoration:none !important;
+      border:0 !important;
+      font-weight:700 !important;
+      cursor:pointer !important;
     }
-    .navbar img {
-      height: 40px;
-      margin-right: 15px;
-    }
-    .navbar h1 {
-      font-size: 1.2rem;
-      color: #fff;
-      margin-right: auto;
-    }
-    .navbtn {
-      display: inline-block;
-      margin-left: 10px;
-      padding: 8px 16px;
-      border-radius: 12px;
-      border: 1px solid #444;
-      background: #1a1c20;
-      color: #bbb;
-      font-weight: 600;
-      text-decoration: none;
-    }
-    .navbtn.active {
-      background: #b30000;
-      color: #fff;
-      border-color: #ff4d4d;
-    }
-    .navbtn:hover {
-      background: #333;
-      color: #fff;
-    }
+    .brand-actions .navbtn:hover{ filter:brightness(.92) }
   </style>
 </head>
 <body>
-  <div class="navbar">
-    <img src="czm-logo.png" alt="CZM Logo"/>
-    <h1>CZM • Wireshop Dashboard</h1>
-    <a href="dashboard.html" class="navbtn active">Dashboard</a>
-    <a href="assignments.html" class="navbtn">Assignments</a>
-    <a href="inventory.html" class="navbtn">Inventory</a>
-    <a href="archive.html" class="navbtn">Archive</a>
-    <a href="admin.html" class="navbtn">Admin</a>
-    <a href="index.html" class="navbtn">Logout</a>
+  <div class="brand-bar">
+    <div class="brand-inner">
+      <a class="brand-logo" href="dashboard.html">
+        <img src="czm-logo.png" alt="CZM">
+        <h1 class="brand-title">CZM • Wireshop Dashboard</h1>
+      </a>
+      <div class="brand-actions">
+        <!-- Assignments link stays visible to everyone -->
+        <a href="assignments.html" class="navbtn">Assignments</a>
+        <!-- Live View keeps the secondary look -->
+        <button id="liveViewBtn" class="secondary">Live View</button>
+        <!-- Logout now red/white -->
+        <button id="logoutBtn" class="navbtn">Logout</button>
+      </div>
+    </div>
   </div>
 
-  <div class="content">
-    <!-- your dashboard content here -->
-    <h2>Welcome to the Dashboard</h2>
-  </div>
+  <main class="page">
+    <!-- Welcome strip -->
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <div><strong>Welcome,</strong> <span id="welcomeName"></span></div>
+      </div>
+    </div>
+
+    <!-- Start Job -->
+    <div class="card">
+      <h2>Start Job</h2>
+      <div class="grid cols-3">
+        <div>
+          <label for="partSelect">Part</label>
+          <select id="partSelect">
+            <option value="">-- Select Part --</option>
+          </select>
+        </div>
+        <div class="info">
+          <p>Expected Time: <span id="expectedTime">--</span> hours</p>
+          <p>Notes: <span id="expectedNotes">--</span></p>
+          <p>Location: <span id="expectedLocation">--</span></p>
+          <p>SA#: <span id="expectedSA">--</span></p>
+        </div>
+        <div style="display:flex; align-items:end">
+          <button id="submitLog" style="width:100%;">Start Job</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Active Jobs -->
+    <div class="card">
+      <h2>Active Jobs</h2>
+      <table id="logTable" class="sticky-head">
+        <thead>
+          <tr>
+            <th>Part Number</th>
+            <th>Notes (editable)</th>
+            <th>Action</th>
+            <th>Started</th>
+            <th>Total Time</th>
+          </tr>
+        </thead>
+        <tbody id="logTableBody"></tbody>
+      </table>
+      <div style="display:flex; justify-content:flex-end; margin-top:10px;">
+        <button id="deleteAllLogs" class="danger">Delete All Logs</button>
+      </div>
+    </div>
+
+    <!-- My Completed -->
+    <div class="card">
+      <h2>My Completed</h2>
+      <table class="sticky-head">
+        <thead>
+          <tr>
+            <th>Finished</th>
+            <th>Part Number</th>
+            <th>Print Name</th>
+            <th>Total Time</th>
+            <th>Delete</th>
+          </tr>
+        </thead>
+        <tbody id="myCompletedBody"></tbody>
+      </table>
+      <div style="display:flex; justify-content:flex-end; margin-top:10px;">
+        <button id="clearMyCompleted" class="danger">Clear My Completed</button>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // Set the welcome name from stored login
+    document.addEventListener('DOMContentLoaded', function(){
+      try{
+        var u = JSON.parse(localStorage.getItem('user')||'{}');
+        document.getElementById('welcomeName').textContent = u?.username || '';
+      }catch(e){}
+    });
+  </script>
+  <script src="catalog.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
