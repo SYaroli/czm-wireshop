@@ -66,6 +66,12 @@
   </style>
 </head>
 <body>
+
+<script>
+  const isAdmin = (localStorage.getItem('role') || '').toLowerCase() === 'admin';
+  if (!isAdmin) location.replace('dashboard.html');
+</script>
+
   <div class="brand-bar">
     <div class="brand-inner">
       <a class="brand-logo" href="dashboard.html">
