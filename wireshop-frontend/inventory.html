@@ -159,13 +159,22 @@
       document.getElementById('invListLink').classList.add('hide');
     }
 
-    // part from /inv/<part> OR ?part=
-    const segs = location.pathname.split('/').filter(Boolean);
-    let partNumber = '';
-    if (segs[0] === 'inv') partNumber = decodeURIComponent(segs.slice(1).join('/')).trim();
-    if (!partNumber) partNumber = new URLSearchParams(location.search).get('part') || '';
-    document.getElementById('partNumber').textContent = partNumber || '(missing)';
-    document.getElementById('partTitle').textContent = `Inventory — ${partNumber || '—'}`;
+   // part from /inv/<part> OR ?part=... (works under subfolders too)
+let partNumber = '';
+const segs = location.pathname.split('/').filter(Boolean);
+const invIdx = segs.indexOf('inv');
+if (invIdx >= 0) {
+  partNumber = decodeURIComponent(segs.slice(invIdx + 1).join('/')).trim();
+}
+// fallback: query param ?part=...
+if (!partNumber) partNumber = new URLSearchParams(location.search).get('part') || '';
+// last resort: hash #pn=<value>
+if (!partNumber && location.hash.startsWith('#pn=')) {
+  partNumber = decodeURIComponent(location.hash.slice(4)).trim();
+}
+document.getElementById('partNumber').textContent = partNumber || '(missing)';
+document.getElementById('partTitle').textContent = `Inventory — ${partNumber || '—'}`;
+
 
     // catalog extras
     (function fillCatalog(){
