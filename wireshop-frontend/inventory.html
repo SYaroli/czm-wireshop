@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>CZM • Inventory</title>
+  <title>CZM • Wireshop Inventory</title>
   <link rel="stylesheet" href="/style.css"/>
   <style>
     .brand-actions .navbtn{display:inline-block;background:var(--red);color:#fff;padding:8px 12px;border-radius:9px;text-decoration:none;font-weight:700}
@@ -18,23 +18,53 @@
     .pill:hover{filter:brightness(1.03)}
     .mini{font-size:12px;color:var(--muted)}
     .hide{display:none !important}
+  
+
+    
+/* Top nav pills - smaller version (canonical) */
+.brand-actions .navbtn{
+  display:inline-block !important;
+  background:#1a1c20 !important;
+  color:#bbb !important;
+  padding:6px 12px !important;
+  border-radius:10px !important;
+  text-decoration:none !important;
+  border:1px solid #3a3f44 !important;
+  font-weight:600 !important;
+  font-size:0.9rem !important;
+  cursor:pointer !important;
+  margin-left:8px !important;
+}
+.brand-actions .navbtn:hover{ filter:brightness(1.1) }
+.brand-actions .navbtn.active{
+  background:#b30000 !important;
+  color:#fff !important;
+  border-color:#ff4d4d !important;
+}
+
   </style>
 </head>
 <body>
   <div class="brand-bar">
     <div class="brand-inner">
-      <a class="brand-logo" href="/dashboard.html">
-        <img src="/czm-logo.png" alt="CZM">
-        <h1 class="brand-title">CZM • Inventory</h1>
+      <a class="brand-logo" href="dashboard.html">
+        <img src="czm-logo.png" alt="CZM">
+        <h1 class="brand-title">CZM • Wireshop Inventory</h1>
       </a>
-      <div class="brand-actions">
-        <a class="navbtn" href="/dashboard.html">Dashboard</a>
-        <a class="navbtn" href="/assignments.html">Assignments</a>
-        <a class="navbtn" id="invListLink" href="/inventory-list.html">Inventory</a>
-        <button id="logoutBtn" class="navbtn">Logout</button>
+      <div class="brand-actions" id="navActions">
+
+        <a href="dashboard.html" class="navbtn">Dashboard</a>
+        <a href="assignments.html" class="navbtn">Assignments</a>
+        <a href="inventory.html" class="navbtn active">Inventory</a>
+        <a href="archive.html" class="navbtn">Archive</a>
+        <a href="admin.html" class="navbtn">Admin</a>
+        <a href="index.html" class="navbtn">Logout</a>
+    
       </div>
     </div>
   </div>
+
+  
 
   <main class="page">
     <div class="card">
