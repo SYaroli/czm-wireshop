@@ -12,18 +12,29 @@
     .badge{background:#eee;border:1px solid #ddd;border-radius:8px;padding:4px 8px;font-weight:700}
     .qtycell{font-weight:900;text-align:right}
     .row-actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
-    .pill{padding:6px 10px;min-width:52px;border:1px solid #d3d8e1;border-radius:10px;background:#fff;font-weight:800;cursor:pointer}
-    .pill:hover{filter:brightness(1.03)}
     .custom-wrap{display:flex;gap:6px;align-items:center}
     .custom-wrap input[type=number]{width:84px;padding:6px;border:1px solid #d3d8e1;border-radius:10px}
-    .custom-wrap button{padding:6px 10px;border-radius:10px;border:1px solid #d3d8e1;background:#f5f7fb;cursor:pointer}
+    .apply{
+      padding:6px 14px;
+      border:1px solid #b30000;
+      border-radius:10px;
+      background:#b30000;
+      color:#fff;
+      font-weight:800;
+      cursor:pointer;
+    }
+    .apply:hover:enabled{filter:brightness(1.1)}
+    .apply:disabled{
+      background:#b30000;
+      border-color:#b30000;
+      color:#fff;
+      opacity:0.6;
+      cursor:not-allowed;
+    }
     .status{font-size:12px;color:#666}
     .low{color:#b30000}
     td.updated, td.updatedBy{white-space:nowrap}
-  
-    .apply{padding:6px 14px;border:1px solid #b30000;border-radius:10px;background:#b30000;color:#fff;font-weight:800;cursor:pointer}
-    .apply:hover{filter:brightness(1.1)}
-    </style>
+  </style>
 </head>
 <body>
   <div class="brand-bar">
@@ -66,7 +77,7 @@
             <th style="width:180px">Location</th>
             <th style="width:90px;text-align:right">Min</th>
             <th style="width:90px;text-align:right">Qty</th>
-            <th style="min-width:320px">Adjust</th>
+            <th style="min-width:220px">Adjust</th>
             <th style="width:210px">Updated</th>
             <th style="width:160px">By</th>
           </tr>
@@ -113,8 +124,7 @@
         min: Number(c.minQty || c.min || 0) || 0
       })).filter(r => r.pn);
 
-      // Get snapshots for all parts
-      const snap = await api('/api/inventory-all'); // [{partNumber, qty, updatedAt, updatedBy}]
+      const snap = await api('/api/inventory-all'); 
       const invMap = new Map(snap.map(r => [String(r.partNumber), r]));
 
       rows = catalog.map(r => {
@@ -173,23 +183,17 @@
       tbody.innerHTML = filtered.map(rowHtml).join('');
     }
 
-    // adjust handlers (event delegation)
     tbody.addEventListener('click', async (e)=>{
-      const btn = e.target.closest('button');
+      const btn = e.target.closest('button.apply');
       if(!btn) return;
       const tr = e.target.closest('tr');
       const pn = tr?.dataset?.pn;
       if(!pn) return;
 
-      let delta = null;
-      if(btn.classList.contains('apply')){
-        const inp = tr.querySelector('input.customDelta');
-        delta = parseInt(inp?.value||'0',10);
-        if(!Number.isInteger(delta) || delta===0) return;
-        inp.value='';
-      }else{
-        delta = parseInt(btn.getAttribute('data-delta')||'0',10);
-      }
+      const inp = tr.querySelector('input.customDelta');
+      let delta = parseInt(inp?.value||'0',10);
+      if(!Number.isInteger(delta) || delta===0) return;
+      inp.value='';
 
       try{
         await api(`/api/inventory/${encodeURIComponent(pn)}/adjust`, { method:'POST', body:{ delta, note:'' } });
@@ -207,6 +211,28 @@
     onlyNonZeroEl.addEventListener('change', build);
 
     load().catch(()=> alert('Failed to load inventory list'));
+
+    // --- Auto refresh ---
+    async function refreshVisibleRows(){
+      const trs = Array.from(tbody.querySelectorAll('tr[data-pn]'));
+      for(const tr of trs){
+        const pn = tr.getAttribute('data-pn');
+        try{
+          const d = await api(`/api/inventory/${encodeURIComponent(pn)}`);
+          const min = (rows.find(r=>r.pn===pn)?.min)||0;
+          const qtycell = tr.querySelector('.qtycell');
+          qtycell.textContent = d.qty|0;
+          qtycell.classList.toggle('low', (d.qty|0) < (min|0));
+          tr.querySelector('.updated').textContent = fmtTs(d.updatedAt);
+          tr.querySelector('.updatedBy').textContent = d.updatedBy || '';
+          const r = rows.find(x=>x.pn===pn);
+          if(r){ r.qty = d.qty|0; r.updatedAt = d.updatedAt||0; r.updatedBy = d.updatedBy||''; }
+        }catch(e){}
+      }
+    }
+    setInterval(()=>{ if(!document.hidden) refreshVisibleRows(); }, 15000);
+    document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) refreshVisibleRows(); });
+    window.addEventListener('focus', ()=> refreshVisibleRows());
   </script>
 </body>
 </html>
