@@ -6,7 +6,7 @@
   <title>CZM • Admin Live + Archive</title>
   <link rel="stylesheet" href="style.css"/>
   <style>
-    /* Red/white header buttons */
+    /* Top brand/nav keeps your existing look */
     .brand-actions .navbtn{
       display:inline-block !important;
       background:var(--red) !important;
@@ -14,140 +14,106 @@
       padding:8px 12px !important;
       border-radius:9px !important;
       text-decoration:none !important;
-      border:0 !important;
+      border:1px solid #7f0b0b !important;
       font-weight:700 !important;
-      cursor:pointer !important;
+      margin-left:8px !important;
     }
     .brand-actions .navbtn:hover{ filter:brightness(.92) }
-    .toolbar .muted{opacity:.75}
+    .navbtn.active{ filter:brightness(.85) }
+
+    .toolbar{display:flex;gap:.5rem;flex-wrap:wrap;align-items:end;margin:.25rem 0 .75rem}
+    .muted{opacity:.8}
+    .muted-sm{opacity:.85;font-size:.9rem}
     .table-wrap{overflow:auto}
-    .inline-input{width:100%; box-sizing:border-box}
-    .muted-sm{opacity:.85; font-size:.9rem}
-    .small{ font-size:.85rem; padding:6px 10px; }
+    .inline-input{width:100%;box-sizing:border-box}
+    .small{font-size:.85rem;padding:6px 10px}
+    .danger{background:#b30000;color:#fff;border:1px solid #8a0000;border-radius:9px;padding:8px 12px;cursor:pointer}
+    .danger-outline{background:#fff;color:#b30000;border:1px solid #b30000;border-radius:9px;padding:8px 12px;cursor:pointer}
+    .primary{background:#0b5cff;color:#fff;border:1px solid #0846c4;border-radius:9px;padding:8px 12px;cursor:pointer}
 
     /* Modal */
-    .modal-backdrop{
-      position:fixed; inset:0; background:rgba(0,0,0,.5);
-      display:none; align-items:center; justify-content:center; z-index:1000;
-    }
+    .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:1000}
     .modal{
-      background:#fff; border-radius:12px; width:min(900px, 94vw);
-      box-shadow:0 10px 30px rgba(0,0,0,.25); padding:16px 16px 12px;
+      background:#fff;border-radius:12px;width:min(900px,94vw);
+      box-shadow:0 10px 30px rgba(0,0,0,.25);padding:16px 16px 12px
     }
-    .modal header{display:flex;align-items:center;gap:12px;margin-bottom:10px}
-    .modal h3{margin:0}
-    .modal .grid.cols-3{grid-template-columns:1fr 1fr 1fr}
-    .modal .grid.cols-2{grid-template-columns:1fr 1fr}
-    .modal footer{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
-    .danger-outline{
-      background:#fff !important; color:var(--red) !important; border:2px solid var(--red) !important;
-    }
+    .modal header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem}
+    .modal header h3{margin:0}
+    .modal .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+    .modal footer{display:flex;gap:10px;justify-content:flex-end;margin-top:12px}
+    .tag{display:inline-block;padding:2px 8px;border-radius:999px;background:#eee;border:1px solid #ddd;font-weight:700}
+
+    /* Tables */
+    table.table{width:100%;border-collapse:separate;border-spacing:0 8px}
+    table.table thead th{background:#0f1115;color:#fff;padding:10px;border-top-left-radius:8px;border-top-right-radius:8px}
+    table.table tbody td{background:#fff;padding:10px;border:1px solid #e3e7ef;border-left-width:1px}
+    table.table tbody tr td:first-child{border-top-left-radius:8px;border-bottom-left-radius:8px}
+    table.table tbody tr td:last-child{border-top-right-radius:8px;border-bottom-right-radius:8px}
+
+    /* Status dots */
+    .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
+    .dot.green{background:#22c55e}.dot.gray{background:#94a3b8}
   </style>
-
-<style id="nav-pill-override">
-/* Compact pill buttons, high-specificity, no logic changes */
-.brand-bar .brand-inner .brand-actions a.navbtn{
-  display:inline-block !important;
-  background:#1a1c20 !important;
-  color:#bbb !important;
-  padding:6px 12px !important;
-  border-radius:10px !important;
-  text-decoration:none !important;
-  border:1px solid #3a3f44 !important;
-  font-weight:600 !important;
-  font-size:0.9rem !important;
-  margin-left:8px !important;
-  cursor:pointer !important;
-}
-.brand-bar .brand-inner .brand-actions a.navbtn:hover{ filter:brightness(1.1) !important; }
-.brand-bar .brand-inner .brand-actions a.navbtn.active{
-  background:#b30000 !important;
-  color:#fff !important;
-  border-color:#ff4d4d !important;
-}
-</style>
-
 </head>
 <body>
-
-<script>
-(function(){
-  function getRole(){
-    try {
-      var r = (localStorage.getItem('role') || sessionStorage.getItem('role') || '').trim().toLowerCase();
-      return r;
-    } catch(e){ return ''; }
-  }
-  function enforce(){
-    var r = getRole();
-    if (!r) { setTimeout(enforce, 150); return; }  // wait for login script to populate role
-    if (r !== 'admin') location.replace('dashboard.html');
-  }
-  enforce();
-})();
-</script>
-
   <div class="brand-bar">
     <div class="brand-inner">
       <a class="brand-logo" href="dashboard.html">
-        <img src="czm-logo.png" alt="CZM"/>
+        <img src="czm-logo.png" alt="CZM">
         <h1 class="brand-title">CZM • Admin</h1>
       </a>
-      <div class="brand-actions" id="navActions">
-       <a href="dashboard.html" class="navbtn active">Dashboard</a>
-        <a href="assignments.html" class="navbtn">Assignments</a>
-        <a href="/inventory" class="navbtn">Inventory</a>
-        <a href="archive.html" class="navbtn">Archive</a>
-        <a href="admin.html" class="navbtn">Admin</a>
-        <a href="index.html" class="navbtn">Logout</a>
-        <button id="clearAllLogs" class="navbtn">Clear Live Logs</button>
+      <div class="brand-actions">
+        <a class="navbtn" href="dashboard.html">Dashboard</a>
+        <a class="navbtn" href="assignments.html">Assignments</a>
+        <a class="navbtn" href="/inventory">Inventory</a>
+        <a class="navbtn" href="archive.html">Archive</a>
+        <a class="navbtn active" href="admin.html">Admin</a>
+        <button id="logoutBtn" class="navbtn">Logout</button>
       </div>
     </div>
   </div>
 
-  <main class="container">
-    <!-- Live -->
+  <main class="page">
+    <!-- LIVE -->
     <div class="card">
-      <h2>Live Technician Activity</h2>
+      <h2>Live — Now</h2>
+      <div class="toolbar">
+        <span class="muted-sm"><span class="dot green"></span>auto refresh</span>
+        <button id="btnForceRefresh" class="small">Refresh</button>
+        <button id="btnClearLive" class="danger-outline small">Force finish selected</button>
+        <span id="liveStatus" class="muted-sm"></span>
+      </div>
       <div class="table-wrap">
         <table class="table">
           <thead>
             <tr>
-              <th>Technician</th>
-              <th>Part Number</th>
-              <th>Print Name</th>
-              <th>Expected</th>
+              <th>Tech</th>
+              <th>Part</th>
               <th>Action</th>
-              <th>Notes</th>
-              <th>Time Active</th>
+              <th>Start</th>
+              <th>Note</th>
+              <th>Total Active</th>
+              <th>Controls</th>
             </tr>
           </thead>
-          <tbody id="activityTableBody"></tbody>
+          <tbody id="liveTbody"></tbody>
         </table>
       </div>
-      <div class="muted" id="liveStatus" style="margin-top:.5rem"></div>
     </div>
 
-    <!-- Archive -->
-    <div class="card">
-      <h2>Completed Jobs (Archive)</h2>
-
-      <div class="toolbar" style="display:flex;gap:.75rem;flex-wrap:wrap;align-items:end;margin-bottom:.5rem">
-        <div><label>Technician<br/>
-          <select id="fltTech"><option value="">All</option></select></label>
+    <!-- ARCHIVE -->
+    <div class="card" style="margin-top:16px">
+      <h2>Archive — Completed Jobs</h2>
+      <div class="toolbar">
+        <label>Tech<br><input id="fltTech" class="inline-input" placeholder="username"></label>
+        <label>Part #<br><input id="fltPart" class="inline-input" placeholder="40602.2083.000"></label>
+        <label>From<br><input id="fltFrom" type="date" class="inline-input"></label>
+        <label>To<br><input id="fltTo" type="date" class="inline-input"></label>
+        <div style="display:flex;gap:8px;align-items:end">
+          <button id="btnApply" class="small">Apply</button>
+          <button id="btnReset" class="small">Reset</button>
+          <button id="btnExport" class="small">Export CSV</button>
         </div>
-        <div><label>Part # contains<br/>
-          <input id="fltPart" type="text" placeholder="e.g. 44602"/></label>
-        </div>
-        <div><label>From date<br/><input id="fltFrom" type="date"/></label></div>
-        <div><label>To date<br/><input id="fltTo" type="date"/></label></div>
-        <button id="btnApply" class="navbtn small">Apply</button>
-        <button id="btnReset" class="navbtn small">Reset</button>
-        <button id="btnCsv" class="navbtn small">Export CSV</button>
-        <a href="https://wireshop-backend.onrender.com/archive"
-           target="_blank" rel="noopener"
-           class="navbtn small">Archive Backup</a>
-        <div style="margin-left:auto;opacity:.8"><span id="rowCount">0</span> records</div>
       </div>
 
       <div class="table-wrap">
@@ -171,7 +137,7 @@
     </div>
 
     <!-- Users -->
-    <div class="card" id="usersCard">
+    <div class="card" id="usersCard" style="margin-top:16px">
       <h2>Users</h2>
       <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:end;margin:.25rem 0 .75rem">
         <label>Username<br><input id="uName" type="text" placeholder="firstname.lastname"/></label>
@@ -180,44 +146,42 @@
           <select id="uRole">
             <option value="assembler">assembler</option>
             <option value="tech">tech</option>
+            <option value="lead">lead</option>
             <option value="admin">admin</option>
           </select>
         </label>
-        <button id="btnAddUser" class="navbtn">Add User</button>
-        <div id="uMsg" style="margin-left:auto;opacity:.8"></div>
+        <button id="btnAddUser" class="primary small">Add</button>
       </div>
       <div class="table-wrap">
         <table class="table">
-          <thead><tr><th>Username</th><th>Role</th><th>Delete</th></tr></thead>
-          <tbody id="usersTableBody"></tbody>
+          <thead><tr><th>Username</th><th>Role</th><th>Actions</th></tr></thead>
+          <tbody id="usersBody"></tbody>
         </table>
       </div>
     </div>
   </main>
 
-  <!-- EDIT MODAL -->
-  <div id="editBackdrop" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="editTitle">
-    <div class="modal">
+  <!-- Edit modal -->
+  <div class="modal-backdrop" id="editBackdrop" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="editTitle">
       <header>
-        <h3 id="editTitle">Edit Completed Job</h3>
-        <div class="muted-sm" id="editId"></div>
-        <div class="spacer"></div>
-        <button id="closeEdit" class="secondary">Close</button>
+        <h3 id="editTitle">Edit Completed Job <span class="muted tag" id="editId"></span></h3>
+        <button id="closeEdit" class="danger-outline small">Close</button>
       </header>
 
-      <div class="grid cols-3">
+      <div class="grid" style="margin-bottom:10px">
         <label>Technician
-          <input id="e_user" type="text" class="inline-input" />
+          <input id="e_user" type="text" class="inline-input"/>
         </label>
         <label>Part Number
-          <input id="e_part" type="text" class="inline-input" />
+          <input id="e_part" type="text" class="inline-input"/>
         </label>
         <label>Print Name
-          <input id="e_print" type="text" class="inline-input" />
+          <input id="e_print" type="text" class="inline-input"/>
         </label>
 
         <label>Expected Hours
-          <input id="e_expected_hours" type="number" step="0.25" min="0" class="inline-input"/>
+          <input id="e_exp" type="number" step="0.01" class="inline-input"/>
         </label>
         <label>Total Active (hh:mm)
           <input id="e_total_hhmm" type="text" placeholder="e.g. 1:30" class="inline-input"/>
@@ -242,25 +206,41 @@
     </div>
   </div>
 
+  <!-- Admin gate -->
+  <script>
+  (function(){
+    function getRole(){
+      try {
+        var u = JSON.parse(localStorage.getItem('user')||'{}');
+        return (u.role||'').toLowerCase();
+      } catch(e){ return ''; }
+    }
+    function enforce(){
+      var r = getRole();
+      if (!r) { setTimeout(enforce, 150); return; }
+      if (r !== 'admin') location.replace('dashboard.html');
+    }
+    enforce();
+  })();
+  </script>
+
+  <!-- App logic -->
   <script>
   (function(){
     const API_ROOT = 'https://wireshop-backend.onrender.com';
     const API = {
-      jobs:    `${API_ROOT}/api/jobs`,
+      live:    `${API_ROOT}/api/jobs/live`,
+      force:   `${API_ROOT}/api/jobs/log`,
       users:   `${API_ROOT}/api/users`,
       archive: `${API_ROOT}/api/jobs/archive`
     };
 
-    // ---------- auth helpers ----------
     const getUser = () => { try { return JSON.parse(localStorage.getItem('user')) || null; } catch { return null; } };
     const username = () => (getUser()?.username || '');
     const isAdmin = () => String(getUser()?.role||'').toLowerCase() === 'admin';
     const headers = () => ({ 'Content-Type': 'application/json', 'x-user': username() });
 
-    // Gate: only admins here
-    document.addEventListener('DOMContentLoaded', () => {
-      if (!isAdmin()) { window.location.href = 'dashboard.html'; }
-    });
+    document.getElementById('logoutBtn')?.addEventListener('click', ()=>{ localStorage.removeItem('user'); location.href='index.html'; });
 
     // ---------- utils ----------
     function fmtMS(ms){
@@ -280,8 +260,7 @@
       if (!ts) return '';
       const d = new Date(ts);
       const off = d.getTimezoneOffset();
-      const local = new Date(d.getTime() - off*60000).toISOString().slice(0,16);
-      return local; // yyyy-MM-ddTHH:mm
+      return new Date(d.getTime() - off*60000).toISOString().slice(0,16); // yyyy-MM-ddTHH:mm
     };
     const fromLocalInput = (val)=>{
       if (!val) return null;
@@ -294,56 +273,47 @@
       const m = String(hhmm).trim().match(/^(\d+)(?::(\d{1,2}))?$/);
       if (!m) return null;
       const h = parseInt(m[1],10);
-      const mm = parseInt(m[2]||'0',10);
-      if (mm>=60) return null;
-      return h*60 + mm;
+      const mm = parseInt(m[2] ?? '0', 10);
+      if (!Number.isFinite(h) || !Number.isFinite(mm)) return null;
+      return h*60 + Math.max(0, Math.min(59, mm));
     }
 
-    // ---------- LIVE VIEW ----------
-    let liveTimer = null;
-    async function loadLive(){
-      const stat = document.getElementById('liveStatus');
+    // ---------- LIVE ----------
+    async function fetchLive(){
       try{
-        const res = await fetch(`${API.jobs}/logs`, { headers: headers() });
-        if (!res.ok){ stat.textContent = 'Live fetch failed'; return; }
-        const rows = await res.json();
-
-        const tbody = document.getElementById('activityTableBody');
-        tbody.innerHTML = '';
-
-        const now = Date.now();
-        rows.forEach(r=>{
-          const pausedExtra = r.pauseStart ? (now - (r.pauseStart||now)) : 0;
-          const totalActive = Math.max(0, (now - (r.startTime||now)) - (r.pauseTotal||0) - pausedExtra);
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td>${r.username||''}</td>
-            <td>${r.partNumber||''}</td>
-            <td>${r.printName||''}</td>
-            <td>${r.expected ?? ''}</td>
-            <td>${r.action||''}</td>
-            <td>${r.note||''}</td>
-            <td>${fmtMS(totalActive)}</td>`;
-          tbody.appendChild(tr);
-        });
-
-        stat.textContent = rows.length ? `Updated ${new Date().toLocaleTimeString()}` : 'No active jobs';
-      }catch(e){
-        document.getElementById('liveStatus').textContent = 'Live fetch error';
-      }
+        const r = await fetch(API.live, { headers: headers() });
+        if (!r.ok) throw new Error();
+        return await r.json();
+      }catch{ return []; }
     }
-    function startLivePolling(){
-      clearInterval(liveTimer);
-      loadLive();
-      liveTimer = setInterval(loadLive, 4000);
+    function renderLive(list){
+      const tb = document.getElementById('liveTbody');
+      tb.innerHTML = '';
+      list.forEach(r=>{
+        const tr = document.createElement('tr');
+        const totalActive = Math.max(0, (Date.now() - (r.startTime||Date.now())) - (r.pauseTotal||0));
+        tr.innerHTML = `
+          <td>${r.username||''}</td>
+          <td>${r.partNumber||''}</td>
+          <td>${r.action||''}</td>
+          <td>${r.startTime ? new Date(r.startTime).toLocaleString() : ''}</td>
+          <td>${(r.note||'').replace(/\n/g,' ')}</td>
+          <td>${fmtMS(totalActive)}</td>
+          <td><button class="small danger-outline" data-finish="${r.id}">Force finish</button></td>`;
+        tb.appendChild(tr);
+      });
+      document.getElementById('liveStatus').textContent = `${list.length} active`;
     }
-
-    // Clear all live logs
-    document.getElementById('clearAllLogs').addEventListener('click', async ()=>{
-      if (!confirm('Clear ALL live logs?')) return;
+    async function loadLive(){ renderLive(await fetchLive()); }
+    let liveTimer = setInterval(()=>{ if(!document.hidden) loadLive(); }, 10000);
+    document.getElementById('btnForceRefresh').addEventListener('click', loadLive);
+    document.getElementById('liveTbody').addEventListener('click', async (e)=>{
+      const id = e.target?.dataset?.finish;
+      if (!id) return;
+      if (!confirm('Force finish this log now?')) return;
       try{
-        const res = await fetch(`${API.jobs}/admin/clear-logs`, { method:'DELETE', headers: headers() });
-        if (res.ok) loadLive();
+        const r = await fetch(`${API_ROOT}/api/jobs/log/${id}/force-finish`, { method:'POST', headers: headers(), body: JSON.stringify({ note:'admin force finish' }) });
+        if (r.ok) loadLive();
       }catch{}
     });
 
@@ -359,75 +329,73 @@
         note: r.note ?? r.notes ?? '',
         startTime: r.startTime ?? r.startedAt ?? r.started_at ?? null,
         endTime: r.endTime ?? r.finishedAt ?? r.finished_at ?? null,
+        pauseTotal: r.pauseTotal ?? r.pause_total ?? 0,
         totalActiveMs: (r.totalActive ?? r.total_active_ms ?? (Number.isFinite(r.total_active_sec) ? r.total_active_sec*1000 : null)) ?? null,
         finishedAt: r.finishedAt ?? r.finished_at ?? r.endTime ?? null
       };
     }
     async function fetchArchive(){
-      const res = await fetch(API.archive, { headers: headers() });
-      if (!res.ok) return [];
-      const list = await res.json();
-      archiveCache = Array.isArray(list) ? list.map(normalizeRow) : [];
-      return archiveCache;
+      try{
+        const res = await fetch(API.archive, { headers: headers() });
+        if (!res.ok) return [];
+        const list = await res.json();
+        archiveCache = Array.isArray(list) ? list.map(normalizeRow) : [];
+        return archiveCache;
+      }catch{ return []; }
     }
     function applyArchiveFilters(){
       const tech = document.getElementById('fltTech').value.trim().toLowerCase();
       const part = document.getElementById('fltPart').value.trim().toLowerCase();
-      const from = document.getElementById('fltFrom').value ? new Date(document.getElementById('fltFrom').value).getTime() : -Infinity;
-      const to = document.getElementById('fltTo').value ? new Date(document.getElementById('fltTo').value).getTime()+86400000 : Infinity;
+      const from = document.getElementById('fltFrom').value;
+      const to   = document.getElementById('fltTo').value;
+      const fromMs = from ? new Date(from+'T00:00').getTime() : null;
+      const toMs   = to   ? new Date(to+'T23:59').getTime()   : null;
 
-      let rows = archiveCache.slice();
-      if (tech) rows = rows.filter(r => String(r.username||'').toLowerCase() === tech);
-      if (part) rows = rows.filter(r => String(r.partNumber||'').toLowerCase().includes(part));
-      rows = rows.filter(r => {
-        const t = r.finishedAt || r.endTime || 0;
-        return t >= from && t < to;
+      return archiveCache.filter(r=>{
+        if (tech && !String(r.username||'').toLowerCase().includes(tech)) return false;
+        if (part && !String(r.partNumber||'').toLowerCase().includes(part)) return false;
+        const finished = r.finishedAt ?? r.endTime ?? r.startTime ?? 0;
+        if (fromMs && finished < fromMs) return false;
+        if (toMs && finished > toMs) return false;
+        return true;
       });
-      return rows;
-    }
-    function renderTechFilter(){
-      const sel = document.getElementById('fltTech');
-      const names = Array.from(new Set(archiveCache.map(r=>String(r.username||'')).filter(Boolean))).sort();
-      sel.innerHTML = '<option value="">All</option>' + names.map(n=>`<option value="${n}">${n}</option>`).join('');
     }
     function renderArchive(){
-      const rows = applyArchiveFilters();
-      const tbody = document.getElementById('archiveTableBody');
-      tbody.innerHTML = '';
-      rows.forEach(r=>{
+      const list = applyArchiveFilters();
+      const tb = document.getElementById('archiveTableBody');
+      tb.innerHTML = '';
+      list.forEach(r=>{
         const tr = document.createElement('tr');
-        const expectedHours = Number.isFinite(r.expectedMinutes) ? (r.expectedMinutes/60) : '';
         tr.innerHTML = `
           <td>${r.finishedAt ? new Date(r.finishedAt).toLocaleString() : ''}</td>
           <td>${r.username||''}</td>
           <td>${r.partNumber||''}</td>
           <td>${r.printName||''}</td>
-          <td>${expectedHours!=='' ? expectedHours : ''}</td>
-          <td>${r.note ? String(r.note).replace(/\n/g,' ') : ''}</td>
+          <td>${r.expectedMinutes!=null ? (r.expectedMinutes/60).toFixed(2) : ''}</td>
+          <td>${(r.note||'').replace(/\n/g,' ')}</td>
           <td>${r.totalActiveMs!=null ? fmtMS(r.totalActiveMs) : ''}</td>
           <td>
-            <button class="secondary small" data-edit="${r.id}">Edit</button>
-            <button class="danger small" data-del="${r.id}">Delete</button>
+            <button class="small" data-edit="${r.id}">Edit</button>
+            <button class="danger-outline small" data-del="${r.id}">Delete</button>
           </td>`;
-        tbody.appendChild(tr);
+        tb.appendChild(tr);
       });
-      document.getElementById('rowCount').textContent = String(rows.length);
-      document.getElementById('archStatus').textContent = rows.length ? '' : 'No records with current filters.';
+      document.getElementById('archStatus').textContent = `${list.length} rows`;
     }
-    async function loadArchive(){
-      document.getElementById('archStatus').textContent = 'Loading...';
-      await fetchArchive();
-      renderTechFilter();
+    async function loadArchive(){ await fetchArchive(); renderArchive(); }
+    document.getElementById('btnApply').addEventListener('click', renderArchive);
+    document.getElementById('btnReset').addEventListener('click', ()=>{
+      document.getElementById('fltTech').value='';
+      document.getElementById('fltPart').value='';
+      document.getElementById('fltFrom').value='';
+      document.getElementById('fltTo').value='';
       renderArchive();
-      document.getElementById('archStatus').textContent = '';
-    }
-
-    // CSV
-    document.getElementById('btnCsv').addEventListener('click', ()=>{
-      const rows = applyArchiveFilters();
-      const header = ['Finished','Technician','Part Number','Print Name','Expected Hours','Notes','Total Active'];
-      const body = rows.map(r=>{
-        const h = Number.isFinite(r.expectedMinutes) ? (r.expectedMinutes/60) : '';
+    });
+    document.getElementById('btnExport').addEventListener('click', ()=>{
+      const list = applyArchiveFilters();
+      const header = ['Finished','Technician','Part Number','Print Name','Expected (hrs)','Notes','Total Active'];
+      const body = list.map(r=>{
+        const h = r.expectedMinutes!=null ? (r.expectedMinutes/60).toFixed(2) : '';
         const total = r.totalActiveMs!=null ? fmtMS(r.totalActiveMs) : '';
         return [
           r.finishedAt ? new Date(r.finishedAt).toLocaleString() : '',
@@ -446,22 +414,14 @@
       a.download = `archive_export_${Date.now()}.csv`;
       a.click();
     });
-    document.getElementById('btnApply').addEventListener('click', renderArchive);
-    document.getElementById('btnReset').addEventListener('click', ()=>{
-      document.getElementById('fltTech').value='';
-      document.getElementById('fltPart').value='';
-      document.getElementById('fltFrom').value='';
-      document.getElementById('fltTo').value='';
-      renderArchive();
-    });
 
-    // Modal wiring
-    const $back = document.getElementById('editBackdrop');
+    // ---------- Modal wiring ----------
+    const $back  = document.getElementById('editBackdrop');
     const $id    = document.getElementById('editId');
     const $user  = document.getElementById('e_user');
     const $part  = document.getElementById('e_part');
     const $print = document.getElementById('e_print');
-    const $expH  = document.getElementById('e_expected_hours');
+    const $expH  = document.getElementById('e_exp');
     const $note  = document.getElementById('e_note');
     const $hhmm  = document.getElementById('e_total_hhmm');
     const $start = document.getElementById('e_start');
@@ -483,10 +443,8 @@
       $end.value   = toLocalInput(row.endTime || row.finishedAt);
       $back.style.display = 'flex';
     }
-    function closeEdit(){
-      $back.style.display = 'none';
-      EDIT = null;
-    }
+    function closeEdit(){ $back.style.display='none'; EDIT=null; }
+
     async function saveEdit(){
       if (!EDIT) return;
       const id = EDIT.id;
@@ -497,28 +455,39 @@
         printName: ($print.value.trim() || null),
         note: ($note.value.trim() || null)
       };
+
       const hours = $expH.value ? Number($expH.value) : null;
       if (hours!=null && !Number.isNaN(hours)) body.expectedMinutes = Math.round(hours*60);
 
-      const startTime = fromLocalInput($start.value);
-      const endTime   = fromLocalInput($end.value);
-      if (Number.isFinite(startTime)) body.startTime = startTime;
-      if (Number.isFinite(endTime))   body.endTime   = endTime;
+      const startInput = fromLocalInput($start.value);
+      const endInput   = fromLocalInput($end.value);
+      const baseStart  = Number.isFinite(startInput) ? startInput : (EDIT.startTime || null);
+      const baseEnd    = Number.isFinite(endInput)   ? endInput   : (EDIT.endTime   || EDIT.finishedAt || null);
+      const basePause  = Number.isFinite(EDIT.pauseTotal) ? EDIT.pauseTotal : 0;
 
       const mins = hhmmToMinutes($hhmm.value.trim());
-      if (mins!=null) body.totalSec = Math.round(mins*60); // some backends want seconds
+      if (mins != null) {
+        if (!Number.isFinite(baseStart)) { alert('Need a valid start time to set Total Active.'); return; }
+        const targetMs = Math.max(0, mins * 60 * 1000);
+        body.startTime = baseStart;
+        body.endTime   = baseStart + basePause + targetMs;
+      } else {
+        if (Number.isFinite(startInput)) body.startTime = startInput;
+        if (Number.isFinite(endInput))   body.endTime   = endInput;
+      }
+
+      body.reason = 'admin edit (set total active)';
 
       let ok = false;
       try{
-        const r = await fetch(`${API.archive}/${id}`, { method:'PATCH', headers: headers(), body: JSON.stringify(body) });
-        ok = r.ok;
+        const r2 = await fetch(`${API.archive}/${id}/adjust`, {
+          method:'POST',
+          headers: headers(),
+          body: JSON.stringify(body)
+        });
+        ok = r2.ok;
       }catch{}
-      if (!ok){
-        try{
-          const r2 = await fetch(`${API.archive}/${id}/adjust`, { method:'POST', headers: headers(), body: JSON.stringify(body) });
-          ok = r2.ok;
-        }catch{}
-      }
+
       if (ok){
         closeEdit();
         await loadArchive();
@@ -526,6 +495,7 @@
         alert('Update failed.');
       }
     }
+
     async function deleteEdit(){
       if (!EDIT) return;
       if (!confirm('Delete this archive record?')) return;
@@ -534,13 +504,6 @@
         const r = await fetch(`${API.archive}/${EDIT.id}`, { method:'DELETE', headers: headers() });
         ok = r.ok;
       }catch{}
-      if (!ok){
-        try{
-          const reason = 'admin delete';
-          const r2 = await fetch(`${API.archive}/${EDIT.id}/delete`, { method:'POST', headers: headers(), body: JSON.stringify({ reason }) });
-          ok = r2.ok;
-        }catch{}
-      }
       if (ok){
         closeEdit();
         await loadArchive();
@@ -553,10 +516,7 @@
       const idEdit = e.target?.dataset?.edit;
       const idDel  = e.target?.dataset?.del;
       if (idEdit) openEditById(idEdit);
-      if (idDel){
-        EDIT = { id: idDel };
-        deleteEdit();
-      }
+      if (idDel){ EDIT = { id: idDel }; deleteEdit(); }
     });
     document.getElementById('closeEdit').addEventListener('click', closeEdit);
     document.getElementById('saveEdit').addEventListener('click', saveEdit);
@@ -568,7 +528,7 @@
         const res = await fetch(`${API.users}`, { headers: headers() });
         if (!res.ok) return;
         const list = await res.json();
-        const tbody = document.getElementById('usersTableBody');
+        const tbody = document.getElementById('usersBody');
         tbody.innerHTML = '';
         list.forEach(u=>{
           const tr = document.createElement('tr');
@@ -584,25 +544,13 @@
       const name = document.getElementById('uName').value.trim();
       const pin  = document.getElementById('uPin').value.trim();
       const role = document.getElementById('uRole').value;
-      if (!name || !pin){ document.getElementById('uMsg').textContent='username & pin required'; return; }
+      if (!name || !pin) return alert('username + pin required');
       try{
-        const res = await fetch(`${API.users}`, {
-          method:'POST', headers: headers(),
-          body: JSON.stringify({ username: name, pin, role })
-        });
-        if (res.ok){
-          document.getElementById('uMsg').textContent='User added';
-          document.getElementById('uName').value='';
-          document.getElementById('uPin').value='';
-          document.getElementById('uRole').value='assembler';
-          loadUsers();
-        }else{
-          const j = await res.json().catch(()=>({}));
-          document.getElementById('uMsg').textContent = j.error || 'Add failed';
-        }
+        const res = await fetch(`${API.users}`, { method:'POST', headers: headers(), body: JSON.stringify({ username:name, pin, role }) });
+        if (res.ok){ document.getElementById('uName').value=''; document.getElementById('uPin').value=''; await loadUsers(); }
       }catch{}
     });
-    document.getElementById('usersTableBody').addEventListener('click', async (e)=>{
+    document.getElementById('usersBody').addEventListener('click', async (e)=>{
       const id = e.target?.dataset?.uid;
       if (!id) return;
       if (!confirm('Delete this user?')) return;
@@ -615,8 +563,7 @@
     // ---------- boot ----------
     async function boot(){
       if (!isAdmin()) return;
-      await Promise.all([loadUsers(), loadArchive()]);
-      startLivePolling();
+      await Promise.all([loadUsers(), loadArchive(), loadLive()]);
     }
     boot();
   })();
