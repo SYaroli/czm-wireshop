@@ -1,11 +1,28 @@
 {
   "routes": [
-    { "src": "^/inv/.*$", "dest": "/inventory.html" },
-
-    { "src": "^/admin$", "dest": "/admin.html" },
-    { "src": "^/archive$", "dest": "/archive.html" },
-    { "src": "^/assignments$", "dest": "/assignments.html" },
-
-    { "src": "^/$", "dest": "/index.html" }
+    {
+      "src": "^/inv/.*$",
+      "dest": "/inventory.html"
+    },
+    {
+      "src": "^/inventory$",
+      "dest": "/inventory-list.html"
+    },
+    {
+      "src": "^/admin$",
+      "dest": "/admin.html"
+    },
+    {
+      "src": "^/archive$",
+      "dest": "/archive.html"
+    },
+    {
+      "src": "^/assignments$",
+      "dest": "/assignments.html"
+    },
+    {
+      "src": "^/$",
+      "dest": "/index.html"
+    }
   ]
 }
