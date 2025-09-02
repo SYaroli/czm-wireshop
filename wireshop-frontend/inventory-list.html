@@ -12,7 +12,7 @@
     .badge{background:#eee;border:1px solid #ddd;border-radius:8px;padding:4px 8px;font-weight:700}
     .qtycell{font-weight:900;text-align:right}
     .row-actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
-    .pill{padding:6px 10px;min-width:52px;border:1px solid #d3d8e1;border-radius:10px;background:#fff;font-weight:800;cursor:pointer}
+    .pill{color:#111;background:#f3f4f6;border-color:#b9c0c7;padding:6px 10px;min-width:52px;border:1px solid #d3d8e1;border-radius:10px;background:#fff;font-weight:800;cursor:pointer}
     .pill:hover{filter:brightness(1.03)}
     .custom-wrap{display:flex;gap:6px;align-items:center}
     .custom-wrap input[type=number]{width:84px;padding:6px;border:1px solid #d3d8e1;border-radius:10px}
@@ -20,7 +20,10 @@
     .status{font-size:12px;color:#666}
     .low{color:#b30000}
     td.updated, td.updatedBy{white-space:nowrap}
-  </style>
+  
+    .apply{padding:6px 12px;border:1px solid #ff4d4d;border-radius:10px;background:#b30000;color:#fff;font-weight:800;cursor:pointer}
+    .apply:hover{filter:brightness(1.05)}
+    </style>
 </head>
 <body>
   <div class="brand-bar">
@@ -194,6 +197,7 @@
 
       try{
         await api(`/api/inventory/${encodeURIComponent(pn)}/adjust`, { method:'POST', body:{ delta, note:'' } });
+        // refresh this row after adjustment
         const d = await api(`/api/inventory/${encodeURIComponent(pn)}`);
         tr.querySelector('.qtycell').textContent = d.qty|0;
         tr.querySelector('.qtycell').classList.toggle('low', (d.qty|0) < (rows.find(r=>r.pn===pn)?.min||0));
@@ -208,6 +212,31 @@
     onlyNonZeroEl.addEventListener('change', build);
 
     load().catch(()=> alert('Failed to load inventory list'));
+// --- Auto refresh: keep list fresh without full page reload ---
+    async function refreshVisibleRows(){
+      const trs = Array.from(tbody.querySelectorAll('tr[data-pn]'));
+      for(const tr of trs){
+        const pn = tr.getAttribute('data-pn');
+        try{
+          const d = await api(`/api/inventory/${encodeURIComponent(pn)}`);
+          const min = (rows.find(r=>r.pn===pn)?.min)||0;
+          const qtycell = tr.querySelector('.qtycell');
+          qtycell.textContent = d.qty|0;
+          qtycell.classList.toggle('low', (d.qty|0) < (min|0));
+          tr.querySelector('.updated').textContent = fmtTs(d.updatedAt);
+          tr.querySelector('.updatedBy').textContent = d.updatedBy || '';
+          // also update rows cache
+          const r = rows.find(x=>x.pn===pn);
+          if(r){ r.qty = d.qty|0; r.updatedAt = d.updatedAt||0; r.updatedBy = d.updatedBy||''; }
+        }catch(e){ /* ignore per-row errors */ }
+      }
+    }
+    // periodic refresh every 15s while page visible
+    let refreshTimer = setInterval(()=>{ if(!document.hidden) refreshVisibleRows(); }, 15000);
+    document.addEventListener('visibilitychange', ()=>{
+      if(!document.hidden) { refreshVisibleRows(); }
+    });
+    window.addEventListener('focus', ()=> refreshVisibleRows());
   </script>
 </body>
 </html>
