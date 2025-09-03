@@ -34,7 +34,11 @@
     .status{font-size:12px;color:#666}
     .low{color:#b30000}
     td.updated, td.updatedBy{white-space:nowrap}
+  
+    .notes{max-width:560px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    @media (max-width:1100px){ .notes{max-width:280px} }
   </style>
+        
 </head>
 <body>
   <div class="brand-bar">
@@ -70,18 +74,23 @@
       </div>
 
       <table class="sticky-head" id="tbl">
-        <thead>
-          <tr>
-            <th style="width:210px">Part Number</th>
-            <th>Print Name</th>
-            <th style="width:180px">Location</th>
-            <th style="width:90px;text-align:right">Min</th>
-            <th style="width:90px;text-align:right">Qty</th>
-            <th style="min-width:220px">Adjust</th>
-            <th style="width:210px">Updated</th>
-            <th style="width:160px">By</th>
-          </tr>
-        </thead>
+        
+    
+    <thead>
+      <tr>
+        <th>Part Number</th>
+        <th>Print Name</th>
+        <th style="width:180px">Location</th>
+        <th style="min-width:260px">Notes</th>
+        <th style="width:90px;text-align:right">Min</th>
+        <th style="width:90px;text-align:right">Qty</th>
+        <th style="min-width:220px">Adjust</th>
+        <th style="width:210px">Updated</th>
+        <th style="width:160px">By</th>
+      </tr>
+    </thead>
+    
+    
         <tbody id="tbody"></tbody>
       </table>
     </div>
@@ -120,6 +129,9 @@
       const catalog = (window.catalog || []).map(c => ({
         pn: String(c.partNumber||'').trim(),
         name: c.printName || '',
+        notes: c.notes || '',
+        sa: c.saNumber || '',
+        notes: c.notes || '',
         loc: c.location || '',
         min: Number(c.minQty || c.min || 0) || 0
       })).filter(r => r.pn);
@@ -142,29 +154,38 @@
       statusEl.textContent = `Loaded ${rows.length} items`;
     }
 
-    function rowHtml(r){
-      const low = r.qty < r.min;
-      return `
-        <tr data-pn="${r.pn}">
-          <td><a href="/inv/${encodeURIComponent(r.pn)}" target="_blank" rel="noopener">${r.pn}</a></td>
-          <td>${(r.name||'').replace(/</g,'&lt;')}</td>
-          <td>${(r.loc||'').replace(/</g,'&lt;')}</td>
-          <td style="text-align:right">${r.min|0}</td>
-          <td class="qtycell ${low?'low':''}">${r.qty|0}</td>
-          <td>
-            <div class="row-actions">
-              <div class="custom-wrap">
-                <input type="number" class="customDelta" placeholder="+/−">
-                <button class="apply">Apply</button>
-              </div>
-            </div>
-          </td>
-          <td class="updated">${fmtTs(r.updatedAt)}</td>
-          <td class="updatedBy">${(r.updatedBy||'').replace(/</g,'&lt;')}</td>
-        </tr>
-      `;
-    }
-
+    
+function rowHtml(r){
+  const low = r.qty < r.min;
+  const isAdmin = (user && String(user.role||'').toLowerCase() === 'admin');
+  return `
+    <tr data-pn="${r.pn}">
+      <td><a href="/inv/${encodeURIComponent(r.pn)}" target="_blank" rel="noopener">${r.pn}</a></td>
+      <td>${(r.name||'').replace(/</g,'&lt;')}</td>
+      <td>${(r.sa||'').replace(/</g,'&lt;')}</td>
+      <td>${(r.loc||'').replace(/</g,'&lt;')}</td>
+      <td>${(r.notes||'').replace(/</g,'&lt;')}</td>
+      <td style="text-align:right">${r.min|0}</td>
+      <td class="qtycell ${low?'low':''}">${r.qty|0}</td>
+      <td>
+        <div class="row-actions ${isAdmin ? '' : 'hide'}">
+          <button class="minus5">−5</button>
+          <button class="minus1">−1</button>
+          <button class="plus1">+1</button>
+          <button class="plus5">+5</button>
+          <div class="custom-wrap">
+            <input type="number" class="customDelta" placeholder="+/−">
+            <button class="apply">Apply</button>
+          </div>
+        </div>
+        <div class="${isAdmin ? 'hide' : ''} mini">Admin only</div>
+      </td>
+      <td class="updated">${fmtTs(r.updatedAt)}</td>
+      <td class="updatedBy">${(r.updatedBy||'').replace(/</g,'&lt;')}</td>
+    </tr>
+  `;
+}
+    
     function build(){
       const q = qEl.value.trim().toLowerCase();
       const onlyNZ = !!onlyNonZeroEl.checked;
