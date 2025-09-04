@@ -1,11 +1,12 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>CZM • Inventory List</title>
-  <link rel="stylesheet" href="/style.css"/>
-  <style>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>CZM • Inventory List</title>
+<link href="/style.css" rel="stylesheet"/>
+<style>
     .brand-actions .navbtn{display:inline-block;background:#1a1c20;color:#bbb;padding:6px 12px;border-radius:10px;text-decoration:none;border:1px solid #3a3f44;font-weight:600;font-size:.9rem;margin-left:8px}
     .brand-actions .navbtn.active{background:#b30000;color:#fff;border-color:#ff4d4d}
     .toolbar{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:10px}
@@ -37,58 +38,80 @@
   </style>
 </head>
 <body>
-  <div class="brand-bar">
-    <div class="brand-inner">
-      <a class="brand-logo" href="/dashboard.html">
-        <img src="/czm-logo.png" alt="CZM">
-        <h1 class="brand-title">CZM • Inventory</h1>
-      </a>
-      <div class="brand-actions">
-        <a class="navbtn" href="/dashboard.html">Dashboard</a>
-        <a class="navbtn" href="/assignments.html">Assignments</a>
-        <a class="navbtn active" href="/inventory">Inventory</a>
-        <a class="navbtn" href="/archive.html">Archive</a>
-        <a class="navbtn" href="/admin.html">Admin</a>
-        <button id="logoutBtn" class="navbtn">Logout</button>
-      </div>
-    </div>
-  </div>
+<div class="brand-bar">
+<div class="brand-inner">
+<a class="brand-logo" href="/dashboard.html">
+<img alt="CZM" src="/czm-logo.png"/>
+<h1 class="brand-title">CZM • Inventory</h1>
+</a>
+<div class="brand-actions">
+<a class="navbtn" href="/dashboard.html">Dashboard</a>
+<a class="navbtn" href="/assignments.html">Assignments</a>
+<a class="navbtn active" href="/inventory">Inventory</a>
+<a class="navbtn" href="/archive.html">Archive</a>
+<a class="navbtn" href="/admin.html">Admin</a>
+<button class="navbtn" id="logoutBtn">Logout</button>
+</div>
+</div>
+</div>
+<main class="page">
+<div class="card">
+<h2>Inventory — Snapshot</h2>
+<div class="toolbar">
+<div style="flex:1">
+<label for="q">Filter</label>
+<input id="q" placeholder="part number, print name, or location" type="text"/>
+</div>
+<div style="display:flex;align-items:end;gap:10px">
+<label class="badge"><input id="onlyNonZero" type="checkbox"/> only non-zero</label>
+<span class="badge" id="countBadge">0 items</span>
+<span class="status" id="status">Loading…</span>
+</div>
+</div>
 
-  <main class="page">
-    <div class="card">
-      <h2>Inventory — Snapshot</h2>
-      <div class="toolbar">
-        <div style="flex:1">
-          <label for="q">Filter</label>
-          <input id="q" type="text" placeholder="part number, print name, or location">
-        </div>
-        <div style="display:flex;align-items:end;gap:10px">
-          <label class="badge"><input type="checkbox" id="onlyNonZero"> only non-zero</label>
-          <span class="badge" id="countBadge">0 items</span>
-          <span class="status" id="status">Loading…</span>
-        </div>
-      </div>
+<div class="brand-actions" id="adminToggleWrap" style="margin-bottom:8px">
+<button class="navbtn" id="toggleAdminEditor">Admin: Edit Catalog</button>
+</div>
 
-      <table class="sticky-head" id="tbl">
-        <thead>
-          <tr>
-            <th style="width:210px">Part Number</th>
-            <th>Print Name</th>
-            <th style="width:180px">Location</th>
-            <th style="width:90px;text-align:right">Min</th>
-            <th style="width:90px;text-align:right">Qty</th>
-            <th style="min-width:220px">Adjust</th>
-            <th style="width:210px">Updated</th>
-            <th style="width:160px">By</th>
-          </tr>
-        </thead>
-        <tbody id="tbody"></tbody>
-      </table>
-    </div>
-  </main>
-
-  <script src="/catalog.js"></script>
-  <script>
+<section class="card" id="adminCatalogPanel" style="display:none;margin-top:10px">
+<h3 style="margin:0 0 10px 0">Admin • Catalog Editor</h3>
+<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+<input id="admPn" placeholder="Part Number"/>
+<input id="admName" placeholder="Print Name" style="width:28ch"/>
+<input id="admLoc" placeholder="Location" style="width:16ch"/>
+<input id="admMin" min="0" placeholder="Min Qty" step="1" style="width:12ch" type="number"/>
+<input id="admHours" min="0" placeholder="Expected Hours" step="0.1" style="width:16ch" type="number"/>
+<input id="admNotes" placeholder="Notes" style="width:30ch"/>
+</div>
+<div style="display:flex;gap:8px;flex-wrap:wrap">
+<button class="navbtn" id="admLoad">Load</button>
+<button class="navbtn" id="admAdd">Add</button>
+<button class="navbtn" id="admUpdate">Update</button>
+<button class="navbtn" id="admDelete" style="background:#3a3f44;color:#fff">Delete</button>
+<span style="flex:1"></span>
+<button class="navbtn" id="admExport" title="Download merged catalog.js with your edits">Export catalog.js</button>
+</div>
+<p id="admMsg" style="margin-top:8px;color:#777"></p>
+</section>
+<table class="sticky-head" id="tbl">
+<thead>
+<tr>
+<th style="width:210px">Part Number</th>
+<th>Print Name</th>
+<th style="width:180px">Location</th>
+<th style="width:90px;text-align:right">Min</th>
+<th style="width:90px;text-align:right">Qty</th>
+<th style="min-width:220px">Adjust</th>
+<th style="width:210px">Updated</th>
+<th style="width:160px">By</th>
+</tr>
+</thead>
+<tbody id="tbody"></tbody>
+</table>
+</div>
+</main>
+<script src="/catalog.js"></script>
+<script>
     const API_ROOT = 'https://wireshop-backend.onrender.com';
 
     const user = (() => { try { return JSON.parse(localStorage.getItem('user')||'{}'); } catch { return {}; } })();
@@ -234,5 +257,155 @@
     document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) refreshVisibleRows(); });
     window.addEventListener('focus', ()=> refreshVisibleRows());
   </script>
+
+<script>
+(function(){
+  // Simple role check: require localStorage.user.role === 'admin'
+  const user = (()=>{ try{return JSON.parse(localStorage.getItem('user')||'{}')}catch{return{}} })();
+  const isAdmin = String(user.role||'').toLowerCase()==='admin';
+  const toggleBtn = document.getElementById('toggleAdminEditor');
+  const panel = document.getElementById('adminCatalogPanel');
+  if(!isAdmin){
+    document.getElementById('adminToggleWrap')?.remove();
+    panel?.remove();
+    return;
+  }
+  toggleBtn?.addEventListener('click', ()=>{
+    panel.style.display = panel.style.display==='none' ? 'block' : 'none';
+  });
+
+  const catalogBase = (window.catalog||[]);
+  // load overrides
+  const LS_KEY = 'catalog_overrides_v1';
+  let overrides = [];
+  try{ overrides = JSON.parse(localStorage.getItem(LS_KEY)||'[]')||[]; }catch{ overrides=[]; }
+  function normPN(s){ return String(s||'').trim(); }
+  function mergeCatalog(){
+    const map = new Map();
+    for(const c of catalogBase){
+      map.set(normPN(c.partNumber), {...c});
+    }
+    for(const o of overrides){
+      if(!o || !o.partNumber) continue;
+      const pn = normPN(o.partNumber);
+      if(o.__deleted){ map.delete(pn); continue; }
+      const prev = map.get(pn) || {};
+      map.set(pn, { ...prev, ...o });
+    }
+    return Array.from(map.values());
+  }
+  // Expose merged to the page for existing renderer, if it relies on window.catalog
+  window.catalogMerged = mergeCatalog();
+
+  // Admin form fields
+  const el = id => document.getElementById(id);
+  const f = {
+    pn: el('admPn'),
+    name: el('admName'),
+    loc: el('admLoc'),
+    min: el('admMin'),
+    hours: el('admHours'),
+    notes: el('admNotes'),
+    msg: el('admMsg'),
+  };
+  function setMsg(s, ok){
+    f.msg.textContent = s||'';
+    f.msg.style.color = ok ? '#0b7' : '#b00';
+  }
+  function findOverride(pn){ return overrides.find(o => normPN(o.partNumber)===normPN(pn)); }
+  function findInMerged(pn){ return (window.catalogMerged||[]).find(c => normPN(c.partNumber)===normPN(pn)); }
+
+  el('admLoad').addEventListener('click', ()=>{
+    const pn = normPN(f.pn.value);
+    if(!pn) return setMsg('Enter a Part Number first.');
+    const item = findInMerged(pn);
+    if(!item) return setMsg('Not found in catalog.');
+    f.name.value = item.printName || '';
+    f.loc.value = item.location || '';
+    f.min.value = item.minQty || item.min || 0;
+    f.hours.value = item.expectedHours || '';
+    f.notes.value = item.notes || '';
+    setMsg('Loaded. Edit then Update if needed.', true);
+  });
+
+  el('admAdd').addEventListener('click', ()=>{
+    const pn = normPN(f.pn.value);
+    if(!pn) return setMsg('Part Number is required.');
+    if(findInMerged(pn)) return setMsg('Part Number already exists. Use Update.', false);
+    overrides.push({
+      partNumber: pn,
+      printName: f.name.value.trim(),
+      location: f.loc.value.trim(),
+      minQty: Number(f.min.value)||0,
+      expectedHours: Number(f.hours.value)||null,
+      notes: f.notes.value.trim()
+    });
+    localStorage.setItem(LS_KEY, JSON.stringify(overrides));
+    window.catalogMerged = mergeCatalog();
+    setMsg('Added to overrides. Use Export to regenerate catalog.js.', true);
+    if(window.render) try{ window.render(); }catch{}
+  });
+
+  el('admUpdate').addEventListener('click', ()=>{
+    const pn = normPN(f.pn.value);
+    if(!pn) return setMsg('Part Number is required.');
+    let o = findOverride(pn);
+    if(!o){
+      // create override layer for existing catalog entry
+      if(!findInMerged(pn)) return setMsg('Not found. Use Add first.');
+      o = { partNumber: pn };
+      overrides.push(o);
+    }
+    o.printName = f.name.value.trim();
+    o.location = f.loc.value.trim();
+    o.minQty = Number(f.min.value)||0;
+    o.expectedHours = f.hours.value ? Number(f.hours.value) : null;
+    o.notes = f.notes.value.trim();
+    delete o.__deleted;
+    localStorage.setItem(LS_KEY, JSON.stringify(overrides));
+    window.catalogMerged = mergeCatalog();
+    setMsg('Updated overrides.', true);
+    if(window.render) try{ window.render(); }catch{}
+  });
+
+  el('admDelete').addEventListener('click', ()=>{
+    const pn = normPN(f.pn.value);
+    if(!pn) return setMsg('Part Number is required.');
+    let o = findOverride(pn);
+    if(!o){ o = { partNumber: pn }; overrides.push(o); }
+    o.__deleted = true;
+    localStorage.setItem(LS_KEY, JSON.stringify(overrides));
+    window.catalogMerged = mergeCatalog();
+    setMsg('Marked for deletion. Use Export to regenerate catalog.js.', true);
+    if(window.render) try{ window.render(); }catch{}
+  });
+
+  // Export merged catalog.js for deployment
+  el('admExport').addEventListener('click', ()=>{
+    const merged = mergeCatalog();
+    const banner = [
+      '// Generated by Inventory List Admin Editor',
+      '// This file merges original catalog.js with local overrides and deletions.',
+      '// Replace your /wireshop-frontend/catalog.js with this output.',
+      ''
+    ].join('\n');
+    const js = banner + 'window.catalog = ' + JSON.stringify(merged, null, 2) + ';\n';
+    const blob = new Blob([js], {type:'application/javascript'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'catalog.js';
+    document.body.appendChild(a);
+    a.click();
+    URL.revokeObjectURL(a.href);
+    a.remove();
+    setMsg('Exported updated catalog.js. Deploy it to Render.', true);
+  });
+
+  // If the page renderer uses window.catalog, patch it to use merged data
+  if(Array.isArray(window.catalogMerged)){
+    window.catalog = window.catalogMerged;
+  }
+})();
+</script>
 </body>
 </html>
