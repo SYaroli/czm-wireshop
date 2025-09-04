@@ -1,5 +1,6 @@
 // wireshop-backend/server.js
-// WireShop backend with robust auto-archive, schedule enforcer, fixed admin mapping, Assignments API, and Inventory API.
+// WireShop backend with robust auto-archive, schedule enforcer, fixed admin mapping,
+// Assignments API, and Inventory API. Now includes a tiny /api/auth/me shim for the UI.
 
 const path = require("path");
 const express = require("express");
@@ -12,7 +13,7 @@ const usersRouter = require("./routes/users");
 const jobsRouter = require("./routes/jobs");
 const archiveRouter = require("./routes/archive");
 const assignmentsRouter = require("./routes/assignments");
-const inventoryRouter = require("./routes/inventory"); // ← NEW
+const inventoryRouter = require("./routes/inventory"); // inventory endpoints
 const archive = require("./archiveStore");
 const db = require("./db"); // for scheduler + sqlite lookups
 
@@ -34,6 +35,19 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true }));
+
+// ---------- TEMP auth shim so the UI can know you're admin ----------
+// Replace with your real auth when ready. This populates req.user and serves /api/auth/me.
+app.use((req, _res, next) => {
+  // If you already set req.user earlier in a real auth middleware, keep that.
+  // This fallback only sets admin if nothing else has.
+  if (!req.user) req.user = { name: "Shane", isAdmin: true };
+  next();
+});
+
+app.get("/api/auth/me", (req, res) => {
+  res.json({ name: req.user?.name || "unknown", isAdmin: !!req.user?.isAdmin });
+});
 
 // ---------- Helpers for legacy admin routes ----------
 function parseJSON(value) {
@@ -68,7 +82,7 @@ function mapRow(r) {
   };
 }
 
-// ---------- Legacy admin endpoints (use Postgres mirror) ----------
+// ---------- Native archive API ----------
 const { listArchivedJobs, deleteArchivedJob, updateArchivedJob } = archive;
 
 app.get("/api/jobs/archive", async (req, res) => {
@@ -267,7 +281,7 @@ app.use("/api/users", usersRouter);
 // ---------- Assignments API ----------
 app.use("/api", assignmentsRouter);
 
-// ---------- Inventory API (NEW) ----------
+// ---------- Inventory API ----------
 app.use("/api", inventoryRouter);
 
 // ---------- Schedule Enforcer ----------
@@ -333,7 +347,7 @@ const FRONTEND_DIR = path.join(__dirname, "..", "wireshop-frontend");
 app.use(express.static(FRONTEND_DIR));
 app.get("/archive", (_req, res) => res.sendFile(path.join(FRONTEND_DIR, "archive.html")));
 app.get("/assignments", (_req, res) => res.sendFile(path.join(FRONTEND_DIR, "assignments.html")));
-app.get("/inv/:part", (_req, res) => res.sendFile(path.join(FRONTEND_DIR, "inventory.html"))); // ← NEW
+app.get("/inv/:part", (_req, res) => res.sendFile(path.join(FRONTEND_DIR, "inventory.html"))); // convenience deep-link
 app.get("/", (_req, res) => res.sendFile(path.join(FRONTEND_DIR, "index.html")));
 
 // ---------- Errors ----------
