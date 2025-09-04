@@ -1358,5 +1358,13 @@ window.catalog = [
     "expectedHours": null,
     "notes": "Support for engineering work",
     "location": null
-  }
+  },
+  {
+    "printName": "Shop Floor Support",
+    "partNumber": "003-Shop Floor Support",
+    "saNumber": null,
+    "expectedHours": null,
+    "notes": "Support for Shop Floor",
+    "location": null
+  }   
 ];
