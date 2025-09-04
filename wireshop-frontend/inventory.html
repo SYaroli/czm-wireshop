@@ -1,329 +1,261 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>CZM • Inventory</title>
-  <link rel="stylesheet" href="/styles.css" />
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CZM • Wireshop Inventory</title>
+  <link rel="stylesheet" href="/style.css"/>
   <style>
-    /* keep it minimal, reuse your styles; match Apply button */
-    .btn { padding: 6px 10px; border-radius: 6px; font-size: 12px; cursor: pointer; }
-    .btn-apply { background:#b30000; color:#fff; border:none; }
-    .btn-edit  { background:#b30000; color:#fff; border:none; } /* same look as Apply */
-    .btn-muted { background:#333; color:#fff; border:none; }
-    .btn-danger{ background:#7a0000; color:#fff; border:none; }
-    .toolbar   { display:flex; gap:10px; align-items:center; }
-    .hidden { display:none !important; }
-    dialog.modal { width: 600px; max-width: 95vw; border:none; border-radius:10px; padding:0; }
-    .modal-head { padding:14px 16px; background:#131313; color:#fff; border-bottom:1px solid #222; }
-    .modal-body { padding:16px; background:#0e0e0e; color:#ddd; }
-    .modal-foot { padding:12px 16px; background:#0e0e0e; display:flex; gap:8px; justify-content:flex-end; border-top:1px solid #222; }
-    .grid { display:grid; grid-template-columns: 160px 1fr; gap:10px 12px; align-items:center; }
-    input, textarea, select { background:#151515; color:#eee; border:1px solid #333; padding:8px; border-radius:8px; width:100%; }
-    table.inv { width:100%; border-collapse:collapse; }
-    table.inv th, table.inv td { padding:10px; border-bottom:1px solid #252525; }
-    a.partlink { color:#7db3ff; text-decoration:none; }
+    .brand-actions .navbtn{display:inline-block;background:#1a1c20;color:#bbb;padding:6px 12px;border-radius:10px;text-decoration:none;border:1px solid #3a3f44;font-weight:600;font-size:.9rem;margin-left:8px}
+    .brand-actions .navbtn.active{background:#b30000;color:#fff;border-color:#ff4d4d}
+    .qty-big{font-size:40px;font-weight:900;margin:0}
+    .qty-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .pill{padding:14px 20px;border:1px solid #d3d8e1;border-radius:12px;background:#fff;cursor:pointer;font-weight:900;min-width:80px;text-align:center;color:var(--ink);user-select:none;font-size:18px}
+    .pill:hover{filter:brightness(1.03)}
+    .mini{font-size:12px;color:var(--muted)}
+    .hide{display:none !important}
+    .pnPrompt{display:none;margin-top:10px}
+    .pnPrompt .row{display:flex;gap:8px;margin-top:6px}
+    .pnPrompt input{flex:1;padding:10px;border:1px solid #d3d8e1;border-radius:10px}
+    .pnPrompt button{padding:10px 12px;border-radius:10px;border:1px solid #d3d8e1;background:#f5f7fb;cursor:pointer}
   </style>
 </head>
 <body>
-  <header class="topbar">
-    <nav class="navbar">
-      <a href="/dashboard" class="navbtn">Dashboard</a>
-      <a href="/assignments" class="navbtn">Assignments</a>
-      <a href="/inventory" class="navbtn active">Inventory</a>
-      <a href="/archive" class="navbtn">Archive</a>
-      <a href="/admin" class="navbtn">Admin</a>
-      <button id="logoutBtn" class="navbtn">Logout</button>
-    </nav>
-  </header>
+  <div class="brand-bar">
+    <div class="brand-inner">
+      <a class="brand-logo" href="/dashboard.html">
+        <img src="/czm-logo.png" alt="CZM">
+        <h1 class="brand-title">CZM • Wireshop Inventory</h1>
+      </a>
+      <div class="brand-actions" id="navActions">
+        <a href="/dashboard.html" class="navbtn">Dashboard</a>
+        <a href="/assignments.html" class="navbtn">Assignments</a>
+        <!-- Desktop inventory goes to list view; QR keeps using /inv/<pn> which rewrites here -->
+        <a href="/inventory" class="navbtn active">Inventory</a>
+        <a href="/archive.html" class="navbtn">Archive</a>
+        <a href="/admin.html" class="navbtn">Admin</a>
+        <a id="logoutBtn" href="/index.html" class="navbtn">Logout</a>
+      </div>
+    </div>
+  </div>
 
-  <main class="container">
-    <h2>Inventory — Snapshot</h2>
+  <main class="page">
+    <div class="card">
+      <h2 id="partTitle">Inventory</h2>
+      <div class="info" style="margin-top:8px">
+        <p>Part Number: <span id="partNumber">--</span></p>
+        <p>Print Name: <span id="printName">--</span></p>
+        <p>Location: <span id="location">--</span></p>
+        <p>Expected Hours: <span id="expected">--</span></p>
+        <p class="mini">If any of this looks wrong, fix the catalog later; inventory will still work.</p>
+      </div>
 
-    <div class="toolbar">
-      <input id="filter" type="text" placeholder="part number, print name, or location" />
-      <select id="qtyFilter">
-        <option value="nonzero">only non-zero</option>
-        <option value="all">all items</option>
-      </select>
-      <button id="addPartBtn" class="btn btn-edit hidden">+ Add New Part</button>
-      <span id="countBadge" style="margin-left:auto; opacity:.7;"></span>
+      <!-- Prompt shown when the page is opened directly without a PN -->
+      <div id="pnPrompt" class="info pnPrompt">
+        <label for="pnInput">Enter a Part Number</label>
+        <div class="row">
+          <input id="pnInput" type="text" placeholder="e.g. 40602.5460.000" inputmode="text">
+          <button id="pnGo">Go</button>
+        </div>
+        <p class="mini">Tip: you can also use <code>/inventory.html?part=PN</code> or <code>/inv/PN</code>.</p>
+      </div>
     </div>
 
-    <div id="tableWrap" style="margin-top:14px;">
-      <table class="inv" id="invTable">
+    <div class="card" id="cardQty">
+      <h2>Quantity</h2>
+      <p class="qty-big"><span id="qty">0</span></p>
+      <p class="mini">Last update: <span id="updatedMeta">never</span></p>
+    </div>
+
+    <div class="card" id="cardAdjust">
+      <h2>Adjust</h2>
+
+      <div class="qty-row" id="techRow" style="margin-bottom:10px">
+        <button class="pill" data-delta="-5">−5</button>
+        <button class="pill" data-delta="-1">−1</button>
+        <button class="pill" data-delta="+1">+1</button>
+        <button class="pill" data-delta="+5">+5</button>
+      </div>
+      <p class="mini" id="techHint" style="margin:0 0 8px 2px">Tap a button to post. No extra step.</p>
+
+      <div id="adminExtras">
+        <div class="qty-row" style="margin:12px 0 10px">
+          <button class="pill" data-delta="-10">−10</button>
+          <button class="pill" data-delta="+10">+10</button>
+        </div>
+        <div class="grid cols-3">
+          <div>
+            <label for="customDelta">Custom Delta</label>
+            <input id="customDelta" type="number" step="1" placeholder="e.g. 12 or -3" inputmode="numeric">
+          </div>
+          <div>
+            <label for="note">Reason/Note</label>
+            <input id="note" type="text" placeholder="optional">
+          </div>
+          <div style="display:flex;align-items:end">
+            <button id="applyBtn" style="width:100%" disabled>Apply custom</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="noteRow" class="grid cols-1" style="margin-top:10px">
+        <div>
+          <label for="noteTech" class="mini">Optional Note</label>
+          <input id="noteTech" type="text" placeholder="optional note for this adjustment">
+        </div>
+      </div>
+    </div>
+
+    <div class="card" id="cardHistory">
+      <h2>Recent Activity</h2>
+      <table class="sticky-head">
         <thead>
           <tr>
-            <th>Part Number</th>
-            <th>Print Name</th>
-            <th>Location</th>
-            <th>Min</th>
-            <th>Qty</th>
-            <th>Adjust</th>
-            <th></th>
-            <th class="adminCol hidden"></th>
-            <th>Updated</th>
-            <th>By</th>
+            <th>When</th>
+            <th>User</th>
+            <th>Δ</th>
+            <th>Before → After</th>
+            <th>Note</th>
           </tr>
         </thead>
-        <tbody id="invBody"></tbody>
+        <tbody id="txnBody"></tbody>
       </table>
     </div>
   </main>
 
-  <!-- Edit/Create Modal -->
-  <dialog id="partModal" class="modal">
-    <form method="dialog">
-      <div class="modal-head">
-        <h3 id="modalTitle">Edit Part</h3>
-      </div>
-      <div class="modal-body">
-        <div class="grid">
-          <label>Part Number</label>
-          <input id="f_partNumber" required />
-          <label>Print Name</label>
-          <input id="f_printName" />
-          <label>Location</label>
-          <input id="f_location" />
-          <label>Min</label>
-          <input id="f_min" type="number" step="1" />
-          <label>Qty</label>
-          <input id="f_qty" type="number" step="1" />
-          <label>Notes</label>
-          <textarea id="f_notes" rows="3"></textarea>
-          <label>Expected Hours</label>
-          <input id="f_expectedHours" type="number" step="0.1" />
-        </div>
-      </div>
-      <div class="modal-foot">
-        <button type="button" id="deleteBtn" class="btn btn-danger">Delete</button>
-        <button type="submit" id="saveBtn" class="btn btn-edit">Save</button>
-        <button type="button" id="cancelBtn" class="btn btn-muted">Cancel</button>
-      </div>
-    </form>
-  </dialog>
-
+  <script src="/catalog.js"></script>
   <script>
-    // Basic session role check. If your app exposes /api/auth/me use that.
-    let currentUser = null;
-    async function getMe() {
-      try {
-        const r = await fetch('/api/auth/me', { credentials: 'include' });
-        if (r.ok) return await r.json();
-      } catch {}
-      // Fallback if your JWT payload is already stashed
-      try {
-        const raw = localStorage.getItem('czm_user');
-        if (raw) return JSON.parse(raw);
-      } catch {}
-      return null;
+    const API_ROOT = 'https://wireshop-backend.onrender.com';
+
+    // auth
+    const user = (() => { try { return JSON.parse(localStorage.getItem('user')||'{}'); } catch { return {}; } })();
+    if (!user || !user.username) {
+      const redir = encodeURIComponent(location.pathname + location.search + location.hash);
+      window.location.href = '/index.html?redirect=' + redir;
     }
 
-    // Inventory data cache
-    let INV = [];
-    let isAdmin = false;
+    // logout
+    document.getElementById('logoutBtn')?.addEventListener('click', (e)=>{
+      e.preventDefault(); localStorage.removeItem('user'); window.location.href='/index.html';
+    });
 
-    const invBody = document.getElementById('invBody');
-    const countBadge = document.getElementById('countBadge');
-    const filterInput = document.getElementById('filter');
-    const qtyFilter = document.getElementById('qtyFilter');
-    const addPartBtn = document.getElementById('addPartBtn');
-
-    const partModal = document.getElementById('partModal');
-    const modalTitle = document.getElementById('modalTitle');
-    const f_partNumber = document.getElementById('f_partNumber');
-    const f_printName = document.getElementById('f_printName');
-    const f_location = document.getElementById('f_location');
-    const f_min = document.getElementById('f_min');
-    const f_qty = document.getElementById('f_qty');
-    const f_notes = document.getElementById('f_notes');
-    const f_expectedHours = document.getElementById('f_expectedHours');
-    const deleteBtn = document.getElementById('deleteBtn');
-    const saveBtn = document.getElementById('saveBtn');
-    const cancelBtn = document.getElementById('cancelBtn');
-
-    let editingExisting = false;
-    let originalPartNumber = null;
-
-    function showAdminControls(show) {
-      isAdmin = !!show;
-      document.querySelectorAll('.adminCol').forEach(td => td.classList.toggle('hidden', !show));
-      addPartBtn.classList.toggle('hidden', !show);
-      document.querySelectorAll('.btn-edit').forEach(btn => {
-        // row edit buttons carry data-admin-ok class so we don't hide the Add button
-        if (btn.classList.contains('rowedit')) btn.classList.toggle('hidden', !show);
-      });
+    // Robust PN extraction: /inv/<pn>, ?part= / ?pn=, or #pn=
+    let partNumber = '';
+    const segs = location.pathname.split('/').filter(Boolean);
+    const invIdx = segs.findIndex(s => s.toLowerCase() === 'inv');
+    if (invIdx >= 0) partNumber = decodeURIComponent(segs.slice(invIdx + 1).join('/')).trim();
+    if (!partNumber) {
+      const qs = new URLSearchParams(location.search);
+      partNumber = (qs.get('part') || qs.get('pn') || '').trim();
+    }
+    if (!partNumber && location.hash.toLowerCase().startsWith('#pn=')) {
+      partNumber = decodeURIComponent(location.hash.slice(4)).trim();
     }
 
-    function rowTemplate(item) {
-      const pn = item.partNumber;
-      const applyBtn = `<button class="btn btn-apply" data-act="apply" data-pn="${pn}">Apply</button>`;
-      const editBtn  = `<button class="btn btn-edit rowedit ${isAdmin ? '' : 'hidden'}" data-act="edit" data-pn="${pn}">Edit</button>`;
-      const adjustCtrls = `
-        <div style="display:flex; gap:6px; align-items:center;">
-          <button class="btn btn-muted" data-act="dec" data-pn="${pn}">-</button>
-          <input type="number" step="1" value="0" data-field="delta" data-pn="${pn}" style="width:64px; text-align:center;" />
-          <button class="btn btn-muted" data-act="inc" data-pn="${pn}">+</button>
-        </div>`;
-      return `
-        <tr>
-          <td><a class="partlink" href="/inventory?pn=${encodeURIComponent(pn)}">${pn}</a></td>
-          <td>${escapeHtml(item.printName || '')}</td>
-          <td>${escapeHtml(item.location || '')}</td>
-          <td>${item.min ?? 0}</td>
-          <td>${item.qty ?? 0}</td>
-          <td>${adjustCtrls}</td>
-          <td>${applyBtn}</td>
-          <td class="adminCol ${isAdmin ? '' : 'hidden'}">${editBtn}</td>
-          <td>${item.updatedAt ? new Date(item.updatedAt).toLocaleString() : ''}</td>
-          <td>${escapeHtml(item.updatedBy || '')}</td>
-        </tr>
-      `;
-    }
+    // Update header
+    document.getElementById('partNumber').textContent = partNumber || '(missing)';
+    document.getElementById('partTitle').textContent = `Inventory — ${partNumber || '—'}`;
 
-    function render() {
-      const q = filterInput.value.trim().toLowerCase();
-      const onlyNonZero = qtyFilter.value !== 'all';
-      const rows = INV.filter(x => {
-        if (onlyNonZero && !Number(x.qty)) return false;
-        if (!q) return true;
-        const blob = `${x.partNumber} ${x.printName||''} ${x.location||''}`.toLowerCase();
-        return blob.includes(q);
-      });
-      invBody.innerHTML = rows.map(rowTemplate).join('');
-      countBadge.textContent = `${rows.length} items (Loaded ${INV.length})`;
-    }
-
-    function escapeHtml(s) {
-      return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-    }
-
-    async function loadInventory() {
-      const r = await fetch('/api/inventory');
-      if (!r.ok) throw new Error('failed inventory');
-      INV = await r.json();
-      render();
-    }
-
-    // Quantity adjust handlers (existing behavior preserved)
-    invBody.addEventListener('click', async e => {
-      const btn = e.target.closest('button');
-      if (!btn) return;
-      const act = btn.dataset.act;
-      const pn  = btn.dataset.pn;
-      if (!act || !pn) return;
-
-      if (act === 'inc' || act === 'dec') {
-        const inp = invBody.querySelector(`input[data-field="delta"][data-pn="${pn}"]`);
-        const cur = parseInt(inp.value || '0', 10) || 0;
-        inp.value = cur + (act === 'inc' ? 1 : -1);
-        return;
-      }
-
-      if (act === 'apply') {
-        const inp = invBody.querySelector(`input[data-field="delta"][data-pn="${pn}"]`);
-        const delta = parseInt(inp.value || '0', 10) || 0;
-        if (!delta) return;
-        const res = await fetch(`/api/inventory/${encodeURIComponent(pn)}/adjust`, {
-          method:'POST',
-          headers:{ 'Content-Type':'application/json' },
-          body: JSON.stringify({ delta })
-        });
-        if (res.ok) {
-          await loadInventory();
-        } else {
-          alert('Failed to apply quantity.');
+    // If no PN, show prompt and remember last PN
+    if (!partNumber) {
+      let last = '';
+      try { last = localStorage.getItem('lastPN') || ''; } catch {}
+      const prompt = document.getElementById('pnPrompt');
+      if (prompt) {
+        prompt.style.display = 'block';
+        const inp = document.getElementById('pnInput');
+        const go = document.getElementById('pnGo');
+        if (inp && last) inp.value = last;
+        function jump(){
+          const pn = (inp?.value || '').trim();
+          if (!pn) return;
+          location.href = '/inv/' + encodeURIComponent(pn);
         }
-        return;
+        go?.addEventListener('click', jump);
+        inp?.addEventListener('keydown', e => { if (e.key === 'Enter') jump(); });
       }
-
-      if (act === 'edit') {
-        const item = INV.find(x => x.partNumber === pn);
-        openModalFor(item);
-        return;
-      }
-    });
-
-    function openModalFor(item) {
-      editingExisting = !!item;
-      modalTitle.textContent = editingExisting ? `Edit Part: ${item.partNumber}` : 'Add New Part';
-      deleteBtn.style.display = editingExisting ? 'inline-block' : 'none';
-      originalPartNumber = editingExisting ? item.partNumber : null;
-      f_partNumber.value = item?.partNumber ?? '';
-      f_printName.value = item?.printName ?? '';
-      f_location.value = item?.location ?? '';
-      f_min.value = item?.min ?? 0;
-      f_qty.value = item?.qty ?? 0;
-      f_notes.value = item?.notes ?? '';
-      f_expectedHours.value = item?.expectedHours ?? '';
-      partModal.showModal();
+    } else {
+      try { localStorage.setItem('lastPN', partNumber); } catch {}
     }
 
-    addPartBtn.addEventListener('click', () => openModalFor(null));
-    cancelBtn.addEventListener('click', () => partModal.close());
-
-    deleteBtn.addEventListener('click', async () => {
-      if (!editingExisting || !originalPartNumber) return;
-      if (!confirm('Delete this part? This cannot be undone.')) return;
-      const r = await fetch(`/api/inventory/${encodeURIComponent(originalPartNumber)}`, { method:'DELETE' });
-      if (r.ok) {
-        partModal.close();
-        await loadInventory();
-      } else {
-        alert('Delete failed.');
-      }
-    });
-
-    // Save (create or update)
-    partModal.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const payload = {
-        partNumber: f_partNumber.value.trim(),
-        printName: f_printName.value.trim(),
-        location: f_location.value.trim(),
-        min: Number(f_min.value || 0),
-        qty: Number(f_qty.value || 0),
-        notes: f_notes.value.trim(),
-        expectedHours: f_expectedHours.value ? Number(f_expectedHours.value) : null
-      };
-      let url, method;
-      if (editingExisting) {
-        url = `/api/inventory/${encodeURIComponent(originalPartNumber)}`;
-        method = 'PUT';
-      } else {
-        url = '/api/inventory';
-        method = 'POST';
-      }
-      const r = await fetch(url, {
-        method,
-        headers:{ 'Content-Type':'application/json' },
-        body: JSON.stringify(payload)
-      });
-      if (r.ok) {
-        partModal.close();
-        await loadInventory();
-      } else {
-        const msg = await r.text().catch(()=> 'Save failed.');
-        alert(msg || 'Save failed.');
-      }
-    });
-
-    // Filter wiring
-    filterInput.addEventListener('input', render);
-    qtyFilter.addEventListener('change', render);
-
-    // Bootstrap
-    (async function init(){
-      currentUser = await getMe();
-      showAdminControls(currentUser && (currentUser.role === 'admin' || currentUser.isAdmin === true));
-      await loadInventory();
+    // catalog extras
+    (function fillCatalog(){
+      try {
+        const row = (window.catalog || []).find(c => String(c.partNumber||'').trim() === partNumber);
+        if (row) {
+          document.getElementById('printName').textContent = row.printName || '--';
+          document.getElementById('location').textContent = row.location || '--';
+          document.getElementById('expected').textContent = (row.expectedHours ?? '--');
+        }
+      } catch {}
     })();
 
-    // Logout
-    document.getElementById('logoutBtn')?.addEventListener('click', async () => {
-      try { await fetch('/api/auth/logout', { method:'POST' }); } catch {}
-      location.href = '/';
+    const qtyEl = document.getElementById('qty');
+    const metaEl = document.getElementById('updatedMeta');
+    const txnBody = document.getElementById('txnBody');
+    const customDeltaEl = document.getElementById('customDelta');
+    const applyBtn = document.getElementById('applyBtn');
+    const isAdmin = String(user.role).toLowerCase() === 'admin';
+    if (!isAdmin) { document.getElementById('adminExtras').classList.add('hide'); document.getElementById('cardHistory').classList.add('hide'); }
+
+    function fmtTs(ms){ if (!ms) return '—'; const d = new Date(ms); return d.toLocaleString(); }
+    function validInt(v){ const n = Number(v); return Number.isInteger(n) && n !== 0; }
+    function toggleApply(){ if (applyBtn) applyBtn.disabled = !validInt(customDeltaEl.value); }
+    customDeltaEl?.addEventListener('input', toggleApply);
+
+    async function api(path, opts={}){
+      const res = await fetch(API_ROOT + path, {
+        method: opts.method || 'GET',
+        headers: { 'Content-Type': 'application/json', 'x-user': user.username },
+        body: opts.body ? JSON.stringify(opts.body) : undefined
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    }
+
+    async function loadSnapshot(){
+      if (!partNumber) return;
+      const data = await api(`/api/inventory/${encodeURIComponent(partNumber)}`);
+      qtyEl.textContent = data.qty ?? 0;
+      metaEl.textContent = data.updatedAt ? `${fmtTs(data.updatedAt)} by ${data.updatedBy||'unknown'}` : 'never';
+    }
+    async function loadTxns(){
+      if (!isAdmin || !partNumber) return;
+      const rows = await api(`/api/inventory/${encodeURIComponent(partNumber)}/txns?limit=50`);
+      txnBody.innerHTML = rows.map(r => `
+        <tr>
+          <td>${fmtTs(r.ts)}</td>
+          <td>${r.user || ''}</td>
+          <td>${r.delta > 0 ? '+'+r.delta : r.delta}</td>
+          <td>${r.qtyBefore} → ${r.qtyAfter}</td>
+          <td>${(r.note||'').replace(/</g,'&lt;')}</td>
+        </tr>
+      `).join('');
+    }
+
+    async function adjust(delta){
+      if (!partNumber) return alert('Missing part number in URL.');
+      const note = (document.getElementById('noteTech')?.value || document.getElementById('note')?.value || '').trim();
+      await api(`/api/inventory/${encodeURIComponent(partNumber)}/adjust`, { method: 'POST', body: { delta, note } });
+      await loadSnapshot(); await loadTxns();
+    }
+
+    document.querySelectorAll('.pill[data-delta]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const delta = parseInt(btn.getAttribute('data-delta'), 10);
+        adjust(delta).catch(() => alert('Failed to adjust'));
+      });
     });
+    applyBtn?.addEventListener('click', () => {
+      const v = parseInt(customDeltaEl.value, 10);
+      if (!validInt(v)) return;
+      customDeltaEl.value = '';
+      toggleApply();
+      adjust(v).catch(() => alert('Failed to adjust'));
+    });
+
+    loadSnapshot().catch(()=>{});
+    loadTxns().catch(()=>{});
   </script>
 </body>
 </html>
