@@ -1,2868 +1,1370 @@
-// Auto-generated from Excel: 'Total Inv' on 2025-09-18
-// Keep this file committed. Re-generate via the conversion script when you update the spreadsheet.
-export const catalog = [
+window.catalog = [
   {
-    "pn": "40602.2080.000",
-    "name": "CROWD PRESSURE 14\"",
-    "notes": "nan",
-    "location": "115D",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "SA-7747"
+    "printName": "CROWD PRESSURE 14\"",
+    "partNumber": "40602.2080.000",
+    "saNumber": "SA-7747",
+    "expectedHours": 1,
+    "notes": null,
+    "location": "115D"
   },
   {
-    "pn": "40602.2083.000",
-    "name": "CROWD PRESSURE 50\"",
-    "notes": "nan",
-    "location": "114D",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "SA-8066"
+    "printName": "CROWD PRESSURE 50\"",
+    "partNumber": "40602.2083.000",
+    "saNumber": "SA-8066",
+    "expectedHours": 1,
+    "notes": null,
+    "location": "114D"
   },
   {
-    "pn": "40602.2086.000",
-    "name": "CROWD PRESSURE 100\"",
-    "notes": "nan",
-    "location": "114D",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "SA-8067"
+    "printName": "CROWD PRESSURE 100\"",
+    "partNumber": "40602.2086.000",
+    "saNumber": "SA-8067",
+    "expectedHours": 1,
+    "notes": null,
+    "location": "114D"
   },
   {
-    "pn": "40602.2088.000",
-    "name": "CROWD PRESSURE 150\"",
-    "notes": "nan",
-    "location": "114D",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "SA-8068"
+    "printName": "CROWD PRESSURE 150\"",
+    "partNumber": "40602.2088.000",
+    "saNumber": "SA-8068",
+    "expectedHours": 1,
+    "notes": null,
+    "location": "114D"
   },
   {
-    "pn": "40602.2090.000",
-    "name": "EK125 LONG MAST",
-    "notes": "nan",
-    "location": "114D",
-    "hours": 3.0,
-    "min_qty": NaN,
-    "sa": "SA-7744"
+    "printName": "EK125 LONG MAST",
+    "partNumber": "40602.2090.000",
+    "saNumber": "SA-7744",
+    "expectedHours": 3,
+    "notes": null,
+    "location": "114D"
   },
   {
-    "pn": "40602.2100.000",
-    "name": "EK125 POWER & COMMUNICATION",
-    "notes": "SPLICES MUST BE PLACED WITHIN 1 FOOT OF A1,A2,A3",
-    "location": "114D",
-    "hours": 24.0,
-    "min_qty": NaN,
-    "sa": "SA-7731"
+    "printName": "EK125 POWER & COMMUNICATION",
+    "partNumber": "40602.2100.000",
+    "saNumber": "SA-7731",
+    "expectedHours": 24,
+    "notes": null,
+    "location": "114D"
   },
   {
-    "pn": "40602.2151.000",
-    "name": "MAIN WINCH SPEED PPU",
-    "notes": "nan",
-    "location": "114D",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "SA-8195"
+    "printName": "MAIN WINCH SPEED PPU",
+    "partNumber": "40602.2151.000",
+    "saNumber": "SA-8195",
+    "expectedHours": 1,
+    "notes": null,
+    "location": "114D"
   },
   {
-    "pn": "40602.2152.000",
-    "name": "MAIN WINCH SPEED PPU V2",
-    "notes": "nan",
-    "location": "114D",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "MAIN WINCH SPEED PPU V2",
+    "partNumber": "40602.2152.000",
+    "saNumber": "nan",
+    "expectedHours": 1,
+    "notes": null,
+    "location": "114D"
   },
   {
-    "pn": "40602.2270.000",
-    "name": "CAB HARNESS 2",
+    "printName": "CAB HARNESS 2",
+    "partNumber": "40602.2270.000",
+    "saNumber": "SA-7868",
+    "expectedHours": 8,
     "notes": "SERVICE ONLY, NEW PRODUCTION USES 40602.2272.000",
-    "location": "SERVICE",
-    "hours": 8.0,
-    "min_qty": NaN,
-    "sa": "SA-7868"
+    "location": "SERVICE"
   },
   {
-    "pn": "40602.2272.000",
-    "name": "EK DISPLAY WIRE HARNESS",
-    "notes": "nan",
-    "location": "114D",
-    "hours": 8.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "EK DISPLAY WIRE HARNESS",
+    "partNumber": "40602.2272.000",
+    "saNumber": "nan",
+    "expectedHours": 8,
+    "notes": null,
+    "location": "114D"
   },
   {
-    "pn": "40602.2280.000",
-    "name": "CAB HARNESS 1",
-    "notes": "nan",
-    "location": "114D",
-    "hours": 24.0,
-    "min_qty": NaN,
-    "sa": "SA-7867"
+    "printName": "CAB HARNESS 1",
+    "partNumber": "40602.2280.000",
+    "saNumber": "SA-7867",
+    "expectedHours": 24,
+    "notes": null,
+    "location": "114D"
   },
   {
-    "pn": "40602.2340.000",
-    "name": "EK90 MAIN MAST",
-    "notes": "nan",
-    "location": "113D",
-    "hours": 16.0,
-    "min_qty": NaN,
-    "sa": "SA-7884"
+    "printName": "EK90 MAIN MAST",
+    "partNumber": "40602.2340.000",
+    "saNumber": "SA-7884",
+    "expectedHours": 16,
+    "notes": null,
+    "location": "113D"
   },
   {
-    "pn": "40602.2350.000",
-    "name": "EK90 MAST EXT. HARNESS",
-    "notes": "nan",
-    "location": "113D",
-    "hours": 3.0,
-    "min_qty": NaN,
-    "sa": "SA-7886"
+    "printName": "EK90 MAST EXT. HARNESS",
+    "partNumber": "40602.2350.000",
+    "saNumber": "SA-7886",
+    "expectedHours": 3,
+    "notes": null,
+    "location": "113D"
   },
   {
-    "pn": "40602.2360.000",
-    "name": "EK90 HEAD MAST",
-    "notes": "nan",
-    "location": "113D",
-    "hours": 6.0,
-    "min_qty": NaN,
-    "sa": "SA-7887"
+    "printName": "EK90 HEAD MAST",
+    "partNumber": "40602.2360.000",
+    "saNumber": "SA-7887",
+    "expectedHours": 6,
+    "notes": null,
+    "location": "113D"
   },
   {
-    "pn": "40602.2370.000",
-    "name": "EK90 ROTARY",
-    "notes": "nan",
-    "location": "113D",
-    "hours": 2.0,
-    "min_qty": NaN,
-    "sa": "SA-7885"
+    "printName": "EK90 ROTARY",
+    "partNumber": "40602.2370.000",
+    "saNumber": "SA-7885",
+    "expectedHours": 2,
+    "notes": null,
+    "location": "113D"
   },
   {
-    "pn": "40602.2420.000",
-    "name": "BASE B6A",
-    "notes": "nan",
-    "location": "113D",
-    "hours": 6.0,
-    "min_qty": NaN,
-    "sa": "SA-7888"
+    "printName": "BASE B6A",
+    "partNumber": "40602.2420.000",
+    "saNumber": "SA-7888",
+    "expectedHours": 6,
+    "notes": null,
+    "location": "113D"
   },
   {
-    "pn": "40602.2421.000",
-    "name": "BASE B6A OPTIONAL",
-    "notes": "nan",
-    "location": "113D",
-    "hours": 2.0,
-    "min_qty": NaN,
-    "sa": "SA-7888"
+    "printName": "BASE B6A OPTIONAL",
+    "partNumber": "40602.2421.000",
+    "saNumber": "SA-7888",
+    "expectedHours": 2,
+    "notes": null,
+    "location": "113D"
   },
   {
-    "pn": "40602.2430.000",
-    "name": "EK90 RADIO",
-    "notes": "nan",
-    "location": "113D",
-    "hours": 3.0,
-    "min_qty": NaN,
-    "sa": "SA-7875"
+    "printName": "EK90 RADIO",
+    "partNumber": "40602.2430.000",
+    "saNumber": "SA-7875",
+    "expectedHours": 3,
+    "notes": null,
+    "location": "113D"
   },
   {
-    "pn": "40602.2440.000",
-    "name": "VIBRO MAST D5 HARNESS",
+    "printName": "VIBRO MAST D5 HARNESS",
+    "partNumber": "40602.2440.000",
+    "saNumber": "SA-7889",
+    "expectedHours": 16,
     "notes": "SERVICE ONLY? Conversation with Gary on 7/29/25 (Pending review)",
-    "location": "113D",
-    "hours": 16.0,
-    "min_qty": NaN,
-    "sa": "SA-7889"
+    "location": "113D"
   },
   {
-    "pn": "40602.2450.000",
-    "name": "VIBRO MAST D5A",
-    "notes": "nan",
-    "location": "113C",
-    "hours": 6.0,
-    "min_qty": NaN,
-    "sa": "SA-7873"
+    "printName": "VIBRO MAST D5A",
+    "partNumber": "40602.2450.000",
+    "saNumber": "SA-7873",
+    "expectedHours": 6,
+    "notes": null,
+    "location": "113C"
   },
   {
-    "pn": "40602.2460.000",
-    "name": "WIRING HARNESS, VIBRO SKIP RW",
-    "notes": "Made for Keller May 2025, but wasn\u2019t binned or on our lists.",
-    "location": "?",
-    "hours": 8.0,
-    "min_qty": NaN,
-    "sa": "SA-7874"
+    "printName": "WIRING HARNESS, VIBRO SKIP RW",
+    "partNumber": "40602.2460.000",
+    "saNumber": "SA-7874",
+    "expectedHours": 8,
+    "notes": "Made for Keller May 2025, but wasn’t binned or on our lists.",
+    "location": "?"
   },
   {
-    "pn": "40602.2520.000",
-    "name": "FAN HARNESS",
-    "notes": "nan",
-    "location": "113C",
-    "hours": 24.0,
-    "min_qty": NaN,
-    "sa": "SA-8011"
+    "printName": "FAN HARNESS",
+    "partNumber": "40602.2520.000",
+    "saNumber": "SA-8011",
+    "expectedHours": 24,
+    "notes": null,
+    "location": "113C"
   },
   {
-    "pn": "40602.2521.000",
-    "name": "FAN HARNESS",
+    "printName": "FAN HARNESS",
+    "partNumber": "40602.2521.000",
+    "saNumber": "nan",
+    "expectedHours": 24,
     "notes": "WAITING ON TACO TO VERIFY",
-    "location": "ON DEMAND",
-    "hours": 24.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "location": "ON DEMAND"
   },
   {
-    "pn": "40602.2522.000",
-    "name": "FAN HARNESS",
+    "printName": "FAN HARNESS",
+    "partNumber": "40602.2522.000",
+    "saNumber": "nan",
+    "expectedHours": 24,
     "notes": "WAITING ON TACO TO VERIFY",
-    "location": "ON DEMAND",
-    "hours": 24.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "location": "ON DEMAND"
   },
   {
-    "pn": "40602.2550.000",
-    "name": "FAN HARNESS (HYD)",
+    "printName": "FAN HARNESS (HYD)",
+    "partNumber": "40602.2550.000",
+    "saNumber": "SA-8040",
+    "expectedHours": 8,
     "notes": "SERVICE ONLY, NEW PRODUCTION USES 40602.2555.000",
-    "location": "SERVICE",
-    "hours": 8.0,
-    "min_qty": NaN,
-    "sa": "SA-8040"
+    "location": "SERVICE"
   },
   {
-    "pn": "40602.2555.000",
-    "name": "COUNTER WEIGHT (HYD)",
-    "notes": "nan",
-    "location": "113C",
-    "hours": 8.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "COUNTER WEIGHT (HYD)",
+    "partNumber": "40602.2555.000",
+    "saNumber": "nan",
+    "expectedHours": 8,
+    "notes": null,
+    "location": "113C"
   },
   {
-    "pn": "40602.2570.000",
-    "name": "TRIANGLE MANIFOLD",
+    "printName": "TRIANGLE MANIFOLD",
+    "partNumber": "40602.2570.000",
+    "saNumber": "SA-8055",
+    "expectedHours": 24,
     "notes": "OVER STOCK IN BARREL ABOVE. 08/07/25",
-    "location": "113C",
-    "hours": 24.0,
-    "min_qty": NaN,
-    "sa": "SA-8055"
+    "location": "113C"
   },
   {
-    "pn": "40602.2580.000",
-    "name": "D4 MAST EXTENSION",
-    "notes": "nan",
-    "location": "113C",
-    "hours": 4.0,
-    "min_qty": NaN,
-    "sa": "SA-8056"
+    "printName": "D4 MAST EXTENSION",
+    "partNumber": "40602.2580.000",
+    "saNumber": "SA-8056",
+    "expectedHours": 4,
+    "notes": null,
+    "location": "113C"
   },
   {
-    "pn": "40602.2581.000",
-    "name": "D4 MAST EXTENSION 130\"",
-    "notes": "nan",
-    "location": "113C",
-    "hours": 4.0,
-    "min_qty": NaN,
-    "sa": "SA-8076"
+    "printName": "D4 MAST EXTENSION 130\"",
+    "partNumber": "40602.2581.000",
+    "saNumber": "SA-8076",
+    "expectedHours": 4,
+    "notes": null,
+    "location": "113C"
   },
   {
-    "pn": "40602.2600.000",
-    "name": "MAIN MAST EXT 22\"",
-    "notes": "nan",
-    "location": "114C",
-    "hours": 4.0,
-    "min_qty": NaN,
-    "sa": "SA-8063"
+    "printName": "MAIN MAST EXT 22\"",
+    "partNumber": "40602.2600.000",
+    "saNumber": "SA-8063",
+    "expectedHours": 4,
+    "notes": null,
+    "location": "114C"
   },
   {
-    "pn": "40602.2610.000",
-    "name": "MAIN MAST EK250",
-    "notes": "nan",
-    "location": "114C",
-    "hours": 8.0,
-    "min_qty": NaN,
-    "sa": "SA-8061"
+    "printName": "MAIN MAST EK250",
+    "partNumber": "40602.2610.000",
+    "saNumber": "SA-8061",
+    "expectedHours": 8,
+    "notes": null,
+    "location": "114C"
   },
   {
-    "pn": "40602.2620.000",
-    "name": "MAIN MAST EK250SM",
-    "notes": "nan",
-    "location": "114C",
-    "hours": 8.0,
-    "min_qty": NaN,
-    "sa": "SA-8062"
+    "printName": "MAIN MAST EK250SM",
+    "partNumber": "40602.2620.000",
+    "saNumber": "SA-8062",
+    "expectedHours": 8,
+    "notes": null,
+    "location": "114C"
   },
   {
-    "pn": "40602.2630.000",
-    "name": "ROTARY EXTENSION 150\"",
-    "notes": "nan",
-    "location": "114C",
-    "hours": 3.0,
-    "min_qty": NaN,
-    "sa": "SA-8057"
+    "printName": "ROTARY EXTENSION 150\"",
+    "partNumber": "40602.2630.000",
+    "saNumber": "SA-8057",
+    "expectedHours": 3,
+    "notes": null,
+    "location": "114C"
   },
   {
-    "pn": "40602.2633.000",
-    "name": "ROTARY EXTENSION 200\"",
-    "notes": "nan",
-    "location": "114C",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "SA-8058"
+    "printName": "ROTARY EXTENSION 200\"",
+    "partNumber": "40602.2633.000",
+    "saNumber": "SA-8058",
+    "expectedHours": 1,
+    "notes": null,
+    "location": "114C"
   },
   {
-    "pn": "40602.2636.000",
-    "name": "ROTARY EXTENSION 235\"",
-    "notes": "nan",
-    "location": "114C",
-    "hours": 3.0,
-    "min_qty": NaN,
-    "sa": "SA-8059"
+    "printName": "ROTARY EXTENSION 235\"",
+    "partNumber": "40602.2636.000",
+    "saNumber": "SA-8059",
+    "expectedHours": 3,
+    "notes": null,
+    "location": "114C"
   },
   {
-    "pn": "40602.2637.000",
-    "name": "nan",
-    "notes": "? Should this be here?",
-    "location": "nan",
-    "hours": NaN,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "EK200 LM HEADMAST",
+    "partNumber": "40602.2640.000",
+    "saNumber": "SA-8071",
+    "expectedHours": 4,
+    "notes": null,
+    "location": "114C"
   },
   {
-    "pn": "40602.2640.000",
-    "name": "EK200 LM HEADMAST",
-    "notes": "nan",
-    "location": "114C",
-    "hours": 4.0,
-    "min_qty": NaN,
-    "sa": "SA-8071"
+    "printName": "HM AUX LIMIT 85\"",
+    "partNumber": "40602.2650.000",
+    "saNumber": "SA-8073",
+    "expectedHours": 1,
+    "notes": null,
+    "location": "114C"
   },
   {
-    "pn": "40602.2650.000",
-    "name": "HM AUX LIMIT 85\"",
-    "notes": "nan",
-    "location": "114C",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "SA-8073"
+    "printName": "HM AUX LIMIT 60\"",
+    "partNumber": "40602.2653.000",
+    "saNumber": "SA-8072",
+    "expectedHours": 1,
+    "notes": null,
+    "location": "115C"
   },
   {
-    "pn": "40602.2653.000",
-    "name": "HM AUX LIMIT 60\"",
-    "notes": "nan",
-    "location": "115C",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "SA-8072"
+    "printName": "EK250 LM HEADMAST",
+    "partNumber": "40602.2670.000",
+    "saNumber": "SA-8070",
+    "expectedHours": 4,
+    "notes": null,
+    "location": "115C"
   },
   {
-    "pn": "40602.2670.000",
-    "name": "EK250 LM HEADMAST",
-    "notes": "nan",
-    "location": "115C",
-    "hours": 4.0,
-    "min_qty": NaN,
-    "sa": "SA-8070"
+    "printName": "EK250 SM HEADMAST",
+    "partNumber": "40602.2680.000",
+    "saNumber": "SA-8069",
+    "expectedHours": 2,
+    "notes": null,
+    "location": "115C"
   },
   {
-    "pn": "40602.2680.000",
-    "name": "EK250 SM HEADMAST",
-    "notes": "nan",
-    "location": "115C",
-    "hours": 2.0,
-    "min_qty": NaN,
-    "sa": "SA-8069"
-  },
-  {
-    "pn": "40602.2700.000",
-    "name": "HYD. COUNTERWEIGHT",
+    "printName": "HYD. COUNTERWEIGHT",
+    "partNumber": "40602.2700.000",
+    "saNumber": "SA-8171",
+    "expectedHours": 6,
     "notes": "SERVICE ONLY",
-    "location": "SERVICE",
-    "hours": 6.0,
-    "min_qty": NaN,
-    "sa": "SA-8171"
+    "location": "SERVICE"
   },
   {
-    "pn": "40602.2701.000",
-    "name": "CW FAN MOD JUMPER",
+    "printName": "CW FAN MOD JUMPER",
+    "partNumber": "40602.2701.000",
+    "saNumber": "nan",
+    "expectedHours": 2,
     "notes": "SERVICE ONLY",
-    "location": "SERVICE",
-    "hours": 2.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "location": "SERVICE"
   },
   {
-    "pn": "40602.2702.000",
-    "name": "COUNTERWEIGHT LIFT",
+    "printName": "COUNTERWEIGHT LIFT",
+    "partNumber": "40602.2702.000",
+    "saNumber": "nan",
+    "expectedHours": 2,
     "notes": "SERVICE ONLY",
-    "location": "SERVICE",
-    "hours": 2.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "location": "SERVICE"
   },
   {
-    "pn": "40602.2705.000",
-    "name": "COUNTER WEIGHT (HYD)",
-    "notes": "nan",
-    "location": "115C",
-    "hours": 2.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "COUNTER WEIGHT (HYD)",
+    "partNumber": "40602.2705.000",
+    "saNumber": "nan",
+    "expectedHours": 2,
+    "notes": null,
+    "location": "115C"
   },
   {
-    "pn": "40602.2730.000",
-    "name": "MAST EXTENSION",
-    "notes": "nan",
-    "location": "115C",
-    "hours": 4.0,
-    "min_qty": NaN,
-    "sa": "SA-8345"
+    "printName": "MAST EXTENSION",
+    "partNumber": "40602.2730.000",
+    "saNumber": "SA-8345",
+    "expectedHours": 4,
+    "notes": null,
+    "location": "115C"
   },
   {
-    "pn": "40602.2731.000",
-    "name": "D5 EXTENSION",
-    "notes": "nan",
-    "location": "115C",
-    "hours": 6.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "D5 EXTENSION",
+    "partNumber": "40602.2731.000",
+    "saNumber": "nan",
+    "expectedHours": 6,
+    "notes": null,
+    "location": "115C"
   },
   {
-    "pn": "40602.3130.000",
-    "name": "LIGHT EXTENSION 195\"",
-    "notes": "nan",
-    "location": "115C",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "SA-8498"
+    "printName": "LIGHT EXTENSION 195\"",
+    "partNumber": "40602.3130.000",
+    "saNumber": "SA-8498",
+    "expectedHours": 1,
+    "notes": null,
+    "location": "115C"
   },
   {
-    "pn": "40602.3740.000",
-    "name": "CS500 TELEMATICS JUMPER",
-    "notes": "nan",
-    "location": "115C",
-    "hours": 2.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "CS500 TELEMATICS JUMPER",
+    "partNumber": "40602.3740.000",
+    "saNumber": "nan",
+    "expectedHours": 2,
+    "notes": null,
+    "location": "115C"
   },
   {
-    "pn": "40602.4320.000",
-    "name": "SLOPE SENSOR JUMPER",
-    "notes": "nan",
-    "location": "115C",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "SLOPE SENSOR JUMPER",
+    "partNumber": "40602.4320.000",
+    "saNumber": "nan",
+    "expectedHours": 1,
+    "notes": null,
+    "location": "115C"
   },
   {
-    "pn": "40602.4330.000",
-    "name": "PREBOX HARNESS (LR50)",
+    "printName": "PREBOX HARNESS (LR50)",
+    "partNumber": "40602.4330.000",
+    "saNumber": "nan",
+    "expectedHours": 16,
     "notes": "SERVICE ONLY",
-    "location": "SERVICE",
-    "hours": 16.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "location": "SERVICE"
   },
   {
-    "pn": "40602.4331.000",
-    "name": "PREBOX HARNESS (LR40)",
-    "notes": "nan",
-    "location": "115B",
-    "hours": 16.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "PREBOX HARNESS (LR40)",
+    "partNumber": "40602.4331.000",
+    "saNumber": "nan",
+    "expectedHours": 16,
+    "notes": null,
+    "location": "115B"
   },
   {
-    "pn": "40602.4332.000",
-    "name": "PREBOX HARNESS (LR40SLR)",
-    "notes": "nan",
-    "location": "115B",
-    "hours": 16.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "PREBOX HARNESS (LR40SLR)",
+    "partNumber": "40602.4332.000",
+    "saNumber": "nan",
+    "expectedHours": 16,
+    "notes": null,
+    "location": "115B"
   },
   {
-    "pn": "40602.4333.000",
-    "name": "LR50 VG PREBOX HARNESS",
-    "notes": "nan",
-    "location": "115B",
-    "hours": 8.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "LR50 VG PREBOX HARNESS",
+    "partNumber": "40602.4333.000",
+    "saNumber": "nan",
+    "expectedHours": 8,
+    "notes": null,
+    "location": "115B"
   },
   {
-    "pn": "40602.4340.000",
-    "name": "BOX HARNESS (LR50)",
-    "notes": "nan",
-    "location": "115B",
-    "hours": 30.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "BOX HARNESS (LR50)",
+    "partNumber": "40602.4340.000",
+    "saNumber": "nan",
+    "expectedHours": 30,
+    "notes": null,
+    "location": "115B"
   },
   {
-    "pn": "40602.4341.000",
-    "name": "BOX HARNESS (LR40)",
-    "notes": "nan",
-    "location": "115B",
-    "hours": 30.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "BOX HARNESS (LR40)",
+    "partNumber": "40602.4341.000",
+    "saNumber": "nan",
+    "expectedHours": 30,
+    "notes": null,
+    "location": "115B"
   },
   {
-    "pn": "40602.4342.000",
-    "name": "LR40SLR PRE BOX HARNESS",
-    "notes": "nan",
-    "location": "115B",
-    "hours": 24.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "LR40SLR PRE BOX HARNESS",
+    "partNumber": "40602.4342.000",
+    "saNumber": "nan",
+    "expectedHours": 24,
+    "notes": null,
+    "location": "115B"
   },
   {
-    "pn": "40602.4343.000",
-    "name": "LR50 VG BOX HARNESS",
-    "notes": "nan",
-    "location": "115B",
-    "hours": NaN,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "LR50 VG BOX HARNESS",
+    "partNumber": "40602.4343.000",
+    "saNumber": "nan",
+    "expectedHours": null,
+    "notes": null,
+    "location": "115B"
   },
   {
-    "pn": "40602.4350.000",
-    "name": "MAST HARNESS",
-    "notes": "nan",
-    "location": "114B",
-    "hours": 8.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "MAST HARNESS",
+    "partNumber": "40602.4350.000",
+    "saNumber": "nan",
+    "expectedHours": 8,
+    "notes": null,
+    "location": "114B"
   },
   {
-    "pn": "40602.4351.000",
-    "name": "MAST HARNESS",
-    "notes": "nan",
-    "location": "114B",
-    "hours": 8.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "MAST HARNESS",
+    "partNumber": "40602.4351.000",
+    "saNumber": "nan",
+    "expectedHours": 8,
+    "notes": null,
+    "location": "114B"
   },
   {
-    "pn": "40602.4360.000",
-    "name": "SLOPE SENSOR HARNESS",
-    "notes": "nan",
-    "location": "114B",
-    "hours": 3.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "SLOPE SENSOR HARNESS",
+    "partNumber": "40602.4360.000",
+    "saNumber": "nan",
+    "expectedHours": 3,
+    "notes": null,
+    "location": "114B"
   },
   {
-    "pn": "40602.4361.000",
-    "name": "SLOPE SENSOR HARNESS",
-    "notes": "nan",
-    "location": "114B",
-    "hours": 4.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "SLOPE SENSOR HARNESS",
+    "partNumber": "40602.4361.000",
+    "saNumber": "nan",
+    "expectedHours": 4,
+    "notes": null,
+    "location": "114B"
   },
   {
-    "pn": "40602.4370.000",
-    "name": "D5F HARNESS",
-    "notes": "nan",
-    "location": "114B",
-    "hours": 3.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "D5F HARNESS",
+    "partNumber": "40602.4370.000",
+    "saNumber": "nan",
+    "expectedHours": 3,
+    "notes": null,
+    "location": "114B"
   },
   {
-    "pn": "40602.4380.000",
-    "name": "D6A JUMPER",
-    "notes": "nan",
-    "location": "114B",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "D6A JUMPER",
+    "partNumber": "40602.4380.000",
+    "saNumber": "nan",
+    "expectedHours": 1,
+    "notes": null,
+    "location": "114B"
   },
   {
-    "pn": "40602.4381.000",
-    "name": "DA6 JUMPER",
-    "notes": "nan",
-    "location": "114B",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "DA6 JUMPER",
+    "partNumber": "40602.4381.000",
+    "saNumber": "nan",
+    "expectedHours": 1,
+    "notes": null,
+    "location": "114B"
   },
   {
-    "pn": "40602.4390.000",
-    "name": "SPEED ROTARY HARNESS",
-    "notes": "nan",
-    "location": "114B",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "SPEED ROTARY HARNESS",
+    "partNumber": "40602.4390.000",
+    "saNumber": "nan",
+    "expectedHours": 1,
+    "notes": null,
+    "location": "114B"
   },
   {
-    "pn": "40602.4400.000",
-    "name": "D5F JUMPER",
-    "notes": "nan",
-    "location": "114B",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "D5F JUMPER",
+    "partNumber": "40602.4400.000",
+    "saNumber": "nan",
+    "expectedHours": 1,
+    "notes": null,
+    "location": "114B"
   },
   {
-    "pn": "40602.4410.000",
-    "name": "LIMIT SW HARNESS",
-    "notes": "nan",
-    "location": "113B",
-    "hours": 2.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "LIMIT SW HARNESS",
+    "partNumber": "40602.4410.000",
+    "saNumber": "nan",
+    "expectedHours": 2,
+    "notes": null,
+    "location": "113B"
   },
   {
-    "pn": "40602.4460.000",
-    "name": "EK240LS CAB DISPLAY HARNESS",
-    "notes": "nan",
-    "location": "ON DEMAND",
-    "hours": 10.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "EK240LS CAB DISPLAY HARNESS",
+    "partNumber": "40602.4460.000",
+    "saNumber": "nan",
+    "expectedHours": 10,
+    "notes": null,
+    "location": "ON DEMAND"
   },
   {
-    "pn": "40602.4500.000",
-    "name": "SUBASSEMBLY ELECT KIT EK240NG LS",
-    "notes": "NEED TO BIN",
-    "location": "ON DEMAND",
-    "hours": 6.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "SUBASSEMBLY ELECT KIT EK240NG LS",
+    "partNumber": "40602.4500.000",
+    "saNumber": "nan",
+    "expectedHours": 6,
+    "notes": null,
+    "location": "ON DEMAND"
   },
   {
-    "pn": "40602.4510.000",
-    "name": "EK240LS MAST D5 HARNESS",
-    "notes": "nan",
-    "location": "ON DEMAND",
-    "hours": 16.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "EK240LS MAST D5 HARNESS",
+    "partNumber": "40602.4510.000",
+    "saNumber": "nan",
+    "expectedHours": 16,
+    "notes": null,
+    "location": "ON DEMAND"
   },
   {
-    "pn": "40602.4540.000",
-    "name": "EK300LS MAST PVG JUMPER HARNESS",
-    "notes": "nan",
-    "location": "ON DEMAND",
-    "hours": 6.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "EK300LS MAST PVG JUMPER HARNESS",
+    "partNumber": "40602.4540.000",
+    "saNumber": "nan",
+    "expectedHours": 6,
+    "notes": null,
+    "location": "ON DEMAND"
   },
   {
-    "pn": "40602.4550.000",
-    "name": "EK300LS MAST D5 HARNESS",
-    "notes": "nan",
-    "location": "113B",
-    "hours": 16.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "EK300LS MAST D5 HARNESS",
+    "partNumber": "40602.4550.000",
+    "saNumber": "nan",
+    "expectedHours": 16,
+    "notes": null,
+    "location": "113B"
   },
   {
-    "pn": "40602.4560.000",
-    "name": "EK300LS MAST D5F  HARNESS",
-    "notes": "nan",
-    "location": "113B",
-    "hours": 6.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "EK300LS MAST D5F  HARNESS",
+    "partNumber": "40602.4560.000",
+    "saNumber": "nan",
+    "expectedHours": 6,
+    "notes": null,
+    "location": "113B"
   },
   {
-    "pn": "40602.4580.000",
-    "name": "WINCH JUMPER HARNESS",
-    "notes": "nan",
-    "location": "113B",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "WINCH JUMPER HARNESS",
+    "partNumber": "40602.4580.000",
+    "saNumber": "nan",
+    "expectedHours": 1,
+    "notes": null,
+    "location": "113B"
   },
   {
-    "pn": "40602.4640.000",
-    "name": "SWING SENSOR JUMPER",
-    "notes": "nan",
-    "location": "113B",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "SWING SENSOR JUMPER",
+    "partNumber": "40602.4640.000",
+    "saNumber": "nan",
+    "expectedHours": 1,
+    "notes": null,
+    "location": "113B"
   },
   {
-    "pn": "40602.4641.000",
-    "name": "317 BASE SWING SENSOR JUMPER",
-    "notes": "nan",
-    "location": "113B",
-    "hours": 2.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "317 BASE SWING SENSOR JUMPER",
+    "partNumber": "40602.4641.000",
+    "saNumber": "nan",
+    "expectedHours": 2,
+    "notes": null,
+    "location": "113B"
   },
   {
-    "pn": "40602.4790.000",
-    "name": "SP25 B1-B6",
+    "printName": "SP25 B1-B6",
+    "partNumber": "40602.4790.000",
+    "saNumber": "nan",
+    "expectedHours": 1,
     "notes": "SERVICE ONLY",
-    "location": "SERVICE",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "location": "SERVICE"
   },
   {
-    "pn": "40602.4800.000",
-    "name": "SUREGRIP JOYSTICK JUMPER HARNESS",
-    "notes": "nan",
-    "location": "113B",
-    "hours": 6.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "SUREGRIP JOYSTICK JUMPER HARNESS",
+    "partNumber": "40602.4800.000",
+    "saNumber": "nan",
+    "expectedHours": 6,
+    "notes": null,
+    "location": "113B"
   },
   {
-    "pn": "40602.4810.000",
-    "name": "B8 SUB-HARNESS",
-    "notes": "nan",
-    "location": "113B",
-    "hours": 6.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "B8 SUB-HARNESS",
+    "partNumber": "40602.4810.000",
+    "saNumber": "nan",
+    "expectedHours": 6,
+    "notes": null,
+    "location": "113B"
   },
   {
-    "pn": "40602.4820.000",
-    "name": "SP25 D4 HARNESS",
+    "printName": "SP25 D4 HARNESS",
+    "partNumber": "40602.4820.000",
+    "saNumber": "nan",
+    "expectedHours": 6,
     "notes": "SERVICE ONLY (REPLACED WITH 6550)",
-    "location": "SERVICE",
-    "hours": 6.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "location": "SERVICE"
   },
   {
-    "pn": "40602.4831.000",
-    "name": "BASE MANIFOLD HARNESS V2",
-    "notes": "nan",
-    "location": "116D",
-    "hours": 6.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "BASE MANIFOLD HARNESS V2",
+    "partNumber": "40602.4831.000",
+    "saNumber": "nan",
+    "expectedHours": 6,
+    "notes": null,
+    "location": "116D"
   },
   {
-    "pn": "40602.4841.000",
-    "name": "TRIANGLE HARNESS V2",
-    "notes": "nan",
-    "location": "116D",
-    "hours": 8.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "TRIANGLE HARNESS V2",
+    "partNumber": "40602.4841.000",
+    "saNumber": "nan",
+    "expectedHours": 8,
+    "notes": null,
+    "location": "116D"
   },
   {
-    "pn": "40602.4850.000",
-    "name": "SP25 LOWER",
+    "printName": "SP25 LOWER",
+    "partNumber": "40602.4850.000",
+    "saNumber": "nan",
+    "expectedHours": 6,
     "notes": "SERVICE ONLY",
-    "location": "SERVICE",
-    "hours": 6.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "location": "SERVICE"
   },
   {
-    "pn": "40602.4851.000",
-    "name": "SP25 UPPER",
+    "printName": "SP25 UPPER",
+    "partNumber": "40602.4851.000",
+    "saNumber": "nan",
+    "expectedHours": 6,
     "notes": "SERVICE ONLY",
-    "location": "SERVICE",
-    "hours": 6.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "location": "SERVICE"
   },
   {
-    "pn": "40602.4852.000",
-    "name": "SP25v2 MAST JUMPER HARNESS",
-    "notes": "nan",
-    "location": "116D",
-    "hours": 3.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "SP25v2 MAST JUMPER HARNESS",
+    "partNumber": "40602.4852.000",
+    "saNumber": "nan",
+    "expectedHours": 3,
+    "notes": null,
+    "location": "116D"
   },
   {
-    "pn": "40602.4860.000",
-    "name": "HEADMAST HARNESS",
-    "notes": "nan",
-    "location": "116D",
-    "hours": 8.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "HEADMAST HARNESS",
+    "partNumber": "40602.4860.000",
+    "saNumber": "nan",
+    "expectedHours": 8,
+    "notes": null,
+    "location": "116D"
   },
   {
-    "pn": "40602.4870.000",
-    "name": "SP25 LM SW",
+    "printName": "SP25 LM SW",
+    "partNumber": "40602.4870.000",
+    "saNumber": "nan",
+    "expectedHours": 6,
     "notes": "SERVICE ONLY",
-    "location": "SERVICE",
-    "hours": 6.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "location": "SERVICE"
   },
   {
-    "pn": "40602.4880.000",
-    "name": "BOTTOM LM SW HARNESS",
+    "printName": "BOTTOM LM SW HARNESS",
+    "partNumber": "40602.4880.000",
+    "saNumber": "nan",
+    "expectedHours": 1,
     "notes": "TWO ARE REQUIRED.",
-    "location": "116D",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "location": "116D"
   },
   {
-    "pn": "40602.4920.000",
-    "name": "M12 90 CABLE 5M PIGTAIL",
+    "printName": "M12 90 CABLE 5M PIGTAIL",
+    "partNumber": "40602.4920.000",
+    "saNumber": "nan",
+    "expectedHours": null,
     "notes": "VENDOR CABLE",
-    "location": "113A",
-    "hours": NaN,
-    "min_qty": NaN,
-    "sa": "nan"
+    "location": "113A"
   },
   {
-    "pn": "40602.4921.000",
-    "name": "M12 LIMIT SWITCH 24\"",
-    "notes": "nan",
-    "location": "116D",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "M12 LIMIT SWITCH 24\"",
+    "partNumber": "40602.4921.000",
+    "saNumber": "nan",
+    "expectedHours": 1,
+    "notes": null,
+    "location": "116D"
   },
   {
-    "pn": "40602.4922.000",
-    "name": "M12 LIMIT SWITCH 80\"\"",
-    "notes": "nan",
-    "location": "116D",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "M12 LIMIT SWITCH 80\"\"",
+    "partNumber": "40602.4922.000",
+    "saNumber": "nan",
+    "expectedHours": 1,
+    "notes": null,
+    "location": "116D"
   },
   {
-    "pn": "40602.4923.000",
-    "name": "M12 LIMIT SWITCH 6\"\"",
-    "notes": "nan",
-    "location": "116D",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "M12 LIMIT SWITCH 6\"\"",
+    "partNumber": "40602.4923.000",
+    "saNumber": "nan",
+    "expectedHours": 1,
+    "notes": null,
+    "location": "116D"
   },
   {
-    "pn": "40602.4924.000",
-    "name": "M12 LIMIT SWITCH 192\"",
-    "notes": "nan",
-    "location": "116D",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "M12 LIMIT SWITCH 192\"",
+    "partNumber": "40602.4924.000",
+    "saNumber": "nan",
+    "expectedHours": 1,
+    "notes": null,
+    "location": "116D"
   },
   {
-    "pn": "40602.5020.000",
-    "name": "SP25 TRIMBLE POWER",
-    "notes": "nan",
-    "location": "117D",
-    "hours": 4.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "SP25 TRIMBLE POWER",
+    "partNumber": "40602.5020.000",
+    "saNumber": "nan",
+    "expectedHours": 4,
+    "notes": null,
+    "location": "117D"
   },
   {
-    "pn": "40602.5030.000",
-    "name": "VENDOR",
+    "printName": "VENDOR",
+    "partNumber": "40602.5030.000",
+    "saNumber": "nan",
+    "expectedHours": 0,
     "notes": "THIS IS A VENDOR CABLE, ITS USED TO MAKE 40602.5031.000",
-    "location": "113A",
-    "hours": 0.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "location": "113A"
   },
   {
-    "pn": "40602.5031.000",
-    "name": "SP25 TRIMBLE CAN",
-    "notes": "nan",
-    "location": "117D",
-    "hours": 4.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "SP25 TRIMBLE CAN",
+    "partNumber": "40602.5031.000",
+    "saNumber": "nan",
+    "expectedHours": 4,
+    "notes": null,
+    "location": "117D"
   },
   {
-    "pn": "40602.5090.000",
-    "name": "NO PRINT",
+    "printName": "NO PRINT",
+    "partNumber": "40602.5090.000",
+    "saNumber": "nan",
+    "expectedHours": null,
     "notes": "VENDOR CABLE",
-    "location": "113A",
-    "hours": NaN,
-    "min_qty": NaN,
-    "sa": "nan"
+    "location": "113A"
   },
   {
-    "pn": "40602.5100.000",
-    "name": "NO PRINT",
+    "printName": "NO PRINT",
+    "partNumber": "40602.5100.000",
+    "saNumber": "nan",
+    "expectedHours": null,
     "notes": "VENDOR CABLE",
-    "location": "113A",
-    "hours": NaN,
-    "min_qty": NaN,
-    "sa": "nan"
+    "location": "113A"
   },
   {
-    "pn": "40602.5101.000",
-    "name": "SP25 TRIMBLE DISPLAY PWR CABLE",
-    "notes": "nan",
-    "location": "117D",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "SP25 TRIMBLE DISPLAY PWR CABLE",
+    "partNumber": "40602.5101.000",
+    "saNumber": "nan",
+    "expectedHours": 1,
+    "notes": null,
+    "location": "117D"
   },
   {
-    "pn": "40602.5102.000",
-    "name": "M12 STRAIGHT-4 PIN",
-    "notes": "nan",
-    "location": "117D",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "M12 STRAIGHT-4 PIN",
+    "partNumber": "40602.5102.000",
+    "saNumber": "nan",
+    "expectedHours": 1,
+    "notes": null,
+    "location": "117D"
   },
   {
-    "pn": "40602.5130.000",
-    "name": "NO PRINT",
+    "printName": "NO PRINT",
+    "partNumber": "40602.5130.000",
+    "saNumber": "nan",
+    "expectedHours": null,
     "notes": "VENDOR CABLE",
-    "location": "113A",
-    "hours": NaN,
-    "min_qty": NaN,
-    "sa": "nan"
+    "location": "113A"
   },
   {
-    "pn": "40602.5131.000",
-    "name": "TRIMBLE RECEIVER HARNESS",
-    "notes": "nan",
-    "location": "117D",
-    "hours": 2.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "TRIMBLE RECEIVER HARNESS",
+    "partNumber": "40602.5131.000",
+    "saNumber": "nan",
+    "expectedHours": 2,
+    "notes": null,
+    "location": "117D"
   },
   {
-    "pn": "40602.5180.000",
-    "name": "NO PRINT",
+    "printName": "NO PRINT",
+    "partNumber": "40602.5180.000",
+    "saNumber": "nan",
+    "expectedHours": null,
     "notes": "VENDOR CABLE",
-    "location": "113A",
-    "hours": NaN,
-    "min_qty": NaN,
-    "sa": "nan"
+    "location": "113A"
   },
   {
-    "pn": "40602.5191.000",
-    "name": "VISION LINK",
-    "notes": "nan",
-    "location": "117D",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "VISION LINK",
+    "partNumber": "40602.5191.000",
+    "saNumber": "nan",
+    "expectedHours": 1,
+    "notes": null,
+    "location": "117D"
   },
   {
-    "pn": "40602.5200.000",
-    "name": "NO PRINT",
+    "printName": "NO PRINT",
+    "partNumber": "40602.5200.000",
+    "saNumber": "nan",
+    "expectedHours": null,
     "notes": "VENDOR CABLE",
-    "location": "113A",
-    "hours": NaN,
-    "min_qty": NaN,
-    "sa": "nan"
+    "location": "113A"
   },
   {
-    "pn": "40602.5220.000",
-    "name": "NO PRINT",
+    "printName": "NO PRINT",
+    "partNumber": "40602.5220.000",
+    "saNumber": "nan",
+    "expectedHours": null,
     "notes": "VENDOR CABLE",
-    "location": "113A",
-    "hours": NaN,
-    "min_qty": NaN,
-    "sa": "nan"
+    "location": "113A"
   },
   {
-    "pn": "40602.5390.000",
-    "name": "EK160LS CFA FOOT PVG CAN",
-    "notes": "nan",
-    "location": "117D",
-    "hours": 6.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "EK160LS CFA FOOT PVG CAN",
+    "partNumber": "40602.5390.000",
+    "saNumber": "nan",
+    "expectedHours": 6,
+    "notes": null,
+    "location": "117D"
   },
   {
-    "pn": "40602.5400.000",
-    "name": "LR65 HEADMAST",
-    "notes": "nan",
-    "location": "117D",
-    "hours": 2.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "LR65 HEADMAST",
+    "partNumber": "40602.5400.000",
+    "saNumber": "nan",
+    "expectedHours": 2,
+    "notes": null,
+    "location": "117D"
   },
   {
-    "pn": "40602.5410.000",
-    "name": "VENDOR PIGTAIL - 16 FT (MFR 3021023-16)",
+    "printName": "VENDOR PIGTAIL - 16 FT (MFR 3021023-16)",
+    "partNumber": "40602.5410.000",
+    "saNumber": "nan",
+    "expectedHours": null,
     "notes": "VENDOR CABLE",
-    "location": "VENDOR",
-    "hours": NaN,
-    "min_qty": NaN,
-    "sa": "nan"
+    "location": "VENDOR"
   },
   {
-    "pn": "40602.5413.000",
-    "name": "DM1X00 USB A TO M12 4 PIN 1",
-    "notes": "nan",
-    "location": "117D",
-    "hours": 2.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "DM1X00 USB A TO M12 4 PIN 1",
+    "partNumber": "40602.5413.000",
+    "saNumber": "nan",
+    "expectedHours": 2,
+    "notes": null,
+    "location": "117D"
   },
   {
-    "pn": "40602.5420.000",
-    "name": "BASE MAIN CAVITY",
-    "notes": "nan",
-    "location": "117D",
-    "hours": 16.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "BASE MAIN CAVITY",
+    "partNumber": "40602.5420.000",
+    "saNumber": "nan",
+    "expectedHours": 16,
+    "notes": null,
+    "location": "117D"
   },
   {
-    "pn": "40602.5440.000",
-    "name": "LIGHT TOWER",
-    "notes": "nan",
-    "location": "118D",
-    "hours": 4.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "LIGHT TOWER",
+    "partNumber": "40602.5440.000",
+    "saNumber": "nan",
+    "expectedHours": 4,
+    "notes": null,
+    "location": "118D"
   },
   {
-    "pn": "40602.5450.000",
-    "name": "GROUT HARNESS",
+    "printName": "GROUT HARNESS",
+    "partNumber": "40602.5450.000",
+    "saNumber": "nan",
+    "expectedHours": 4,
     "notes": "SERVICE ONLY USE 40602.5700.000",
-    "location": "SERVICE",
-    "hours": 4.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "location": "SERVICE"
   },
   {
-    "pn": "40602.5460.000",
-    "name": "CLAMP HARNESS",
-    "notes": "nan",
-    "location": "118D",
-    "hours": 4.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "CLAMP HARNESS",
+    "partNumber": "40602.5460.000",
+    "saNumber": "nan",
+    "expectedHours": 4,
+    "notes": null,
+    "location": "118D"
   },
   {
-    "pn": "40602.5470.000",
-    "name": "FUSE BOX/DOOR",
+    "printName": "FUSE BOX/DOOR",
+    "partNumber": "40602.5470.000",
+    "saNumber": "nan",
+    "expectedHours": null,
     "notes": "CR-25 ELECTRICAL BOX",
-    "location": "ON DEMAND",
-    "hours": NaN,
-    "min_qty": NaN,
-    "sa": "nan"
+    "location": "ON DEMAND"
   },
   {
-    "pn": "40602.5490.000",
-    "name": "MAIN CNTL (S0)",
+    "printName": "MAIN CNTL (S0)",
+    "partNumber": "40602.5490.000",
+    "saNumber": "nan",
+    "expectedHours": null,
     "notes": "CR-25 ELECTRICAL BOX",
-    "location": "ON DEMAND",
-    "hours": NaN,
-    "min_qty": NaN,
-    "sa": "nan"
+    "location": "ON DEMAND"
   },
   {
-    "pn": "40602.5500.000",
-    "name": "POWER CNTL (S1)",
+    "printName": "POWER CNTL (S1)",
+    "partNumber": "40602.5500.000",
+    "saNumber": "nan",
+    "expectedHours": null,
     "notes": "CR-25 ELECTRICAL BOX",
-    "location": "ON DEMAND",
-    "hours": NaN,
-    "min_qty": NaN,
-    "sa": "nan"
+    "location": "ON DEMAND"
   },
   {
-    "pn": "40602.5510.000",
-    "name": "VALVE CNTL (S2)",
+    "printName": "VALVE CNTL (S2)",
+    "partNumber": "40602.5510.000",
+    "saNumber": "nan",
+    "expectedHours": null,
     "notes": "CR-25 ELECTRICAL BOX",
-    "location": "ON DEMAND",
-    "hours": NaN,
-    "min_qty": NaN,
-    "sa": "nan"
+    "location": "ON DEMAND"
   },
   {
-    "pn": "40602.5520.000",
-    "name": "DISPLAY HARNESS",
-    "notes": "nan",
-    "location": "118D",
-    "hours": 6.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "DISPLAY HARNESS",
+    "partNumber": "40602.5520.000",
+    "saNumber": "nan",
+    "expectedHours": 6,
+    "notes": null,
+    "location": "118D"
   },
   {
-    "pn": "40602.5530.000",
-    "name": "RADIO HARNESS",
-    "notes": "nan",
-    "location": "118D",
-    "hours": 2.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "RADIO HARNESS",
+    "partNumber": "40602.5530.000",
+    "saNumber": "nan",
+    "expectedHours": 2,
+    "notes": null,
+    "location": "118D"
   },
   {
-    "pn": "40602.5540.000",
-    "name": "RADIO E-STOP JUMPER",
-    "notes": "nan",
-    "location": "117C",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "RADIO E-STOP JUMPER",
+    "partNumber": "40602.5540.000",
+    "saNumber": "nan",
+    "expectedHours": 1,
+    "notes": null,
+    "location": "117C"
   },
   {
-    "pn": "40602.5550.000",
-    "name": "AUX FUEL PUMP JUMPER",
-    "notes": "nan",
-    "location": "117C",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "AUX FUEL PUMP JUMPER",
+    "partNumber": "40602.5550.000",
+    "saNumber": "nan",
+    "expectedHours": 1,
+    "notes": null,
+    "location": "117C"
   },
   {
-    "pn": "40602.5560.000",
-    "name": "E-STOP BUTTON HARNESS",
-    "notes": "nan",
-    "location": "117C",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "E-STOP BUTTON HARNESS",
+    "partNumber": "40602.5560.000",
+    "saNumber": "nan",
+    "expectedHours": 1,
+    "notes": null,
+    "location": "117C"
   },
   {
-    "pn": "40602.5561.000",
-    "name": "E-STOP JUMPER HARNESS",
-    "notes": "nan",
-    "location": "117C",
-    "hours": 3.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "E-STOP JUMPER HARNESS",
+    "partNumber": "40602.5561.000",
+    "saNumber": "nan",
+    "expectedHours": 3,
+    "notes": null,
+    "location": "117C"
   },
   {
-    "pn": "40602.5570.000",
-    "name": "ENGINE HARNESS",
-    "notes": "nan",
-    "location": "117C",
-    "hours": 3.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "ENGINE HARNESS",
+    "partNumber": "40602.5570.000",
+    "saNumber": "nan",
+    "expectedHours": 3,
+    "notes": null,
+    "location": "117C"
   },
   {
-    "pn": "40602.5580.000",
-    "name": "MAST HARNESS",
+    "printName": "MAST HARNESS",
+    "partNumber": "40602.5580.000",
+    "saNumber": "nan",
+    "expectedHours": 16,
     "notes": "DIFFERENT FROM CR-18",
-    "location": "117C",
-    "hours": 16.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "location": "117C"
   },
   {
-    "pn": "40602.5581.000",
-    "name": "MAST HARNESS",
+    "printName": "MAST HARNESS",
+    "partNumber": "40602.5581.000",
+    "saNumber": "nan",
+    "expectedHours": 16,
     "notes": "DIFFERENT FROM CR-25",
-    "location": "117C",
-    "hours": 16.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "location": "117C"
   },
   {
-    "pn": "40602.5590.000",
-    "name": "ROTORY JUMPER",
+    "printName": "ROTORY JUMPER",
+    "partNumber": "40602.5590.000",
+    "saNumber": "nan",
+    "expectedHours": 4,
     "notes": "DIFFERENT FROM CR-18",
-    "location": "117C",
-    "hours": 4.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "location": "117C"
   },
   {
-    "pn": "40602.5591.000",
-    "name": "ROTORY JUMPER",
+    "printName": "ROTORY JUMPER",
+    "partNumber": "40602.5591.000",
+    "saNumber": "nan",
+    "expectedHours": 4,
     "notes": "DIFFERENT FROM CR-25",
-    "location": "117C",
-    "hours": 4.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "location": "117C"
   },
   {
-    "pn": "40602.5600.000",
-    "name": "MAST JUMPER 1",
+    "printName": "MAST JUMPER 1",
+    "partNumber": "40602.5600.000",
+    "saNumber": "nan",
+    "expectedHours": 4,
     "notes": "DIFFERENT FROM CR-18",
-    "location": "117C",
-    "hours": 4.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "location": "117C"
   },
   {
-    "pn": "40602.5601.000",
-    "name": "MAST JUMPER 2",
+    "printName": "MAST JUMPER 2",
+    "partNumber": "40602.5601.000",
+    "saNumber": "nan",
+    "expectedHours": 4,
     "notes": "DIFFERENT FROM CR-18",
-    "location": "117C",
-    "hours": 4.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "location": "117C"
   },
   {
-    "pn": "40602.5602.000",
-    "name": "MAST JUMPER 1",
+    "printName": "MAST JUMPER 1",
+    "partNumber": "40602.5602.000",
+    "saNumber": "nan",
+    "expectedHours": 4,
     "notes": "DIFFERENT FROM CR-25",
-    "location": "116C",
-    "hours": 4.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "location": "116C"
   },
   {
-    "pn": "40602.5603.000",
-    "name": "MAST JUMPER 2",
+    "printName": "MAST JUMPER 2",
+    "partNumber": "40602.5603.000",
+    "saNumber": "nan",
+    "expectedHours": 4,
     "notes": "DIFFERENT FROM CR-25",
-    "location": "116C",
-    "hours": 4.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "location": "116C"
   },
   {
-    "pn": "40602.5610.000",
-    "name": "CRWD/AUX LM SW JUMPER",
-    "notes": "nan",
-    "location": "116C",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "CRWD/AUX LM SW JUMPER",
+    "partNumber": "40602.5610.000",
+    "saNumber": "nan",
+    "expectedHours": 1,
+    "notes": null,
+    "location": "116C"
   },
   {
-    "pn": "40602.5620.000",
-    "name": "CRWD/AUX LM SW",
-    "notes": "nan",
-    "location": "116C",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "CRWD/AUX LM SW",
+    "partNumber": "40602.5620.000",
+    "saNumber": "nan",
+    "expectedHours": 1,
+    "notes": null,
+    "location": "116C"
   },
   {
-    "pn": "40602.5630.000",
-    "name": "DUEL ROTARY",
-    "notes": "nan",
-    "location": "116C",
-    "hours": 4.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "DUEL ROTARY",
+    "partNumber": "40602.5630.000",
+    "saNumber": "nan",
+    "expectedHours": 4,
+    "notes": null,
+    "location": "116C"
   },
   {
-    "pn": "40602.5640.000",
-    "name": "SINGLE ROTORY",
+    "printName": "SINGLE ROTORY",
+    "partNumber": "40602.5640.000",
+    "saNumber": "nan",
+    "expectedHours": 4,
     "notes": "DIFFERENT FROM CR-18",
-    "location": "116C",
-    "hours": 4.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "location": "116C"
   },
   {
-    "pn": "40602.5641.000",
-    "name": "SINGLE ROTORY",
+    "printName": "SINGLE ROTORY",
+    "partNumber": "40602.5641.000",
+    "saNumber": "nan",
+    "expectedHours": 4,
     "notes": "DIFFERENT FROM CR-25",
-    "location": "116C",
-    "hours": 4.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "location": "116C"
   },
   {
-    "pn": "40602.5650.000",
-    "name": "VALVE COMPARTMENT",
-    "notes": "nan",
-    "location": "116C",
-    "hours": 24.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "VALVE COMPARTMENT",
+    "partNumber": "40602.5650.000",
+    "saNumber": "nan",
+    "expectedHours": 24,
+    "notes": null,
+    "location": "116C"
   },
   {
-    "pn": "40602.5670.000",
-    "name": "CAN VALVE JUMPER 01",
-    "notes": "nan",
-    "location": "116C",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "CAN VALVE JUMPER 01",
+    "partNumber": "40602.5670.000",
+    "saNumber": "nan",
+    "expectedHours": 1,
+    "notes": null,
+    "location": "116C"
   },
   {
-    "pn": "40602.5671.000",
-    "name": "CAN VALVE JUMPER 02",
-    "notes": "nan",
-    "location": "ON DEMAND",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "CAN VALVE JUMPER 02",
+    "partNumber": "40602.5671.000",
+    "saNumber": "nan",
+    "expectedHours": 1,
+    "notes": null,
+    "location": "ON DEMAND"
   },
   {
-    "pn": "40602.5672.000",
-    "name": "CAN VALVE JUMPER 03",
-    "notes": "nan",
-    "location": "ON DEMAND",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "CAN VALVE JUMPER 03",
+    "partNumber": "40602.5672.000",
+    "saNumber": "nan",
+    "expectedHours": 1,
+    "notes": null,
+    "location": "ON DEMAND"
   },
   {
-    "pn": "40602.5673.000",
-    "name": "CAN VALVE JUMPER 04",
-    "notes": "nan",
-    "location": "ON DEMAND",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "CAN VALVE JUMPER 04",
+    "partNumber": "40602.5673.000",
+    "saNumber": "nan",
+    "expectedHours": 1,
+    "notes": null,
+    "location": "ON DEMAND"
   },
   {
-    "pn": "40602.5680.000",
-    "name": "TTLM SENSOR JUMPER",
-    "notes": "nan",
-    "location": "116C",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "TTLM SENSOR JUMPER",
+    "partNumber": "40602.5680.000",
+    "saNumber": "nan",
+    "expectedHours": 1,
+    "notes": null,
+    "location": "116C"
   },
   {
-    "pn": "40602.5700.000",
-    "name": "AIR VALVE HARNESS",
-    "notes": "nan",
-    "location": "116B",
-    "hours": 2.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "AIR VALVE HARNESS",
+    "partNumber": "40602.5700.000",
+    "saNumber": "nan",
+    "expectedHours": 2,
+    "notes": null,
+    "location": "116B"
   },
   {
-    "pn": "40602.5710.000",
-    "name": "USB POWER",
-    "notes": "nan",
-    "location": "116B",
-    "hours": 2.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "USB POWER",
+    "partNumber": "40602.5710.000",
+    "saNumber": "nan",
+    "expectedHours": 2,
+    "notes": null,
+    "location": "116B"
   },
   {
-    "pn": "40602.5720.000",
-    "name": "PVG HARNESS EK200",
-    "notes": "WHEN AT 0, SERVICE ONLY. 5721 IS THE REPLACEMENT.",
-    "location": "116B",
-    "hours": 4.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "PVG HARNESS EK200",
+    "partNumber": "40602.5720.000",
+    "saNumber": "nan",
+    "expectedHours": 4,
+    "notes": null,
+    "location": "116B"
   },
   {
-    "pn": "40602.5721.000",
-    "name": "PVG HARNESS EK200",
-    "notes": "nan",
-    "location": "116B",
-    "hours": 4.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "PVG HARNESS EK200",
+    "partNumber": "40602.5721.000",
+    "saNumber": "nan",
+    "expectedHours": 4,
+    "notes": null,
+    "location": "116B"
   },
   {
-    "pn": "40602.5730.000",
-    "name": "EC1",
+    "printName": "EC1",
+    "partNumber": "40602.5730.000",
+    "saNumber": "nan",
+    "expectedHours": 32,
     "notes": "HOURS UN-TESTED, THIS SHOULD COME DOWN",
-    "location": "116B",
-    "hours": 32.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "location": "116B"
   },
   {
-    "pn": "40602.5740.000",
-    "name": "EC2",
+    "printName": "EC2",
+    "partNumber": "40602.5740.000",
+    "saNumber": "nan",
+    "expectedHours": 32,
     "notes": "HOURS UN-TESTED, THIS SHOULD COME DOWN",
-    "location": "116B",
-    "hours": 32.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "location": "116B"
   },
   {
-    "pn": "40602.5770.000",
-    "name": "BEHIND CAB HARNESS",
+    "printName": "BEHIND CAB HARNESS",
+    "partNumber": "40602.5770.000",
+    "saNumber": "nan",
+    "expectedHours": 16,
     "notes": "WHERE DOES THIS EXSIST?",
-    "location": "116B",
-    "hours": 16.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "location": "116B"
   },
   {
-    "pn": "40602.6480.000",
-    "name": "SP25 PVG",
+    "printName": "SP25 PVG",
+    "partNumber": "40602.6480.000",
+    "saNumber": "nan",
+    "expectedHours": 4,
     "notes": "SERVICE ONLY",
-    "location": "SERVICE",
-    "hours": 4.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "location": "SERVICE"
   },
   {
-    "pn": "40602.6490.000",
-    "name": "BEHIND CAB HARNESS",
+    "printName": "BEHIND CAB HARNESS",
+    "partNumber": "40602.6490.000",
+    "saNumber": "nan",
+    "expectedHours": null,
     "notes": "SP25 PRINT",
-    "location": "116B",
-    "hours": NaN,
-    "min_qty": NaN,
-    "sa": "nan"
+    "location": "116B"
   },
   {
-    "pn": "40602.6500.000",
-    "name": "DISPLAY HARNESS",
+    "printName": "DISPLAY HARNESS",
+    "partNumber": "40602.6500.000",
+    "saNumber": "nan",
+    "expectedHours": null,
     "notes": "SP25 PRINT",
-    "location": "116B",
-    "hours": NaN,
-    "min_qty": NaN,
-    "sa": "nan"
+    "location": "116B"
   },
   {
-    "pn": "40602.6510.000",
-    "name": "D5 EXTENSION (IN HOSE)",
-    "notes": "nan",
-    "location": "ON DEMAND",
-    "hours": 8.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "D5 EXTENSION (IN HOSE)",
+    "partNumber": "40602.6510.000",
+    "saNumber": "nan",
+    "expectedHours": 8,
+    "notes": null,
+    "location": "ON DEMAND"
   },
   {
-    "pn": "40602.6520.000",
-    "name": "D6 ENTENSION HARNESS",
-    "notes": "nan",
-    "location": "116B",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "D6 ENTENSION HARNESS",
+    "partNumber": "40602.6520.000",
+    "saNumber": "nan",
+    "expectedHours": 1,
+    "notes": null,
+    "location": "116B"
   },
   {
-    "pn": "40602.6530.000",
-    "name": "D5 EXTENSION (IN HOSE)",
-    "notes": "nan",
-    "location": "ON DEMAND",
-    "hours": 4.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "D5 EXTENSION (IN HOSE)",
+    "partNumber": "40602.6530.000",
+    "saNumber": "nan",
+    "expectedHours": 4,
+    "notes": null,
+    "location": "ON DEMAND"
   },
   {
-    "pn": "40602.6540.000",
-    "name": "SP25 BASE HARNESS",
-    "notes": "nan",
-    "location": "116B",
-    "hours": 16.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "SP25 BASE HARNESS",
+    "partNumber": "40602.6540.000",
+    "saNumber": "nan",
+    "expectedHours": 16,
+    "notes": null,
+    "location": "116B"
   },
   {
-    "pn": "40602.6550.000",
-    "name": "SP25 POWER COMS HARNESS",
+    "printName": "SP25 POWER COMS HARNESS",
+    "partNumber": "40602.6550.000",
+    "saNumber": "nan",
+    "expectedHours": 8,
     "notes": "SP25 PRINT",
-    "location": "116B",
-    "hours": 8.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "location": "116B"
   },
   {
-    "pn": "40602.6790.000",
-    "name": "BAUMER ENCODER HARNESS",
-    "notes": "nan",
-    "location": "116B",
-    "hours": 3.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "BAUMER ENCODER HARNESS",
+    "partNumber": "40602.6790.000",
+    "saNumber": "nan",
+    "expectedHours": 3,
+    "notes": null,
+    "location": "116B"
   },
   {
-    "pn": "40602.6830.000",
-    "name": "TK90 OUTPUT EXPANDER HARNESS",
-    "notes": "nan",
-    "location": "116B",
-    "hours": 4.0,
-    "min_qty": NaN,
-    "sa": "nan"
+    "printName": "TK90 OUTPUT EXPANDER HARNESS",
+    "partNumber": "40602.6830.000",
+    "saNumber": "nan",
+    "expectedHours": 4,
+    "notes": null,
+    "location": "116B"
   },
   {
-    "pn": "90602.1990.002",
-    "name": "BASE B6 HARNESS",
-    "notes": "nan",
-    "location": "115D",
-    "hours": 20.0,
-    "min_qty": NaN,
-    "sa": "SA-7735"
+    "printName": "BASE B6 HARNESS",
+    "partNumber": "90602.1990.002",
+    "saNumber": "SA-7735",
+    "expectedHours": 20,
+    "notes": null,
+    "location": "115D"
   },
   {
-    "pn": "90602.1990.003",
-    "name": "BASE HARNESS",
-    "notes": "nan",
-    "location": "115D",
-    "hours": 35.0,
-    "min_qty": NaN,
-    "sa": "SA-7784"
+    "printName": "BASE HARNESS",
+    "partNumber": "90602.1990.003",
+    "saNumber": "SA-7784",
+    "expectedHours": 35,
+    "notes": null,
+    "location": "115D"
   },
   {
-    "pn": "90602.1990.004",
-    "name": "BASE B7 HARNESS",
-    "notes": "nan",
-    "location": "115D",
-    "hours": 8.0,
-    "min_qty": NaN,
-    "sa": "SA-7785"
+    "printName": "BASE B7 HARNESS",
+    "partNumber": "90602.1990.004",
+    "saNumber": "SA-7785",
+    "expectedHours": 8,
+    "notes": null,
+    "location": "115D"
   },
   {
-    "pn": "90602.2020.003",
-    "name": "MAST D6 HARNESS",
-    "notes": "nan",
-    "location": "115D",
-    "hours": 2.0,
-    "min_qty": NaN,
-    "sa": "SA-7737"
+    "printName": "MAST D6 HARNESS",
+    "partNumber": "90602.2020.003",
+    "saNumber": "SA-7737",
+    "expectedHours": 2,
+    "notes": null,
+    "location": "115D"
   },
   {
-    "pn": "90602.2020.004",
-    "name": "MAST D6 HARNESS",
-    "notes": "nan",
-    "location": "115D",
-    "hours": 3.0,
-    "min_qty": NaN,
-    "sa": "SA-7738"
+    "printName": "MAST D6 HARNESS",
+    "partNumber": "90602.2020.004",
+    "saNumber": "SA-7738",
+    "expectedHours": 3,
+    "notes": null,
+    "location": "115D"
   },
   {
-    "pn": "90602.2020.006",
-    "name": "MAST D5 HARNESS",
-    "notes": "nan",
-    "location": "115D",
-    "hours": 16.0,
-    "min_qty": NaN,
-    "sa": "SA-7883"
+    "printName": "MAST D5 HARNESS",
+    "partNumber": "90602.2020.006",
+    "saNumber": "SA-7883",
+    "expectedHours": 16,
+    "notes": null,
+    "location": "115D"
+  },
+  {
+    "printName": "Shop Maintenance",
+    "partNumber": "000-Shop Maintenance",
+    "saNumber": null,
+    "expectedHours": null,
+    "notes": "General non-harness shop tasks",
+    "location": null
+  },
+  {
+    "printName": "Cleaning",
+    "partNumber": "001-Cleaning",
+    "saNumber": null,
+    "expectedHours": null,
+    "notes": "General cleaning duties",
+    "location": null
+  },
+  {
+    "printName": "Engineering Support",
+    "partNumber": "002-Engineering Support",
+    "saNumber": null,
+    "expectedHours": null,
+    "notes": "Support for engineering work",
+    "location": null
+  },
+  {
+    "printName": "Shop Floor Support",
+    "partNumber": "003-Shop Floor Support",
+    "saNumber": null,
+    "expectedHours": null,
+    "notes": "Support for Shop Floor",
+    "location": null
   }
 ];
-
-export const catalogIndex = {
-  "40602.2080.000": {
-    "name": "CROWD PRESSURE 14\"",
-    "notes": "nan",
-    "location": "115D",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "SA-7747"
-  },
-  "40602.2083.000": {
-    "name": "CROWD PRESSURE 50\"",
-    "notes": "nan",
-    "location": "114D",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "SA-8066"
-  },
-  "40602.2086.000": {
-    "name": "CROWD PRESSURE 100\"",
-    "notes": "nan",
-    "location": "114D",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "SA-8067"
-  },
-  "40602.2088.000": {
-    "name": "CROWD PRESSURE 150\"",
-    "notes": "nan",
-    "location": "114D",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "SA-8068"
-  },
-  "40602.2090.000": {
-    "name": "EK125 LONG MAST",
-    "notes": "nan",
-    "location": "114D",
-    "hours": 3.0,
-    "min_qty": NaN,
-    "sa": "SA-7744"
-  },
-  "40602.2100.000": {
-    "name": "EK125 POWER & COMMUNICATION",
-    "notes": "SPLICES MUST BE PLACED WITHIN 1 FOOT OF A1,A2,A3",
-    "location": "114D",
-    "hours": 24.0,
-    "min_qty": NaN,
-    "sa": "SA-7731"
-  },
-  "40602.2151.000": {
-    "name": "MAIN WINCH SPEED PPU",
-    "notes": "nan",
-    "location": "114D",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "SA-8195"
-  },
-  "40602.2152.000": {
-    "name": "MAIN WINCH SPEED PPU V2",
-    "notes": "nan",
-    "location": "114D",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.2270.000": {
-    "name": "CAB HARNESS 2",
-    "notes": "SERVICE ONLY, NEW PRODUCTION USES 40602.2272.000",
-    "location": "SERVICE",
-    "hours": 8.0,
-    "min_qty": NaN,
-    "sa": "SA-7868"
-  },
-  "40602.2272.000": {
-    "name": "EK DISPLAY WIRE HARNESS",
-    "notes": "nan",
-    "location": "114D",
-    "hours": 8.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.2280.000": {
-    "name": "CAB HARNESS 1",
-    "notes": "nan",
-    "location": "114D",
-    "hours": 24.0,
-    "min_qty": NaN,
-    "sa": "SA-7867"
-  },
-  "40602.2340.000": {
-    "name": "EK90 MAIN MAST",
-    "notes": "nan",
-    "location": "113D",
-    "hours": 16.0,
-    "min_qty": NaN,
-    "sa": "SA-7884"
-  },
-  "40602.2350.000": {
-    "name": "EK90 MAST EXT. HARNESS",
-    "notes": "nan",
-    "location": "113D",
-    "hours": 3.0,
-    "min_qty": NaN,
-    "sa": "SA-7886"
-  },
-  "40602.2360.000": {
-    "name": "EK90 HEAD MAST",
-    "notes": "nan",
-    "location": "113D",
-    "hours": 6.0,
-    "min_qty": NaN,
-    "sa": "SA-7887"
-  },
-  "40602.2370.000": {
-    "name": "EK90 ROTARY",
-    "notes": "nan",
-    "location": "113D",
-    "hours": 2.0,
-    "min_qty": NaN,
-    "sa": "SA-7885"
-  },
-  "40602.2420.000": {
-    "name": "BASE B6A",
-    "notes": "nan",
-    "location": "113D",
-    "hours": 6.0,
-    "min_qty": NaN,
-    "sa": "SA-7888"
-  },
-  "40602.2421.000": {
-    "name": "BASE B6A OPTIONAL",
-    "notes": "nan",
-    "location": "113D",
-    "hours": 2.0,
-    "min_qty": NaN,
-    "sa": "SA-7888"
-  },
-  "40602.2430.000": {
-    "name": "EK90 RADIO",
-    "notes": "nan",
-    "location": "113D",
-    "hours": 3.0,
-    "min_qty": NaN,
-    "sa": "SA-7875"
-  },
-  "40602.2440.000": {
-    "name": "VIBRO MAST D5 HARNESS",
-    "notes": "SERVICE ONLY? Conversation with Gary on 7/29/25 (Pending review)",
-    "location": "113D",
-    "hours": 16.0,
-    "min_qty": NaN,
-    "sa": "SA-7889"
-  },
-  "40602.2450.000": {
-    "name": "VIBRO MAST D5A",
-    "notes": "nan",
-    "location": "113C",
-    "hours": 6.0,
-    "min_qty": NaN,
-    "sa": "SA-7873"
-  },
-  "40602.2460.000": {
-    "name": "WIRING HARNESS, VIBRO SKIP RW",
-    "notes": "Made for Keller May 2025, but wasn\u2019t binned or on our lists.",
-    "location": "?",
-    "hours": 8.0,
-    "min_qty": NaN,
-    "sa": "SA-7874"
-  },
-  "40602.2520.000": {
-    "name": "FAN HARNESS",
-    "notes": "nan",
-    "location": "113C",
-    "hours": 24.0,
-    "min_qty": NaN,
-    "sa": "SA-8011"
-  },
-  "40602.2521.000": {
-    "name": "FAN HARNESS",
-    "notes": "WAITING ON TACO TO VERIFY",
-    "location": "ON DEMAND",
-    "hours": 24.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.2522.000": {
-    "name": "FAN HARNESS",
-    "notes": "WAITING ON TACO TO VERIFY",
-    "location": "ON DEMAND",
-    "hours": 24.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.2550.000": {
-    "name": "FAN HARNESS (HYD)",
-    "notes": "SERVICE ONLY, NEW PRODUCTION USES 40602.2555.000",
-    "location": "SERVICE",
-    "hours": 8.0,
-    "min_qty": NaN,
-    "sa": "SA-8040"
-  },
-  "40602.2555.000": {
-    "name": "COUNTER WEIGHT (HYD)",
-    "notes": "nan",
-    "location": "113C",
-    "hours": 8.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.2570.000": {
-    "name": "TRIANGLE MANIFOLD",
-    "notes": "OVER STOCK IN BARREL ABOVE. 08/07/25",
-    "location": "113C",
-    "hours": 24.0,
-    "min_qty": NaN,
-    "sa": "SA-8055"
-  },
-  "40602.2580.000": {
-    "name": "D4 MAST EXTENSION",
-    "notes": "nan",
-    "location": "113C",
-    "hours": 4.0,
-    "min_qty": NaN,
-    "sa": "SA-8056"
-  },
-  "40602.2581.000": {
-    "name": "D4 MAST EXTENSION 130\"",
-    "notes": "nan",
-    "location": "113C",
-    "hours": 4.0,
-    "min_qty": NaN,
-    "sa": "SA-8076"
-  },
-  "40602.2600.000": {
-    "name": "MAIN MAST EXT 22\"",
-    "notes": "nan",
-    "location": "114C",
-    "hours": 4.0,
-    "min_qty": NaN,
-    "sa": "SA-8063"
-  },
-  "40602.2610.000": {
-    "name": "MAIN MAST EK250",
-    "notes": "nan",
-    "location": "114C",
-    "hours": 8.0,
-    "min_qty": NaN,
-    "sa": "SA-8061"
-  },
-  "40602.2620.000": {
-    "name": "MAIN MAST EK250SM",
-    "notes": "nan",
-    "location": "114C",
-    "hours": 8.0,
-    "min_qty": NaN,
-    "sa": "SA-8062"
-  },
-  "40602.2630.000": {
-    "name": "ROTARY EXTENSION 150\"",
-    "notes": "nan",
-    "location": "114C",
-    "hours": 3.0,
-    "min_qty": NaN,
-    "sa": "SA-8057"
-  },
-  "40602.2633.000": {
-    "name": "ROTARY EXTENSION 200\"",
-    "notes": "nan",
-    "location": "114C",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "SA-8058"
-  },
-  "40602.2636.000": {
-    "name": "ROTARY EXTENSION 235\"",
-    "notes": "nan",
-    "location": "114C",
-    "hours": 3.0,
-    "min_qty": NaN,
-    "sa": "SA-8059"
-  },
-  "40602.2637.000": {
-    "name": "nan",
-    "notes": "? Should this be here?",
-    "location": "nan",
-    "hours": NaN,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.2640.000": {
-    "name": "EK200 LM HEADMAST",
-    "notes": "nan",
-    "location": "114C",
-    "hours": 4.0,
-    "min_qty": NaN,
-    "sa": "SA-8071"
-  },
-  "40602.2650.000": {
-    "name": "HM AUX LIMIT 85\"",
-    "notes": "nan",
-    "location": "114C",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "SA-8073"
-  },
-  "40602.2653.000": {
-    "name": "HM AUX LIMIT 60\"",
-    "notes": "nan",
-    "location": "115C",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "SA-8072"
-  },
-  "40602.2670.000": {
-    "name": "EK250 LM HEADMAST",
-    "notes": "nan",
-    "location": "115C",
-    "hours": 4.0,
-    "min_qty": NaN,
-    "sa": "SA-8070"
-  },
-  "40602.2680.000": {
-    "name": "EK250 SM HEADMAST",
-    "notes": "nan",
-    "location": "115C",
-    "hours": 2.0,
-    "min_qty": NaN,
-    "sa": "SA-8069"
-  },
-  "40602.2700.000": {
-    "name": "HYD. COUNTERWEIGHT",
-    "notes": "SERVICE ONLY",
-    "location": "SERVICE",
-    "hours": 6.0,
-    "min_qty": NaN,
-    "sa": "SA-8171"
-  },
-  "40602.2701.000": {
-    "name": "CW FAN MOD JUMPER",
-    "notes": "SERVICE ONLY",
-    "location": "SERVICE",
-    "hours": 2.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.2702.000": {
-    "name": "COUNTERWEIGHT LIFT",
-    "notes": "SERVICE ONLY",
-    "location": "SERVICE",
-    "hours": 2.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.2705.000": {
-    "name": "COUNTER WEIGHT (HYD)",
-    "notes": "nan",
-    "location": "115C",
-    "hours": 2.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.2730.000": {
-    "name": "MAST EXTENSION",
-    "notes": "nan",
-    "location": "115C",
-    "hours": 4.0,
-    "min_qty": NaN,
-    "sa": "SA-8345"
-  },
-  "40602.2731.000": {
-    "name": "D5 EXTENSION",
-    "notes": "nan",
-    "location": "115C",
-    "hours": 6.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.3130.000": {
-    "name": "LIGHT EXTENSION 195\"",
-    "notes": "nan",
-    "location": "115C",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "SA-8498"
-  },
-  "40602.3740.000": {
-    "name": "CS500 TELEMATICS JUMPER",
-    "notes": "nan",
-    "location": "115C",
-    "hours": 2.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.4320.000": {
-    "name": "SLOPE SENSOR JUMPER",
-    "notes": "nan",
-    "location": "115C",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.4330.000": {
-    "name": "PREBOX HARNESS (LR50)",
-    "notes": "SERVICE ONLY",
-    "location": "SERVICE",
-    "hours": 16.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.4331.000": {
-    "name": "PREBOX HARNESS (LR40)",
-    "notes": "nan",
-    "location": "115B",
-    "hours": 16.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.4332.000": {
-    "name": "PREBOX HARNESS (LR40SLR)",
-    "notes": "nan",
-    "location": "115B",
-    "hours": 16.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.4333.000": {
-    "name": "LR50 VG PREBOX HARNESS",
-    "notes": "nan",
-    "location": "115B",
-    "hours": 8.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.4340.000": {
-    "name": "BOX HARNESS (LR50)",
-    "notes": "nan",
-    "location": "115B",
-    "hours": 30.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.4341.000": {
-    "name": "BOX HARNESS (LR40)",
-    "notes": "nan",
-    "location": "115B",
-    "hours": 30.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.4342.000": {
-    "name": "LR40SLR PRE BOX HARNESS",
-    "notes": "nan",
-    "location": "115B",
-    "hours": 24.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.4343.000": {
-    "name": "LR50 VG BOX HARNESS",
-    "notes": "nan",
-    "location": "115B",
-    "hours": NaN,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.4350.000": {
-    "name": "MAST HARNESS",
-    "notes": "nan",
-    "location": "114B",
-    "hours": 8.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.4351.000": {
-    "name": "MAST HARNESS",
-    "notes": "nan",
-    "location": "114B",
-    "hours": 8.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.4360.000": {
-    "name": "SLOPE SENSOR HARNESS",
-    "notes": "nan",
-    "location": "114B",
-    "hours": 3.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.4361.000": {
-    "name": "SLOPE SENSOR HARNESS",
-    "notes": "nan",
-    "location": "114B",
-    "hours": 4.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.4370.000": {
-    "name": "D5F HARNESS",
-    "notes": "nan",
-    "location": "114B",
-    "hours": 3.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.4380.000": {
-    "name": "D6A JUMPER",
-    "notes": "nan",
-    "location": "114B",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.4381.000": {
-    "name": "DA6 JUMPER",
-    "notes": "nan",
-    "location": "114B",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.4390.000": {
-    "name": "SPEED ROTARY HARNESS",
-    "notes": "nan",
-    "location": "114B",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.4400.000": {
-    "name": "D5F JUMPER",
-    "notes": "nan",
-    "location": "114B",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.4410.000": {
-    "name": "LIMIT SW HARNESS",
-    "notes": "nan",
-    "location": "113B",
-    "hours": 2.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.4460.000": {
-    "name": "EK240LS CAB DISPLAY HARNESS",
-    "notes": "nan",
-    "location": "ON DEMAND",
-    "hours": 10.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.4500.000": {
-    "name": "SUBASSEMBLY ELECT KIT EK240NG LS",
-    "notes": "NEED TO BIN",
-    "location": "ON DEMAND",
-    "hours": 6.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.4510.000": {
-    "name": "EK240LS MAST D5 HARNESS",
-    "notes": "nan",
-    "location": "ON DEMAND",
-    "hours": 16.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.4540.000": {
-    "name": "EK300LS MAST PVG JUMPER HARNESS",
-    "notes": "nan",
-    "location": "ON DEMAND",
-    "hours": 6.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.4550.000": {
-    "name": "EK300LS MAST D5 HARNESS",
-    "notes": "nan",
-    "location": "113B",
-    "hours": 16.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.4560.000": {
-    "name": "EK300LS MAST D5F  HARNESS",
-    "notes": "nan",
-    "location": "113B",
-    "hours": 6.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.4580.000": {
-    "name": "WINCH JUMPER HARNESS",
-    "notes": "nan",
-    "location": "113B",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.4640.000": {
-    "name": "SWING SENSOR JUMPER",
-    "notes": "nan",
-    "location": "113B",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.4641.000": {
-    "name": "317 BASE SWING SENSOR JUMPER",
-    "notes": "nan",
-    "location": "113B",
-    "hours": 2.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.4790.000": {
-    "name": "SP25 B1-B6",
-    "notes": "SERVICE ONLY",
-    "location": "SERVICE",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.4800.000": {
-    "name": "SUREGRIP JOYSTICK JUMPER HARNESS",
-    "notes": "nan",
-    "location": "113B",
-    "hours": 6.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.4810.000": {
-    "name": "B8 SUB-HARNESS",
-    "notes": "nan",
-    "location": "113B",
-    "hours": 6.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.4820.000": {
-    "name": "SP25 D4 HARNESS",
-    "notes": "SERVICE ONLY (REPLACED WITH 6550)",
-    "location": "SERVICE",
-    "hours": 6.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.4831.000": {
-    "name": "BASE MANIFOLD HARNESS V2",
-    "notes": "nan",
-    "location": "116D",
-    "hours": 6.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.4841.000": {
-    "name": "TRIANGLE HARNESS V2",
-    "notes": "nan",
-    "location": "116D",
-    "hours": 8.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.4850.000": {
-    "name": "SP25 LOWER",
-    "notes": "SERVICE ONLY",
-    "location": "SERVICE",
-    "hours": 6.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.4851.000": {
-    "name": "SP25 UPPER",
-    "notes": "SERVICE ONLY",
-    "location": "SERVICE",
-    "hours": 6.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.4852.000": {
-    "name": "SP25v2 MAST JUMPER HARNESS",
-    "notes": "nan",
-    "location": "116D",
-    "hours": 3.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.4860.000": {
-    "name": "HEADMAST HARNESS",
-    "notes": "nan",
-    "location": "116D",
-    "hours": 8.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.4870.000": {
-    "name": "SP25 LM SW",
-    "notes": "SERVICE ONLY",
-    "location": "SERVICE",
-    "hours": 6.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.4880.000": {
-    "name": "BOTTOM LM SW HARNESS",
-    "notes": "TWO ARE REQUIRED.",
-    "location": "116D",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.4920.000": {
-    "name": "M12 90 CABLE 5M PIGTAIL",
-    "notes": "VENDOR CABLE",
-    "location": "113A",
-    "hours": NaN,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.4921.000": {
-    "name": "M12 LIMIT SWITCH 24\"",
-    "notes": "nan",
-    "location": "116D",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.4922.000": {
-    "name": "M12 LIMIT SWITCH 80\"\"",
-    "notes": "nan",
-    "location": "116D",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.4923.000": {
-    "name": "M12 LIMIT SWITCH 6\"\"",
-    "notes": "nan",
-    "location": "116D",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.4924.000": {
-    "name": "M12 LIMIT SWITCH 192\"",
-    "notes": "nan",
-    "location": "116D",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.5020.000": {
-    "name": "SP25 TRIMBLE POWER",
-    "notes": "nan",
-    "location": "117D",
-    "hours": 4.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.5030.000": {
-    "name": "VENDOR",
-    "notes": "THIS IS A VENDOR CABLE, ITS USED TO MAKE 40602.5031.000",
-    "location": "113A",
-    "hours": 0.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.5031.000": {
-    "name": "SP25 TRIMBLE CAN",
-    "notes": "nan",
-    "location": "117D",
-    "hours": 4.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.5090.000": {
-    "name": "NO PRINT",
-    "notes": "VENDOR CABLE",
-    "location": "113A",
-    "hours": NaN,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.5100.000": {
-    "name": "NO PRINT",
-    "notes": "VENDOR CABLE",
-    "location": "113A",
-    "hours": NaN,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.5101.000": {
-    "name": "SP25 TRIMBLE DISPLAY PWR CABLE",
-    "notes": "nan",
-    "location": "117D",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.5102.000": {
-    "name": "M12 STRAIGHT-4 PIN",
-    "notes": "nan",
-    "location": "117D",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.5130.000": {
-    "name": "NO PRINT",
-    "notes": "VENDOR CABLE",
-    "location": "113A",
-    "hours": NaN,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.5131.000": {
-    "name": "TRIMBLE RECEIVER HARNESS",
-    "notes": "nan",
-    "location": "117D",
-    "hours": 2.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.5180.000": {
-    "name": "NO PRINT",
-    "notes": "VENDOR CABLE",
-    "location": "113A",
-    "hours": NaN,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.5191.000": {
-    "name": "VISION LINK",
-    "notes": "nan",
-    "location": "117D",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.5200.000": {
-    "name": "NO PRINT",
-    "notes": "VENDOR CABLE",
-    "location": "113A",
-    "hours": NaN,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.5220.000": {
-    "name": "NO PRINT",
-    "notes": "VENDOR CABLE",
-    "location": "113A",
-    "hours": NaN,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.5390.000": {
-    "name": "EK160LS CFA FOOT PVG CAN",
-    "notes": "nan",
-    "location": "117D",
-    "hours": 6.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.5400.000": {
-    "name": "LR65 HEADMAST",
-    "notes": "nan",
-    "location": "117D",
-    "hours": 2.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.5410.000": {
-    "name": "VENDOR PIGTAIL - 16 FT (MFR 3021023-16)",
-    "notes": "VENDOR CABLE",
-    "location": "VENDOR",
-    "hours": NaN,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.5413.000": {
-    "name": "DM1X00 USB A TO M12 4 PIN 1",
-    "notes": "nan",
-    "location": "117D",
-    "hours": 2.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.5420.000": {
-    "name": "BASE MAIN CAVITY",
-    "notes": "nan",
-    "location": "117D",
-    "hours": 16.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.5440.000": {
-    "name": "LIGHT TOWER",
-    "notes": "nan",
-    "location": "118D",
-    "hours": 4.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.5450.000": {
-    "name": "GROUT HARNESS",
-    "notes": "SERVICE ONLY USE 40602.5700.000",
-    "location": "SERVICE",
-    "hours": 4.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.5460.000": {
-    "name": "CLAMP HARNESS",
-    "notes": "nan",
-    "location": "118D",
-    "hours": 4.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.5470.000": {
-    "name": "FUSE BOX/DOOR",
-    "notes": "CR-25 ELECTRICAL BOX",
-    "location": "ON DEMAND",
-    "hours": NaN,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.5490.000": {
-    "name": "MAIN CNTL (S0)",
-    "notes": "CR-25 ELECTRICAL BOX",
-    "location": "ON DEMAND",
-    "hours": NaN,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.5500.000": {
-    "name": "POWER CNTL (S1)",
-    "notes": "CR-25 ELECTRICAL BOX",
-    "location": "ON DEMAND",
-    "hours": NaN,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.5510.000": {
-    "name": "VALVE CNTL (S2)",
-    "notes": "CR-25 ELECTRICAL BOX",
-    "location": "ON DEMAND",
-    "hours": NaN,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.5520.000": {
-    "name": "DISPLAY HARNESS",
-    "notes": "nan",
-    "location": "118D",
-    "hours": 6.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.5530.000": {
-    "name": "RADIO HARNESS",
-    "notes": "nan",
-    "location": "118D",
-    "hours": 2.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.5540.000": {
-    "name": "RADIO E-STOP JUMPER",
-    "notes": "nan",
-    "location": "117C",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.5550.000": {
-    "name": "AUX FUEL PUMP JUMPER",
-    "notes": "nan",
-    "location": "117C",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.5560.000": {
-    "name": "E-STOP BUTTON HARNESS",
-    "notes": "nan",
-    "location": "117C",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.5561.000": {
-    "name": "E-STOP JUMPER HARNESS",
-    "notes": "nan",
-    "location": "117C",
-    "hours": 3.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.5570.000": {
-    "name": "ENGINE HARNESS",
-    "notes": "nan",
-    "location": "117C",
-    "hours": 3.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.5580.000": {
-    "name": "MAST HARNESS",
-    "notes": "DIFFERENT FROM CR-18",
-    "location": "117C",
-    "hours": 16.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.5581.000": {
-    "name": "MAST HARNESS",
-    "notes": "DIFFERENT FROM CR-25",
-    "location": "117C",
-    "hours": 16.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.5590.000": {
-    "name": "ROTORY JUMPER",
-    "notes": "DIFFERENT FROM CR-18",
-    "location": "117C",
-    "hours": 4.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.5591.000": {
-    "name": "ROTORY JUMPER",
-    "notes": "DIFFERENT FROM CR-25",
-    "location": "117C",
-    "hours": 4.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.5600.000": {
-    "name": "MAST JUMPER 1",
-    "notes": "DIFFERENT FROM CR-18",
-    "location": "117C",
-    "hours": 4.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.5601.000": {
-    "name": "MAST JUMPER 2",
-    "notes": "DIFFERENT FROM CR-18",
-    "location": "117C",
-    "hours": 4.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.5602.000": {
-    "name": "MAST JUMPER 1",
-    "notes": "DIFFERENT FROM CR-25",
-    "location": "116C",
-    "hours": 4.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.5603.000": {
-    "name": "MAST JUMPER 2",
-    "notes": "DIFFERENT FROM CR-25",
-    "location": "116C",
-    "hours": 4.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.5610.000": {
-    "name": "CRWD/AUX LM SW JUMPER",
-    "notes": "nan",
-    "location": "116C",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.5620.000": {
-    "name": "CRWD/AUX LM SW",
-    "notes": "nan",
-    "location": "116C",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.5630.000": {
-    "name": "DUEL ROTARY",
-    "notes": "nan",
-    "location": "116C",
-    "hours": 4.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.5640.000": {
-    "name": "SINGLE ROTORY",
-    "notes": "DIFFERENT FROM CR-18",
-    "location": "116C",
-    "hours": 4.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.5641.000": {
-    "name": "SINGLE ROTORY",
-    "notes": "DIFFERENT FROM CR-25",
-    "location": "116C",
-    "hours": 4.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.5650.000": {
-    "name": "VALVE COMPARTMENT",
-    "notes": "nan",
-    "location": "116C",
-    "hours": 24.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.5670.000": {
-    "name": "CAN VALVE JUMPER 01",
-    "notes": "nan",
-    "location": "116C",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.5671.000": {
-    "name": "CAN VALVE JUMPER 02",
-    "notes": "nan",
-    "location": "ON DEMAND",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.5672.000": {
-    "name": "CAN VALVE JUMPER 03",
-    "notes": "nan",
-    "location": "ON DEMAND",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.5673.000": {
-    "name": "CAN VALVE JUMPER 04",
-    "notes": "nan",
-    "location": "ON DEMAND",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.5680.000": {
-    "name": "TTLM SENSOR JUMPER",
-    "notes": "nan",
-    "location": "116C",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.5700.000": {
-    "name": "AIR VALVE HARNESS",
-    "notes": "nan",
-    "location": "116B",
-    "hours": 2.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.5710.000": {
-    "name": "USB POWER",
-    "notes": "nan",
-    "location": "116B",
-    "hours": 2.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.5720.000": {
-    "name": "PVG HARNESS EK200",
-    "notes": "WHEN AT 0, SERVICE ONLY. 5721 IS THE REPLACEMENT.",
-    "location": "116B",
-    "hours": 4.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.5721.000": {
-    "name": "PVG HARNESS EK200",
-    "notes": "nan",
-    "location": "116B",
-    "hours": 4.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.5730.000": {
-    "name": "EC1",
-    "notes": "HOURS UN-TESTED, THIS SHOULD COME DOWN",
-    "location": "116B",
-    "hours": 32.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.5740.000": {
-    "name": "EC2",
-    "notes": "HOURS UN-TESTED, THIS SHOULD COME DOWN",
-    "location": "116B",
-    "hours": 32.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.5770.000": {
-    "name": "BEHIND CAB HARNESS",
-    "notes": "WHERE DOES THIS EXSIST?",
-    "location": "116B",
-    "hours": 16.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.6480.000": {
-    "name": "SP25 PVG",
-    "notes": "SERVICE ONLY",
-    "location": "SERVICE",
-    "hours": 4.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.6490.000": {
-    "name": "BEHIND CAB HARNESS",
-    "notes": "SP25 PRINT",
-    "location": "116B",
-    "hours": NaN,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.6500.000": {
-    "name": "DISPLAY HARNESS",
-    "notes": "SP25 PRINT",
-    "location": "116B",
-    "hours": NaN,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.6510.000": {
-    "name": "D5 EXTENSION (IN HOSE)",
-    "notes": "nan",
-    "location": "ON DEMAND",
-    "hours": 8.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.6520.000": {
-    "name": "D6 ENTENSION HARNESS",
-    "notes": "nan",
-    "location": "116B",
-    "hours": 1.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.6530.000": {
-    "name": "D5 EXTENSION (IN HOSE)",
-    "notes": "nan",
-    "location": "ON DEMAND",
-    "hours": 4.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.6540.000": {
-    "name": "SP25 BASE HARNESS",
-    "notes": "nan",
-    "location": "116B",
-    "hours": 16.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.6550.000": {
-    "name": "SP25 POWER COMS HARNESS",
-    "notes": "SP25 PRINT",
-    "location": "116B",
-    "hours": 8.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.6790.000": {
-    "name": "BAUMER ENCODER HARNESS",
-    "notes": "nan",
-    "location": "116B",
-    "hours": 3.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "40602.6830.000": {
-    "name": "TK90 OUTPUT EXPANDER HARNESS",
-    "notes": "nan",
-    "location": "116B",
-    "hours": 4.0,
-    "min_qty": NaN,
-    "sa": "nan"
-  },
-  "90602.1990.002": {
-    "name": "BASE B6 HARNESS",
-    "notes": "nan",
-    "location": "115D",
-    "hours": 20.0,
-    "min_qty": NaN,
-    "sa": "SA-7735"
-  },
-  "90602.1990.003": {
-    "name": "BASE HARNESS",
-    "notes": "nan",
-    "location": "115D",
-    "hours": 35.0,
-    "min_qty": NaN,
-    "sa": "SA-7784"
-  },
-  "90602.1990.004": {
-    "name": "BASE B7 HARNESS",
-    "notes": "nan",
-    "location": "115D",
-    "hours": 8.0,
-    "min_qty": NaN,
-    "sa": "SA-7785"
-  },
-  "90602.2020.003": {
-    "name": "MAST D6 HARNESS",
-    "notes": "nan",
-    "location": "115D",
-    "hours": 2.0,
-    "min_qty": NaN,
-    "sa": "SA-7737"
-  },
-  "90602.2020.004": {
-    "name": "MAST D6 HARNESS",
-    "notes": "nan",
-    "location": "115D",
-    "hours": 3.0,
-    "min_qty": NaN,
-    "sa": "SA-7738"
-  },
-  "90602.2020.006": {
-    "name": "MAST D5 HARNESS",
-    "notes": "nan",
-    "location": "115D",
-    "hours": 16.0,
-    "min_qty": NaN,
-    "sa": "SA-7883"
-  }
-};
-
-// Helper: find by part number (pn)
-export function getPart(pn) {
-  return catalogIndex[pn] || null;
-}
