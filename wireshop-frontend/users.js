@@ -5,15 +5,16 @@ window.users = [
   { username: "Rafaela.Ribeiro",    pin: "1234", role: "assembler" },
   { username: "Michael.Sandecki",   pin: "1234", role: "assembler" },
   { username: "Larissa.Frauche",    pin: "1234", role: "assembler" },
-  { username: "Tyler.Ellis",        pin: "1234", role: "assembler" },
+  { username: "Tyler.Ellis",        pin: "1234", role: "admin" },
   { username: "Carter.Heptinstall", pin: "1234", role: "assembler" },
   { username: "Christen.Sapp",      pin: "1234", role: "assembler" },
   { username: "Justin.Anderson",    pin: "1234", role: "admin" },
   { username: "Josh.Browher",       pin: "1234", role: "admin" },
   { username: "Allen.Durrence",     pin: "1234", role: "admin" },
-  { username: "Robert.Wallace",     pin: "1234", role: "assembler" },
+  { username: "Robert.Wallace",     pin: "1234", role: "admin" },
   { username: "Supply"        ,     pin: "1234", role: "assembler" }
 ];
+
 
 
 
