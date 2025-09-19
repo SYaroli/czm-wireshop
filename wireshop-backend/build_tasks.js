@@ -1,10 +1,6 @@
 // backend/build_tasks.js
 // Express router for "Build Next" tasks.
-// Mount later with:  require('./build_tasks')(app)
-//
-// Admins can create/cancel/unclaim. Techs (any logged-in user) can claim and complete.
-// Partial completes are supported: complete with qty <= remaining.
-// Inventory increment will be triggered from the frontend after a successful completion.
+// Mount from server.js with:  const attachBuildTasks = require('./build_tasks'); attachBuildTasks(app);
 
 const express = require('express');
 const path = require('path');
@@ -16,11 +12,9 @@ module.exports = function attachBuildTasks(app, opts = {}) {
   const router = express.Router();
 
   // Helpers
-  function now() { return Date.now(); }
-  function username(req) { return String(req.headers['x-user'] || '').trim(); }
+  const now = () => Date.now();
+  const username = req => String(req.headers['x-user'] || '').trim();
   function isAdmin(req) {
-    // Admins defined by env var ADMIN_USERS="alice,bob" (case-insensitive).
-    // If not set, everyone is treated as non-admin (safe default).
     const u = username(req).toLowerCase();
     const list = String(process.env.ADMIN_USERS || '')
       .toLowerCase()
@@ -34,6 +28,17 @@ module.exports = function attachBuildTasks(app, opts = {}) {
     if (!u) { res.status(401).json({ error: 'missing x-user header' }); return null; }
     return u;
   }
+
+  // DB utils
+  const run = (sql, args=[]) => new Promise((resolve,reject)=>{
+    db.run(sql, args, function(err){ if(err) reject(err); else resolve({ changes:this.changes, lastID:this.lastID }); });
+  });
+  const get = (sql, args=[]) => new Promise((resolve,reject)=>{
+    db.get(sql, args, (err,row)=> err?reject(err):resolve(row||null));
+  });
+  const all = (sql, args=[]) => new Promise((resolve,reject)=>{
+    db.all(sql, args, (err,rows)=> err?reject(err):resolve(rows||[]));
+  });
 
   // Schema
   db.serialize(() => {
@@ -50,7 +55,6 @@ module.exports = function attachBuildTasks(app, opts = {}) {
         completedAt  INTEGER
       )
     `);
-
     db.run(`
       CREATE TABLE IF NOT EXISTS build_task_events (
         id       INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -64,37 +68,13 @@ module.exports = function attachBuildTasks(app, opts = {}) {
     `);
   });
 
-  // Utilities
-  function getTask(id) {
-    return new Promise((resolve, reject) => {
-      db.get(`SELECT * FROM build_tasks WHERE id=?`, [id], (err, row) => {
-        if (err) reject(err); else resolve(row || null);
-      });
-    });
-  }
-  function run(sql, args = []) {
-    return new Promise((resolve, reject) => {
-      db.run(sql, args, function onRun(err) {
-        if (err) reject(err);
-        else resolve({ changes: this.changes, lastID: this.lastID });
-      });
-    });
-  }
-  function all(sql, args = []) {
-    return new Promise((resolve, reject) => {
-      db.all(sql, args, (err, rows) => err ? reject(err) : resolve(rows));
-    });
-  }
-
-  // Create task (ADMIN)
+  // ----- Create (ADMIN) -----
   router.post('/api/build-tasks', async (req, res) => {
     const user = requireUser(req, res); if (!user) return;
     if (!isAdmin(req)) return res.status(403).json({ error: 'admin only' });
 
-    const { partNumber, qty } = req.body || {};
-    const pn = String(partNumber || '').trim();
-    const q = Number(qty);
-
+    const pn = String(req.body?.partNumber || '').trim();
+    const q = Number(req.body?.qty);
     if (!pn) return res.status(400).json({ error: 'partNumber required' });
     if (!Number.isInteger(q) || q <= 0) return res.status(400).json({ error: 'qty must be positive integer' });
 
@@ -110,14 +90,11 @@ module.exports = function attachBuildTasks(app, opts = {}) {
          VALUES (?, 'create', ?, ?, ?)`,
         [r.lastID, q, user, t]
       );
-      const row = await getTask(r.lastID);
-      res.json(row);
-    } catch (e) {
-      res.status(500).json({ error: 'db', detail: String(e.message || e) });
-    }
+      res.json(await get(`SELECT * FROM build_tasks WHERE id=?`, [r.lastID]));
+    } catch (e) { res.status(500).json({ error:'db', detail:String(e.message||e) }); }
   });
 
-  // List tasks
+  // ----- List -----
   // GET /api/build-tasks?status=queued|claimed|done&since=<epochMs>
   router.get('/api/build-tasks', async (req, res) => {
     const status = String(req.query.status || '').trim().toLowerCase();
@@ -127,7 +104,7 @@ module.exports = function attachBuildTasks(app, opts = {}) {
       let sql = `SELECT * FROM build_tasks`;
       const params = [];
 
-      if (status === 'queued' || status === 'claimed' || status === 'done') {
+      if (['queued','claimed','done'].includes(status)) {
         sql += ` WHERE status=?`;
         params.push(status);
         if (status === 'done' && since > 0) {
@@ -144,100 +121,100 @@ module.exports = function attachBuildTasks(app, opts = {}) {
         createdAt ASC`;
 
       const rows = await all(sql, params);
+
+      // Augment done rows with the last completion qty so UI can display "Done today" cleanly.
+      if (status === 'done') {
+        await Promise.all(rows.map(async r => {
+          const ev = await get(
+            `SELECT qty FROM build_task_events WHERE taskId=? AND type='complete' ORDER BY ts DESC LIMIT 1`,
+            [r.id]
+          );
+          if (ev && Number.isInteger(ev.qty)) r._lastQtyDone = ev.qty;
+        }));
+      }
+
       res.json(rows);
-    } catch (e) {
-      res.status(500).json({ error: 'db', detail: String(e.message || e) });
-    }
+    } catch (e) { res.status(500).json({ error:'db', detail:String(e.message||e) }); }
   });
 
-  // Claim task (any logged-in user), atomic
+  // ----- Claim (any logged-in user), atomic -----
   router.patch('/api/build-tasks/:id/claim', async (req, res) => {
     const user = requireUser(req, res); if (!user) return;
     const id = Number(req.params.id || 0);
-    if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'bad id' });
+    if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error:'bad id' });
 
     try {
       const t = now();
       const r = await run(
         `UPDATE build_tasks
-         SET status='claimed', claimedBy=?, claimedAt=?
+           SET status='claimed', claimedBy=?, claimedAt=?
          WHERE id=? AND status='queued'`,
         [user, t, id]
       );
       if (r.changes === 0) {
-        const row = await getTask(id);
-        return res.status(409).json({ error: 'not-queue', current: row });
+        return res.status(409).json({ error:'not-queue', current: await get(`SELECT * FROM build_tasks WHERE id=?`, [id]) });
       }
       await run(
         `INSERT INTO build_task_events (taskId, type, qty, user, ts)
          VALUES (?, 'claim', 0, ?, ?)`,
         [id, user, t]
       );
-      res.json(await getTask(id));
-    } catch (e) {
-      res.status(500).json({ error: 'db', detail: String(e.message || e) });
-    }
+      res.json(await get(`SELECT * FROM build_tasks WHERE id=?`, [id]));
+    } catch (e) { res.status(500).json({ error:'db', detail:String(e.message||e) }); }
   });
 
-  // Unclaim back to queue (ADMIN)
+  // ----- Unclaim (ADMIN) -----
   router.patch('/api/build-tasks/:id/unclaim', async (req, res) => {
     const user = requireUser(req, res); if (!user) return;
-    if (!isAdmin(req)) return res.status(403).json({ error: 'admin only' });
+    if (!isAdmin(req)) return res.status(403).json({ error:'admin only' });
 
     const id = Number(req.params.id || 0);
-    if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'bad id' });
+    if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error:'bad id' });
 
     try {
       const r = await run(
         `UPDATE build_tasks
-         SET status='queued', claimedBy=NULL, claimedAt=NULL
+           SET status='queued', claimedBy=NULL, claimedAt=NULL
          WHERE id=? AND status='claimed'`,
         [id]
       );
-      if (r.changes === 0) return res.status(409).json({ error: 'not-claimed', current: await getTask(id) });
+      if (r.changes === 0) return res.status(409).json({ error:'not-claimed', current: await get(`SELECT * FROM build_tasks WHERE id=?`, [id]) });
 
       await run(
         `INSERT INTO build_task_events (taskId, type, qty, user, ts)
          VALUES (?, 'unclaim', 0, ?, ?)`,
-        [id, user, now()]
+        [id, username(req), now()]
       );
-
-      res.json(await getTask(id));
-    } catch (e) {
-      res.status(500).json({ error: 'db', detail: String(e.message || e) });
-    }
+      res.json(await get(`SELECT * FROM build_tasks WHERE id=?`, [id]));
+    } catch (e) { res.status(500).json({ error:'db', detail:String(e.message||e) }); }
   });
 
-  // Complete (partial allowed): body { qty }
-  // If qty == remaining -> mark done; else decrement remaining qty and keep claimed.
+  // ----- Complete (partial allowed) -----
+  // PATCH /api/build-tasks/:id/complete  body: { qty }
+  // If qty==remaining -> mark done; else decrement remaining qty and keep claimed.
   router.patch('/api/build-tasks/:id/complete', async (req, res) => {
     const user = requireUser(req, res); if (!user) return;
     const id = Number(req.params.id || 0);
-    const qty = Number((req.body && req.body.qty) || 0);
-    if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'bad id' });
-    if (!Number.isInteger(qty) || qty <= 0) return res.status(400).json({ error: 'qty must be positive integer' });
+    const qty = Number(req.body?.qty || 0);
+    if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error:'bad id' });
+    if (!Number.isInteger(qty) || qty <= 0) return res.status(400).json({ error:'qty must be positive integer' });
 
     try {
-      const task = await getTask(id);
-      if (!task) return res.status(404).json({ error: 'not found' });
-      if (task.status !== 'claimed') return res.status(409).json({ error: 'not-claimed', current: task });
-      if (qty > task.qty) return res.status(400).json({ error: 'qty exceeds remaining', remaining: task.qty });
+      const task = await get(`SELECT * FROM build_tasks WHERE id=?`, [id]);
+      if (!task) return res.status(404).json({ error:'not found' });
+      if (task.status !== 'claimed') return res.status(409).json({ error:'not-claimed', current:task });
+      if (qty > task.qty) return res.status(400).json({ error:'qty exceeds remaining', remaining: task.qty });
 
       const t = now();
-
       if (qty === task.qty) {
         await run(
-          `UPDATE build_tasks
-           SET status='done', qty=0, completedAt=?
-           WHERE id=? AND status='claimed'`,
+          `UPDATE build_tasks SET status='done', qty=0, completedAt=? WHERE id=? AND status='claimed'`,
           [t, id]
         );
       } else {
         const remaining = task.qty - qty;
         await run(
-          `UPDATE build_tasks
-           SET qty=?, claimedBy=?, claimedAt=?   -- keep claimed
-           WHERE id=? AND status='claimed'`,
+          `UPDATE build_tasks SET qty=?, claimedBy=?, claimedAt=? WHERE id=? AND status='claimed'`,
           [remaining, task.claimedBy || user, task.claimedAt || t, id]
         );
       }
@@ -248,42 +225,59 @@ module.exports = function attachBuildTasks(app, opts = {}) {
         [id, qty, user, t]
       );
 
-      // We DO NOT adjust inventory here; the frontend will call /api/inventory/:pn/adjust +qty next.
-      const updated = await getTask(id);
+      const updated = await get(`SELECT * FROM build_tasks WHERE id=?`, [id]);
       res.json({ task: updated, completedQty: qty, addToInventory: { partNumber: task.partNumber, qty } });
-    } catch (e) {
-      res.status(500).json({ error: 'db', detail: String(e.message || e) });
-    }
+    } catch (e) { res.status(500).json({ error:'db', detail:String(e.message||e) }); }
   });
 
-  // Cancel task (ADMIN)
+  // ----- Cancel (ADMIN) -----
   router.patch('/api/build-tasks/:id/cancel', async (req, res) => {
     const user = requireUser(req, res); if (!user) return;
-    if (!isAdmin(req)) return res.status(403).json({ error: 'admin only' });
+    if (!isAdmin(req)) return res.status(403).json({ error:'admin only' });
 
     const id = Number(req.params.id || 0);
-    if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'bad id' });
+    if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error:'bad id' });
 
     try {
       const r = await run(
         `UPDATE build_tasks SET status='canceled' WHERE id=? AND status!='done'`,
         [id]
       );
-      if (r.changes === 0) return res.status(409).json({ error: 'already-done-or-missing', current: await getTask(id) });
+      if (r.changes === 0) return res.status(409).json({ error:'already-done-or-missing', current: await get(`SELECT * FROM build_tasks WHERE id=?`, [id]) });
 
       await run(
         `INSERT INTO build_task_events (taskId, type, qty, user, ts)
          VALUES (?, 'cancel', 0, ?, ?)`,
-        [id, user, now()]
+        [id, username(req), now()]
       );
 
-      res.json(await getTask(id));
-    } catch (e) {
-      res.status(500).json({ error: 'db', detail: String(e.message || e) });
-    }
+      res.json(await get(`SELECT * FROM build_tasks WHERE id=?`, [id]));
+    } catch (e) { res.status(500).json({ error:'db', detail:String(e.message||e) }); }
   });
 
-  // Expose router
+  // ----- Events feed (optional, if you want it from UI) -----
+  // GET /api/build-task-events?type=complete&since=<epochMs>
+  router.get('/api/build-task-events', async (req, res) => {
+    const type = String(req.query.type || '').trim().toLowerCase() || 'complete';
+    const since = Number(req.query.since || 0);
+    try {
+      let sql = `
+        SELECT e.id, e.taskId, e.type, e.qty, e.user, e.ts,
+               t.partNumber, t.claimedBy
+          FROM build_task_events e
+          JOIN build_tasks t ON t.id = e.taskId
+         WHERE e.type = ?`;
+      const params = [type];
+      if (since > 0) {
+        sql += ` AND e.ts >= ?`;
+        params.push(since);
+      }
+      sql += ` ORDER BY e.ts DESC`;
+      res.json(await all(sql, params));
+    } catch (e) { res.status(500).json({ error:'db', detail:String(e.message||e) }); }
+  });
+
+  // mount
   app.use(express.json());
   app.use(router);
 };
