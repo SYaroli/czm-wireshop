@@ -26,9 +26,11 @@
     .minw{min-width:120px}
     .nowrap{white-space:nowrap}
     .card.sized{min-height:320px}
-    /* give action columns breathing room so "Unclaim" isn't squashed */
     th.wide, td.wide{min-width:320px}
     @media (max-width: 900px){ th.wide, td.wide{min-width:260px} }
+    .priority{display:inline-block;border:1px solid #ccc;border-radius:8px;padding:2px 8px;font-weight:800;font-size:.85rem}
+    .p1{background:#fff3cd;border-color:#ffe08a}      /* High */
+    .p2{background:#ffd5d5;border-color:#ff9b9b}      /* Urgent */
   </style>
 </head>
 <body>
@@ -63,6 +65,14 @@
         <div class="minw">
           <label for="qAdd">Qty</label>
           <input id="qAdd" type="number" min="1" step="1" value="1">
+        </div>
+        <div class="minw">
+          <label for="prioritySel">Priority</label>
+          <select id="prioritySel">
+            <option value="0">Normal</option>
+            <option value="1">High</option>
+            <option value="2">Urgent</option>
+          </select>
         </div>
         <div class="tight" style="display:flex;align-items:end">
           <button id="btnAdd" class="pill primary">Add</button>
@@ -108,8 +118,13 @@
 
     <!-- Done (last 20 completions including partials) -->
     <div class="card sized">
-      <h2 class="kicker">Done</h2>
-      <table class="sticky-head compact" id="tblDone">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <h2 class="kicker" style="margin:0">Done</h2>
+        <div id="doneActions" style="display:none">
+          <button id="clearDoneBtn" class="pill cancel small" title="Clear recent completions">Clear</button>
+        </div>
+      </div>
+      <table class="sticky-head compact" id="tblDone" style="margin-top:8px">
         <thead>
           <tr>
             <th>Part</th>
@@ -142,6 +157,7 @@
         const me = await api('/api/whoami');
         isAdmin = !!me.isAdmin;
         document.getElementById('addCard').style.display = isAdmin ? '' : 'none';
+        document.getElementById('doneActions').style.display = isAdmin ? '' : 'none';
       }catch(_){}
     }
 
@@ -175,14 +191,16 @@
     // ---- ADD (admin) ----
     const pnInput = document.getElementById('part');
     const qAdd = document.getElementById('qAdd');
+    const prioritySel = document.getElementById('prioritySel');
     document.getElementById('btnAdd')?.addEventListener('click', async ()=>{
       const pn = (pnInput.value||'').trim();
       const qty = Number(qAdd.value||0);
+      const pri = Number(prioritySel.value||0) | 0;
       if (!pn) return alert('Pick a part');
       if (!Number.isInteger(qty) || qty <= 0) return alert('Qty must be a positive integer');
       try{
-        await api('/api/build-tasks', { method:'POST', body:{ partNumber: pn, qty } });
-        pnInput.value=''; qAdd.value='1';
+        await api('/api/build-tasks', { method:'POST', body:{ partNumber: pn, qty, priority: pri } });
+        pnInput.value=''; qAdd.value='1'; prioritySel.value='0';
         await refreshAll();
       }catch(e){ alert('Add failed'); }
     });
@@ -192,6 +210,11 @@
     const claimedBody = document.getElementById('claimedBody');
     const doneBody = document.getElementById('doneBody');
 
+    function prBadge(priority){
+      if (priority >= 2) return `<span class="priority p2">Urgent</span>`;
+      if (priority === 1) return `<span class="priority p1">High</span>`;
+      return '';
+    }
     function linkPN(pn){ return `<a class="mono" href="/inv/${encodeURIComponent(pn)}" target="_blank" rel="noopener">${esc(pn)}</a>`; }
 
     function rowQueued(r){
@@ -201,7 +224,7 @@
       const who = esc(r.createdBy||'');
       const adminBtns = isAdmin ? `<button class="pill small cancel" data-cancel="${r.id}">Cancel</button>` : '';
       return `<tr data-id="${r.id}">
-        <td>${linkPN(r.partNumber)}</td>
+        <td>${linkPN(r.partNumber)} ${prBadge(r.priority|0)}</td>
         <td>${esc(name)}</td>
         <td class="qty">${r.qty|0}</td>
         <td><span class="muted">${when}</span><br><span class="muted">${who}</span></td>
@@ -217,14 +240,14 @@
       const name = c.printName || '';
       const who = esc(r.claimedBy||'');
       return `<tr data-id="${r.id}">
-        <td>${linkPN(r.partNumber)}</td>
+        <td>${linkPN(r.partNumber)} ${prBadge(r.priority|0)}</td>
         <td>${esc(name)}</td>
         <td class="qty">${r.qty|0}</td>
         <td>${who}</td>
         <td class="right wide">
           <input type="number" class="qtyDone" min="1" step="1" placeholder="qty">
           <button class="pill small primary" data-complete="${r.id}">Complete</button>
-          ${isAdmin ? `<button class="pill small" data-unclaim="${r.id}">Unclaim</button>` : ''}
+          ${isAdmin ? `<button class="pill small primary" data-unclaim="${r.id}">Unclaim</button>` : ''}
         </td>
       </tr>`;
     }
@@ -297,6 +320,15 @@
           await refreshAll(); return;
         }
       } catch(err){ alert('Action failed'); }
+    });
+
+    // ---- CLEAR DONE (admin) ----
+    document.getElementById('clearDoneBtn')?.addEventListener('click', async ()=>{
+      if (!isAdmin) return;
+      try{
+        await api('/api/build-task-events?type=complete', { method:'DELETE' });
+        await refreshAll();
+      }catch(e){ alert('Clear failed'); }
     });
 
     // init
