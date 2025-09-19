@@ -30,7 +30,6 @@
       <div class="brand-actions" id="navActions">
         <a href="/dashboard.html" class="navbtn">Dashboard</a>
         <a href="/assignments.html" class="navbtn">Assignments</a>
-        <!-- Desktop inventory goes to list view; QR keeps using /inv/<pn> which rewrites here -->
         <a href="/inventory" class="navbtn active">Inventory</a>
         <a href="/archive.html" class="navbtn">Archive</a>
         <a href="/admin.html" class="navbtn">Admin</a>
@@ -45,13 +44,12 @@
       <div class="info" style="margin-top:8px">
         <p>Part Number: <span id="partNumber">--</span></p>
         <p>Print Name: <span id="printName">--</span></p>
-        <p id="catalogNote" class="mini" style="margin-top:4px"></p> <!-- NEW -->
+        <p id="catalogNoteRow">Notes: <span id="catalogNote">--</span></p> <!-- NEW: same style as other rows -->
         <p>Location: <span id="location">--</span></p>
         <p>Expected Hours: <span id="expected">--</span></p>
         <p class="mini">If any of this looks wrong, fix the catalog later; inventory will still work.</p>
       </div>
 
-      <!-- Prompt shown when the page is opened directly without a PN -->
       <div id="pnPrompt" class="info pnPrompt">
         <label for="pnInput">Enter a Part Number</label>
         <div class="row">
@@ -128,19 +126,17 @@
   <script>
     const API_ROOT = 'https://wireshop-backend.onrender.com';
 
-    // auth
     const user = (() => { try { return JSON.parse(localStorage.getItem('user')||'{}'); } catch { return {}; } })();
     if (!user || !user.username) {
       const redir = encodeURIComponent(location.pathname + location.search + location.hash);
       window.location.href = '/index.html?redirect=' + redir;
     }
 
-    // logout
     document.getElementById('logoutBtn')?.addEventListener('click', (e)=>{
       e.preventDefault(); localStorage.removeItem('user'); window.location.href='/index.html';
     });
 
-    // Robust PN extraction: /inv/<pn>, ?part= / ?pn=, or #pn=
+    // Robust PN extraction
     let partNumber = '';
     const segs = location.pathname.split('/').filter(Boolean);
     const invIdx = segs.findIndex(s => s.toLowerCase() === 'inv');
@@ -153,11 +149,10 @@
       partNumber = decodeURIComponent(location.hash.slice(4)).trim();
     }
 
-    // Update header
+    // Header
     document.getElementById('partNumber').textContent = partNumber || '(missing)';
     document.getElementById('partTitle').textContent = `Inventory — ${partNumber || '—'}`;
 
-    // If no PN, show prompt and remember last PN
     if (!partNumber) {
       let last = '';
       try { last = localStorage.getItem('lastPN') || ''; } catch {}
@@ -179,7 +174,7 @@
       try { localStorage.setItem('lastPN', partNumber); } catch {}
     }
 
-    // catalog extras
+    // Fill catalog data, including Notes row
     (function fillCatalog(){
       try {
         const row = (window.catalog || []).find(c => String(c.partNumber||'').trim() === partNumber);
@@ -188,16 +183,14 @@
           document.getElementById('location').textContent = row.location || '--';
           document.getElementById('expected').textContent = (row.expectedHours ?? '--');
 
-          // NEW: show catalog note
-          const noteEl = document.getElementById('catalogNote');
           const n = String(row.notes ?? '').trim();
-          if (noteEl) {
-            if (n && n.toLowerCase() !== 'nan') {
-              noteEl.textContent = n;
-              noteEl.style.display = '';
-            } else {
-              noteEl.style.display = 'none';
-            }
+          const noteRow = document.getElementById('catalogNoteRow');
+          const noteSpan = document.getElementById('catalogNote');
+          if (n && n.toLowerCase() !== 'nan') {
+            noteSpan.textContent = n;
+            noteRow.style.display = '';
+          } else {
+            noteRow.style.display = 'none';
           }
         }
       } catch {}
