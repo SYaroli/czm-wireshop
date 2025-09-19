@@ -239,10 +239,17 @@
     }
 
     // ---- LOAD & BUILD ----
-    async function load(status){ return api('/api/build-tasks?status='+encodeURIComponent(status)); }
+    function startOfTodayMs(){
+      const d = new Date();
+      d.setHours(0,0,0,0);
+      return d.getTime();
+    }
+    async function loadQueued(){ return api('/api/build-tasks?status=queued'); }
+    async function loadClaimed(){ return api('/api/build-tasks?status=claimed'); }
+    async function loadDoneToday(){ return api('/api/build-tasks?status=done&since='+startOfTodayMs()); }
 
     async function refreshAll(){
-      const [queued, claimed, done] = await Promise.all([ load('queued'), load('claimed'), load('done') ]);
+      const [queued, claimed, done] = await Promise.all([ loadQueued(), loadClaimed(), loadDoneToday() ]);
       queuedBody.innerHTML = queued.map(rowQueued).join('');
       claimedBody.innerHTML = claimed.map(rowClaimed).join('');
       doneBody.innerHTML = done.map(rowDone).join('');
