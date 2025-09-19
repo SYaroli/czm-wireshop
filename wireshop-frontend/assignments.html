@@ -3,677 +3,302 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>CZM • Wireshop Assignments</title>
-  <link rel="stylesheet" href="style.css"/>
+  <title>CZM • Build Next</title>
+  <link rel="stylesheet" href="/style.css"/>
   <style>
-    .brand-actions .navbtn{
-      display:inline-block !important;
-      background:var(--red) !important;
-      color:#fff !important;
-      padding:8px 12px !important;
-      border-radius:9px !important;
-      text-decoration:none !important;
-      width:auto !important;
-      border:0 !important;
-      font-weight:700 !important;
-      cursor:pointer !important;
-    }
-    .brand-actions .navbtn:hover{ filter:brightness(.92) }
-    .small{ font-size:.85rem; padding:6px 10px; }
-    .table td, .table th { vertical-align: middle; }
-  
-
-    
-/* Top nav pills - smaller version (canonical) */
-.brand-actions .navbtn{
-  display:inline-block !important;
-  background:#1a1c20 !important;
-  color:#bbb !important;
-  padding:6px 12px !important;
-  border-radius:10px !important;
-  text-decoration:none !important;
-  border:1px solid #3a3f44 !important;
-  font-weight:600 !important;
-  font-size:0.9rem !important;
-  cursor:pointer !important;
-  margin-left:8px !important;
-}
-.brand-actions .navbtn:hover{ filter:brightness(1.1) }
-.brand-actions .navbtn.active{
-  background:#b30000 !important;
-  color:#fff !important;
-  border-color:#ff4d4d !important;
-}
-
+    .brand-actions .navbtn{display:inline-block;background:#1a1c20;color:#bbb;padding:6px 12px;border-radius:10px;text-decoration:none;border:1px solid #3a3f44;font-weight:600;font-size:.9rem;margin-left:8px}
+    .brand-actions .navbtn.active{background:#b30000;color:#fff;border-color:#ff4d4d}
+    .grid-2{display:grid;grid-template-columns:1fr;gap:16px}
+    @media (min-width: 1000px){ .grid-2{grid-template-columns:1fr 1fr} }
+    .toolbar{display:flex;gap:10px;flex-wrap:wrap}
+    .toolbar > *{flex:1}
+    .toolbar .tight{flex:0}
+    .right{display:flex;justify-content:flex-end;gap:8px}
+    .pill{padding:10px 14px;border:1px solid #d3d8e1;border-radius:10px;background:#fff;cursor:pointer;font-weight:800;min-width:64px;text-align:center}
+    .pill.claim{background:#0e7a0d;color:#fff;border-color:#0e7a0d}
+    .pill.cancel{background:#a00;color:#fff;border-color:#a00}
+    .pill.small{min-width:0;padding:8px 10px;font-size:.95rem}
+    .pill.primary{background:#b30000;color:#fff;border-color:#b30000}
+    table.compact td, table.compact th{padding:8px 10px}
+    td.qty{font-weight:900}
+    .muted{color:#666;font-size:.95rem}
+    .kicker{font-weight:900;margin:0 0 8px}
+    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace}
+    .note{font-size:.9rem;color:#666}
+    .grow{flex:1}
+    .minw{min-width:120px}
+    .nowrap{white-space:nowrap}
+    .danger{color:#a00}
   </style>
 </head>
 <body>
   <div class="brand-bar">
     <div class="brand-inner">
-      <a class="brand-logo" href="dashboard.html">
-        <img src="czm-logo.png" alt="CZM">
-        <h1 class="brand-title">CZM • Wireshop Assignments</h1>
+      <a class="brand-logo" href="/dashboard.html">
+        <img src="/czm-logo.png" alt="CZM">
+        <h1 class="brand-title">CZM • Build Next</h1>
       </a>
-      <div class="brand-actions" id="navActions">
-
-        <a href="dashboard.html" class="navbtn">Dashboard</a>
-        <a href="assignments.html" class="navbtn active">Assignments</a>
-        <a href="/inventory" class="navbtn">Inventory</a>
-        <a href="archive.html" class="navbtn">Archive</a>
-        <a href="admin.html" class="navbtn">Admin</a>
-        <a href="index.html" class="navbtn">Logout</a>
-    
+      <div class="brand-actions">
+        <a class="navbtn" href="/dashboard.html">Dashboard</a>
+        <a class="navbtn active" href="/assignments.html">Build Next</a>
+        <a class="navbtn" href="/inventory">Inventory</a>
+        <a class="navbtn" href="/archive.html">Archive</a>
+        <a class="navbtn" href="/admin.html">Admin</a>
+        <button id="logoutBtn" class="navbtn">Logout</button>
       </div>
     </div>
   </div>
 
-  
-
   <main class="page">
-    <div id="app" style="display:none;">
+
+    <!-- ADMIN: Add to build queue -->
+    <div class="card" id="addCard" style="display:none">
+      <h2 class="kicker">Add to build queue</h2>
+      <div class="toolbar">
+        <div>
+          <label for="part">Part</label>
+          <input id="part" list="partsList" placeholder="Start typing a part number or print name">
+          <datalist id="partsList"></datalist>
+        </div>
+        <div class="minw">
+          <label for="qAdd">Qty</label>
+          <input id="qAdd" type="number" min="1" step="1" value="1">
+        </div>
+        <div class="tight" style="display:flex;align-items:end">
+          <button id="btnAdd" class="pill primary">Add</button>
+        </div>
+      </div>
+      <p class="note">Admins can add items to the queue. Techs will claim them and complete in batches; inventory increases on completion.</p>
+    </div>
+
+    <div class="grid-2">
+      <!-- Left: Queue (unclaimed) -->
       <div class="card">
-        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <div><strong>User:</strong> <span id="who"></span></div>
-          <div class="muted">•</div>
-          <div><strong>Role:</strong> <span id="role"></span></div>
-          <div class="spacer"></div>
-          <button id="refresh" class="secondary">Refresh</button>
-        </div>
+        <h2 class="kicker">Queue</h2>
+        <table class="sticky-head compact" id="tblQueued">
+          <thead>
+            <tr>
+              <th>Part</th>
+              <th>Print Name</th>
+              <th class="nowrap">Qty</th>
+              <th>Created</th>
+              <th class="nowrap">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="queuedBody"></tbody>
+        </table>
       </div>
 
-      <!-- ADMIN VIEW -->
-      <div id="adminView" style="display:none;">
-        <div class="card">
-          <h3 style="margin:0 0 8px;">Create Assignment</h3>
-          <div class="grid cols-4">
-            <label>Technician
-              <select id="a_user">
-                <option value="">-- Select technician --</option>
-              </select>
-            </label>
-
-            <label>Part
-              <select id="a_part_select">
-                <option value="">-- Select part --</option>
-              </select>
-            </label>
-
-            <label>Print Name
-              <input id="a_print" type="text" placeholder="auto from part or enter manually"/>
-            </label>
-
-            <label>Expected Hours
-              <input id="a_hours" type="number" min="0" step="0.25" placeholder="auto from part"/>
-            </label>
-
-            <label>Due Date
-              <input id="a_due" type="date"/>
-            </label>
-
-            <label>Notes
-              <input id="a_notes" type="text" placeholder="auto from part; editable"/>
-            </label>
-
-            <div class="spacer"></div>
-            <button id="a_create" class="primary">Assign</button>
-          </div>
-          <div id="a_msg" class="muted" style="margin-top:6px"></div>
-        </div>
-
-        <div class="card">
-          <h3 style="margin:0 0 8px;">Assignments</h3>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin-bottom:8px">
-            <label>Filter by tech
-              <select id="flt_user"><option value="">All</option></select>
-            </label>
-            <label>Status
-              <select id="flt_status">
-                <option value="">All</option>
-                <option value="Open">Open</option>
-                <option value="InProgress">InProgress</option>
-                <option value="Completed">Completed</option>
-                <option value="Canceled">Canceled</option>
-              </select>
-            </label>
-            <button id="applyFilters" class="secondary">Apply</button>
-            <button id="resetFilters" class="secondary">Reset</button>
-          </div>
-
-          <div class="table-wrap">
-            <table class="table">
-              <thead>
-                <tr>
-                  <th>Created</th>
-                  <th>Tech</th>
-                  <th>Part #</th>
-                  <th>Print</th>
-                  <th>Hours</th>
-                  <th>Due</th>
-                  <th>Status</th>
-                  <th>Notes</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="assignmentsBody"></tbody>
-            </table>
-          </div>
-        </div>
-
-        <div class="card">
-          <h3 style="margin:0 0 8px;">Requests Queue</h3>
-          <div class="table-wrap">
-            <table class="table">
-              <thead>
-                <tr>
-                  <th>Submitted By</th>
-                  <th>Description / Part</th>
-                  <th>Hours</th>
-                  <th>Notes</th>
-                  <th>Submitted</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody id="requestsBody"></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      <!-- TECH VIEW -->
-      <div id="techView" style="display:none;">
-        <div class="card">
-          <h3 style="margin:0 0 8px;">My Assignments</h3>
-          <div class="table-wrap">
-            <table class="table">
-              <thead>
-                <tr>
-                  <th>Created</th>
-                  <th>Part #</th>
-                  <th>Print</th>
-                  <th>Hours</th>
-                  <th>Due</th>
-                  <th>Status</th>
-                  <th>Notes</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="myAssignmentsBody"></tbody>
-            </table>
-          </div>
-          <div class="muted" id="techMsg" style="margin-top:6px"></div>
-        </div>
-
-        <div class="card">
-          <h3 style="margin:0 0 8px;">Request Credit</h3>
-          <div class="grid cols-3">
-            <label>Part or Description
-              <input id="r_part" type="text" placeholder="e.g. cabinet cleanup, quick fix"/>
-            </label>
-            <label>Hours
-              <input id="r_hours" type="number" min="0" step="0.25" placeholder="e.g. 1.5"/>
-            </label>
-            <label>Notes
-              <input id="r_notes" type="text" placeholder="optional"/>
-            </label>
-            <div class="spacer"></div>
-            <button id="r_submit" class="primary">Submit Request</button>
-          </div>
-          <div id="r_msg" class="muted" style="margin-top:6px"></div>
-        </div>
-
-        <div class="card">
-          <h3 style="margin:0 0 8px;">My Requests</h3>
-          <div class="table-wrap">
-            <table class="table">
-              <thead>
-                <tr>
-                  <th>Description / Part</th>
-                  <th>Hours</th>
-                  <th>Notes</th>
-                  <th>Status</th>
-                  <th>Updated</th>
-                </tr>
-              </thead>
-              <tbody id="myRequestsBody"></tbody>
-            </table>
-          </div>
-        </div>
+      <!-- Right: In progress (claimed) -->
+      <div class="card">
+        <h2 class="kicker">In Progress</h2>
+        <table class="sticky-head compact" id="tblClaimed">
+          <thead>
+            <tr>
+              <th>Part</th>
+              <th>Print Name</th>
+              <th class="nowrap">Remaining</th>
+              <th>Claimed By</th>
+              <th class="nowrap">Complete</th>
+            </tr>
+          </thead>
+          <tbody id="claimedBody"></tbody>
+        </table>
+        <p class="note">Partial completes allowed. Completing adds to inventory automatically.</p>
       </div>
     </div>
 
-    <!-- LOGIN GATE -->
-    <div id="loginGate" class="login-wrap">
-      <div class="login-card">
-        <div class="login-top">
-          <img src="czm-logo.png" alt="CZM">
-          <h1 class="login-title">CZM • Wireshop</h1>
-        </div>
-        <p class="login-sub">Sign in to view and manage assignments.</p>
-        <form id="login-form">
-          <div class="row">
-            <label>Username
-              <input type="text" id="username" required placeholder="firstname.lastname"/>
-            </label>
-            <label>PIN
-              <input type="password" id="pin" required placeholder="1234" inputmode="numeric"/>
-            </label>
-          </div>
-          <button type="submit">Login</button>
-          <div id="error-message"></div>
-        </form>
-      </div>
+    <!-- Done today -->
+    <div class="card">
+      <h2 class="kicker">Done today</h2>
+      <table class="sticky-head compact" id="tblDone">
+        <thead>
+          <tr>
+            <th>Part</th>
+            <th>Print Name</th>
+            <th class="nowrap">Qty</th>
+            <th class="nowrap">By</th>
+            <th class="nowrap">Completed</th>
+          </tr>
+        </thead>
+        <tbody id="doneBody"></tbody>
+      </table>
     </div>
+
   </main>
 
-  <!-- Fallback user list + the catalog used for part dropdown -->
-  <script src="users.js"></script>
-  <script src="catalog.js"></script>
-
+  <script src="/catalog.js"></script>
   <script>
-  (function(){
     const API_ROOT = 'https://wireshop-backend.onrender.com';
-    const API = {
-      users: `${API_ROOT}/api/users`,
-      assignments: `${API_ROOT}/api/assignments`,
-      requests: `${API_ROOT}/api/assignments/requests`,
-      jobs: `${API_ROOT}/api/jobs`               // ← live logs API
-    };
 
-    // Roles treated as technicians
-    const TECH_ROLES = new Set(['assembler','tech','technician','assembler-tech','assembler/tech']);
+    // auth
+    const user = (() => { try { return JSON.parse(localStorage.getItem('user')||'{}'); } catch { return {}; } })();
+    if (!user || !user.username) { window.location.href = '/index.html'; }
+    const isAdmin = String(user.role||'').toLowerCase() === 'admin';
+    document.getElementById('logoutBtn')?.addEventListener('click', ()=>{ localStorage.removeItem('user'); location.href='/index.html'; });
 
-    const el = (id) => document.getElementById(id);
-    const navActions = () => document.getElementById('navActions');
-    const getUser = () => { try { return JSON.parse(localStorage.getItem('user')) || null; } catch { return null; } };
-    const setUser = (u) => localStorage.setItem('user', JSON.stringify(u));
-    const username = () => (getUser()?.username || '');
+    // show admin card if admin
+    if (isAdmin) document.getElementById('addCard').style.display = '';
 
-    function headers(){
-      return { 'Content-Type': 'application/json', 'x-user': username() };
-    }
-    async function apiGet(url){
-      const res = await fetch(url, { headers: headers() });
-      if (!res.ok) throw new Error(await res.text().catch(()=>`${res.status}`));
+    // catalog helpers
+    const CATALOG = Array.isArray(window.catalog) ? window.catalog : [];
+    const byPN = new Map(CATALOG.map(x => [String(x.partNumber), x]));
+    const options = CATALOG.map(c => {
+      const pn = String(c.partNumber||'').trim();
+      const name = (c.printName||'').trim();
+      return `<option value="${pn}">${name ? name + ' — ' + pn : pn}</option>`;
+    }).join('');
+    document.getElementById('partsList').innerHTML = options;
+
+    function esc(s){ return String(s??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;'); }
+    function ts(ms){ if(!ms) return ''; return new Date(ms).toLocaleString(); }
+
+    async function api(path, opts={}){
+      const res = await fetch(API_ROOT + path, {
+        method: opts.method || 'GET',
+        headers: { 'Content-Type':'application/json', 'x-user': user.username },
+        body: opts.body ? JSON.stringify(opts.body) : undefined
+      });
+      if (!res.ok) throw new Error('HTTP '+res.status);
       return res.json();
     }
-    async function apiJson(url, method, data){
-      const res = await fetch(url, { method, headers: headers(), body: JSON.stringify(data) });
-      if (!res.ok) throw new Error(await res.text().catch(()=>`${res.status}`));
-      return res.json();
-    }
-    function opt(v,t){ const o = document.createElement('option'); o.value=v; o.textContent=t||v; return o; }
-    const fmtHMM = (mins) => {
-      if (mins == null || isNaN(mins)) return '';
-      const h = Math.floor(mins/60), m = Math.abs(mins%60);
-      return `${h}:${String(m).padStart(2,'0')}`;
-    };
 
-    // --------- Login gate ----------
-    const loginForm = document.getElementById('login-form');
-    loginForm.addEventListener('submit', async (e)=>{
-      e.preventDefault();
-      const u = el('username').value.trim();
-      const p = el('pin').value.trim();
+    // ---- ADD (admin) ----
+    const pnInput = document.getElementById('part');
+    const qAdd = document.getElementById('qAdd');
+    document.getElementById('btnAdd')?.addEventListener('click', async ()=>{
+      const pn = (pnInput.value||'').trim();
+      const qty = Number(qAdd.value||0);
+      if (!pn) return alert('Pick a part');
+      if (!Number.isInteger(qty) || qty <= 0) return alert('Qty must be a positive integer');
       try{
-        const res = await fetch(`${API.users}/login`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: u, pin: p })
-        });
-        if(res.ok){
-          const data = await res.json();
-          setUser({ username: data.username, role: data.role });
-          document.getElementById('loginGate').style.display='none';
-          document.getElementById('app').style.display='block';
-          init();
-          return;
-        }
-      }catch{}
-      document.getElementById('error-message').textContent='Invalid username or PIN.';
+        await api('/api/build-tasks', { method:'POST', body:{ partNumber: pn, qty } });
+        pnInput.value=''; qAdd.value='1';
+        await refreshAll();
+      }catch(e){ alert('Add failed'); }
     });
 
-    // Auto-login if already set
-    if(getUser()){
-      document.getElementById('loginGate').style.display='none';
-      document.getElementById('app').style.display='block';
-      init();
+    // ---- TABLE RENDERERS ----
+    const queuedBody = document.getElementById('queuedBody');
+    const claimedBody = document.getElementById('claimedBody');
+    const doneBody = document.getElementById('doneBody');
+
+    function linkPN(pn){ return `<a class="mono" href="/inv/${encodeURIComponent(pn)}" target="_blank" rel="noopener">${esc(pn)}</a>`; }
+
+    function rowQueued(r){
+      const c = byPN.get(String(r.partNumber)) || {};
+      const name = c.printName || '';
+      const when = ts(r.createdAt);
+      const who = esc(r.createdBy||'');
+      const adminBtns = isAdmin ? `<button class="pill small cancel" data-cancel="${r.id}">Cancel</button>` : '';
+      return `<tr data-id="${r.id}">
+        <td>${linkPN(r.partNumber)}</td>
+        <td>${esc(name)}</td>
+        <td class="qty">${r.qty|0}</td>
+        <td><span class="muted">${when}</span><br><span class="muted">${who}</span></td>
+        <td class="right">
+          <button class="pill small claim" data-claim="${r.id}">Claim</button>
+          ${adminBtns}
+        </td>
+      </tr>`;
     }
 
-    // --------- App init ----------
-    async function init(){
-      const me = getUser();
-      const isAdmin = String(me?.role||'').toLowerCase()==='admin';
+    function rowClaimed(r){
+      const c = byPN.get(String(r.partNumber)) || {};
+      const name = c.printName || '';
+      const who = esc(r.claimedBy||'');
+      return `<tr data-id="${r.id}">
+        <td>${linkPN(r.partNumber)}</td>
+        <td>${esc(name)}</td>
+        <td class="qty">${r.qty|0}</td>
+        <td>${who}</td>
+        <td class="right">
+          <input type="number" class="qtyDone" min="1" step="1" placeholder="qty">
+          <button class="pill small primary" data-complete="${r.id}">Complete</button>
+          ${isAdmin ? `<button class="pill small" data-unclaim="${r.id}">Unclaim</button>` : ''}
+        </td>
+      </tr>`;
+    }
 
-      // Header info
-      el('who').textContent = me?.username || '';
-      el('role').textContent = me?.role || '';
+    function rowDone(r){
+      const c = byPN.get(String(r.partNumber)) || {};
+      const name = c.printName || '';
+      const who = esc(r.claimedBy||'');
+      const when = ts(r.completedAt);
+      // qty for 'done' rows is stored in events; we’ll pull last completion qty via events API later if needed.
+      // For now we compute from difference between before/after is not available; store as zero here.
+      // To display a real qty, backend would need /events or to echo last completion qty. We echo it in complete response for live updates.
+      return `<tr data-id="${r.id}">
+        <td>${linkPN(r.partNumber)}</td>
+        <td>${esc(name)}</td>
+        <td class="qty">${r._lastQtyDone ? r._lastQtyDone : (r.qty===0 ? '' : r.qty)}</td>
+        <td>${who}</td>
+        <td><span class="muted">${when}</span></td>
+      </tr>`;
+    }
 
-      // Admin-only nav
+    // ---- LOAD & BUILD ----
+    async function load(status){
+      return api('/api/build-tasks?status='+encodeURIComponent(status));
+    }
+
+    async function refreshAll(){
+      const [queued, claimed, done] = await Promise.all([
+        load('queued'), load('claimed'), load('done')
+      ]);
+
+      queuedBody.innerHTML = queued.map(rowQueued).join('');
+      claimedBody.innerHTML = claimed.map(rowClaimed).join('');
+      doneBody.innerHTML = done.map(rowDone).join('');
+    }
+
+    // ---- ACTIONS ----
+    document.addEventListener('click', async (e)=>{
+      const claimId = e.target?.dataset?.claim;
+      const cancelId = e.target?.dataset?.cancel;
+      const unclaimId = e.target?.dataset?.unclaim;
+      const completeId = e.target?.dataset?.complete;
+
       try {
-        const bar = document.getElementById('navActions');
-        if (isAdmin && bar) {
-          const want = [['admin.html','Admin'], ['archive.html','Archive']];
-          for (const [href,label] of want) {
-            if (!bar.querySelector(`.navbtn[href="${href}"]`)) {
-              const a = document.createElement('a');
-              a.href = href; a.textContent = label; a.className = 'navbtn'; a.dataset.dyn='1';
-              bar.appendChild(a);
-            }
+        if (claimId){
+          await api(`/api/build-tasks/${claimId}/claim`, { method:'PATCH' });
+          await refreshAll();
+          return;
+        }
+        if (cancelId && isAdmin){
+          await api(`/api/build-tasks/${cancelId}/cancel`, { method:'PATCH' });
+          await refreshAll();
+          return;
+        }
+        if (unclaimId && isAdmin){
+          await api(`/api/build-tasks/${unclaimId}/unclaim`, { method:'PATCH' });
+          await refreshAll();
+          return;
+        }
+        if (completeId){
+          const tr = e.target.closest('tr');
+          const qtyBox = tr?.querySelector('.qtyDone');
+          const qty = Number(qtyBox?.value||0);
+          if (!Number.isInteger(qty) || qty <= 0) return alert('Enter a positive quantity');
+          // complete on build_tasks
+          const res = await api(`/api/build-tasks/${completeId}/complete`, { method:'PATCH', body:{ qty } });
+          // then add to inventory
+          const pn = res?.addToInventory?.partNumber;
+          const inc = Number(res?.addToInventory?.qty||0);
+          if (pn && inc > 0){
+            await api(`/api/inventory/${encodeURIComponent(pn)}/adjust`, { method:'POST', body:{ delta: inc, note: `build task #${completeId}` } });
           }
+          await refreshAll();
+          return;
         }
-      } catch {}
-      // Views
-      document.getElementById('adminView').style.display = isAdmin ? 'block' : 'none';
-      document.getElementById('techView').style.display   = isAdmin ? 'none' : 'block';
-
-
-      // Data
-      await Promise.all([loadAssignments(), loadRequests(), loadMine(), bindActions()]);
-    }
-
-    function makeNav(href, label){
-      const a = document.createElement('a');
-      a.href = href;
-      a.textContent = label;
-      a.className = 'navbtn';
-      a.dataset.dyn = '1';
-      return a;
-    }
-
-    // --------- Technician loader ----------
-    async function loadTechs(){
-      const me = getUser();
-      const meIsAdmin = String(me?.role||'').toLowerCase() === 'admin';
-
-      let techs = [];
-      try {
-        const list = await apiGet(`${API.users}`);
-        if (Array.isArray(list)) {
-          techs = list.filter(u => TECH_ROLES.has(String(u.role||'').toLowerCase()));
-        }
-      } catch (_) {}
-
-      if (!techs.length && Array.isArray(window.users)) {
-        techs = window.users.filter(u => TECH_ROLES.has(String(u.role||'').toLowerCase()));
+      } catch(err){
+        alert('Action failed');
       }
+    });
 
-      const seen = new Set();
-      techs = techs
-        .filter(u => String(u.role||'').toLowerCase() !== 'admin')
-        .filter(u => {
-          const key = String(u.username||'').trim();
-          if (!key || seen.has(key)) return false;
-          seen.add(key); return true;
-        })
-        .sort((a,b)=> String(a.username).localeCompare(String(b.username)));
-
-      const aSel = el('a_user');
-      const fSel = el('flt_user');
-
-      aSel.innerHTML = '<option value="">-- Select technician --</option>';
-      fSel.innerHTML = '';
-      fSel.append(opt('', 'All'));
-
-      for (const u of techs) {
-        if (meIsAdmin && String(u.username).toLowerCase() === String(me?.username||'').toLowerCase()) continue;
-        aSel.append(opt(u.username));
-        fSel.append(opt(u.username));
-      }
-
-      el('a_msg').textContent = techs.length ? '' : 'No technicians found. Add techs in Admin → Users.';
-    }
-
-    // --------- Part dropdown loader (from catalog.js) ----------
-    async function loadParts(){
-      const select = el('a_part_select');
-      select.innerHTML = '<option value="">-- Select part --</option>';
-
-      const list = Array.isArray(window.catalog) ? window.catalog : [];
-      if (!list.length) {
-        select.innerHTML = '<option value="">(no catalog loaded)</option>';
-        return;
-      }
-
-      const items = list
-        .filter(p => p && p.partNumber)
-        .map(p => ({
-          pn: String(p.partNumber),
-          label: `${String(p.partNumber)} — ${p.printName ? String(p.printName) : ''}`.trim(),
-          printName: p.printName || '',
-          hours: typeof p.expectedHours === 'number' && !Number.isNaN(p.expectedHours) ? p.expectedHours : '',
-          notes: p.notes || ''
-        }))
-        .sort((a,b)=> a.pn.localeCompare(b.pn));
-
-      for (const it of items) {
-        const o = document.createElement('option');
-        o.value = it.pn;
-        o.textContent = it.label;
-        o.dataset.print = it.printName;
-        o.dataset.hours = it.hours;
-        o.dataset.notes = it.notes || '';
-        select.appendChild(o);
-      }
-    }
-
-    function wirePartAutoFill(){
-      const sel = el('a_part_select');
-      const print = el('a_print');
-      const hours = el('a_hours');
-      const notes = el('a_notes');
-
-      sel.addEventListener('change', () => {
-        const opt = sel.selectedOptions && sel.selectedOptions[0];
-        if (!opt || !opt.value) { return; }
-        if (opt.dataset.print)  print.value = opt.dataset.print;
-        if (opt.dataset.hours !== undefined && opt.dataset.hours !== '') hours.value = opt.dataset.hours;
-        if (opt.dataset.notes && !notes.value) notes.value = opt.dataset.notes;
-      });
-    }
-
-    // --------- Loaders ----------
-    async function loadAssignments(){
-      if (String(getUser()?.role||'').toLowerCase()!=='admin') return;
-      const user = el('flt_user').value;
-      const status = el('flt_status').value;
-      const qs = new URLSearchParams(); if(user) qs.set('username', user); if(status) qs.set('status', status);
-      const rows = await apiGet(`${API.assignments}${qs.toString() ? `?${qs}` : ''}`);
-      const tbody = el('assignmentsBody'); tbody.innerHTML='';
-      rows.forEach(r=>{
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${new Date(r.createdAt).toLocaleString()}</td>
-          <td>${r.username||''}</td>
-          <td>${r.partNumber||''}</td>
-          <td>${r.printName||''}</td>
-          <td>${r.expectedMinutes!=null ? (r.expectedMinutes/60) : ''}</td>
-          <td>${r.dueDate ? new Date(r.dueDate).toLocaleDateString() : ''}</td>
-          <td>${r.status||''}</td>
-          <td>${r.notes||''}</td>
-          <td>
-            <button data-act="status" data-id="${r.id}" data-status="InProgress" class="secondary small">Start</button>
-            <button data-act="status" data-id="${r.id}" data-status="Completed" class="primary small">Complete</button>
-            <button data-act="status" data-id="${r.id}" data-status="Canceled" class="secondary small">Cancel</button>
-            <button data-act="delete" data-id="${r.id}" class="danger small">Delete</button>
-          </td>`;
-        tbody.append(tr);
-      });
-    }
-
-    async function loadRequests(){
-      const me = getUser();
-      const isAdmin = String(me?.role||'').toLowerCase()==='admin';
-      const tbody = el('requestsBody'); tbody.innerHTML='';
-      if(!isAdmin) return;
-      const rows = await apiGet(API.requests);
-      rows.forEach(r=>{
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${r.username||''}</td>
-          <td>${r.description || r.partNumber || ''}</td>
-          <td>${r.minutes!=null ? (r.minutes/60) : ''}</td>
-          <td>${r.notes||''}</td>
-          <td>${r.updatedAt ? new Date(r.updatedAt).toLocaleString() : ''}</td>
-          <td>
-            <button data-req="approve" data-id="${r.id}" class="primary small">Approve</button>
-            <button data-req="reject" data-id="${r.id}" class="danger small">Reject</button>
-          </td>`;
-        tbody.append(tr);
-      });
-    }
-
-    async function loadMine(){
-      const me = getUser();
-      const isAdmin = String(me?.role||'').toLowerCase()==='admin';
-      if(isAdmin) return;
-
-      const myBody = el('myAssignmentsBody'); myBody.innerHTML='';
-      const rows = await apiGet(`${API.assignments}/me`);
-      if (!rows.length) el('techMsg').textContent = 'No assignments yet.';
-      else el('techMsg').textContent = '';
-
-      rows.forEach(r=>{
-        const tr = document.createElement('tr');
-        tr.dataset.id = r.id;
-        tr.dataset.pn = r.partNumber || '';
-        tr.dataset.print = r.printName || '';
-        tr.dataset.minutes = (r.expectedMinutes!=null ? r.expectedMinutes : '');
-        tr.dataset.notes = r.notes || '';
-
-        tr.innerHTML = `
-          <td>${new Date(r.createdAt).toLocaleString()}</td>
-          <td>${r.partNumber||''}</td>
-          <td>${r.printName||''}</td>
-          <td>${r.expectedMinutes!=null ? (r.expectedMinutes/60) : ''}</td>
-          <td>${r.dueDate ? new Date(r.dueDate).toLocaleDateString() : ''}</td>
-          <td>${r.status||''}</td>
-          <td>${r.notes||''}</td>
-          <td>
-            ${r.status==='Open' ? '<button class="primary small" data-act="start">Start</button>' : ''}
-            ${r.status==='InProgress' ? '<span class="muted">In progress</span>' : ''}
-            ${r.status==='Completed' ? '<span class="muted">Completed</span>' : ''}
-          </td>`;
-        myBody.append(tr);
-      });
-    }
-
-    // --------- Actions ----------
-    async function bindActions(){
-      // Admin table actions
-      document.getElementById('assignmentsBody')?.addEventListener('click', async (e)=>{
-        const t = e.target;
-        if(t.dataset.act==='delete'){
-          try{ await apiJson(`${API.assignments}/${t.dataset.id}`, 'DELETE'); await loadAssignments(); }catch{}
-        }else if(t.dataset.act==='status'){
-          try{ await apiJson(`${API.assignments}/${t.dataset.id}`, 'PATCH', { status: t.dataset.status }); await loadAssignments(); }catch{}
-        }
-      });
-
-      document.getElementById('requestsBody')?.addEventListener('click', async (e)=>{
-        const t = e.target;
-        if(t.dataset.req==='approve'){
-          try{ await apiJson(`${API.requests}/${t.dataset.id}/approve`, 'PATCH', {}); await Promise.all([loadRequests(), loadAssignments()]); }catch{}
-        }else if(t.dataset.req==='reject'){
-          try{ await apiJson(`${API.requests}/${t.dataset.id}/reject`, 'PATCH', {}); await loadRequests(); }catch{}
-        }
-      });
-
-      // TECH: Start from My Assignments -> create LIVE log + flip status
-      document.getElementById('myAssignmentsBody')?.addEventListener('click', async (e)=>{
-        const btn = e.target.closest('button[data-act="start"]'); if (!btn) return;
-        const row = btn.closest('tr'); if (!row) return;
-
-        const me = getUser();
-        const id = Number(row.dataset.id);
-        const partNumber = row.dataset.pn || '';
-        const printName = row.dataset.print || '';
-        const expectedMinutes = row.dataset.minutes ? Number(row.dataset.minutes) : null;
-        const notes = row.dataset.notes || '';
-
-        // Optimistic UI
-        btn.disabled = true; btn.textContent = 'Starting...';
-
-        try{
-          // 1) Create live log
-          await apiJson(`${API.jobs}/log`, 'POST', {
-            username: me.username,
-            partNumber,
-            action: 'Start',
-            note: printName ? `From assignment • ${printName}${notes ? ' • ' + notes : ''}` : (notes || 'From assignment'),
-            startTime: Date.now(),
-            expectedMinutes
-          });
-
-          // 2) Flip assignment to InProgress
-          await apiJson(`${API.assignments}/${id}`, 'PATCH', { status: 'InProgress' });
-
-          // 3) Refresh my list
-          await loadMine();
-        }catch{
-          btn.disabled = false; btn.textContent = 'Start';
-          alert('Failed to start. Check connection.');
-        }
-      });
-
-      document.getElementById('a_create')?.addEventListener('click', async ()=>{
-        const tech = document.getElementById('a_user').value.trim();
-        const pnSel = document.getElementById('a_part_select').value.trim();
-        if(!tech){ el('a_msg').textContent='Select a technician.'; return; }
-
-        const hoursVal = document.getElementById('a_hours').value;
-        const minutes = hoursVal ? Math.round(parseFloat(hoursVal) * 60) : null;
-
-        const dueVal = document.getElementById('a_due').value;
-        const dueEpoch = dueVal ? new Date(dueVal + 'T00:00:00').getTime() : null;
-
-        const data = {
-          username: tech,
-          partNumber: pnSel || null,
-          printName: document.getElementById('a_print').value.trim() || null,
-          expectedMinutes: minutes,
-          dueDate: dueEpoch,
-          notes: document.getElementById('a_notes').value.trim() || null,
-        };
-        try{
-          await apiJson(API.assignments, 'POST', data);
-          el('a_msg').textContent='Assigned.';
-          document.getElementById('a_part_select').value='';
-          document.getElementById('a_print').value='';
-          document.getElementById('a_hours').value='';
-          document.getElementById('a_due').value='';
-          document.getElementById('a_notes').value='';
-          await loadAssignments();
-        }catch(e){ el('a_msg').textContent='Failed to assign.'; }
-      });
-
-      document.getElementById('applyFilters')?.addEventListener('click', loadAssignments);
-      document.getElementById('resetFilters')?.addEventListener('click', ()=>{
-        document.getElementById('flt_user').value='';
-        document.getElementById('flt_status').value='';
-        loadAssignments();
-      });
-
-      document.getElementById('r_submit')?.addEventListener('click', async ()=>{
-        const data = {
-          partNumber: document.getElementById('r_part').value.trim() || null,
-          description: document.getElementById('r_part').value.trim() || null,
-          minutes: (document.getElementById('r_hours').value ? Math.round(parseFloat(document.getElementById('r_hours').value)*60) : null),
-          notes: document.getElementById('r_notes').value.trim() || null
-        };
-        try{
-          await apiJson(API.requests, 'POST', data);
-          document.getElementById('r_msg').textContent='Sent.';
-          document.getElementById('r_part').value='';
-          document.getElementById('r_hours').value='';
-          document.getElementById('r_notes').value='';
-          await loadMine();
-        }catch(e){ document.getElementById('r_msg').textContent='Failed to send.'; }
-      });
-
-      document.getElementById('refresh')?.addEventListener('click', async ()=>{
-        await Promise.all([loadAssignments(), loadRequests(), loadMine()]);
-      });
-    }
-  })();
+    // initial load + poll
+    refreshAll().catch(()=>alert('Failed to load build queue'));
+    setInterval(()=>{ if(!document.hidden) refreshAll().catch(()=>{}); }, 15000);
   </script>
 </body>
 </html>
