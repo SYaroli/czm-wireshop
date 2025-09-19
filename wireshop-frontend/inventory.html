@@ -29,7 +29,7 @@
       </a>
       <div class="brand-actions" id="navActions">
         <a href="/dashboard.html" class="navbtn">Dashboard</a>
-        <a href="/assignments.html" class="navbtn">Assignments</a>
+        <a href="/assignments.html" class="navbtn">Build Next</a>
         <a href="/inventory" class="navbtn active">Inventory</a>
         <a href="/archive.html" class="navbtn">Archive</a>
         <a href="/admin.html" class="navbtn">Admin</a>
@@ -44,7 +44,7 @@
       <div class="info" style="margin-top:8px">
         <p>Part Number: <span id="partNumber">--</span></p>
         <p>Print Name: <span id="printName">--</span></p>
-        <p id="catalogNoteRow">Notes: <span id="catalogNote">--</span></p> <!-- NEW: same style as other rows -->
+        <p id="catalogNoteRow">Notes: <span id="catalogNote">--</span></p>
         <p>Location: <span id="location">--</span></p>
         <p>Expected Hours: <span id="expected">--</span></p>
         <p class="mini">If any of this looks wrong, fix the catalog later; inventory will still work.</p>
@@ -136,7 +136,6 @@
       e.preventDefault(); localStorage.removeItem('user'); window.location.href='/index.html';
     });
 
-    // Robust PN extraction
     let partNumber = '';
     const segs = location.pathname.split('/').filter(Boolean);
     const invIdx = segs.findIndex(s => s.toLowerCase() === 'inv');
@@ -149,7 +148,6 @@
       partNumber = decodeURIComponent(location.hash.slice(4)).trim();
     }
 
-    // Header
     document.getElementById('partNumber').textContent = partNumber || '(missing)';
     document.getElementById('partTitle').textContent = `Inventory — ${partNumber || '—'}`;
 
@@ -174,7 +172,6 @@
       try { localStorage.setItem('lastPN', partNumber); } catch {}
     }
 
-    // Fill catalog data, including Notes row
     (function fillCatalog(){
       try {
         const row = (window.catalog || []).find(c => String(c.partNumber||'').trim() === partNumber);
