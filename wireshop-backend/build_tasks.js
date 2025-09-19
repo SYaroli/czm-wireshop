@@ -15,7 +15,7 @@ module.exports = function attachBuildTasks(app, opts = {}) {
   const now = () => Date.now();
   const username = req => String(req.headers['x-user'] || '').trim();
   function isAdmin(req) {
-    // NEW: honor x-role: admin from the frontend
+    // honor x-role: admin from the frontend
     const role = String(req.headers['x-role'] || '').toLowerCase();
     if (role === 'admin') return true;
 
@@ -71,6 +71,12 @@ module.exports = function attachBuildTasks(app, opts = {}) {
         FOREIGN KEY(taskId) REFERENCES build_tasks(id)
       )
     `);
+  });
+
+  // ----- Who am I (for frontend admin gating) -----
+  router.get('/api/whoami', (req, res) => {
+    const u = requireUser(req, res); if (!u) return;
+    res.json({ username: u, isAdmin: !!isAdmin(req) });
   });
 
   // ----- Create (ADMIN) -----
