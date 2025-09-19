@@ -134,11 +134,10 @@
     // auth
     const user = (() => { try { return JSON.parse(localStorage.getItem('user')||'{}'); } catch { return {}; } })();
     if (!user || !user.username) { window.location.href = '/index.html'; }
-    const isAdmin = String(user.role||'').toLowerCase() === 'admin';
     document.getElementById('logoutBtn')?.addEventListener('click', ()=>{ localStorage.removeItem('user'); location.href='/index.html'; });
 
-    // show admin card if admin
-    if (isAdmin) document.getElementById('addCard').style.display = '';
+    // will be updated by /api/whoami
+    let isAdmin = String(user.role||'').toLowerCase() === 'admin';
 
     // catalog helpers
     const CATALOG = Array.isArray(window.catalog) ? window.catalog : [];
@@ -165,6 +164,15 @@
       });
       if (!res.ok) throw new Error('HTTP '+res.status);
       return res.json();
+    }
+
+    async function whoami(){
+      try{
+        const me = await api('/api/whoami');
+        isAdmin = !!me.isAdmin;
+        if (isAdmin) document.getElementById('addCard').style.display = '';
+        else document.getElementById('addCard').style.display = 'none';
+      }catch(_){}
     }
 
     // ---- ADD (admin) ----
@@ -291,9 +299,12 @@
       } catch(err){ alert('Action failed'); }
     });
 
-    // initial load + poll
-    refreshAll().catch(()=>alert('Failed to load build queue'));
-    setInterval(()=>{ if(!document.hidden) refreshAll().catch(()=>{}); }, 15000);
+    // initial load + admin detection + poll
+    (async function init(){
+      await whoami();
+      await refreshAll().catch(()=>alert('Failed to load build queue'));
+      setInterval(()=>{ if(!document.hidden) refreshAll().catch(()=>{}); }, 15000);
+    })();
   </script>
 </body>
 </html>
