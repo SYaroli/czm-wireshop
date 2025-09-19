@@ -45,6 +45,7 @@
       <div class="info" style="margin-top:8px">
         <p>Part Number: <span id="partNumber">--</span></p>
         <p>Print Name: <span id="printName">--</span></p>
+        <p id="catalogNote" class="mini" style="margin-top:4px"></p> <!-- NEW -->
         <p>Location: <span id="location">--</span></p>
         <p>Expected Hours: <span id="expected">--</span></p>
         <p class="mini">If any of this looks wrong, fix the catalog later; inventory will still work.</p>
@@ -186,6 +187,18 @@
           document.getElementById('printName').textContent = row.printName || '--';
           document.getElementById('location').textContent = row.location || '--';
           document.getElementById('expected').textContent = (row.expectedHours ?? '--');
+
+          // NEW: show catalog note
+          const noteEl = document.getElementById('catalogNote');
+          const n = String(row.notes ?? '').trim();
+          if (noteEl) {
+            if (n && n.toLowerCase() !== 'nan') {
+              noteEl.textContent = n;
+              noteEl.style.display = '';
+            } else {
+              noteEl.style.display = 'none';
+            }
+          }
         }
       } catch {}
     })();
