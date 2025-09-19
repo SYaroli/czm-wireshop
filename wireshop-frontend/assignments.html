@@ -8,8 +8,6 @@
   <style>
     .brand-actions .navbtn{display:inline-block;background:#1a1c20;color:#bbb;padding:6px 12px;border-radius:10px;text-decoration:none;border:1px solid #3a3f44;font-weight:600;font-size:.9rem;margin-left:8px}
     .brand-actions .navbtn.active{background:#b30000;color:#fff;border-color:#ff4d4d}
-    .grid-2{display:grid;grid-template-columns:1fr;gap:16px}
-    @media (min-width: 1000px){ .grid-2{grid-template-columns:1fr 1fr} }
     .toolbar{display:flex;gap:10px;flex-wrap:wrap}
     .toolbar > *{flex:1}
     .toolbar .tight{flex:0}
@@ -25,10 +23,9 @@
     .kicker{font-weight:900;margin:0 0 8px}
     .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace}
     .note{font-size:.9rem;color:#666}
-    .grow{flex:1}
     .minw{min-width:120px}
     .nowrap{white-space:nowrap}
-    .danger{color:#a00}
+    .card.sized{min-height:320px} /* keep the three main blocks visually same height */
   </style>
 </head>
 <body>
@@ -71,46 +68,44 @@
       <p class="note">Admins can add items to the queue. Techs will claim them and complete in batches; inventory increases on completion.</p>
     </div>
 
-    <div class="grid-2">
-      <!-- Left: Queue (unclaimed) -->
-      <div class="card">
-        <h2 class="kicker">Queue</h2>
-        <table class="sticky-head compact" id="tblQueued">
-          <thead>
-            <tr>
-              <th>Part</th>
-              <th>Print Name</th>
-              <th class="nowrap">Qty</th>
-              <th>Created</th>
-              <th class="nowrap">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="queuedBody"></tbody>
-        </table>
-      </div>
-
-      <!-- Right: In progress (claimed) -->
-      <div class="card">
-        <h2 class="kicker">In Progress</h2>
-        <table class="sticky-head compact" id="tblClaimed">
-          <thead>
-            <tr>
-              <th>Part</th>
-              <th>Print Name</th>
-              <th class="nowrap">Remaining</th>
-              <th>Claimed By</th>
-              <th class="nowrap">Complete</th>
-            </tr>
-          </thead>
-          <tbody id="claimedBody"></tbody>
-        </table>
-        <p class="note">Partial completes allowed. Completing adds to inventory automatically.</p>
-      </div>
+    <!-- Queue -->
+    <div class="card sized">
+      <h2 class="kicker">Queue</h2>
+      <table class="sticky-head compact" id="tblQueued">
+        <thead>
+          <tr>
+            <th>Part</th>
+            <th>Print Name</th>
+            <th class="nowrap">Qty</th>
+            <th>Created</th>
+            <th class="nowrap">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="queuedBody"></tbody>
+      </table>
     </div>
 
-    <!-- Done today -->
-    <div class="card">
-      <h2 class="kicker">Done today</h2>
+    <!-- In Progress -->
+    <div class="card sized">
+      <h2 class="kicker">In Progress</h2>
+      <table class="sticky-head compact" id="tblClaimed">
+        <thead>
+          <tr>
+            <th>Part</th>
+            <th>Print Name</th>
+            <th class="nowrap">Remaining</th>
+            <th>Claimed By</th>
+            <th class="nowrap">Complete</th>
+          </tr>
+        </thead>
+        <tbody id="claimedBody"></tbody>
+      </table>
+      <p class="note">Partial completes allowed. Completing adds to inventory automatically.</p>
+    </div>
+
+    <!-- Done (last 20) -->
+    <div class="card sized">
+      <h2 class="kicker">Done</h2>
       <table class="sticky-head compact" id="tblDone">
         <thead>
           <tr>
@@ -123,6 +118,7 @@
         </thead>
         <tbody id="doneBody"></tbody>
       </table>
+      <p class="note">Showing the 20 most recent completions.</p>
     </div>
 
   </main>
@@ -136,7 +132,7 @@
     if (!user || !user.username) { window.location.href = '/index.html'; }
     document.getElementById('logoutBtn')?.addEventListener('click', ()=>{ localStorage.removeItem('user'); location.href='/index.html'; });
 
-    // will be updated by /api/whoami
+    // admin detection via whoami
     let isAdmin = String(user.role||'').toLowerCase() === 'admin';
 
     // catalog helpers
@@ -170,8 +166,7 @@
       try{
         const me = await api('/api/whoami');
         isAdmin = !!me.isAdmin;
-        if (isAdmin) document.getElementById('addCard').style.display = '';
-        else document.getElementById('addCard').style.display = 'none';
+        document.getElementById('addCard').style.display = isAdmin ? '' : 'none';
       }catch(_){}
     }
 
@@ -247,17 +242,19 @@
     }
 
     // ---- LOAD & BUILD ----
-    function startOfTodayMs(){
-      const d = new Date();
-      d.setHours(0,0,0,0);
-      return d.getTime();
-    }
     async function loadQueued(){ return api('/api/build-tasks?status=queued'); }
     async function loadClaimed(){ return api('/api/build-tasks?status=claimed'); }
-    async function loadDoneToday(){ return api('/api/build-tasks?status=done&since='+startOfTodayMs()); }
+    async function loadDone(){ return api('/api/build-tasks?status=done'); }
 
     async function refreshAll(){
-      const [queued, claimed, done] = await Promise.all([ loadQueued(), loadClaimed(), loadDoneToday() ]);
+      const [queued, claimed, doneAll] = await Promise.all([ loadQueued(), loadClaimed(), loadDone() ]);
+
+      // Done: sort by completedAt desc and keep last 20
+      const done = (doneAll || [])
+        .filter(r => r.completedAt)                                     // safety
+        .sort((a,b) => (b.completedAt||0) - (a.completedAt||0))
+        .slice(0, 20);
+
       queuedBody.innerHTML = queued.map(rowQueued).join('');
       claimedBody.innerHTML = claimed.map(rowClaimed).join('');
       doneBody.innerHTML = done.map(rowDone).join('');
@@ -299,7 +296,7 @@
       } catch(err){ alert('Action failed'); }
     });
 
-    // initial load + admin detection + poll
+    // init
     (async function init(){
       await whoami();
       await refreshAll().catch(()=>alert('Failed to load build queue'));
