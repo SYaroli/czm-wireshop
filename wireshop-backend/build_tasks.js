@@ -15,11 +15,8 @@ module.exports = function attachBuildTasks(app, opts = {}) {
   const now = () => Date.now();
   const username = req => String(req.headers['x-user'] || '').trim();
   function isAdmin(req) {
-    // honor x-role: admin from the frontend
     const role = String(req.headers['x-role'] || '').toLowerCase();
     if (role === 'admin') return true;
-
-    // Also honor ADMIN_USERS env list (comma-separated usernames)
     const u = username(req).toLowerCase();
     const list = String(process.env.ADMIN_USERS || '')
       .toLowerCase()
@@ -57,9 +54,13 @@ module.exports = function attachBuildTasks(app, opts = {}) {
         createdAt    INTEGER NOT NULL,
         claimedBy    TEXT,
         claimedAt    INTEGER,
-        completedAt  INTEGER
+        completedAt  INTEGER,
+        priority     INTEGER NOT NULL DEFAULT 0  -- 0 normal, 1 high, 2 urgent
       )
     `);
+    // Add missing columns on existing DBs; ignore "duplicate column name" errors.
+    db.run(`ALTER TABLE build_tasks ADD COLUMN priority INTEGER NOT NULL DEFAULT 0`, ()=>{});
+
     db.run(`
       CREATE TABLE IF NOT EXISTS build_task_events (
         id       INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -86,15 +87,16 @@ module.exports = function attachBuildTasks(app, opts = {}) {
 
     const pn = String(req.body?.partNumber || '').trim();
     const q = Number(req.body?.qty);
+    const priority = Number(req.body?.priority ?? 0) | 0;
     if (!pn) return res.status(400).json({ error: 'partNumber required' });
     if (!Number.isInteger(q) || q <= 0) return res.status(400).json({ error: 'qty must be positive integer' });
 
     try {
       const t = now();
       const r = await run(
-        `INSERT INTO build_tasks (partNumber, qty, status, createdBy, createdAt)
-         VALUES (?, ?, 'queued', ?, ?)`,
-        [pn, q, user, t]
+        `INSERT INTO build_tasks (partNumber, qty, status, createdBy, createdAt, priority)
+         VALUES (?, ?, 'queued', ?, ?, ?)`,
+        [pn, q, user, t, priority]
       );
       await run(
         `INSERT INTO build_task_events (taskId, type, qty, user, ts)
@@ -114,8 +116,9 @@ module.exports = function attachBuildTasks(app, opts = {}) {
     try {
       let sql = `SELECT * FROM build_tasks`;
       const params = [];
+      const valid = ['queued','claimed','done'];
 
-      if (['queued','claimed','done'].includes(status)) {
+      if (valid.includes(status)) {
         sql += ` WHERE status=?`;
         params.push(status);
         if (status === 'done' && since > 0) {
@@ -127,13 +130,18 @@ module.exports = function attachBuildTasks(app, opts = {}) {
         params.push(since);
       }
 
-      sql += ` ORDER BY 
-        CASE status WHEN 'queued' THEN 0 WHEN 'claimed' THEN 1 WHEN 'done' THEN 2 ELSE 3 END,
-        createdAt ASC`;
+      if (status === 'queued' || status === 'claimed') {
+        sql += ` ORDER BY priority DESC, createdAt ASC`;
+      } else if (status === 'done') {
+        sql += ` ORDER BY completedAt DESC`;
+      } else {
+        sql += ` ORDER BY 
+          CASE status WHEN 'queued' THEN 0 WHEN 'claimed' THEN 1 WHEN 'done' THEN 2 ELSE 3 END,
+          priority DESC, createdAt ASC`;
+      }
 
       const rows = await all(sql, params);
 
-      // Include last completed qty for "Done today"
       if (status === 'done') {
         await Promise.all(rows.map(async r => {
           const ev = await get(
@@ -202,7 +210,6 @@ module.exports = function attachBuildTasks(app, opts = {}) {
 
   // ----- Complete (partial allowed) -----
   // PATCH /api/build-tasks/:id/complete  body: { qty }
-  // If qty==remaining -> mark done; else decrement remaining qty and keep claimed.
   router.patch('/api/build-tasks/:id/complete', async (req, res) => {
     const user = requireUser(req, res); if (!user) return;
     const id = Number(req.params.id || 0);
@@ -266,7 +273,7 @@ module.exports = function attachBuildTasks(app, opts = {}) {
     } catch (e) { res.status(500).json({ error:'db', detail:String(e.message||e) }); }
   });
 
-  // ----- Events feed (optional) -----
+  // ----- Events feed -----
   router.get('/api/build-task-events', async (req, res) => {
     const type = String(req.query.type || '').trim().toLowerCase() || 'complete';
     const since = Number(req.query.since || 0);
@@ -284,6 +291,18 @@ module.exports = function attachBuildTasks(app, opts = {}) {
       }
       sql += ` ORDER BY e.ts DESC`;
       res.json(await all(sql, params));
+    } catch (e) { res.status(500).json({ error:'db', detail:String(e.message||e) }); }
+  });
+
+  // ----- Clear events (ADMIN) -----
+  // DELETE /api/build-task-events?type=complete
+  router.delete('/api/build-task-events', async (req, res) => {
+    const user = requireUser(req, res); if (!user) return;
+    if (!isAdmin(req)) return res.status(403).json({ error:'admin only' });
+    const type = String(req.query.type || 'complete').trim().toLowerCase();
+    try {
+      const r = await run(`DELETE FROM build_task_events WHERE type = ?`, [type]);
+      res.json({ deleted: r.changes|0 });
     } catch (e) { res.status(500).json({ error:'db', detail:String(e.message||e) }); }
   });
 
