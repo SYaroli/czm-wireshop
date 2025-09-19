@@ -42,6 +42,12 @@ module.exports = function attachBuildTasks(app, opts = {}) {
     db.all(sql, args, (err,rows)=> err?reject(err):resolve(rows||[]));
   });
 
+  async function tx(fn){
+    await run('BEGIN');
+    try { const v = await fn(); await run('COMMIT'); return v; }
+    catch(e){ await run('ROLLBACK'); throw e; }
+  }
+
   // Schema
   db.serialize(() => {
     db.run(`
@@ -58,7 +64,7 @@ module.exports = function attachBuildTasks(app, opts = {}) {
         priority     INTEGER NOT NULL DEFAULT 0  -- 0 normal, 1 high, 2 urgent
       )
     `);
-    // Add missing columns on existing DBs; ignore "duplicate column name" errors.
+    // best-effort add for existing DBs
     db.run(`ALTER TABLE build_tasks ADD COLUMN priority INTEGER NOT NULL DEFAULT 0`, ()=>{});
 
     db.run(`
@@ -66,7 +72,7 @@ module.exports = function attachBuildTasks(app, opts = {}) {
         id       INTEGER PRIMARY KEY AUTOINCREMENT,
         taskId   INTEGER NOT NULL,
         type     TEXT    NOT NULL,              -- claim | unclaim | complete | cancel | create
-        qty      INTEGER NOT NULL DEFAULT 0,    -- for completes (partial)
+        qty      INTEGER NOT NULL DEFAULT 0,    -- for completes and partial-claims
         user     TEXT    NOT NULL,
         ts       INTEGER NOT NULL,
         FOREIGN KEY(taskId) REFERENCES build_tasks(id)
@@ -74,7 +80,7 @@ module.exports = function attachBuildTasks(app, opts = {}) {
     `);
   });
 
-  // ----- Who am I (for frontend admin gating) -----
+  // ----- Who am I -----
   router.get('/api/whoami', (req, res) => {
     const u = requireUser(req, res); if (!u) return;
     res.json({ username: u, isAdmin: !!isAdmin(req) });
@@ -156,33 +162,80 @@ module.exports = function attachBuildTasks(app, opts = {}) {
     } catch (e) { res.status(500).json({ error:'db', detail:String(e.message||e) }); }
   });
 
-  // ----- Claim (any logged-in user), atomic -----
+  // ----- Claim (supports partial-claim) -----
+  // PATCH /api/build-tasks/:id/claim   body: { qty? }
+  // If qty < available: split the queued task into:
+  //   - original task reduced and still queued
+  //   - a new task in 'claimed' for the requested qty
   router.patch('/api/build-tasks/:id/claim', async (req, res) => {
     const user = requireUser(req, res); if (!user) return;
     const id = Number(req.params.id || 0);
+    const reqQty = Number(req.body?.qty || 0);
+
     if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error:'bad id' });
 
     try {
+      const task = await get(`SELECT * FROM build_tasks WHERE id=?`, [id]);
+      if (!task) return res.status(404).json({ error:'not found' });
+      if (task.status !== 'queued') return res.status(409).json({ error:'not-queue', current:task });
+
+      const available = task.qty|0;
+      if (!Number.isInteger(available) || available <= 0) return res.status(409).json({ error:'empty' });
+
+      // claimQty defaults to all if not provided or invalid
+      let claimQty = Number.isInteger(reqQty) && reqQty > 0 ? reqQty : available;
+      if (claimQty > available) return res.status(400).json({ error:'qty exceeds available', available });
+
       const t = now();
-      const r = await run(
-        `UPDATE build_tasks
-           SET status='claimed', claimedBy=?, claimedAt=?
-         WHERE id=? AND status='queued'`,
-        [user, t, id]
-      );
-      if (r.changes === 0) {
-        return res.status(409).json({ error:'not-queue', current: await get(`SELECT * FROM build_tasks WHERE id=?`, [id]) });
+
+      // full-claim: keep same row
+      if (claimQty === available) {
+        await run(
+          `UPDATE build_tasks
+             SET status='claimed', claimedBy=?, claimedAt=?
+           WHERE id=? AND status='queued'`,
+          [user, t, id]
+        );
+        await run(
+          `INSERT INTO build_task_events (taskId, type, qty, user, ts)
+           VALUES (?, 'claim', ?, ?, ?)`,
+          [id, claimQty, user, t]
+        );
+        const claimed = await get(`SELECT * FROM build_tasks WHERE id=?`, [id]);
+        return res.json(claimed);
       }
-      await run(
-        `INSERT INTO build_task_events (taskId, type, qty, user, ts)
-         VALUES (?, 'claim', 0, ?, ?)`,
-        [id, user, t]
-      );
-      res.json(await get(`SELECT * FROM build_tasks WHERE id=?`, [id]));
+
+      // partial-claim: split inside a transaction
+      const result = await tx(async () => {
+        // 1) reduce original queued qty
+        await run(
+          `UPDATE build_tasks SET qty=? WHERE id=? AND status='queued'`,
+          [available - claimQty, id]
+        );
+
+        // 2) create a new claimed task with the claimed qty
+        const ins = await run(
+          `INSERT INTO build_tasks (partNumber, qty, status, createdBy, createdAt, claimedBy, claimedAt, priority)
+           VALUES (?, ?, 'claimed', ?, ?, ?, ?, ?)`,
+          [task.partNumber, claimQty, task.createdBy, task.createdAt, user, t, task.priority|0]
+        );
+
+        // 3) event for the claimed slice
+        await run(
+          `INSERT INTO build_task_events (taskId, type, qty, user, ts)
+           VALUES (?, 'claim', ?, ?, ?)`,
+          [ins.lastID, claimQty, user, t]
+        );
+
+        return ins.lastID;
+      });
+
+      const claimed = await get(`SELECT * FROM build_tasks WHERE id=?`, [result]);
+      res.json(claimed);
     } catch (e) { res.status(500).json({ error:'db', detail:String(e.message||e) }); }
   });
 
-  // ----- Unclaim (ADMIN) -----
+  // ----- Unclaim (ADMIN only — we didn’t change this path in this step) -----
   router.patch('/api/build-tasks/:id/unclaim', async (req, res) => {
     const user = requireUser(req, res); if (!user) return;
     if (!isAdmin(req)) return res.status(403).json({ error:'admin only' });
@@ -209,7 +262,6 @@ module.exports = function attachBuildTasks(app, opts = {}) {
   });
 
   // ----- Complete (partial allowed) -----
-  // PATCH /api/build-tasks/:id/complete  body: { qty }
   router.patch('/api/build-tasks/:id/complete', async (req, res) => {
     const user = requireUser(req, res); if (!user) return;
     const id = Number(req.params.id || 0);
@@ -295,7 +347,6 @@ module.exports = function attachBuildTasks(app, opts = {}) {
   });
 
   // ----- Clear events (ADMIN) -----
-  // DELETE /api/build-task-events?type=complete
   router.delete('/api/build-task-events', async (req, res) => {
     const user = requireUser(req, res); if (!user) return;
     if (!isAdmin(req)) return res.status(403).json({ error:'admin only' });
