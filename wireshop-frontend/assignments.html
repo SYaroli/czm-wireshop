@@ -295,7 +295,17 @@
 
       try {
         if (claimId){
-          await api(`/api/build-tasks/${claimId}/claim`, { method:'PATCH' });
+          // partial-claim prompt
+          const tr = e.target.closest('tr');
+          const max = Number(tr?.querySelector('.qty')?.textContent || 0);
+          if (!Number.isInteger(max) || max <= 0) return;
+          const input = prompt(`How many to claim (1-${max})?`, String(max));
+          if (input === null) return; // cancelled
+          const want = Number(input);
+          if (!Number.isInteger(want) || want <= 0 || want > max) {
+            alert('Invalid quantity'); return;
+          }
+          await api(`/api/build-tasks/${claimId}/claim`, { method:'PATCH', body:{ qty: want } });
           await refreshAll(); return;
         }
         if (cancelId && isAdmin){
