@@ -15,6 +15,11 @@ module.exports = function attachBuildTasks(app, opts = {}) {
   const now = () => Date.now();
   const username = req => String(req.headers['x-user'] || '').trim();
   function isAdmin(req) {
+    // NEW: honor x-role: admin from the frontend
+    const role = String(req.headers['x-role'] || '').toLowerCase();
+    if (role === 'admin') return true;
+
+    // Also honor ADMIN_USERS env list (comma-separated usernames)
     const u = username(req).toLowerCase();
     const list = String(process.env.ADMIN_USERS || '')
       .toLowerCase()
@@ -122,7 +127,7 @@ module.exports = function attachBuildTasks(app, opts = {}) {
 
       const rows = await all(sql, params);
 
-      // Augment done rows with the last completion qty so UI can display "Done today" cleanly.
+      // Include last completed qty for "Done today"
       if (status === 'done') {
         await Promise.all(rows.map(async r => {
           const ev = await get(
@@ -255,8 +260,7 @@ module.exports = function attachBuildTasks(app, opts = {}) {
     } catch (e) { res.status(500).json({ error:'db', detail:String(e.message||e) }); }
   });
 
-  // ----- Events feed (optional, if you want it from UI) -----
-  // GET /api/build-task-events?type=complete&since=<epochMs>
+  // ----- Events feed (optional) -----
   router.get('/api/build-task-events', async (req, res) => {
     const type = String(req.query.type || '').trim().toLowerCase() || 'complete';
     const since = Number(req.query.since || 0);
