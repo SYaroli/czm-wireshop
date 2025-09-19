@@ -30,6 +30,8 @@
       text-overflow:initial;
       word-break:break-word;
     }
+    /* keep last column off the edge */
+    #tbl th:last-child,#tbl td:last-child{padding-right:24px}
   </style>
 </head>
 <body>
@@ -41,7 +43,7 @@
       </a>
       <div class="brand-actions">
         <a class="navbtn" href="/dashboard.html">Dashboard</a>
-        <a class="navbtn" href="/assignments.html">Assignments</a>
+        <a class="navbtn" href="/assignments.html">Build Next</a>
         <a class="navbtn active" href="/inventory">Inventory</a>
         <a class="navbtn" href="/archive.html">Archive</a>
         <a class="navbtn" href="/admin.html">Admin</a>
@@ -132,7 +134,6 @@
         return { ...r, qty: s ? (s.qty|0) : 0 };
       });
 
-      // Any stray inventory rows not in catalog
       for(const [pn,s] of invMap){
         rows.push({ pn, name:'', loc:'', min:0, qty: s.qty|0, note:'' });
       }
@@ -212,7 +213,6 @@
 
     load().catch(()=> alert('Failed to load inventory list'));
 
-    // Auto refresh: only qty now
     async function refreshVisibleRows(){
       const trs = Array.from(tbody.querySelectorAll('tr[data-pn]'));
       for(const tr of trs){
