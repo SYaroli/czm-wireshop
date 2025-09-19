@@ -5,6 +5,8 @@
 const path = require("path");
 const express = require("express");
 const cors = require("cors");
+const attachBuildTasks = require("./build_tasks");
+
 
 // Force local-time windows to Savannah unless overridden in env
 process.env.TZ = process.env.TZ || "America/New_York";
@@ -35,6 +37,16 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true }));
+// --- existing mounts ---
+app.use('/api/users', usersRouter);
+app.use('/api/jobs', jobsRouter);
+app.use('/api/archive', archiveRouter);
+app.use('/api/assignments', assignmentsRouter);
+app.use('/api/inventory', inventoryRouter);
+
+// NEW: Build Next endpoints (/api/build-tasks/*)
+attachBuildTasks(app);
+
 
 // ---------- TEMP auth shim so the UI can know you're admin ----------
 // Replace with your real auth when ready. This populates req.user and serves /api/auth/me.
@@ -362,3 +374,4 @@ const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
   console.log(`WireShop backend listening on port ${PORT}`);
 });
+
