@@ -3,25 +3,35 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>CZM • Inventory Snapshot</title>
+  <title>CZM • Inventory List</title>
   <link rel="stylesheet" href="/style.css"/>
   <style>
     .brand-actions .navbtn{display:inline-block;background:#1a1c20;color:#bbb;padding:6px 12px;border-radius:10px;text-decoration:none;border:1px solid #3a3f44;font-weight:600;font-size:.9rem;margin-left:8px}
     .brand-actions .navbtn.active{background:#b30000;color:#fff;border-color:#ff4d4d}
+    .toolbar{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+    .badge{background:#eee;border:1px solid #ddd;border-radius:8px;padding:4px 8px;font-weight:700}
+    .qtycell{font-weight:900;text-align:right}
+    .row-actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+    .custom-wrap{display:flex;gap:6px;align-items:center}
+    .custom-wrap input[type=number]{width:84px;padding:6px;border:1px solid #d3d8e1;border-radius:10px}
+    .apply{
+      padding:6px 14px;border:1px solid #b30000;border-radius:10px;background:#b30000;color:#fff;font-weight:800;cursor:pointer;
+    }
+    .apply:hover:enabled{filter:brightness(1.1)}
+    .apply:disabled{background:#b30000;border-color:#b30000;color:#fff;opacity:0.6;cursor:not-allowed}
+    .status{font-size:12px;color:#666}
+    .low{color:#b30000}
 
-    .toolbar{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:8px}
-    .toolbar .grow{flex:1}
-    .toolbar label{display:inline-flex;align-items:center;gap:6px;font-weight:700;color:#333}
-    .toolbar input[type="search"]{width:100%}
-    .hint{color:#666;font-size:.9rem;margin-top:0}
-
-    table.compact td, table.compact th{padding:8px 10px;vertical-align:top}
-    td.qty{font-weight:900}
-    .wrap{white-space:normal;word-break:break-word}
-    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace}
-    .muted{color:#666;font-size:.95rem}
-    th.minw, td.minw{min-width:240px}
-    th.notes, td.notes{min-width:320px}
+    /* Notes: wider and wrap like Print Name */
+    .notes-cell{
+      min-width:425px;
+      white-space:normal;
+      overflow:visible;
+      text-overflow:initial;
+      word-break:break-word;
+    }
+    /* keep last column off the edge */
+    #tbl th:last-child,#tbl td:last-child{padding-right:24px}
   </style>
 </head>
 <body>
@@ -29,13 +39,12 @@
     <div class="brand-inner">
       <a class="brand-logo" href="/dashboard.html">
         <img src="/czm-logo.png" alt="CZM">
-        <h1 class="brand-title">CZM • Inventory Snapshot</h1>
+        <h1 class="brand-title">CZM • Inventory</h1>
       </a>
       <div class="brand-actions">
         <a class="navbtn" href="/dashboard.html">Dashboard</a>
         <a class="navbtn" href="/assignments.html">Build Next</a>
-        <a class="navbtn active" href="/inventory-list.html">Snapshot</a>
-        <a class="navbtn" href="/inventory">Inventory</a>
+        <a class="navbtn active" href="/inventory">Inventory</a>
         <a class="navbtn" href="/archive.html">Archive</a>
         <a class="navbtn" href="/admin.html">Admin</a>
         <button id="logoutBtn" class="navbtn">Logout</button>
@@ -45,25 +54,33 @@
 
   <main class="page">
     <div class="card">
+      <h2>Inventory — Snapshot</h2>
       <div class="toolbar">
-        <div class="grow">
-          <input id="q" type="search" placeholder="Filter by part number or print name">
+        <div style="flex:1">
+          <label for="q">Filter</label>
+          <input id="q" type="text" placeholder="part number, print name, or location">
         </div>
-        <label><input id="onlyNonZero" type="checkbox"> Only non-zero</label>
-        <label><input id="onlyZero" type="checkbox"> Only zero</label>
+        <div style="display:flex;align-items:end;gap:10px">
+          <label class="badge"><input type="checkbox" id="onlyNonZero"> only non-zero</label>
+          <label class="badge"><input type="checkbox" id="onlyZero"> only 0-qty</label>
+          <span class="badge" id="countBadge">0 items</span>
+          <span class="status" id="status">Loading…</span>
+        </div>
       </div>
-      <p class="hint">Tip: checking “Only zero” will automatically uncheck “Only non-zero” (and vice versa), because math.</p>
 
-      <table class="sticky-head compact" id="tbl">
+      <table class="sticky-head" id="tbl">
         <thead>
           <tr>
-            <th class="minw">Print Number</th>
-            <th class="minw">Print Name</th>
-            <th class="notes">Notes</th>
-            <th class="nowrap">Qty</th>
+            <th style="width:210px">Part Number</th>
+            <th>Print Name</th>
+            <th style="width:180px">Location</th>
+            <th style="width:90px;text-align:right">Min</th>
+            <th style="width:90px;text-align:right">Qty</th>
+            <th style="min-width:220px">Adjust</th>
+            <th style="min-width:425px">Notes</th>
           </tr>
         </thead>
-        <tbody id="body"></tbody>
+        <tbody id="tbody"></tbody>
       </table>
     </div>
   </main>
@@ -72,82 +89,156 @@
   <script>
     const API_ROOT = 'https://wireshop-backend.onrender.com';
 
-    // auth guard
     const user = (() => { try { return JSON.parse(localStorage.getItem('user')||'{}'); } catch { return {}; } })();
     if (!user || !user.username) { window.location.href = '/index.html'; }
-    document.getElementById('logoutBtn')?.addEventListener('click', ()=>{ localStorage.removeItem('user'); location.href='/index.html'; });
+    document.getElementById('logoutBtn')?.addEventListener('click', () => { localStorage.removeItem('user'); window.location.href = '/index.html'; });
 
-    // elements
-    const q = document.getElementById('q');
-    const onlyNonZero = document.getElementById('onlyNonZero');
-    const onlyZero = document.getElementById('onlyZero');
-    const tbody = document.getElementById('body');
+    const tbody = document.getElementById('tbody');
+    const qEl = document.getElementById('q');
+    const onlyNonZeroEl = document.getElementById('onlyNonZero');
+    const onlyZeroEl = document.getElementById('onlyZero');
+    const countBadge = document.getElementById('countBadge');
+    const statusEl = document.getElementById('status');
 
-    // catalog join (for names/notes)
-    const CATALOG = Array.isArray(window.catalog) ? window.catalog : [];
-    const byPN = new Map(CATALOG.map(x => [String(x.partNumber||'').trim(), x]));
+    let rows = [];
 
-    function esc(s){ return String(s??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;'); }
+    const esc = s => String(s ?? "")
+      .replaceAll("&","&amp;").replaceAll("<","&lt;")
+      .replaceAll(">","&gt;").replaceAll('"',"&quot;");
 
-    async function api(path){
+    async function api(path, opts={}){
       const res = await fetch(API_ROOT + path, {
-        headers: {'Content-Type':'application/json','x-user':user.username,'x-role':String(user.role||'')}
+        method: opts.method || 'GET',
+        headers: { 'Content-Type':'application/json', 'x-user': user.username },
+        body: opts.body ? JSON.stringify(opts.body) : undefined
       });
-      if (!res.ok) throw new Error('HTTP '+res.status);
+      if(!res.ok) throw new Error('HTTP '+res.status);
       return res.json();
     }
 
-    let rows = [];
-    function render(){
-      const term = q.value.trim().toLowerCase();
+    async function load(){
+      statusEl.textContent = 'Loading…';
 
-      let list = rows.slice();
+      const catalog = (window.catalog || []).map(c => ({
+        pn: String(c.partNumber||'').trim(),
+        name: c.printName || '',
+        loc: c.location || '',
+        min: Number(c.minQty || c.min || 0) || 0,
+        note: (c.notes && String(c.notes).trim().toLowerCase() !== 'nan') ? String(c.notes) : ''
+      })).filter(r => r.pn);
 
-      // mutually exclusive toggles
-      if (onlyNonZero.checked && onlyZero.checked){
-        // last toggle wins; we'll just uncheck the older one. But to be safe, prefer nonZero.
-        onlyZero.checked = false;
+      const snap = await api('/api/inventory-all');
+      const invMap = new Map(snap.map(r => [String(r.partNumber), r]));
+
+      rows = catalog.map(r => {
+        const s = invMap.get(r.pn);
+        invMap.delete(r.pn);
+        return { ...r, qty: s ? (s.qty|0) : 0 };
+      });
+
+      for(const [pn,s] of invMap){
+        rows.push({ pn, name:'', loc:'', min:0, qty: s.qty|0, note:'' });
       }
 
-      if (onlyNonZero.checked) list = list.filter(r => Number(r.qty||0) > 0);
-      if (onlyZero.checked)    list = list.filter(r => Number(r.qty||0) === 0);
+      rows.sort((a,b)=> a.pn.localeCompare(b.pn, undefined, {numeric:true}));
+      build();
+      statusEl.textContent = `Loaded ${rows.length} items`;
+    }
 
-      if (term){
-        list = list.filter(r => {
-          const cat = byPN.get(String(r.partNumber)) || {};
-          const hay = (String(r.partNumber)+' '+String(cat.printName||'')).toLowerCase();
-          return hay.includes(term);
-        });
+    function rowHtml(r){
+      const low = r.qty < r.min;
+      const note = r.note || '';
+      return `
+        <tr data-pn="${r.pn}">
+          <td><a href="/inv/${encodeURIComponent(r.pn)}" target="_blank" rel="noopener">${r.pn}</a></td>
+          <td>${(r.name||'')}</td>
+          <td>${(r.loc||'')}</td>
+          <td style="text-align:right">${r.min|0}</td>
+          <td class="qtycell ${low?'low':''}">${r.qty|0}</td>
+          <td>
+            <div class="row-actions">
+              <div class="custom-wrap">
+                <input type="number" class="customDelta" placeholder="+/−">
+                <button class="apply">Apply</button>
+              </div>
+            </div>
+          </td>
+          <td class="notes-cell"><span title="${esc(note)}">${esc(note)}</span></td>
+        </tr>
+      `;
+    }
+
+    function build(){
+      const q = qEl.value.trim().toLowerCase();
+      const onlyNZ = !!onlyNonZeroEl.checked;
+      const onlyZ  = !!onlyZeroEl.checked;
+
+      const filtered = rows.filter(r => {
+        if (onlyZ) {
+          if ((r.qty|0) !== 0) return false;
+        } else if (onlyNZ) {
+          if ((r.qty|0) === 0) return false;
+        }
+        if (!q) return true;
+        return (
+          r.pn.toLowerCase().includes(q) ||
+          (r.name||'').toLowerCase().includes(q) ||
+          (r.loc||'').toLowerCase().includes(q) ||
+          (r.note||'').toLowerCase().includes(q)
+        );
+      });
+
+      countBadge.textContent = `${filtered.length} items`;
+      tbody.innerHTML = filtered.map(rowHtml).join('');
+    }
+
+    tbody.addEventListener('click', async (e)=>{
+      const btn = e.target.closest('button.apply');
+      if(!btn) return;
+      const tr = e.target.closest('tr');
+      const pn = tr?.dataset?.pn;
+      if(!pn) return;
+
+      const inp = tr.querySelector('input.customDelta');
+      let delta = parseInt(inp?.value||'0',10);
+      if(!Number.isInteger(delta) || delta===0) return;
+      inp.value='';
+
+      try{
+        await api(`/api/inventory/${encodeURIComponent(pn)}/adjust`, { method:'POST', body:{ delta, note:'' } });
+        const d = await api(`/api/inventory/${encodeURIComponent(pn)}`);
+        const qtycell = tr.querySelector('.qtycell');
+        qtycell.textContent = d.qty|0;
+        qtycell.classList.toggle('low', (d.qty|0) < (rows.find(r=>r.pn===pn)?.min||0));
+        const r = rows.find(x=>x.pn===pn);
+        if(r){ r.qty = d.qty|0; }
+      }catch(err){ alert('Adjust failed.'); }
+    });
+
+    qEl.addEventListener('input', build);
+    onlyNonZeroEl.addEventListener('change', build);
+    onlyZeroEl.addEventListener('change', build);
+
+    load().catch(()=> alert('Failed to load inventory list'));
+
+    async function refreshVisibleRows(){
+      const trs = Array.from(tbody.querySelectorAll('tr[data-pn]'));
+      for(const tr of trs){
+        const pn = tr.getAttribute('data-pn');
+        try{
+          const d = await api(`/api/inventory/${encodeURIComponent(pn)}`);
+          const min = (rows.find(r=>r.pn===pn)?.min)||0;
+          const qtycell = tr.querySelector('.qtycell');
+          qtycell.textContent = d.qty|0;
+          qtycell.classList.toggle('low', (d.qty|0) < (min|0));
+          const r = rows.find(x=>x.pn===pn);
+          if(r){ r.qty = d.qty|0; }
+        }catch(e){}
       }
-
-      // stable sort: PN asc
-      list.sort((a,b)=> String(a.partNumber).localeCompare(String(b.partNumber), undefined, {numeric:true}));
-
-      tbody.innerHTML = list.map(r => {
-        const cat = byPN.get(String(r.partNumber)) || {};
-        const name = cat.printName || '';
-        const notes = cat.notes || '';
-        return `<tr>
-          <td class="mono wrap">${esc(r.partNumber)}</td>
-          <td class="wrap">${esc(name)}</td>
-          <td class="wrap notes">${esc(notes)}</td>
-          <td class="qty">${Number(r.qty||0)}</td>
-        </tr>`;
-      }).join('');
     }
-
-    // keep toggles mutually exclusive like radios
-    onlyNonZero.addEventListener('change', ()=>{ if (onlyNonZero.checked) onlyZero.checked = false; render(); });
-    onlyZero.addEventListener('change', ()=>{ if (onlyZero.checked) onlyNonZero.checked = false; render(); });
-    q.addEventListener('input', render);
-
-    async function init(){
-      const data = await api('/api/inventory-all');
-      rows = Array.isArray(data) ? data : [];
-      render();
-    }
-
-    init().catch(()=> alert('Failed to load inventory snapshot'));
+    setInterval(()=>{ if(!document.hidden) refreshVisibleRows(); }, 15000);
+    document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) refreshVisibleRows(); });
+    window.addEventListener('focus', ()=> refreshVisibleRows());
   </script>
 </body>
 </html>
