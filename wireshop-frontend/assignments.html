@@ -279,7 +279,7 @@
       const done = (evts || [])
         .filter(e => Number.isFinite(e.ts))
         .sort((a,b) => b.ts - a.ts)
-        .slice(0, 20);
+        .slice(0, 250);
 
       queuedBody.innerHTML = queued.map(rowQueued).join('');
       claimedBody.innerHTML = claimed.map(rowClaimed).join('');
