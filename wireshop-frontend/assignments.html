@@ -323,9 +323,11 @@
           if (!Number.isInteger(qty) || qty <= 0) return alert('Enter a positive quantity');
           const res = await api(`/api/build-tasks/${completeId}/complete`, { method:'PATCH', body:{ qty } });
           const pn = res?.addToInventory?.partNumber;
-          const inc = Number(res?.addToInventory?.qty||0);
-          if (pn && inc > 0){
-            await api(`/api/inventory/${encodeURIComponent(pn)}/adjust`, { method:'POST', body:{ delta: inc, note: `build task #${completeId}` } });
+const inc = Number(res?.addToInventory?.qty||0);
+if (pn && inc > 0){
+  await api(`/api/inventory/${encodeURIComponent(pn)}/adjust`, {
+    method:'POST',
+    body:{ delta: inc }   // no auto note
           }
           await refreshAll(); return;
         }
