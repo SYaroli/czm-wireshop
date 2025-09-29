@@ -116,7 +116,7 @@
       <p class="note">Partial completes allowed. Completing adds to inventory automatically.</p>
     </div>
 
-    <!-- Done (last 20 completions including partials) -->
+    <!-- Done (recent completions) -->
     <div class="card sized">
       <div style="display:flex;align-items:center;justify-content:space-between">
         <h2 class="kicker" style="margin:0">Done</h2>
@@ -136,7 +136,7 @@
         </thead>
         <tbody id="doneBody"></tbody>
       </table>
-      <p class="note">Showing the 250 most recent completions.</p>
+      <p class="note">Showing the 20 most recent completions.</p>
     </div>
 
   </main>
@@ -252,7 +252,6 @@
       </tr>`;
     }
 
-    // events-based row for Done (supports partials)
     function rowDoneEvt(e){
       const c = byPN.get(String(e.partNumber)) || {};
       const name = c.printName || '';
@@ -279,7 +278,7 @@
       const done = (evts || [])
         .filter(e => Number.isFinite(e.ts))
         .sort((a,b) => b.ts - a.ts)
-        .slice(0, 250);
+        .slice(0, 20);
 
       queuedBody.innerHTML = queued.map(rowQueued).join('');
       claimedBody.innerHTML = claimed.map(rowClaimed).join('');
@@ -295,16 +294,13 @@
 
       try {
         if (claimId){
-          // partial-claim prompt
           const tr = e.target.closest('tr');
           const max = Number(tr?.querySelector('.qty')?.textContent || 0);
           if (!Number.isInteger(max) || max <= 0) return;
           const input = prompt(`How many to claim (1-${max})?`, String(max));
-          if (input === null) return; // cancelled
+          if (input === null) return;
           const want = Number(input);
-          if (!Number.isInteger(want) || want <= 0 || want > max) {
-            alert('Invalid quantity'); return;
-          }
+          if (!Number.isInteger(want) || want <= 0 || want > max) { alert('Invalid quantity'); return; }
           await api(`/api/build-tasks/${claimId}/claim`, { method:'PATCH', body:{ qty: want } });
           await refreshAll(); return;
         }
@@ -320,18 +316,22 @@
           const tr = e.target.closest('tr');
           const qtyBox = tr?.querySelector('.qtyDone');
           const qty = Number(qtyBox?.value||0);
-          if (!Number.isInteger(qty) || qty <= 0) return alert('Enter a positive quantity');
+          if (!Number.isInteger(qty) || qty <= 0) { alert('Enter a positive quantity'); return; }
           const res = await api(`/api/build-tasks/${completeId}/complete`, { method:'PATCH', body:{ qty } });
           const pn = res?.addToInventory?.partNumber;
-const inc = Number(res?.addToInventory?.qty||0);
-if (pn && inc > 0){
-  await api(`/api/inventory/${encodeURIComponent(pn)}/adjust`, {
-    method:'POST',
-    body:{ delta: inc }   // no auto note
+          const inc = Number(res?.addToInventory?.qty||0);
+          if (pn && inc > 0){
+            // adjust inventory WITHOUT auto note
+            await api(`/api/inventory/${encodeURIComponent(pn)}/adjust`, {
+              method:'POST',
+              body:{ delta: inc }
+            });
           }
           await refreshAll(); return;
         }
-      } catch(err){ alert('Action failed'); }
+      } catch(err){
+        alert('Action failed');
+      }
     });
 
     // ---- CLEAR DONE (admin) ----
