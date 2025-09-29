@@ -199,7 +199,10 @@
     const customDeltaEl = document.getElementById('customDelta');
     const applyBtn = document.getElementById('applyBtn');
     const isAdmin = String(user.role).toLowerCase() === 'admin';
-    if (!isAdmin) { document.getElementById('adminExtras').classList.add('hide'); document.getElementById('cardHistory').classList.add('hide'); }
+if (!isAdmin) {
+  document.getElementById('adminExtras')?.classList.add('hide');
+  // Leave history visible for everyone
+}
 
     function fmtTs(ms){ if (!ms) return '—'; const d = new Date(ms); return d.toLocaleString(); }
     function validInt(v){ const n = Number(v); return Number.isInteger(n) && n !== 0; }
@@ -223,18 +226,19 @@
       metaEl.textContent = data.updatedAt ? `${fmtTs(data.updatedAt)} by ${data.updatedBy||'unknown'}` : 'never';
     }
     async function loadTxns(){
-      if (!isAdmin || !partNumber) return;
-      const rows = await api(`/api/inventory/${encodeURIComponent(partNumber)}/txns?limit=50`);
-      txnBody.innerHTML = rows.map(r => `
-        <tr>
-          <td>${fmtTs(r.ts)}</td>
-          <td>${r.user || ''}</td>
-          <td>${r.delta > 0 ? '+'+r.delta : r.delta}</td>
-          <td>${r.qtyBefore} → ${r.qtyAfter}</td>
-          <td>${(r.note||'').replace(/</g,'&lt;')}</td>
-        </tr>
-      `).join('');
-    }
+  if (!partNumber) return;
+  const rows = await api(`/api/inventory/${encodeURIComponent(partNumber)}/txns?limit=50`);
+  txnBody.innerHTML = rows.map(r => `
+    <tr>
+      <td>${fmtTs(r.ts)}</td>
+      <td>${r.user || ''}</td>
+      <td>${r.delta > 0 ? '+'+r.delta : r.delta}</td>
+      <td>${r.qtyBefore} → ${r.qtyAfter}</td>
+      <td>${(r.note||'').replace(/</g,'&lt;')}</td>
+    </tr>
+  `).join('');
+}
+
 
     async function adjust(delta){
       if (!partNumber) return alert('Missing part number in URL.');
