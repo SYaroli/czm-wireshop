@@ -136,7 +136,7 @@
         </thead>
         <tbody id="doneBody"></tbody>
       </table>
-      <p class="note">Showing the 20 most recent completions.</p>
+      <p class="note">Showing the 200 most recent completions.</p>
     </div>
 
   </main>
@@ -144,6 +144,7 @@
   <script src="/catalog.js"></script>
   <script>
     const API_ROOT = 'https://wireshop-backend.onrender.com';
+    const DONE_LIMIT = 200;
 
     // auth
     const user = (() => { try { return JSON.parse(localStorage.getItem('user')||'{}'); } catch { return {}; } })();
@@ -278,7 +279,7 @@
       const done = (evts || [])
         .filter(e => Number.isFinite(e.ts))
         .sort((a,b) => b.ts - a.ts)
-        .slice(0, 20);
+        .slice(0, DONE_LIMIT);
 
       queuedBody.innerHTML = queued.map(rowQueued).join('');
       claimedBody.innerHTML = claimed.map(rowClaimed).join('');
