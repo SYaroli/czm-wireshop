@@ -1,9 +1,29 @@
-// db.js — SQLite schema + migrations
+// db.js — SQLite schema + migrations (persistent on Render)
+// Uses DB_PATH (e.g. /data/wireshop.db) if provided; falls back to bundled file.
+
 const sqlite3 = require('sqlite3').verbose();
+const fs = require('fs');
 const path = require('path');
 
-// Always use the bundled wireshop.db in this folder
-const dbPath = path.join(__dirname, 'wireshop.db');
+// Prefer a persistent disk path when provided (Render Disk mounted at /data)
+const dbPath = process.env.DB_PATH || path.join(__dirname, 'wireshop.db');
+
+// Seed the persistent DB once if it's missing but a bundled db exists.
+// This preserves your current data the first time you switch to /data.
+try {
+  if (process.env.DB_PATH && !fs.existsSync(dbPath)) {
+    const bundled = path.join(__dirname, 'wireshop.db');
+    if (fs.existsSync(bundled)) {
+      fs.copyFileSync(bundled, dbPath);
+      console.log('[db] Seeded persistent DB from bundled file ->', dbPath);
+    } else {
+      console.log('[db] No bundled DB found to seed, starting fresh at', dbPath);
+    }
+  }
+} catch (e) {
+  console.warn('[db] Seed check failed:', e?.message || e);
+}
+
 const db = new sqlite3.Database(dbPath, (err) => {
   if (err) console.error('Failed to connect to database:', err);
   else console.log('Connected to SQLite database at', dbPath);
