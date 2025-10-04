@@ -357,11 +357,7 @@ module.exports = function attachBuildTasks(app, opts = {}) {
     } catch (e) { res.status(500).json({ error:'db', detail:String(e.message||e) }); }
   });
 
-  // mount
-  app.use(express.json());
-  app.use(router);
-};
-
+  
   // delete single event by id (ADMIN)
   router.delete('/api/build-task-events/:id', async (req, res) => {
     const user = requireUser(req, res); if (!user) return;
@@ -374,3 +370,7 @@ module.exports = function attachBuildTasks(app, opts = {}) {
       res.json({ success:true, id });
     } catch (e) { res.status(500).json({ error:'db', detail:String(e.message||e) }); }
   });
+// mount
+  app.use(express.json());
+  app.use(router);
+};
