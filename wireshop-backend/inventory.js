@@ -131,6 +131,17 @@ router.get('/inventory', requireAdmin, (_req, res) => {
     }
   );
 });
+// ---------- API: delete a txn (admin only; does not alter current qty) ----------
+router.delete('/inventory/txns/:id', requireAdmin, (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'bad id' });
+  db.run(`DELETE FROM inventory_txns WHERE id = ?`, [id], function(err){
+    if (err) return res.status(500).json({ error: 'Failed to delete txn' });
+    if (this.changes === 0) return res.status(404).json({ error: 'not found' });
+    res.json({ success: true, id });
+  });
+});
+
 
 // ---------- API: list for any logged-in user (read-only) ----------
 router.get('/inventory-all', requireUser, (_req, res) => {

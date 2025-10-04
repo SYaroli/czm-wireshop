@@ -361,3 +361,16 @@ module.exports = function attachBuildTasks(app, opts = {}) {
   app.use(express.json());
   app.use(router);
 };
+
+  // delete single event by id (ADMIN)
+  router.delete('/api/build-task-events/:id', async (req, res) => {
+    const user = requireUser(req, res); if (!user) return;
+    if (!isAdmin(req)) return res.status(403).json({ error:'admin only' });
+    const id = Number(req.params.id || 0);
+    if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error:'bad id' });
+    try {
+      const r = await run(`DELETE FROM build_task_events WHERE id=?`, [id]);
+      if ((r.changes|0) === 0) return res.status(404).json({ error:'not found' });
+      res.json({ success:true, id });
+    } catch (e) { res.status(500).json({ error:'db', detail:String(e.message||e) }); }
+  });
