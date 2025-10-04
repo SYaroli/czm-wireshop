@@ -132,6 +132,7 @@
             <th class="nowrap">Qty</th>
             <th class="nowrap">By</th>
             <th class="nowrap">Completed</th>
+            <th id="doneActionsTh" class="nowrap" style="display:none">Action</th>
           </tr>
         </thead>
         <tbody id="doneBody"></tbody>
@@ -159,6 +160,7 @@
         isAdmin = !!me.isAdmin;
         document.getElementById('addCard').style.display = isAdmin ? '' : 'none';
         document.getElementById('doneActions').style.display = isAdmin ? '' : 'none';
+        const th = document.getElementById('doneActionsTh'); if (th) th.style.display = isAdmin ? '' : 'none';
       }catch(_){}
     }
 
@@ -265,8 +267,22 @@
         <td class="qty">${qty}</td>
         <td>${who}</td>
         <td><span class="muted">${when}</span></td>
-      </tr>`;
+      ${isAdmin ? `<td><button class="pill cancel small" data-done-id="${e.id}" title="Delete">Delete</button></td>` : ``}</tr>`;
     }
+
+    
+    // handle delete clicks on Done table
+    document.getElementById('tblDone')?.addEventListener('click', async (e) => {
+      const btn = e.target.closest('button[data-done-id]');
+      if (!btn) return;
+      const id = Number(btn.getAttribute('data-done-id')||0);
+      if (!id || !isAdmin) return;
+      if (!confirm('Delete this completion event?')) return;
+      try {
+        await api(`/api/build-task-events/${id}`, { method: 'DELETE' });
+        await refreshAll();
+      } catch (err) { alert('Delete failed'); }
+    });
 
     // ---- LOAD & BUILD ----
     async function loadQueued(){ return api('/api/build-tasks?status=queued'); }
