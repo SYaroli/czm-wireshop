@@ -115,7 +115,6 @@
             <th>Δ</th>
             <th>Before → After</th>
             <th>Note</th>
-            <th id="txnActionsTh" style="display:none">Action</th>
           </tr>
         </thead>
         <tbody id="txnBody"></tbody>
@@ -128,8 +127,6 @@
     const API_ROOT = 'https://wireshop-backend.onrender.com';
 
     const user = (() => { try { return JSON.parse(localStorage.getItem('user')||'{}'); } catch { return {}; } })();
-    let isAdmin = String(user.role||'').toLowerCase() === 'admin';
-    async function whoami(){ try{ const me = await api('/api/whoami'); isAdmin = !!me.isAdmin; const th = document.getElementById('txnActionsTh'); if (th) th.style.display = isAdmin ? '' : 'none'; }catch(_){} }
     if (!user || !user.username) {
       const redir = encodeURIComponent(location.pathname + location.search + location.hash);
       window.location.href = '/index.html?redirect=' + redir;
@@ -264,23 +261,8 @@ if (!isAdmin) {
       adjust(v).catch(() => alert('Failed to adjust'));
     });
 
-    await whoami();
-
-
-    // txn table delete handler
-    document.getElementById('cardHistory')?.addEventListener('click', async (e) => {
-      const btn = e.target.closest('button[data-txn-id]');
-      if (!btn) return;
-      const id = Number(btn.getAttribute('data-txn-id')||0);
-      if (!id || !isAdmin) return;
-      if (!confirm('Delete this inventory activity row?')) return;
-      try {
-        await api(`/api/inventory/txns/${id}`, { method: 'DELETE' });
-        await loadTxns();
-      } catch { alert('Delete failed'); }
-    });
-
-    (async ()=>{ try{ await whoami(); }catch{}; loadSnapshot().catch(()=>{}); loadTxns().catch(()=>{}); })();
+    loadSnapshot().catch(()=>{});
+    loadTxns().catch(()=>{});
   </script>
 </body>
 </html>
