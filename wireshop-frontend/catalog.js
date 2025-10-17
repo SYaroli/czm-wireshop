@@ -1,4 +1,4 @@
-?window.catalog = [
+window.catalog = [
   { "printName": "BASE B6 HARNESS", "partNumber": "90602.1990.002", "saNumber": "SA-7735", "expectedHours": 20, "notes": null, "location": "115D" },
   { "printName": "BASE HARNESS", "partNumber": "90602.1990.003", "saNumber": "SA-7784", "expectedHours": 35, "notes": null, "location": "115D" },
   { "printName": "BASE B7 HARNESS", "partNumber": "90602.1990.004", "saNumber": "SA-7785", "expectedHours": 8, "notes": null, "location": "115D" },
@@ -174,3 +174,4 @@
   { "printName": "BAUMER ENCODER HARNESS", "partNumber": "40602.6790.000", "saNumber": "N/A", "expectedHours": 3, "notes": null, "location": "116B" },
   { "printName": "TK90 OUTPUT EXPANDER HARNESS", "partNumber": "40602.6830.000", "saNumber": "N/A", "expectedHours": 4, "notes": null, "location": "116B" }
 ];
+
