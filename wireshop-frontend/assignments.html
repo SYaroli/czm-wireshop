@@ -146,6 +146,7 @@
   <script>
     const API_ROOT = 'https://wireshop-backend.onrender.com';
     const DONE_LIMIT = 200;
+    let lastDone = []; // store the visible Done rows for export
 
     // auth
     const user = (() => { try { return JSON.parse(localStorage.getItem('user')||'{}'); } catch { return {}; } })();
@@ -274,9 +275,6 @@
     async function loadClaimed(){ return api('/api/build-tasks?status=claimed'); }
     async function loadDoneEvents(){ return api('/api/build-task-events?type=complete'); }
 
-    // Remember the currently displayed Done rows for CSV export
-    let lastDone = [];
-
     async function refreshAll(){
       const [queued, claimed, evts] = await Promise.all([ loadQueued(), loadClaimed(), loadDoneEvents() ]);
 
@@ -285,7 +283,7 @@
         .sort((a,b) => b.ts - a.ts)
         .slice(0, DONE_LIMIT);
 
-      // store for export
+      // remember for export
       lastDone = done;
 
       queuedBody.innerHTML = queued.map(rowQueued).join('');
@@ -295,3 +293,113 @@
 
     // ---- ACTIONS ----
     document.addEventListener('click', async (e)=>{
+      const claimId = e.target?.dataset?.claim;
+      const cancelId = e.target?.dataset?.cancel;
+      const unclaimId = e.target?.dataset?.unclaim;
+      const completeId = e.target?.dataset?.complete;
+
+      try {
+        if (claimId){
+          const tr = e.target.closest('tr');
+          const max = Number(tr?.querySelector('.qty')?.textContent || 0);
+          if (!Number.isInteger(max) || max <= 0) return;
+          const input = prompt(`How many to claim (1-${max})?`, String(max));
+          if (input === null) return;
+          const want = Number(input);
+          if (!Number.isInteger(want) || want <= 0 || want > max) { alert('Invalid quantity'); return; }
+          await api(`/api/build-tasks/${claimId}/claim`, { method:'PATCH', body:{ qty: want } });
+          await refreshAll(); return;
+        }
+        if (cancelId && isAdmin){
+          await api(`/api/build-tasks/${cancelId}/cancel`, { method:'PATCH' });
+          await refreshAll(); return;
+        }
+        if (unclaimId && isAdmin){
+          await api(`/api/build-tasks/${unclaimId}/unclaim`, { method:'PATCH' });
+          await refreshAll(); return;
+        }
+        if (completeId){
+          const tr = e.target.closest('tr');
+          const qtyBox = tr?.querySelector('.qtyDone');
+          const qty = Number(qtyBox?.value||0);
+          if (!Number.isInteger(qty) || qty <= 0) { alert('Enter a positive quantity'); return; }
+          const res = await api(`/api/build-tasks/${completeId}/complete`, { method:'PATCH', body:{ qty } });
+          const pn = res?.addToInventory?.partNumber;
+          const inc = Number(res?.addToInventory?.qty||0);
+          if (pn && inc > 0){
+            // adjust inventory WITHOUT auto note
+            await api(`/api/inventory/${encodeURIComponent(pn)}/adjust`, {
+              method:'POST',
+              body:{ delta: inc }
+            });
+          }
+          await refreshAll(); return;
+        }
+      } catch(err){
+        alert('Action failed');
+      }
+    });
+
+    // ---- CLEAR DONE (admin) ----
+    document.getElementById('clearDoneBtn')?.addEventListener('click', async ()=>{
+      if (!isAdmin) return;
+      try{
+        await api('/api/build-task-events?type=complete', { method:'DELETE' });
+        await refreshAll();
+      }catch(e){ alert('Clear failed'); }
+    });
+
+    // ---- EXPORT DONE (admin) ----
+    function toCsvValue(v){
+      const s = String(v ?? '');
+      if (/[",\n]/.test(s)) return `"${s.replace(/"/g,'""')}"`;
+      return s;
+    }
+    function downloadCsv(filename, rows){
+      const csv = rows.map(r => r.map(toCsvValue).join(',')).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 0);
+    }
+    function fmtIso(tsMs){
+      try { return new Date(tsMs).toISOString(); } catch { return ''; }
+    }
+    function buildDoneCsvRows(doneEvents){
+      const header = ['Part Number','Print Name','Qty','By','Completed'];
+      const rows = [header];
+      for (const e of (doneEvents||[])){
+        const c = byPN.get(String(e.partNumber)) || {};
+        const name = c.printName || '';
+        const qty  = Number(e.qty || 0);
+        const who  = e.user || e.claimedBy || '';
+        const when = fmtIso(e.ts);
+        rows.push([e.partNumber, name, qty, who, when]);
+      }
+      return rows;
+    }
+    document.getElementById('exportDoneBtn')?.addEventListener('click', ()=>{
+      if (!isAdmin) return;
+      const rows = buildDoneCsvRows(lastDone);
+      const pad = n => String(n).padStart(2,'0');
+      const d = new Date();
+      const stamp = `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}`;
+      downloadCsv(`done-export_${stamp}.csv`, rows);
+    });
+
+    // init
+    (async function init(){
+      await whoami();
+      await refreshAll().catch(()=>alert('Failed to load build queue'));
+      setInterval(()=>{ if(!document.hidden) refreshAll().catch(()=>{}); }, 15000);
+    })();
+  </script>
+</body>
+</html>
