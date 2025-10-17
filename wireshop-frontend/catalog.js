@@ -1,5 +1,5 @@
 ﻿window.catalog = [
-  { "printName": "CROWD PRESSURE 14\"", "partNumber": "40602.2080.000", "saNumber": "SA-7747", "expectedHours": 1, "notes": null, "location": "115D" },
+  { "printName": "CROWD PRESSURE 14\"", "partNumber": "40602.2080.000", "saNumber": "SA-7747", "expectedHours": 1, "notes": "TESTING, TESTING", "location": "115D" },
   { "printName": "CROWD PRESSURE 50\"", "partNumber": "40602.2083.000", "saNumber": "SA-8066", "expectedHours": 1, "notes": null, "location": "114D" },
   { "printName": "CROWD PRESSURE 100\"", "partNumber": "40602.2086.000", "saNumber": "SA-8067", "expectedHours": 1, "notes": null, "location": "114D" },
   { "printName": "CROWD PRESSURE 150\"", "partNumber": "40602.2088.000", "saNumber": "SA-8068", "expectedHours": 1, "notes": null, "location": "114D" },
@@ -168,3 +168,4 @@
   { "printName": "MAST D6 HARNESS", "partNumber": "90602.2020.004", "saNumber": "SA-7738", "expectedHours": 3, "notes": null, "location": "115D" },
   { "printName": "MAST D5 HARNESS", "partNumber": "90602.2020.006", "saNumber": "SA-7883", "expectedHours": 16, "notes": null, "location": "115D" }
 ];
+
