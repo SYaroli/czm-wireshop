@@ -32,7 +32,7 @@
     .p1{background:#fff3cd;border-color:#ffe08a}
     .p2{background:#ffd5d5;border-color:#ff9b9b}
 
-    /* Fix layout for Done header actions */
+    /* Done header actions layout */
     .actions-row{
       display:flex;
       align-items:center;
@@ -41,14 +41,14 @@
       flex-wrap:nowrap;
     }
     .actions-row > *{flex:0 0 auto;}
-    .actions-row .filter{
-      height:34px;
-      padding:6px 10px;
-      border:1px solid #d3d8e1;
-      border-radius:10px;
-      background:#fff;
-      min-width:220px;
+
+    /* Make Export CSV visible (match red theme like Clear) */
+    #exportDoneBtn{
+      background:#b30000;
+      color:#fff;
+      border-color:#b30000;
     }
+    #exportDoneBtn:hover{ background:#d20000; }
   </style>
 </head>
 <body>
@@ -71,6 +71,7 @@
 
   <main class="page">
 
+    <!-- ADMIN: Add to build queue -->
     <div class="card" id="addCard" style="display:none">
       <h2 class="kicker">Add to build queue</h2>
       <div class="toolbar">
@@ -98,24 +99,34 @@
       <p class="note">Admins can add items to the queue. Techs will claim them and complete in batches; inventory increases on completion.</p>
     </div>
 
+    <!-- Queue -->
     <div class="card sized">
       <h2 class="kicker">Queue</h2>
       <table class="sticky-head compact" id="tblQueued">
         <thead>
           <tr>
-            <th>Part</th><th>Print Name</th><th class="nowrap">Qty</th><th>Created</th><th class="nowrap wide">Actions</th>
+            <th>Part</th>
+            <th>Print Name</th>
+            <th class="nowrap">Qty</th>
+            <th>Created</th>
+            <th class="nowrap wide">Actions</th>
           </tr>
         </thead>
         <tbody id="queuedBody"></tbody>
       </table>
     </div>
 
+    <!-- In Progress -->
     <div class="card sized">
       <h2 class="kicker">In Progress</h2>
       <table class="sticky-head compact" id="tblClaimed">
         <thead>
           <tr>
-            <th>Part</th><th>Print Name</th><th class="nowrap">Remaining</th><th>Claimed By</th><th class="nowrap wide">Complete</th>
+            <th>Part</th>
+            <th>Print Name</th>
+            <th class="nowrap">Remaining</th>
+            <th>Claimed By</th>
+            <th class="nowrap wide">Complete</th>
           </tr>
         </thead>
         <tbody id="claimedBody"></tbody>
@@ -123,11 +134,11 @@
       <p class="note">Partial completes allowed. Completing adds to inventory automatically.</p>
     </div>
 
+    <!-- Done (recent completions) -->
     <div class="card sized">
       <div style="display:flex;align-items:center;justify-content:space-between">
         <h2 class="kicker" style="margin:0">Done</h2>
         <div id="doneActions" class="actions-row" style="display:none">
-          <input id="doneFilter" type="text" placeholder="Filter…" class="filter" style="display:none">
           <button id="exportDoneBtn" class="pill small" title="Export visible Done to CSV">Export CSV</button>
           <button id="clearDoneBtn" class="pill cancel small" title="Clear recent completions">Clear</button>
         </div>
@@ -135,7 +146,11 @@
       <table class="sticky-head compact" id="tblDone" style="margin-top:8px">
         <thead>
           <tr>
-            <th>Part</th><th>Print Name</th><th class="nowrap">Qty</th><th class="nowrap">By</th><th class="nowrap">Completed</th>
+            <th>Part</th>
+            <th>Print Name</th>
+            <th class="nowrap">Qty</th>
+            <th class="nowrap">By</th>
+            <th class="nowrap">Completed</th>
           </tr>
         </thead>
         <tbody id="doneBody"></tbody>
@@ -149,88 +164,260 @@
   <script>
     const API_ROOT = 'https://wireshop-backend.onrender.com';
     const DONE_LIMIT = 200;
-    let lastDone = [];
+    let lastDone = []; // store the visible Done rows for export
 
-    const user = (()=>{try{return JSON.parse(localStorage.getItem('user')||'{}');}catch{return{};}})();
-    if(!user.username) location.href='/index.html';
-    document.getElementById('logoutBtn')?.addEventListener('click',()=>{localStorage.removeItem('user');location.href='/index.html';});
+    // auth
+    const user = (() => { try { return JSON.parse(localStorage.getItem('user')||'{}'); } catch { return {}; } })();
+    if (!user || !user.username) { window.location.href = '/index.html'; }
+    document.getElementById('logoutBtn')?.addEventListener('click', ()=>{ localStorage.removeItem('user'); location.href='/index.html'; });
 
-    let isAdmin = String(user.role||'').toLowerCase()==='admin';
+    // admin detection via whoami
+    let isAdmin = String(user.role||'').toLowerCase() === 'admin';
     async function whoami(){
       try{
-        const me=await api('/api/whoami');
-        isAdmin=!!me.isAdmin;
-        document.getElementById('addCard').style.display=isAdmin?'':'none';
-        document.getElementById('doneActions').style.display=isAdmin?'':'none';
-      }catch{}
+        const me = await api('/api/whoami');
+        isAdmin = !!me.isAdmin;
+        document.getElementById('addCard').style.display = isAdmin ? '' : 'none';
+        document.getElementById('doneActions').style.display = isAdmin ? '' : 'none';
+      }catch(_){}
     }
 
-    const CATALOG=Array.isArray(window.catalog)?window.catalog:[];
-    const byPN=new Map(CATALOG.map(x=>[String(x.partNumber),x]));
-    const options=CATALOG.map(c=>`<option value="${String(c.partNumber||'').trim()}">${(c.printName||'').trim()} — ${String(c.partNumber||'').trim()}</option>`).join('');
-    document.getElementById('partsList').innerHTML=options;
+    // catalog helpers
+    const CATALOG = Array.isArray(window.catalog) ? window.catalog : [];
+    const byPN = new Map(CATALOG.map(x => [String(x.partNumber), x]));
+    const options = CATALOG.map(c => {
+      const pn = String(c.partNumber||'').trim();
+      const name = (c.printName||'').trim();
+      return `<option value="${pn}">${name ? name + ' — ' + pn : pn}</option>`;
+    }).join('');
+    document.getElementById('partsList').innerHTML = options;
 
-    function esc(s){return String(s??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');}
-    function ts(ms){if(!ms)return'';return new Date(ms).toLocaleString();}
+    function esc(s){ return String(s??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;'); }
+    function ts(ms){ if(!ms) return ''; return new Date(ms).toLocaleString(); }
 
-    async function api(path,opts={}){
-      const res=await fetch(API_ROOT+path,{method:opts.method||'GET',headers:{'Content-Type':'application/json','x-user':user.username,'x-role':String(user.role||'')},body:opts.body?JSON.stringify(opts.body):undefined});
-      if(!res.ok)throw new Error('HTTP '+res.status);
+    async function api(path, opts={}){
+      const res = await fetch(API_ROOT + path, {
+        method: opts.method || 'GET',
+        headers: {
+          'Content-Type':'application/json',
+          'x-user': user.username,
+          'x-role': String(user.role || '')
+        },
+        body: opts.body ? JSON.stringify(opts.body) : undefined
+      });
+      if (!res.ok) throw new Error('HTTP '+res.status);
       return res.json();
     }
 
-    const pnInput=document.getElementById('part');
-    const qAdd=document.getElementById('qAdd');
-    const prioritySel=document.getElementById('prioritySel');
-    document.getElementById('btnAdd')?.addEventListener('click',async()=>{
-      const pn=(pnInput.value||'').trim();const qty=Number(qAdd.value||0);const pri=Number(prioritySel.value||0)|0;
-      if(!pn)return alert('Pick a part');if(!Number.isInteger(qty)||qty<=0)return alert('Qty must be a positive integer');
-      try{await api('/api/build-tasks',{method:'POST',body:{partNumber:pn,qty,priority:pri}});pnInput.value='';qAdd.value='1';prioritySel.value='0';await refreshAll();}catch{alert('Add failed');}
+    // ---- ADD (admin) ----
+    const pnInput = document.getElementById('part');
+    const qAdd = document.getElementById('qAdd');
+    const prioritySel = document.getElementById('prioritySel');
+    document.getElementById('btnAdd')?.addEventListener('click', async ()=>{
+      const pn = (pnInput.value||'').trim();
+      const qty = Number(qAdd.value||0);
+      const pri = Number(prioritySel.value||0) | 0;
+      if (!pn) return alert('Pick a part');
+      if (!Number.isInteger(qty) || qty <= 0) return alert('Qty must be a positive integer');
+      try{
+        await api('/api/build-tasks', { method:'POST', body:{ partNumber: pn, qty, priority: pri } });
+        pnInput.value=''; qAdd.value='1'; prioritySel.value='0';
+        await refreshAll();
+      }catch(e){ alert('Add failed'); }
     });
 
-    const queuedBody=document.getElementById('queuedBody');
-    const claimedBody=document.getElementById('claimedBody');
-    const doneBody=document.getElementById('doneBody');
+    // ---- TABLE RENDERERS ----
+    const queuedBody = document.getElementById('queuedBody');
+    const claimedBody = document.getElementById('claimedBody');
+    const doneBody = document.getElementById('doneBody');
 
-    function prBadge(p){return p>=2?`<span class="priority p2">Urgent</span>`:p===1?`<span class="priority p1">High</span>`:'';}
-    function linkPN(pn){return `<a class="mono" href="/inv/${encodeURIComponent(pn)}" target="_blank">${esc(pn)}</a>`;}
+    function prBadge(priority){
+      if (priority >= 2) return `<span class="priority p2">Urgent</span>`;
+      if (priority === 1) return `<span class="priority p1">High</span>`;
+      return '';
+    }
+    function linkPN(pn){ return `<a class="mono" href="/inv/${encodeURIComponent(pn)}" target="_blank" rel="noopener">${esc(pn)}</a>`; }
 
-    function rowQueued(r){const c=byPN.get(String(r.partNumber))||{};return `<tr><td>${linkPN(r.partNumber)} ${prBadge(r.priority|0)}</td><td>${esc(c.printName||'')}</td><td class="qty">${r.qty|0}</td><td><span class="muted">${ts(r.createdAt)}</span><br><span class="muted">${esc(r.createdBy||'')}</span></td><td class="right wide"><button class="pill small claim" data-claim="${r.id}">Start</button>${isAdmin?`<button class="pill small cancel" data-cancel="${r.id}">Cancel</button>`:''}</td></tr>`;}
-    function rowClaimed(r){const c=byPN.get(String(r.partNumber))||{};return `<tr><td>${linkPN(r.partNumber)} ${prBadge(r.priority|0)}</td><td>${esc(c.printName||'')}</td><td class="qty">${r.qty|0}</td><td>${esc(r.claimedBy||'')}</td><td class="right wide"><input type="number" class="qtyDone" min="1" step="1" placeholder="qty"><button class="pill small primary" data-complete="${r.id}">Complete</button>${isAdmin?`<button class="pill small primary" data-unclaim="${r.id}">Unclaim</button>`:''}</td></tr>`;}
-    function rowDoneEvt(e){const c=byPN.get(String(e.partNumber))||{};return `<tr><td>${linkPN(e.partNumber)}</td><td>${esc(c.printName||'')}</td><td class="qty">${e.qty|0}</td><td>${esc(e.user||e.claimedBy||'')}</td><td><span class="muted">${ts(e.ts)}</span></td></tr>`;}
-
-    async function loadQueued(){return api('/api/build-tasks?status=queued');}
-    async function loadClaimed(){return api('/api/build-tasks?status=claimed');}
-    async function loadDoneEvents(){return api('/api/build-task-events?type=complete');}
-
-    async function refreshAll(){
-      const [queued,claimed,evts]=await Promise.all([loadQueued(),loadClaimed(),loadDoneEvents()]);
-      const done=(evts||[]).filter(e=>Number.isFinite(e.ts)).sort((a,b)=>b.ts-a.ts).slice(0,200);
-      lastDone=done;
-      queuedBody.innerHTML=queued.map(rowQueued).join('');
-      claimedBody.innerHTML=claimed.map(rowClaimed).join('');
-      doneBody.innerHTML=done.map(rowDoneEvt).join('');
+    function rowQueued(r){
+      const c = byPN.get(String(r.partNumber)) || {};
+      const name = c.printName || '';
+      const when = ts(r.createdAt);
+      const who = esc(r.createdBy||'');
+      const adminBtns = isAdmin ? `<button class="pill small cancel" data-cancel="${r.id}">Cancel</button>` : '';
+      return `<tr data-id="${r.id}">
+        <td>${linkPN(r.partNumber)} ${prBadge(r.priority|0)}</td>
+        <td>${esc(name)}</td>
+        <td class="qty">${r.qty|0}</td>
+        <td><span class="muted">${when}</span><br><span class="muted">${who}</span></td>
+        <td class="right wide">
+          <button class="pill small claim" data-claim="${r.id}">Start</button>
+          ${adminBtns}
+        </td>
+      </tr>`;
     }
 
-    document.addEventListener('click',async e=>{
-      const claimId=e.target?.dataset?.claim;const cancelId=e.target?.dataset?.cancel;const unclaimId=e.target?.dataset?.unclaim;const completeId=e.target?.dataset?.complete;
-      try{
-        if(claimId){const tr=e.target.closest('tr');const max=Number(tr?.querySelector('.qty')?.textContent||0);if(max<=0)return;const input=prompt(`How many to claim (1-${max})?`,String(max));if(input===null)return;const want=Number(input);if(!Number.isInteger(want)||want<=0||want>max){alert('Invalid quantity');return;}await api(`/api/build-tasks/${claimId}/claim`,{method:'PATCH',body:{qty:want}});return await refreshAll();}
-        if(cancelId&&isAdmin){await api(`/api/build-tasks/${cancelId}/cancel`,{method:'PATCH'});return await refreshAll();}
-        if(unclaimId&&isAdmin){await api(`/api/build-tasks/${unclaimId}/unclaim`,{method:'PATCH'});return await refreshAll();}
-        if(completeId){const tr=e.target.closest('tr');const qtyBox=tr?.querySelector('.qtyDone');const qty=Number(qtyBox?.value||0);if(!Number.isInteger(qty)||qty<=0){alert('Enter qty');return;}const res=await api(`/api/build-tasks/${completeId}/complete`,{method:'PATCH',body:{qty}});const pn=res?.addToInventory?.partNumber;const inc=Number(res?.addToInventory?.qty||0);if(pn&&inc>0){await api(`/api/inventory/${encodeURIComponent(pn)}/adjust`,{method:'POST',body:{delta:inc}});}return await refreshAll();}
-      }catch{alert('Action failed');}
+    function rowClaimed(r){
+      const c = byPN.get(String(r.partNumber)) || {};
+      const name = c.printName || '';
+      const who = esc(r.claimedBy||'');
+      return `<tr data-id="${r.id}">
+        <td>${linkPN(r.partNumber)} ${prBadge(r.priority|0)}</td>
+        <td>${esc(name)}</td>
+        <td class="qty">${r.qty|0}</td>
+        <td>${who}</td>
+        <td class="right wide">
+          <input type="number" class="qtyDone" min="1" step="1" placeholder="qty">
+          <button class="pill small primary" data-complete="${r.id}">Complete</button>
+          ${isAdmin ? `<button class="pill small primary" data-unclaim="${r.id}">Unclaim</button>` : ''}
+        </td>
+      </tr>`;
+    }
+
+    function rowDoneEvt(e){
+      const c = byPN.get(String(e.partNumber)) || {};
+      const name = c.printName || '';
+      const who = esc(e.user || e.claimedBy || '');
+      const when = ts(e.ts);
+      const qty = e.qty|0;
+      return `<tr>
+        <td>${linkPN(e.partNumber)}</td>
+        <td>${esc(name)}</td>
+        <td class="qty">${qty}</td>
+        <td>${who}</td>
+        <td><span class="muted">${when}</span></td>
+      </tr>`;
+    }
+
+    // ---- LOAD & BUILD ----
+    async function loadQueued(){ return api('/api/build-tasks?status=queued'); }
+    async function loadClaimed(){ return api('/api/build-tasks?status=claimed'); }
+    async function loadDoneEvents(){ return api('/api/build-task-events?type=complete'); }
+
+    async function refreshAll(){
+      const [queued, claimed, evts] = await Promise.all([ loadQueued(), loadClaimed(), loadDoneEvents() ]);
+
+      const done = (evts || [])
+        .filter(e => Number.isFinite(e.ts))
+        .sort((a,b) => b.ts - a.ts)
+        .slice(0, DONE_LIMIT);
+
+      // remember for export
+      lastDone = done;
+
+      queuedBody.innerHTML = queued.map(rowQueued).join('');
+      claimedBody.innerHTML = claimed.map(rowClaimed).join('');
+      doneBody.innerHTML = done.map(rowDoneEvt).join('');
+    }
+
+    // ---- ACTIONS ----
+    document.addEventListener('click', async (e)=>{
+      const claimId = e.target?.dataset?.claim;
+      const cancelId = e.target?.dataset?.cancel;
+      const unclaimId = e.target?.dataset?.unclaim;
+      const completeId = e.target?.dataset?.complete;
+
+      try {
+        if (claimId){
+          const tr = e.target.closest('tr');
+          const max = Number(tr?.querySelector('.qty')?.textContent || 0);
+          if (!Number.isInteger(max) || max <= 0) return;
+          const input = prompt(`How many to claim (1-${max})?`, String(max));
+          if (input === null) return;
+          const want = Number(input);
+          if (!Number.isInteger(want) || want <= 0 || want > max) { alert('Invalid quantity'); return; }
+          await api(`/api/build-tasks/${claimId}/claim`, { method:'PATCH', body:{ qty: want } });
+          await refreshAll(); return;
+        }
+        if (cancelId && isAdmin){
+          await api(`/api/build-tasks/${cancelId}/cancel`, { method:'PATCH' });
+          await refreshAll(); return;
+        }
+        if (unclaimId && isAdmin){
+          await api(`/api/build-tasks/${unclaimId}/unclaim`, { method:'PATCH' });
+          await refreshAll(); return;
+        }
+        if (completeId){
+          const tr = e.target.closest('tr');
+          const qtyBox = tr?.querySelector('.qtyDone');
+          const qty = Number(qtyBox?.value||0);
+          if (!Number.isInteger(qty) || qty <= 0) { alert('Enter a positive quantity'); return; }
+          const res = await api(`/api/build-tasks/${completeId}/complete`, { method:'PATCH', body:{ qty } });
+          const pn = res?.addToInventory?.partNumber;
+          const inc = Number(res?.addToInventory?.qty||0);
+          if (pn && inc > 0){
+            // adjust inventory WITHOUT auto note
+            await api(`/api/inventory/${encodeURIComponent(pn)}/adjust`, {
+              method:'POST',
+              body:{ delta: inc }
+            });
+          }
+          await refreshAll(); return;
+        }
+      } catch(err){
+        alert('Action failed');
+      }
     });
 
-    document.getElementById('clearDoneBtn')?.addEventListener('click',async()=>{if(!isAdmin)return;try{await api('/api/build-task-events?type=complete',{method:'DELETE'});await refreshAll();}catch{alert('Clear failed');}});
+    // ---- CLEAR DONE (admin) ----
+    document.getElementById('clearDoneBtn')?.addEventListener('click', async ()=>{
+      if (!isAdmin) return;
+      try{
+        await api('/api/build-task-events?type=complete', { method:'DELETE' });
+        await refreshAll();
+      }catch(e){ alert('Clear failed'); }
+    });
 
-    function toCsvValue(v){const s=String(v??'');return /[",\n]/.test(s)?`"${s.replace(/"/g,'""')}"`:s;}
-    function downloadCsv(name,rows){const csv=rows.map(r=>r.map(toCsvValue).join(',')).join('\n');const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},0);}
-    function fmtIso(t){try{return new Date(t).toISOString();}catch{return'';}}
-    function buildDoneCsvRows(d){const header=['Part Number','Print Name','Qty','By','Completed'];const rows=[header];for(const e of(d||[])){const c=byPN.get(String(e.partNumber))||{};rows.push([e.partNumber,c.printName||'',Number(e.qty||0),e.user||e.claimedBy||'',fmtIso(e.ts)]);}return rows;}
-    document.getElementById('exportDoneBtn')?.addEventListener('click',()=>{if(!isAdmin)return;const rows=buildDoneCsvRows(lastDone);const pad=n=>String(n).padStart(2,'0');const d=new Date();const stamp=`${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}`;downloadCsv(`done-export_${stamp}.csv`,rows);});
+    // ---- EXPORT DONE (admin) ----
+    function toCsvValue(v){
+      const s = String(v ?? '');
+      if (/[",\n]/.test(s)) return `"${s.replace(/"/g,'""')}"`;
+      return s;
+    }
+    function downloadCsv(filename, rows){
+      const csv = rows.map(r => r.map(toCsvValue).join(',')).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 0);
+    }
+    function fmtIso(tsMs){
+      try { return new Date(tsMs).toISOString(); } catch { return ''; }
+    }
+    function buildDoneCsvRows(doneEvents){
+      const header = ['Part Number','Print Name','Qty','By','Completed'];
+      const rows = [header];
+      for (const e of (doneEvents||[])){
+        const c = byPN.get(String(e.partNumber)) || {};
+        const name = c.printName || '';
+        const qty  = Number(e.qty || 0);
+        const who  = e.user || e.claimedBy || '';
+        const when = fmtIso(e.ts);
+        rows.push([e.partNumber, name, qty, who, when]);
+      }
+      return rows;
+    }
+    document.getElementById('exportDoneBtn')?.addEventListener('click', ()=>{
+      if (!isAdmin) return;
+      const rows = buildDoneCsvRows(lastDone);
+      const pad = n => String(n).padStart(2,'0');
+      const d = new Date();
+      const stamp = `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}`;
+      downloadCsv(`done-export_${stamp}.csv`, rows);
+    });
 
-    (async function init(){await whoami();await refreshAll().catch(()=>alert('Failed to load build queue'));setInterval(()=>{if(!document.hidden)refreshAll().catch(()=>{});},15000);})();
+    // init
+    (async function init(){
+      await whoami();
+      await refreshAll().catch(()=>alert('Failed to load build queue'));
+      setInterval(()=>{ if(!document.hidden) refreshAll().catch(()=>{}); }, 15000);
+    })();
   </script>
 </body>
 </html>
