@@ -25,7 +25,7 @@
   { "printName": "EK90 RADIO", "partNumber": "40602.2430.000", "saNumber": "SA-7875", "expectedHours": 3, "notes": null, "location": "113D" },
   { "printName": "VIBRO MAST D5 HARNESS", "partNumber": "40602.2440.000", "saNumber": "SA-7889", "expectedHours": 16, "notes": "SERVICE ONLY? Conversation with Gary on 7/29/25 (Pending review)", "location": "113D" },
   { "printName": "VIBRO MAST D5A", "partNumber": "40602.2450.000", "saNumber": "SA-7873", "expectedHours": 6, "notes": null, "location": "113C" },
-  { "printName": "WIRING HARNESS, VIBRO SKIP RW", "partNumber": "40602.2460.000", "saNumber": "SA-7874", "expectedHours": 8, "notes": "Made for Keller May 2025, but wasn’t binned or on our lists.", "location": "?" },
+  { "printName": "WIRING HARNESS, VIBRO SKIP RW", "partNumber": "40602.2460.000", "saNumber": "SA-7874", "expectedHours": 8, "notes": "Made for Keller May 2025, but wasn t binned or on our lists.", "location": "?" },
   { "printName": "FAN HARNESS", "partNumber": "40602.2520.000", "saNumber": "SA-8011", "expectedHours": 24, "notes": null, "location": "113C" },
   { "printName": "FAN HARNESS", "partNumber": "40602.2521.000", "saNumber": "N/A", "expectedHours": 24, "notes": "WAITING ON TACO TO VERIFY", "location": "ON DEMAND" },
   { "printName": "FAN HARNESS", "partNumber": "40602.2522.000", "saNumber": "N/A", "expectedHours": 24, "notes": "WAITING ON TACO TO VERIFY", "location": "ON DEMAND" },
