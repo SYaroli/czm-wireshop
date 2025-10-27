@@ -5,7 +5,7 @@
   { "printName": "MAST D6 HARNESS", "partNumber": "90602.2020.003", "saNumber": "SA-7737", "expectedHours": 2, "notes": null, "location": "115D" },
   { "printName": "MAST D6 HARNESS", "partNumber": "90602.2020.004", "saNumber": "SA-7738", "expectedHours": 3, "notes": null, "location": "115D" },
   { "printName": "MAST D5 HARNESS", "partNumber": "90602.2020.006", "saNumber": "SA-7883", "expectedHours": 16, "notes": null, "location": "115D" },
-  { "printName": "CROWD PRESSURE 14\"", "partNumber": "40602.2080.000", "saNumber": "SA-7747", "expectedHours": 1, "notes": null, "location": "115D" },
+  { "printName": "CROWD PRESSURE 14\"", "partNumber": "40602.2080.000", "saNumber": "SA-7747", "expectedHours": 1, "notes": TESTING TESTING TESTING, "location": "115D" },
   { "printName": "CROWD PRESSURE 50\"", "partNumber": "40602.2083.000", "saNumber": "SA-8066", "expectedHours": 1, "notes": null, "location": "114D" },
   { "printName": "CROWD PRESSURE 100\"", "partNumber": "40602.2086.000", "saNumber": "SA-8067", "expectedHours": 1, "notes": null, "location": "114D" },
   { "printName": "CROWD PRESSURE 150\"", "partNumber": "40602.2088.000", "saNumber": "SA-8068", "expectedHours": 1, "notes": null, "location": "114D" },
@@ -173,4 +173,5 @@
   { "printName": "ROTOARY HARNESS", "partNumber": "40602.6700.000", "saNumber": "N/A", "expectedHours": null, "notes": "V3", "location": "NEED BIN" },
   { "printName": "BAUMER ENCODER HARNESS", "partNumber": "40602.6790.000", "saNumber": "N/A", "expectedHours": 3, "notes": null, "location": "116B" },
   { "printName": "TK90 OUTPUT EXPANDER HARNESS", "partNumber": "40602.6830.000", "saNumber": "N/A", "expectedHours": 4, "notes": null, "location": "116B" }
+
 ];
