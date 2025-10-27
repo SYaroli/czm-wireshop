@@ -1,4 +1,4 @@
-﻿window.catalog = [
+window.catalog = [
   { "printName": "BASE B6 HARNESS", "partNumber": "90602.1990.002", "saNumber": "SA-7735", "expectedHours": 20, "notes": null, "location": "115D" },
   { "printName": "BASE HARNESS", "partNumber": "90602.1990.003", "saNumber": "SA-7784", "expectedHours": 35, "notes": null, "location": "115D" },
   { "printName": "BASE B7 HARNESS", "partNumber": "90602.1990.004", "saNumber": "SA-7785", "expectedHours": 8, "notes": null, "location": "115D" },
@@ -13,6 +13,7 @@
   { "printName": "EK125 POWER & COMMUNICATION", "partNumber": "40602.2100.000", "saNumber": "SA-7731", "expectedHours": 24, "notes": "SPLICES MUST BE PLACED WITHIN 1 FOOT OF A1,A2,A3", "location": "114D" },
   { "printName": "MAIN WINCH SPEED PPU", "partNumber": "40602.2151.000", "saNumber": "SA-8195", "expectedHours": 1, "notes": null, "location": "114D" },
   { "printName": "MAIN WINCH SPEED PPU V2", "partNumber": "40602.2152.000", "saNumber": "N/A", "expectedHours": 1, "notes": null, "location": "114D" },
+  { "printName": "TELEMATICS JUMPER HARNESS", "partNumber": "40602.2242.000", "saNumber": "N/A", "expectedHours": 1, "notes": null, "location": "ON DEMAND" },
   { "printName": "CAB HARNESS 2", "partNumber": "40602.2270.000", "saNumber": "SA-7868", "expectedHours": 8, "notes": "SERVICE ONLY, NEW PRODUCTION USES 40602.2272.000", "location": "SERVICE" },
   { "printName": "EK DISPLAY WIRE HARNESS", "partNumber": "40602.2272.000", "saNumber": "N/A", "expectedHours": 8, "notes": null, "location": "114D" },
   { "printName": "CAB HARNESS 1", "partNumber": "40602.2280.000", "saNumber": "SA-7867", "expectedHours": 24, "notes": null, "location": "114D" },
@@ -25,7 +26,7 @@
   { "printName": "EK90 RADIO", "partNumber": "40602.2430.000", "saNumber": "SA-7875", "expectedHours": 3, "notes": null, "location": "113D" },
   { "printName": "VIBRO MAST D5 HARNESS", "partNumber": "40602.2440.000", "saNumber": "SA-7889", "expectedHours": 16, "notes": "SERVICE ONLY? Conversation with Gary on 7/29/25 (Pending review)", "location": "113D" },
   { "printName": "VIBRO MAST D5A", "partNumber": "40602.2450.000", "saNumber": "SA-7873", "expectedHours": 6, "notes": null, "location": "113C" },
-  { "printName": "WIRING HARNESS, VIBRO SKIP RW", "partNumber": "40602.2460.000", "saNumber": "SA-7874", "expectedHours": 8, "notes": "Made for Keller May 2025, but wasn't binned or on our lists.", "location": "?" },
+  { "printName": "WIRING HARNESS, VIBRO SKIP RW", "partNumber": "40602.2460.000", "saNumber": "SA-7874", "expectedHours": 8, "notes": "Made for Keller May 2025, but wasn’t binned or on our lists.", "location": "?" },
   { "printName": "FAN HARNESS", "partNumber": "40602.2520.000", "saNumber": "SA-8011", "expectedHours": 24, "notes": null, "location": "113C" },
   { "printName": "FAN HARNESS", "partNumber": "40602.2521.000", "saNumber": "N/A", "expectedHours": 24, "notes": "WAITING ON TACO TO VERIFY", "location": "ON DEMAND" },
   { "printName": "FAN HARNESS", "partNumber": "40602.2522.000", "saNumber": "N/A", "expectedHours": 24, "notes": "WAITING ON TACO TO VERIFY", "location": "ON DEMAND" },
@@ -40,6 +41,7 @@
   { "printName": "ROTARY EXTENSION 150\"", "partNumber": "40602.2630.000", "saNumber": "SA-8057", "expectedHours": 3, "notes": null, "location": "114C" },
   { "printName": "ROTARY EXTENSION 200\"", "partNumber": "40602.2633.000", "saNumber": "SA-8058", "expectedHours": 1, "notes": null, "location": "114C" },
   { "printName": "ROTARY EXTENSION 235\"", "partNumber": "40602.2636.000", "saNumber": "SA-8059", "expectedHours": 3, "notes": null, "location": "114C" },
+  { "printName": "WIRING HARNESS, ROTARY EXTENSION 648IN", "partNumber": "40602.2637.000", "saNumber": "N/A", "expectedHours": null, "notes": null, "location": "ON DEMAND" },
   { "printName": "EK200 LM HEADMAST", "partNumber": "40602.2640.000", "saNumber": "SA-8071", "expectedHours": 4, "notes": null, "location": "114C" },
   { "printName": "HM AUX LIMIT 85\"", "partNumber": "40602.2650.000", "saNumber": "SA-8073", "expectedHours": 1, "notes": null, "location": "114C" },
   { "printName": "HM AUX LIMIT 60\"", "partNumber": "40602.2653.000", "saNumber": "SA-8072", "expectedHours": 1, "notes": null, "location": "115C" },
@@ -111,6 +113,9 @@
   { "printName": "VISION LINK", "partNumber": "40602.5191.000", "saNumber": "N/A", "expectedHours": 1, "notes": null, "location": "117D" },
   { "printName": "NO PRINT", "partNumber": "40602.5200.000", "saNumber": "N/A", "expectedHours": null, "notes": "VENDOR CABLE", "location": "113A" },
   { "printName": "NO PRINT", "partNumber": "40602.5220.000", "saNumber": "N/A", "expectedHours": null, "notes": "VENDOR CABLE", "location": "113A" },
+  { "printName": "EK160LS LOWER MAST HARNESS", "partNumber": "40602.5230.000", "saNumber": "N/A", "expectedHours": null, "notes": null, "location": "ON DEMAND" },
+  { "printName": "EK160LS UPPER MAST HARNESS", "partNumber": "40602.5240.000", "saNumber": "N/A", "expectedHours": null, "notes": null, "location": "ON DEMAND" },
+  { "printName": "EK160LS HEADMAST HARNESS", "partNumber": "40602.5250.000", "saNumber": "N/A", "expectedHours": null, "notes": null, "location": "ON DEMAND" },
   { "printName": "EK160LS CFA FOOT PVG CAN", "partNumber": "40602.5390.000", "saNumber": "N/A", "expectedHours": 6, "notes": null, "location": "117D" },
   { "printName": "LR65 HEADMAST", "partNumber": "40602.5400.000", "saNumber": "N/A", "expectedHours": 2, "notes": null, "location": "117D" },
   { "printName": "VENDOR PIGTAIL - 16 FT (MFR 3021023-16)", "partNumber": "40602.5410.000", "saNumber": "N/A", "expectedHours": null, "notes": "VENDOR CABLE", "location": "VENDOR" },
@@ -173,6 +178,4 @@
   { "printName": "ROTOARY HARNESS", "partNumber": "40602.6700.000", "saNumber": "N/A", "expectedHours": null, "notes": "V3", "location": "NEED BIN" },
   { "printName": "BAUMER ENCODER HARNESS", "partNumber": "40602.6790.000", "saNumber": "N/A", "expectedHours": 3, "notes": null, "location": "116B" },
   { "printName": "TK90 OUTPUT EXPANDER HARNESS", "partNumber": "40602.6830.000", "saNumber": "N/A", "expectedHours": 4, "notes": null, "location": "116B" }
-
 ];
-
