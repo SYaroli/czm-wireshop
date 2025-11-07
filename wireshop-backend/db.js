@@ -1,12 +1,12 @@
-// db.js — SQLite schema + migrations (persistent on Render)
-// Uses DB_PATH (e.g. /data/wireshop.db) if provided; falls back to bundled file.
+// wireshop-backend/db.js
+// SQLite schema + migrations (persistent on Render)
 
 const sqlite3 = require('sqlite3').verbose();
 const fs = require('fs');
 const path = require('path');
 
 // Prefer a persistent disk path when provided (Render Disk mounted at /data)
-const dbPath = process.env.DB_PATH || path.join(__dirname, 'wireshop.db');
+const dbPath = process.env.DB_PATH || path.join('/data', 'wireshop.db');
 
 // Seed the persistent DB once if it's missing but a bundled db exists.
 // This preserves your current data the first time you switch to /data.
@@ -102,7 +102,7 @@ db.serialize(() => {
     role TEXT NOT NULL CHECK (role IN ('admin','assembler'))
   )`);
 
-  // ===== INVENTORY (snapshot + ledger) =====
+  // ===== INVENTORY (base) =====
   db.run(`CREATE TABLE IF NOT EXISTS inventory (
     partNumber TEXT PRIMARY KEY,
     qty INTEGER NOT NULL DEFAULT 0,
