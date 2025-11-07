@@ -60,6 +60,7 @@
           <label class="badge"><input type="checkbox" id="onlyNonZero"> only non-zero</label>
           <label class="badge"><input type="checkbox" id="onlyZero"> only 0-qty</label>
           <button id="exportBtn" class="badge">Export</button>
+          <button id="addPartBtn" class="badge" style="display:none;">Add part</button>
           <span class="badge" id="countBadge">0 items</span>
           <span class="status" id="status">Loading…</span>
         </div>
@@ -75,7 +76,6 @@
             <th style="width:90px;text-align:right">Qty</th>
             <th style="min-width:220px">Adjust</th>
             <th style="min-width:425px">Notes</th>
-            <th id="thActions" style="width:80px;text-align:center;display:none;">Edit</th>
           </tr>
         </thead>
         <tbody id="tbody"></tbody>
@@ -83,11 +83,11 @@
     </div>
   </main>
 
-  <!-- Edit Modal -->
+  <!-- Edit/Add Modal -->
   <div id="editModalBg">
     <div id="editModal">
-      <h2>Edit Part</h2>
-      <div class="form-row"><label>Part Number</label><input id="mPartNumber" readonly/></div>
+      <h2 id="modalTitle">Edit Part</h2>
+      <div class="form-row"><label>Part Number</label><input id="mPartNumber"/></div>
       <div class="form-row"><label>Description</label><input id="mDescription"/></div>
       <div class="form-row"><label>Location</label><input id="mLocation"/></div>
       <div class="form-row"><label>Qty</label><input id="mQty" type="number"/></div>
@@ -110,7 +110,7 @@
 
     const ADMIN_USERS = ['shane','admin'];
     const isAdmin = ADMIN_USERS.includes(user.username?.toLowerCase());
-    if (isAdmin) document.getElementById('thActions').style.display = '';
+    if (isAdmin) document.getElementById('addPartBtn').style.display = '';
 
     const tbody = document.getElementById('tbody');
     const qEl = document.getElementById('q');
@@ -119,9 +119,9 @@
     const countBadge = document.getElementById('countBadge');
     const statusEl = document.getElementById('status');
     const exportBtn = document.getElementById('exportBtn');
+    const addPartBtn = document.getElementById('addPartBtn');
 
-    let rows = []; // final merged list
-
+    let rows = [];
     const esc = s => String(s ?? "").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;");
 
     async function api(path, opts={}) {
@@ -137,7 +137,6 @@
     async function load() {
       statusEl.textContent = 'Loading…';
 
-      // frontend catalog (has print name, location, notes, min)
       const catalog = (window.catalog || []).map(c => ({
         pn: String(c.partNumber||'').trim(),
         name: c.printName || '',
@@ -146,11 +145,9 @@
         note: (c.notes && String(c.notes).trim().toLowerCase() !== 'nan') ? String(c.notes) : ''
       })).filter(r => r.pn);
 
-      // backend snapshot from DB
       const snap = await api('/api/inventory-all');
       const invMap = new Map(snap.map(r => [String(r.partNumber), r]));
 
-      // merge: catalog is primary for display, DB fills qty and updated fields
       rows = catalog.map(r => {
         const s = invMap.get(r.pn);
         if (s) invMap.delete(r.pn);
@@ -164,7 +161,6 @@
         };
       });
 
-      // any DB-only parts (added through admin) get appended
       for (const [pn, s] of invMap) {
         rows.push({
           partNumber: pn,
@@ -214,14 +210,49 @@
                   <input type="number" class="customDelta" placeholder="+/−">
                   <button class="apply">Apply</button>
                 </div>
+                ${isAdmin ? `<button class="apply" style="background:#444" data-edit="${esc(r.partNumber)}">Edit</button>` : ''}
               </div>
             </td>
             <td class="notes-cell"><span title="${esc(r.notes||'')}">${esc(r.notes||'')}</span></td>
-            ${isAdmin ? `<td style="text-align:center"><button class="apply" style="background:#444" data-edit="${esc(r.partNumber)}">Edit</button></td>` : '<td></td>'}
           </tr>
         `;
       }).join('');
     }
+
+    // row actions
+    tbody.addEventListener('click', async (e)=>{
+      const editBtn = e.target.closest('button[data-edit]');
+      if (editBtn) {
+        openEdit(editBtn.getAttribute('data-edit'), false);
+        return;
+      }
+
+      const applyBtn = e.target.closest('button.apply');
+      if (!applyBtn || applyBtn.hasAttribute('data-edit')) return;
+      const tr = e.target.closest('tr');
+      const pn = tr?.dataset?.pn;
+      if (!pn) return;
+      const inp = tr.querySelector('input.customDelta');
+      let delta = parseInt(inp?.value||'0',10);
+      if (!Number.isInteger(delta) || delta === 0) return;
+      inp.value = '';
+
+      const r = rows.find(x => x.partNumber === pn);
+      const currentQty = r ? (r.qty|0) : 0;
+      const newQty = currentQty + delta;
+      try {
+        await api(`/api/inventory/${encodeURIComponent(pn)}/qty`, { method:'POST', body:{ qty: newQty } });
+        r.qty = newQty;
+        build();
+      } catch(err) {
+        alert('Adjust failed.');
+      }
+    });
+
+    // filters
+    qEl.addEventListener('input', build);
+    onlyNonZeroEl.addEventListener('change', build);
+    onlyZeroEl.addEventListener('change', build);
 
     // export
     exportBtn.addEventListener('click', ()=>{
@@ -244,46 +275,7 @@
       URL.revokeObjectURL(url);
     });
 
-    // row actions: adjust qty and edit
-    tbody.addEventListener('click', async (e)=>{
-      const applyBtn = e.target.closest('button.apply');
-      const editBtn = e.target.closest('button[data-edit]');
-
-      if (editBtn) {
-        const pn = editBtn.getAttribute('data-edit');
-        openEdit(pn);
-        return;
-      }
-
-      if (!applyBtn) return;
-      const tr = e.target.closest('tr');
-      const pn = tr?.dataset?.pn;
-      if (!pn) return;
-      const inp = tr.querySelector('input.customDelta');
-      let delta = parseInt(inp?.value||'0',10);
-      if (!Number.isInteger(delta) || delta === 0) return;
-      inp.value = '';
-
-      // find current row qty
-      const r = rows.find(x => x.partNumber === pn);
-      const currentQty = r ? (r.qty|0) : 0;
-      const newQty = currentQty + delta;
-
-      try {
-        await api(`/api/inventory/${encodeURIComponent(pn)}/qty`, { method:'POST', body:{ qty: newQty } });
-        // refresh just this row
-        r.qty = newQty;
-        build();
-      } catch(err) {
-        alert('Adjust failed.');
-      }
-    });
-
-    qEl.addEventListener('input', build);
-    onlyNonZeroEl.addEventListener('change', build);
-    onlyZeroEl.addEventListener('change', build);
-
-    // edit modal handlers
+    // modal logic
     const modalBg = document.getElementById('editModalBg');
     const mPartNumber = document.getElementById('mPartNumber');
     const mDescription = document.getElementById('mDescription');
@@ -291,10 +283,25 @@
     const mQty = document.getElementById('mQty');
     const mMinQty = document.getElementById('mMinQty');
     const mNotes = document.getElementById('mNotes');
+    const modalTitle = document.getElementById('modalTitle');
 
-    function openEdit(pn) {
+    function openEdit(pn, isNew) {
+      if (isNew) {
+        modalTitle.textContent = 'Add Part';
+        mPartNumber.readOnly = false;
+        mPartNumber.value = '';
+        mDescription.value = '';
+        mLocation.value = '';
+        mQty.value = 0;
+        mMinQty.value = 0;
+        mNotes.value = '';
+        modalBg.style.display = 'flex';
+        return;
+      }
       const row = rows.find(r => r.partNumber === pn);
       if (!row) return;
+      modalTitle.textContent = 'Edit Part';
+      mPartNumber.readOnly = true;
       mPartNumber.value = row.partNumber || '';
       mDescription.value = row.description || '';
       mLocation.value = row.location || '';
@@ -304,24 +311,33 @@
       modalBg.style.display = 'flex';
     }
 
+    addPartBtn.addEventListener('click', ()=> openEdit('', true));
     document.getElementById('cancelBtn').onclick = () => modalBg.style.display = 'none';
 
     document.getElementById('saveBtn').onclick = async () => {
-      const part = mPartNumber.value;
+      const part = mPartNumber.value.trim();
+      if (!part) return alert('Part number required.');
       const payload = {
+        partNumber: part,
         description: mDescription.value,
         location: mLocation.value,
         qty: Number(mQty.value) || 0,
         minQty: Number(mMinQty.value) || 0,
         notes: mNotes.value
       };
-      await api(`/api/inventory/${encodeURIComponent(part)}`, { method:'PUT', body: payload });
+      const isNew = !rows.find(r => r.partNumber === part);
+      if (isNew) {
+        await api(`/api/inventory`, { method:'POST', body: payload });
+      } else {
+        await api(`/api/inventory/${encodeURIComponent(part)}`, { method:'PUT', body: payload });
+      }
       modalBg.style.display = 'none';
       load();
     };
 
     document.getElementById('deleteBtn').onclick = async () => {
-      const part = mPartNumber.value;
+      const part = mPartNumber.value.trim();
+      if (!part) return;
       if (!confirm(`Delete ${part}?`)) return;
       await api(`/api/inventory/${encodeURIComponent(part)}`, { method:'DELETE' });
       modalBg.style.display = 'none';
