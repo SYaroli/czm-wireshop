@@ -21,7 +21,7 @@
     .low{color:#b30000}
     .notes-cell{min-width:425px;white-space:normal;overflow:visible;text-overflow:initial;word-break:break-word}
     #tbl th:last-child,#tbl td:last-child{padding-right:24px}
-    #editModalBg{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;}
+    #editModalBg{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:999;}
     #editModal{background:#18222e;padding:16px;border-radius:6px;width:320px;box-shadow:0 4px 20px rgba(0,0,0,.5);}
     #editModal h2{margin-top:0;font-size:16px;}
     .form-row{margin-bottom:8px;}
@@ -120,7 +120,8 @@
     const statusEl = document.getElementById('status');
     const exportBtn = document.getElementById('exportBtn');
 
-    let rows = [];
+    let rows = []; // final merged list
+
     const esc = s => String(s ?? "").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;");
 
     async function api(path, opts={}) {
@@ -129,25 +130,65 @@
         headers: { 'Content-Type':'application/json', 'x-user': user.username },
         body: opts.body ? JSON.stringify(opts.body) : undefined
       });
-      if(!res.ok) throw new Error('HTTP '+res.status);
+      if (!res.ok) throw new Error('HTTP '+res.status);
       return res.json();
     }
 
-    async function load(){
+    async function load() {
       statusEl.textContent = 'Loading…';
+
+      // frontend catalog (has print name, location, notes, min)
+      const catalog = (window.catalog || []).map(c => ({
+        pn: String(c.partNumber||'').trim(),
+        name: c.printName || '',
+        loc: c.location || '',
+        min: Number(c.minQty || c.min || 0) || 0,
+        note: (c.notes && String(c.notes).trim().toLowerCase() !== 'nan') ? String(c.notes) : ''
+      })).filter(r => r.pn);
+
+      // backend snapshot from DB
       const snap = await api('/api/inventory-all');
-      rows = snap.sort((a,b)=>a.partNumber.localeCompare(b.partNumber,undefined,{numeric:true}));
+      const invMap = new Map(snap.map(r => [String(r.partNumber), r]));
+
+      // merge: catalog is primary for display, DB fills qty and updated fields
+      rows = catalog.map(r => {
+        const s = invMap.get(r.pn);
+        if (s) invMap.delete(r.pn);
+        return {
+          partNumber: r.pn,
+          description: r.name,
+          location: r.loc,
+          minQty: r.min,
+          notes: r.note,
+          qty: s ? (s.qty|0) : 0
+        };
+      });
+
+      // any DB-only parts (added through admin) get appended
+      for (const [pn, s] of invMap) {
+        rows.push({
+          partNumber: pn,
+          description: s.description || '',
+          location: s.location || '',
+          minQty: s.minQty || 0,
+          notes: s.notes || '',
+          qty: s.qty|0
+        });
+      }
+
+      rows.sort((a,b)=> a.partNumber.localeCompare(b.partNumber, undefined, {numeric:true}));
       build();
       statusEl.textContent = `Loaded ${rows.length} items`;
     }
 
-    function build(){
+    function build() {
       const q = qEl.value.trim().toLowerCase();
       const onlyNZ = onlyNonZeroEl.checked;
-      const onlyZ = onlyZeroEl.checked;
-      const filtered = rows.filter(r=>{
-        if (onlyZ && r.qty!==0) return false;
-        if (onlyNZ && r.qty===0) return false;
+      const onlyZ  = onlyZeroEl.checked;
+
+      const filtered = rows.filter(r => {
+        if (onlyZ && (r.qty|0) !== 0) return false;
+        if (onlyNZ && (r.qty|0) === 0) return false;
         if (!q) return true;
         return (
           (r.partNumber||'').toLowerCase().includes(q) ||
@@ -156,22 +197,93 @@
           (r.notes||'').toLowerCase().includes(q)
         );
       });
+
       countBadge.textContent = `${filtered.length} items`;
-      tbody.innerHTML = filtered.map(r => `
-        <tr data-part="${r.partNumber}">
-          <td>${esc(r.partNumber||'')}</td>
-          <td>${esc(r.description||'')}</td>
-          <td>${esc(r.location||'')}</td>
-          <td style="text-align:right">${r.minQty|0}</td>
-          <td style="text-align:right" class="${r.qty<r.minQty?'low':''}">${r.qty|0}</td>
-          <td></td>
-          <td>${esc(r.notes||'')}</td>
-          ${isAdmin ? `<td style="text-align:center"><button class="apply" style="background:#444" data-part="${r.partNumber}">Edit</button></td>` : ''}
-        </tr>
-      `).join('');
-      if (isAdmin) tbody.querySelectorAll('button[data-part]').forEach(btn => btn.addEventListener('click', e => openEdit(e.target.dataset.part)));
+      tbody.innerHTML = filtered.map(r => {
+        const low = (r.qty|0) < (r.minQty|0);
+        return `
+          <tr data-pn="${r.partNumber}">
+            <td><a href="/inv/${encodeURIComponent(r.partNumber)}" target="_blank" rel="noopener">${esc(r.partNumber)}</a></td>
+            <td>${esc(r.description||'')}</td>
+            <td>${esc(r.location||'')}</td>
+            <td style="text-align:right">${r.minQty|0}</td>
+            <td class="qtycell ${low?'low':''}">${r.qty|0}</td>
+            <td>
+              <div class="row-actions">
+                <div class="custom-wrap">
+                  <input type="number" class="customDelta" placeholder="+/−">
+                  <button class="apply">Apply</button>
+                </div>
+              </div>
+            </td>
+            <td class="notes-cell"><span title="${esc(r.notes||'')}">${esc(r.notes||'')}</span></td>
+            ${isAdmin ? `<td style="text-align:center"><button class="apply" style="background:#444" data-edit="${esc(r.partNumber)}">Edit</button></td>` : '<td></td>'}
+          </tr>
+        `;
+      }).join('');
     }
 
+    // export
+    exportBtn.addEventListener('click', ()=>{
+      if (!rows.length) return alert("No data to export.");
+      const headers = ["Part Number","Print Name","Location","Min","Qty","Notes"];
+      const csv = [headers.join(",")].concat(
+        rows.map(r =>
+          [r.partNumber, r.description, r.location, r.minQty, r.qty, (r.notes||"").replace(/[\r\n]+/g," ")].map(v => `"${String(v).replace(/"/g,'""')}"`).join(",")
+        )
+      ).join("\n");
+
+      const blob = new Blob([csv], {type:"text/csv"});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "inventory-backup.csv";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
+
+    // row actions: adjust qty and edit
+    tbody.addEventListener('click', async (e)=>{
+      const applyBtn = e.target.closest('button.apply');
+      const editBtn = e.target.closest('button[data-edit]');
+
+      if (editBtn) {
+        const pn = editBtn.getAttribute('data-edit');
+        openEdit(pn);
+        return;
+      }
+
+      if (!applyBtn) return;
+      const tr = e.target.closest('tr');
+      const pn = tr?.dataset?.pn;
+      if (!pn) return;
+      const inp = tr.querySelector('input.customDelta');
+      let delta = parseInt(inp?.value||'0',10);
+      if (!Number.isInteger(delta) || delta === 0) return;
+      inp.value = '';
+
+      // find current row qty
+      const r = rows.find(x => x.partNumber === pn);
+      const currentQty = r ? (r.qty|0) : 0;
+      const newQty = currentQty + delta;
+
+      try {
+        await api(`/api/inventory/${encodeURIComponent(pn)}/qty`, { method:'POST', body:{ qty: newQty } });
+        // refresh just this row
+        r.qty = newQty;
+        build();
+      } catch(err) {
+        alert('Adjust failed.');
+      }
+    });
+
+    qEl.addEventListener('input', build);
+    onlyNonZeroEl.addEventListener('change', build);
+    onlyZeroEl.addEventListener('change', build);
+
+    // edit modal handlers
     const modalBg = document.getElementById('editModalBg');
     const mPartNumber = document.getElementById('mPartNumber');
     const mDescription = document.getElementById('mDescription');
@@ -180,54 +292,40 @@
     const mMinQty = document.getElementById('mMinQty');
     const mNotes = document.getElementById('mNotes');
 
-    function openEdit(partNumber) {
-      const row = rows.find(r=>r.partNumber===partNumber);
-      if(!row) return;
-      mPartNumber.value = row.partNumber||'';
-      mDescription.value = row.description||'';
-      mLocation.value = row.location||'';
-      mQty.value = row.qty||0;
-      mMinQty.value = row.minQty||0;
-      mNotes.value = row.notes||'';
+    function openEdit(pn) {
+      const row = rows.find(r => r.partNumber === pn);
+      if (!row) return;
+      mPartNumber.value = row.partNumber || '';
+      mDescription.value = row.description || '';
+      mLocation.value = row.location || '';
+      mQty.value = row.qty || 0;
+      mMinQty.value = row.minQty || 0;
+      mNotes.value = row.notes || '';
       modalBg.style.display = 'flex';
     }
 
-    document.getElementById('cancelBtn').onclick = ()=> modalBg.style.display='none';
-    document.getElementById('saveBtn').onclick = async ()=>{
+    document.getElementById('cancelBtn').onclick = () => modalBg.style.display = 'none';
+
+    document.getElementById('saveBtn').onclick = async () => {
       const part = mPartNumber.value;
       const payload = {
         description: mDescription.value,
         location: mLocation.value,
-        qty: Number(mQty.value)||0,
-        minQty: Number(mMinQty.value)||0,
+        qty: Number(mQty.value) || 0,
+        minQty: Number(mMinQty.value) || 0,
         notes: mNotes.value
       };
-      await api(`/api/inventory/${encodeURIComponent(part)}`, { method:'PUT', body:payload });
-      modalBg.style.display='none';
+      await api(`/api/inventory/${encodeURIComponent(part)}`, { method:'PUT', body: payload });
+      modalBg.style.display = 'none';
       load();
     };
-    document.getElementById('deleteBtn').onclick = async ()=>{
+
+    document.getElementById('deleteBtn').onclick = async () => {
       const part = mPartNumber.value;
-      if(!confirm(`Delete ${part}?`)) return;
+      if (!confirm(`Delete ${part}?`)) return;
       await api(`/api/inventory/${encodeURIComponent(part)}`, { method:'DELETE' });
-      modalBg.style.display='none';
+      modalBg.style.display = 'none';
       load();
-    };
-
-    qEl.addEventListener('input', build);
-    onlyNonZeroEl.addEventListener('change', build);
-    onlyZeroEl.addEventListener('change', build);
-
-    exportBtn.onclick = ()=>{
-      if(!rows.length) return alert('No data to export.');
-      const headers = ["Part Number","Description","Location","Min","Qty","Notes"];
-      const csv = [headers.join(",")].concat(rows.map(r =>
-        [r.partNumber,r.description,r.location,r.minQty,r.qty,(r.notes||"").replace(/[\r\n]+/g," ")].map(v => `"${String(v).replace(/"/g,'""')}"`).join(",")
-      )).join("\n");
-      const blob = new Blob([csv],{type:"text/csv"});
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href=url;a.download="inventory.csv";document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
     };
 
     load().catch(()=> alert('Failed to load inventory list'));
