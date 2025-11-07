@@ -15,7 +15,8 @@ const usersRouter = require("./routes/users");
 const jobsRouter = require("./routes/jobs");
 const archiveRouter = require("./routes/archive");
 const assignmentsRouter = require("./routes/assignments");
-const inventoryRouter = require("./routes/inventory"); // inventory endpoints
+const inventoryRoutes = require('./routes/inventory');
+app.use('/api', inventoryRoutes);
 const archive = require("./archiveStore");
 const db = require("./db"); // for scheduler + sqlite lookups
 
@@ -374,4 +375,5 @@ const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
   console.log(`WireShop backend listening on port ${PORT}`);
 });
+
 
