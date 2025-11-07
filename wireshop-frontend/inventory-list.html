@@ -108,9 +108,8 @@
     if (!user || !user.username) { window.location.href = '/index.html'; }
     document.getElementById('logoutBtn')?.addEventListener('click', () => { localStorage.removeItem('user'); window.location.href = '/index.html'; });
 
-    // Admins allowed full edit privileges
     const ADMIN_USERS = ['shane','admin','shane.yaroli','Shane.Yaroli'];
-    const isAdmin = ADMIN_USERS.includes(user.username);
+    const isAdmin = ADMIN_USERS.map(x => x.toLowerCase()).includes((user.username||'').toLowerCase());
     if (isAdmin) document.getElementById('addPartBtn').style.display = '';
 
     const tbody = document.getElementById('tbody');
@@ -121,7 +120,233 @@
     const statusEl = document.getElementById('status');
     const exportBtn = document.getElementById('exportBtn');
     const addPartBtn = document.getElementById('addPartBtn');
-    // ... rest of your code unchanged ...
+
+    let rows = [];
+    const esc = s => String(s ?? "").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;");
+
+    async function api(path, opts={}) {
+      const res = await fetch(API_ROOT + path, {
+        method: opts.method || 'GET',
+        headers: { 'Content-Type':'application/json', 'x-user': user.username },
+        body: opts.body ? JSON.stringify(opts.body) : undefined
+      });
+      if (!res.ok) {
+        const txt = await res.text();
+        throw new Error(txt || ('HTTP '+res.status));
+      }
+      return res.json();
+    }
+
+    async function load() {
+      statusEl.textContent = 'Loading…';
+
+      const catalog = (window.catalog || []).map(c => ({
+        pn: String(c.partNumber||'').trim(),
+        name: c.printName || '',
+        loc: c.location || '',
+        min: Number(c.minQty || c.min || 0) || 0,
+        note: (c.notes && String(c.notes).trim().toLowerCase() !== 'nan') ? String(c.notes) : ''
+      })).filter(r => r.pn);
+
+      const snap = await api('/api/inventory-all');
+      const invMap = new Map(snap.map(r => [String(r.partNumber), r]));
+
+      rows = catalog.map(r => {
+        const s = invMap.get(r.pn);
+        if (s) invMap.delete(r.pn);
+        return {
+          partNumber: r.pn,
+          description: r.name,
+          location: r.loc,
+          minQty: r.min,
+          notes: r.note,
+          qty: s ? (s.qty|0) : 0
+        };
+      });
+
+      for (const [pn, s] of invMap) {
+        rows.push({
+          partNumber: pn,
+          description: s.description || '',
+          location: s.location || '',
+          minQty: s.minQty || 0,
+          notes: s.notes || '',
+          qty: s.qty|0
+        });
+      }
+
+      rows.sort((a,b)=> a.partNumber.localeCompare(b.partNumber, undefined, {numeric:true}));
+      build();
+      statusEl.textContent = `Loaded ${rows.length} items`;
+    }
+
+    function build() {
+      const q = qEl.value.trim().toLowerCase();
+      const onlyNZ = onlyNonZeroEl.checked;
+      const onlyZ  = onlyZeroEl.checked;
+
+      const filtered = rows.filter(r => {
+        if (onlyZ && (r.qty|0) !== 0) return false;
+        if (onlyNZ && (r.qty|0) === 0) return false;
+        if (!q) return true;
+        return (
+          (r.partNumber||'').toLowerCase().includes(q) ||
+          (r.description||'').toLowerCase().includes(q) ||
+          (r.location||'').toLowerCase().includes(q) ||
+          (r.notes||'').toLowerCase().includes(q)
+        );
+      });
+
+      countBadge.textContent = `${filtered.length} items`;
+      tbody.innerHTML = filtered.map(r => {
+        const low = (r.qty|0) < (r.minQty|0);
+        return `
+          <tr data-pn="${r.partNumber}">
+            <td><a href="/inv/${encodeURIComponent(r.partNumber)}" target="_blank" rel="noopener">${esc(r.partNumber)}</a></td>
+            <td>${esc(r.description||'')}</td>
+            <td>${esc(r.location||'')}</td>
+            <td style="text-align:right">${r.minQty|0}</td>
+            <td class="qtycell ${low?'low':''}">${r.qty|0}</td>
+            <td>
+              <div class="row-actions">
+                <div class="custom-wrap">
+                  <input type="number" class="customDelta" placeholder="+/−">
+                  <button class="apply">Apply</button>
+                </div>
+                ${isAdmin ? `<button class="apply" style="background:#444" data-edit="${esc(r.partNumber)}">Edit</button>` : ''}
+              </div>
+            </td>
+            <td class="notes-cell"><span title="${esc(r.notes||'')}">${esc(r.notes||'')}</span></td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    tbody.addEventListener('click', async (e)=>{
+      const editBtn = e.target.closest('button[data-edit]');
+      if (editBtn) {
+        openEdit(editBtn.getAttribute('data-edit'), false);
+        return;
+      }
+
+      const applyBtn = e.target.closest('button.apply');
+      if (!applyBtn || applyBtn.hasAttribute('data-edit')) return;
+      const tr = e.target.closest('tr');
+      const pn = tr?.dataset?.pn;
+      if (!pn) return;
+      const inp = tr.querySelector('input.customDelta');
+      let delta = parseInt(inp?.value||'0',10);
+      if (!Number.isInteger(delta) || delta === 0) return;
+      inp.value = '';
+
+      const r = rows.find(x => x.partNumber === pn);
+      const currentQty = r ? (r.qty|0) : 0;
+      const newQty = currentQty + delta;
+      try {
+        await api(`/api/inventory/${encodeURIComponent(pn)}/qty`, { method:'POST', body:{ qty: newQty } });
+        r.qty = newQty;
+        build();
+      } catch(err) {
+        alert('Adjust failed.');
+      }
+    });
+
+    qEl.addEventListener('input', build);
+    onlyNonZeroEl.addEventListener('change', build);
+    onlyZeroEl.addEventListener('change', build);
+
+    exportBtn.addEventListener('click', ()=>{
+      if (!rows.length) return alert("No data to export.");
+      const headers = ["Part Number","Print Name","Location","Min","Qty","Notes"];
+      const csv = [headers.join(",")].concat(
+        rows.map(r =>
+          [r.partNumber, r.description, r.location, r.minQty, r.qty, (r.notes||"").replace(/[\r\n]+/g," ")].map(v => `"${String(v).replace(/"/g,'""')}"`).join(",")
+        )
+      ).join("\n");
+
+      const blob = new Blob([csv], {type:"text/csv"});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "inventory-backup.csv";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
+
+    const modalBg = document.getElementById('editModalBg');
+    const mPartNumber = document.getElementById('mPartNumber');
+    const mDescription = document.getElementById('mDescription');
+    const mLocation = document.getElementById('mLocation');
+    const mQty = document.getElementById('mQty');
+    const mMinQty = document.getElementById('mMinQty');
+    const mNotes = document.getElementById('mNotes');
+    const modalTitle = document.getElementById('modalTitle');
+
+    function openEdit(pn, isNew) {
+      if (isNew) {
+        modalTitle.textContent = 'Add Part';
+        mPartNumber.readOnly = false;
+        mPartNumber.value = '';
+        mDescription.value = '';
+        mLocation.value = '';
+        mQty.value = 0;
+        mMinQty.value = 0;
+        mNotes.value = '';
+        modalBg.style.display = 'flex';
+        return;
+      }
+      const row = rows.find(r => r.partNumber === pn);
+      if (!row) return;
+      modalTitle.textContent = 'Edit Part';
+      mPartNumber.readOnly = true;
+      mPartNumber.value = row.partNumber || '';
+      mDescription.value = row.description || '';
+      mLocation.value = row.location || '';
+      mQty.value = row.qty || 0;
+      mMinQty.value = row.minQty || 0;
+      mNotes.value = row.notes || '';
+      modalBg.style.display = 'flex';
+    }
+
+    addPartBtn.addEventListener('click', ()=> openEdit('', true));
+    document.getElementById('cancelBtn').onclick = () => modalBg.style.display = 'none';
+
+    document.getElementById('saveBtn').onclick = async () => {
+      const part = mPartNumber.value.trim();
+      if (!part) return alert('Part number required.');
+      const payload = {
+        partNumber: part,
+        description: mDescription.value,
+        location: mLocation.value,
+        qty: Number(mQty.value) || 0,
+        minQty: Number(mMinQty.value) || 0,
+        notes: mNotes.value
+      };
+      const isNew = !rows.find(r => r.partNumber === part);
+      if (isNew) {
+        await api(`/api/inventory`, { method:'POST', body: payload });
+      } else {
+        await api(`/api/inventory/${encodeURIComponent(part)}`, { method:'PUT', body: payload });
+      }
+      modalBg.style.display = 'none';
+      load();
+    };
+
+    document.getElementById('deleteBtn').onclick = async () => {
+      const part = mPartNumber.value.trim();
+      if (!part) return;
+      if (!confirm(`Delete ${part}?`)) return;
+      await api(`/api/inventory/${encodeURIComponent(part)}`, { method:'DELETE' });
+      modalBg.style.display = 'none';
+      load();
+    };
+
+    load().catch(err => {
+      console.error(err);
+      statusEl.textContent = 'Failed to load';
+    });
   </script>
 </body>
 </html>
