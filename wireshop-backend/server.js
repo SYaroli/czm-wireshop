@@ -1,12 +1,10 @@
 // wireshop-backend/server.js
-// WireShop backend with robust auto-archive, schedule enforcer, fixed admin mapping,
-// Assignments API, and Inventory API. Now includes a tiny /api/auth/me shim for the UI.
+// WireShop backend with auto-archive, schedule, assignments, and DB-backed inventory.
 
 const path = require("path");
 const express = require("express");
 const cors = require("cors");
 const attachBuildTasks = require("./build_tasks");
-
 
 // Force local-time windows to Savannah unless overridden in env
 process.env.TZ = process.env.TZ || "America/New_York";
@@ -15,12 +13,36 @@ const usersRouter = require("./routes/users");
 const jobsRouter = require("./routes/jobs");
 const archiveRouter = require("./routes/archive");
 const assignmentsRouter = require("./routes/assignments");
-const inventoryRoutes = require('./routes/inventory');
-app.use('/api', inventoryRoutes);
+const inventoryRoutes = require("./routes/inventory");
 const archive = require("./archiveStore");
-const db = require("./db"); // for scheduler + sqlite lookups
+const db = require("./db"); // ensures DB/tables are created
 
 const TRACE = String(process.env.JOBS_TRACE || "").trim() === "1";
+
+const app = express();
+app.use(cors());
+app.use(express.json({ limit: "1mb" }));
+app.use(express.urlencoded({ extended: true }));
+
+// ---------- TEMP auth shim so the UI can know you're admin ----------
+app.use((req, _res, next) => {
+  if (!req.user) req.user = { name: "Shane", isAdmin: true };
+  next();
+});
+
+app.get("/api/auth/me", (req, res) => {
+  res.json({ name: req.user?.name || "unknown", isAdmin: !!req.user?.isAdmin });
+});
+
+// ----- mount routers -----
+app.use('/api/users', usersRouter);
+app.use('/api/jobs', jobsRouter);
+app.use('/api/archive', archiveRouter);
+app.use('/api/assignments', assignmentsRouter);
+app.use('/api', inventoryRoutes);
+
+// NEW: Build Next endpoints (/api/build-tasks/*)
+attachBuildTasks(app);
 
 // ---------- Archive init (Postgres mirror) ----------
 let archiveReady = false;
@@ -34,35 +56,7 @@ let archiveReady = false;
   }
 })();
 
-const app = express();
-app.use(cors());
-app.use(express.json({ limit: "1mb" }));
-app.use(express.urlencoded({ extended: true }));
-// --- existing mounts ---
-app.use('/api/users', usersRouter);
-app.use('/api/jobs', jobsRouter);
-app.use('/api/archive', archiveRouter);
-app.use('/api/assignments', assignmentsRouter);
-app.use('/api/inventory', inventoryRouter);
-
-// NEW: Build Next endpoints (/api/build-tasks/*)
-attachBuildTasks(app);
-
-
-// ---------- TEMP auth shim so the UI can know you're admin ----------
-// Replace with your real auth when ready. This populates req.user and serves /api/auth/me.
-app.use((req, _res, next) => {
-  // If you already set req.user earlier in a real auth middleware, keep that.
-  // This fallback only sets admin if nothing else has.
-  if (!req.user) req.user = { name: "Shane", isAdmin: true };
-  next();
-});
-
-app.get("/api/auth/me", (req, res) => {
-  res.json({ name: req.user?.name || "unknown", isAdmin: !!req.user?.isAdmin });
-});
-
-// ---------- Helpers for legacy admin routes ----------
+// ---------- Helpers ----------
 function parseJSON(value) {
   if (value == null) return null;
   if (typeof value === "object") return value;
@@ -70,7 +64,6 @@ function parseJSON(value) {
 }
 function ms(t) { return t ? new Date(t).getTime() : null; }
 
-// Map a Postgres row to the exact shape admin.html expects (millisecond timestamps)
 function mapRow(r) {
   const j = parseJSON(r.job_json);
   const start = ms(r.started_at);
@@ -95,7 +88,7 @@ function mapRow(r) {
   };
 }
 
-// ---------- Native archive API ----------
+// ---------- Native archive API using archiveStore ----------
 const { listArchivedJobs, deleteArchivedJob, updateArchivedJob } = archive;
 
 app.get("/api/jobs/archive", async (req, res) => {
@@ -131,7 +124,9 @@ app.post("/api/jobs/archive/:id/adjust", async (req, res) => {
   }
 });
 
-app.get("/api/jobs/archive/:id/adjustments", async (_req, res) => { res.json([]); });
+app.get("/api/jobs/archive/:id/adjustments", async (_req, res) => {
+  res.json([]);
+});
 
 // ---------- In-memory hints for auto-archive payload ----------
 const lastStartByUser = new Map();
@@ -151,67 +146,7 @@ function getClientUser(req) {
   if (rec && Date.now() - rec.ts < 10 * 60 * 1000) return rec.username;
   return null;
 }
-function pruneOld() {
-  const cutoff = Date.now() - 12 * 60 * 60 * 1000;
-  for (const [u, v] of lastStartByUser) if (v.ts < cutoff) lastStartByUser.delete(u);
-  for (const [c, v] of lastUserByClient) if (v.ts < cutoff) lastUserByClient.delete(c);
-}
 
-// TRACE every /api/jobs call if enabled
-if (TRACE) {
-  app.use("/api/jobs", (req, res, next) => {
-    const started = Date.now();
-    const method = req.method;
-    const url = req.originalUrl || req.url;
-    const q = JSON.stringify(req.query || {});
-    let bodyPreview = "";
-    try { bodyPreview = JSON.stringify(req.body || {}); } catch {}
-    if (bodyPreview.length > 800) bodyPreview = bodyPreview.slice(0, 800) + "...";
-    res.on("finish", () => {
-      const ms = Date.now() - started;
-      console.log(`[TRACE] ${method} ${url} -> ${res.statusCode} (${ms}ms) q=${q} body=${bodyPreview}`);
-    });
-    next();
-  });
-}
-
-// Remember username on list route
-app.use("/api/jobs/logs/:username", (req, _res, next) => {
-  rememberClientUser(req, req.params.username || req.params.user);
-  next();
-});
-
-// Cache STARTs
-app.post("/api/jobs/log", (req, _res, next) => {
-  const b = req.body || {};
-  if (String(b.action || "").toLowerCase() === "start" && b.username) {
-    lastStartByUser.set(b.username, {
-      part_number: b.part_number || b.partNumber || null,
-      technician: b.username,
-      started_at: b.start_time || b.startTime || new Date().toISOString(),
-      expected_minutes: b.expected_minutes || b.expected || null,
-      ts: Date.now()
-    });
-    rememberClientUser(req, b.username);
-  }
-  next();
-});
-app.post("/api/jobs/logs", (req, _res, next) => {
-  const b = req.body || {};
-  if (String(b.action || "").toLowerCase() === "start" && b.username) {
-    lastStartByUser.set(b.username, {
-      part_number: b.part_number || b.partNumber || null,
-      technician: b.username,
-      started_at: b.start_time || b.startTime || new Date().toISOString(),
-      expected_minutes: b.expected || b.expected_minutes || null,
-      ts: Date.now()
-    });
-    rememberClientUser(req, b.username);
-  }
-  next();
-});
-
-// ---------- Auto-archive middleware ----------
 function looksLikeFinish(src = {}, url = "") {
   const u = (url || "").toLowerCase();
   if (u.includes("/finish") || (u.endsWith("/log") && (src.action || "").toLowerCase() === "finish")) return true;
@@ -234,8 +169,6 @@ app.use("/api/jobs", (req, res, next) => {
     if (!archiveReady) return;
     if (res.statusCode >= 400) return;
 
-    pruneOld();
-
     const src = { ...(req.body || {}), ...(req.query || {}) };
     const url = req.originalUrl || req.url;
     if (!looksLikeFinish(src, url)) return;
@@ -254,7 +187,7 @@ app.use("/api/jobs", (req, res, next) => {
         toISO(pick(src, ["finished_at", "finishedAt", "finish_time", "finishTime"])) ||
         new Date().toISOString();
       const expected_minutes =
-        toInt(pick(src, ["expected_minutes", "expected", "expectedMin", "expectedMinutes"])) ?? 
+        toInt(pick(src, ["expected_minutes", "expected", "expectedMin", "expectedMinutes"])) ??
         (username && lastStartByUser.get(username)?.expected_minutes) ?? null;
 
       const payload = {
@@ -264,7 +197,7 @@ app.use("/api/jobs", (req, res, next) => {
         status: "archived",
         expected_minutes,
         total_active_sec:
-          toInt(pick(src, ["total_active_sec", "totalSeconds", "total", "elapsed", "timeActiveSec"])) ?? 
+          toInt(pick(src, ["total_active_sec", "totalSeconds", "total", "elapsed", "timeActiveSec"])) ??
           (sRow ? Math.max(0, Math.trunc((sRow.totalActive || 0) / 1000))
                 : (started_at ? Math.max(0, Math.trunc((new Date(finished_at) - new Date(started_at)) / 1000)) : null)),
         started_at: sRow ? new Date(sRow.startTime).toISOString() : started_at,
@@ -283,19 +216,7 @@ app.use("/api/jobs", (req, res, next) => {
   });
 
   next();
-}, jobsRouter);
-
-// ---------- Native archive API ----------
-app.use("/api/archive", archiveRouter);
-
-// ---------- Users API ----------
-app.use("/api/users", usersRouter);
-
-// ---------- Assignments API ----------
-app.use("/api", assignmentsRouter);
-
-// ---------- Inventory API ----------
-app.use("/api", inventoryRouter);
+});
 
 // ---------- Schedule Enforcer ----------
 const WINDOWS = [
@@ -352,19 +273,14 @@ setInterval(scheduleTick, 15000);
 setTimeout(scheduleTick, 2000);
 
 // ---------- Health & Static ----------
-app.get("/healthz", (_req, res) => {
-  res.json({ ok: true, archiveReady, node: process.version, tz: process.env.TZ, now: new Date().toISOString() });
-});
-
 const FRONTEND_DIR = path.join(__dirname, "..", "wireshop-frontend");
 app.use(express.static(FRONTEND_DIR));
 app.get("/archive", (_req, res) => res.sendFile(path.join(FRONTEND_DIR, "archive.html")));
 app.get("/assignments", (_req, res) => res.sendFile(path.join(FRONTEND_DIR, "assignments.html")));
-app.get("/inv/:part", (_req, res) => res.sendFile(path.join(FRONTEND_DIR, "inventory.html"))); // convenience deep-link
+app.get("/inv/:part", (_req, res) => res.sendFile(path.join(FRONTEND_DIR, "inventory.html")));
 app.get("/", (_req, res) => res.sendFile(path.join(FRONTEND_DIR, "index.html")));
 
 // ---------- Errors ----------
-/* eslint-disable no-unused-vars */
 app.use((err, _req, res, _next) => {
   console.error("[ERROR]", err);
   res.status(500).json({ error: "Server error" });
@@ -375,5 +291,3 @@ const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
   console.log(`WireShop backend listening on port ${PORT}`);
 });
-
-
