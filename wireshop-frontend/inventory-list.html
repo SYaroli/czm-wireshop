@@ -119,7 +119,7 @@
     if(!user||!user.username)window.location.href='/index.html';
     document.getElementById('logoutBtn').onclick=()=>{localStorage.removeItem('user');window.location.href='/index.html';};
 
-    const ADMIN_USERS=['shane','admin','shane.yaroli','Shane.Yaroli'];
+  const ADMIN_USERS = ['shane','admin','shane.yaroli','Shane.Yaroli','Tyler.Ellis'];
     const isAdmin=ADMIN_USERS.map(x=>x.toLowerCase()).includes((user.username||'').toLowerCase());
     if(isAdmin)document.getElementById('addPartBtn').style.display='';
 
