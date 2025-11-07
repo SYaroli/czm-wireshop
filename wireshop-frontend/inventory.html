@@ -1,268 +1,214 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>CZM • Wireshop Inventory</title>
-  <link rel="stylesheet" href="/style.css"/>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>CZM • WireShop Inventory</title>
+  <link rel="stylesheet" href="/style.css" />
   <style>
-    .brand-actions .navbtn{display:inline-block;background:#1a1c20;color:#bbb;padding:6px 12px;border-radius:10px;text-decoration:none;border:1px solid #3a3f44;font-weight:600;font-size:.9rem;margin-left:8px}
-    .brand-actions .navbtn.active{background:#b30000;color:#fff;border-color:#ff4d4d}
-    .qty-big{font-size:40px;font-weight:900;margin:0}
-    .qty-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-    .pill{padding:14px 20px;border:1px solid #d3d8e1;border-radius:12px;background:#fff;cursor:pointer;font-weight:900;min-width:80px;text-align:center;color:var(--ink);user-select:none;font-size:18px}
-    .pill:hover{filter:brightness(1.03)}
-    .mini{font-size:12px;color:var(--muted)}
-    .hide{display:none !important}
-    .pnPrompt{display:none;margin-top:10px}
-    .pnPrompt .row{display:flex;gap:8px;margin-top:6px}
-    .pnPrompt input{flex:1;padding:10px;border:1px solid #d3d8e1;border-radius:10px}
-    .pnPrompt button{padding:10px 12px;border-radius:10px;border:1px solid #d3d8e1;background:#f5f7fb;cursor:pointer}
+    .page-wrap{max-width:1100px;margin:30px auto;}
+    .card{background:#fff;border-radius:6px;box-shadow:0 2px 6px rgba(0,0,0,.05);margin-bottom:14px;overflow:hidden;}
+    .card-head{padding:16px 18px;border-bottom:1px solid #eee;font-weight:700;}
+    .card-body{padding:16px 18px;}
+    .adjust-btns{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+    .adjbtn{background:#fff;border:1px solid #d4d6da;border-radius:10px;padding:10px 18px;min-width:60px;text-align:center;font-weight:700;cursor:pointer}
+    .adjbtn:hover{border-color:#b30000;color:#b30000}
+    .inline-inputs{display:flex;gap:10px;margin-bottom:10px}
+    .inline-inputs input{flex:1;padding:6px 8px;border:1px solid #d3d8e1;border-radius:8px}
+    .apply{background:#b30000;color:#fff;border:none;border-radius:10px;padding:7px 14px;font-weight:700;cursor:pointer}
+    .qty-big{font-size:36px;font-weight:800}
+    .table-log{width:100%;border-collapse:collapse}
+    .table-log th,.table-log td{border-bottom:1px solid #eee;padding:5px 0;font-size:12px}
+    .muted{color:#666;font-size:12px}
+    .brand-bar{background:#1a1c20;padding:10px 16px;color:#fff;display:flex;align-items:center;justify-content:space-between}
+    .brand-title{font-weight:700}
+    .navbtn{background:#1a1c20;color:#eee;border:1px solid #444;padding:5px 12px;border-radius:10px;text-decoration:none;margin-left:8px;font-size:.85rem}
+    .navbtn.active{background:#b30000;border-color:#b30000}
   </style>
 </head>
 <body>
   <div class="brand-bar">
-    <div class="brand-inner">
-      <a class="brand-logo" href="/dashboard.html">
-        <img src="/czm-logo.png" alt="CZM">
-        <h1 class="brand-title">CZM • Wireshop Inventory</h1>
-      </a>
-      <div class="brand-actions" id="navActions">
-        <a href="/dashboard.html" class="navbtn">Dashboard</a>
-        <a href="/assignments.html" class="navbtn">Build Next</a>
-        <a href="/inventory" class="navbtn active">Inventory</a>
-        <a href="/archive.html" class="navbtn">Archive</a>
-        <a href="/admin.html" class="navbtn">Admin</a>
-        <a id="logoutBtn" href="/index.html" class="navbtn">Logout</a>
-      </div>
+    <div class="brand-title">CZM • Wireshop Inventory</div>
+    <div>
+      <a class="navbtn" href="/dashboard.html">Build Next</a>
+      <a class="navbtn active" href="/inventory">Inventory</a>
+      <button id="logoutBtn" class="navbtn">Logout</button>
     </div>
   </div>
 
-  <main class="page">
+  <main class="page-wrap">
+    <div class="card" id="headerCard">
+      <div class="card-head" id="partTitle">Inventory — </div>
+      <div class="card-body" id="partMeta">
+        <div class="muted">Loading…</div>
+      </div>
+    </div>
+
     <div class="card">
-      <h2 id="partTitle">Inventory</h2>
-      <div class="info" style="margin-top:8px">
-        <p>Part Number: <span id="partNumber">--</span></p>
-        <p>Print Name: <span id="printName">--</span></p>
-        <p id="catalogNoteRow">Notes: <span id="catalogNote">--</span></p>
-        <p>Location: <span id="location">--</span></p>
-        <p>Expected Hours: <span id="expected">--</span></p>
-        <p class="mini">If any of this looks wrong, fix the catalog later; inventory will still work.</p>
-      </div>
-
-      <div id="pnPrompt" class="info pnPrompt">
-        <label for="pnInput">Enter a Part Number</label>
-        <div class="row">
-          <input id="pnInput" type="text" placeholder="e.g. 40602.5460.000" inputmode="text">
-          <button id="pnGo">Go</button>
-        </div>
-        <p class="mini">Tip: you can also use <code>/inventory.html?part=PN</code> or <code>/inv/PN</code>.</p>
+      <div class="card-head">Quantity</div>
+      <div class="card-body">
+        <div class="qty-big" id="qty">0</div>
+        <div class="muted" id="lastUpdate"></div>
       </div>
     </div>
 
-    <div class="card" id="cardQty">
-      <h2>Quantity</h2>
-      <p class="qty-big"><span id="qty">0</span></p>
-      <p class="mini">Last update: <span id="updatedMeta">never</span></p>
-    </div>
-
-    <div class="card" id="cardAdjust">
-      <h2>Adjust</h2>
-
-      <div class="qty-row" id="techRow" style="margin-bottom:10px">
-        <button class="pill" data-delta="-5">−5</button>
-        <button class="pill" data-delta="-1">−1</button>
-        <button class="pill" data-delta="+1">+1</button>
-        <button class="pill" data-delta="+5">+5</button>
-      </div>
-      <p class="mini" id="techHint" style="margin:0 0 8px 2px">Tap a button to post. No extra step.</p>
-
-      <div id="adminExtras">
-        <div class="qty-row" style="margin:12px 0 10px">
-          <button class="pill" data-delta="-10">−10</button>
-          <button class="pill" data-delta="+10">+10</button>
+    <div class="card">
+      <div class="card-head">Adjust</div>
+      <div class="card-body">
+        <div class="adjust-btns">
+          <button class="adjbtn" data-delta="-5">−5</button>
+          <button class="adjbtn" data-delta="-1">−1</button>
+          <button class="adjbtn" data-delta="1">+1</button>
+          <button class="adjbtn" data-delta="5">+5</button>
+          <button class="adjbtn" data-delta="-10">−10</button>
+          <button class="adjbtn" data-delta="10">+10</button>
         </div>
-        <div class="grid cols-3">
-          <div>
-            <label for="customDelta">Custom Delta</label>
-            <input id="customDelta" type="number" step="1" placeholder="e.g. 12 or -3" inputmode="numeric">
-          </div>
-          <div>
-            <label for="note">Reason/Note</label>
-            <input id="note" type="text" placeholder="optional">
-          </div>
-          <div style="display:flex;align-items:end">
-            <button id="applyBtn" style="width:100%" disabled>Apply custom</button>
-          </div>
+        <div class="inline-inputs">
+          <input id="customDelta" type="number" placeholder="e.g. 12 or -3" />
+          <input id="reason" type="text" placeholder="optional" />
+          <button id="applyCustom" class="apply">Apply custom</button>
         </div>
-      </div>
-
-      <div id="noteRow" class="grid cols-1" style="margin-top:10px">
-        <div>
-          <label for="noteTech" class="mini">Optional Note</label>
-          <input id="noteTech" type="text" placeholder="optional note for this adjustment">
-        </div>
+        <div class="muted" id="statusMsg"></div>
       </div>
     </div>
 
-    <div class="card" id="cardHistory">
-      <h2>Recent Activity</h2>
-      <table class="sticky-head">
-        <thead>
-          <tr>
-            <th>When</th>
-            <th>User</th>
-            <th>Δ</th>
-            <th>Before → After</th>
-            <th>Note</th>
-          </tr>
-        </thead>
-        <tbody id="txnBody"></tbody>
-      </table>
+    <div class="card">
+      <div class="card-head">Recent Activity</div>
+      <div class="card-body">
+        <table class="table-log" id="logTable">
+          <thead><tr><th>When</th><th>User</th><th>Δ</th><th>Before → After</th><th>Note</th></tr></thead>
+          <tbody id="logBody"><tr><td colspan="5" class="muted">No entries.</td></tr></tbody>
+        </table>
+      </div>
     </div>
   </main>
 
   <script src="/catalog.js"></script>
   <script>
     const API_ROOT = 'https://wireshop-backend.onrender.com';
-
     const user = (() => { try { return JSON.parse(localStorage.getItem('user')||'{}'); } catch { return {}; } })();
-    if (!user || !user.username) {
-      const redir = encodeURIComponent(location.pathname + location.search + location.hash);
-      window.location.href = '/index.html?redirect=' + redir;
-    }
+    if (!user || !user.username) { window.location.href = '/index.html'; }
+    document.getElementById('logoutBtn').onclick = () => { localStorage.removeItem('user'); window.location.href = '/index.html'; };
 
-    document.getElementById('logoutBtn')?.addEventListener('click', (e)=>{
-      e.preventDefault(); localStorage.removeItem('user'); window.location.href='/index.html';
-    });
+    // get part from /inv/<part>
+    const pathParts = window.location.pathname.split('/');
+    const partNumber = decodeURIComponent(pathParts[pathParts.length - 1]);
 
-    let partNumber = '';
-    const segs = location.pathname.split('/').filter(Boolean);
-    const invIdx = segs.findIndex(s => s.toLowerCase() === 'inv');
-    if (invIdx >= 0) partNumber = decodeURIComponent(segs.slice(invIdx + 1).join('/')).trim();
-    if (!partNumber) {
-      const qs = new URLSearchParams(location.search);
-      partNumber = (qs.get('part') || qs.get('pn') || '').trim();
-    }
-    if (!partNumber && location.hash.toLowerCase().startsWith('#pn=')) {
-      partNumber = decodeURIComponent(location.hash.slice(4)).trim();
-    }
-
-    document.getElementById('partNumber').textContent = partNumber || '(missing)';
-    document.getElementById('partTitle').textContent = `Inventory — ${partNumber || '—'}`;
-
-    if (!partNumber) {
-      let last = '';
-      try { last = localStorage.getItem('lastPN') || ''; } catch {}
-      const prompt = document.getElementById('pnPrompt');
-      if (prompt) {
-        prompt.style.display = 'block';
-        const inp = document.getElementById('pnInput');
-        const go = document.getElementById('pnGo');
-        if (inp && last) inp.value = last;
-        function jump(){
-          const pn = (inp?.value || '').trim();
-          if (!pn) return;
-          location.href = '/inv/' + encodeURIComponent(pn);
-        }
-        go?.addEventListener('click', jump);
-        inp?.addEventListener('keydown', e => { if (e.key === 'Enter') jump(); });
-      }
-    } else {
-      try { localStorage.setItem('lastPN', partNumber); } catch {}
-    }
-
-    (function fillCatalog(){
-      try {
-        const row = (window.catalog || []).find(c => String(c.partNumber||'').trim() === partNumber);
-        if (row) {
-          document.getElementById('printName').textContent = row.printName || '--';
-          document.getElementById('location').textContent = row.location || '--';
-          document.getElementById('expected').textContent = (row.expectedHours ?? '--');
-
-          const n = String(row.notes ?? '').trim();
-          const noteRow = document.getElementById('catalogNoteRow');
-          const noteSpan = document.getElementById('catalogNote');
-          if (n && n.toLowerCase() !== 'nan') {
-            noteSpan.textContent = n;
-            noteRow.style.display = '';
-          } else {
-            noteRow.style.display = 'none';
-          }
-        }
-      } catch {}
-    })();
-
+    const partTitle = document.getElementById('partTitle');
+    const partMeta = document.getElementById('partMeta');
     const qtyEl = document.getElementById('qty');
-    const metaEl = document.getElementById('updatedMeta');
-    const txnBody = document.getElementById('txnBody');
-    const customDeltaEl = document.getElementById('customDelta');
-    const applyBtn = document.getElementById('applyBtn');
-    const isAdmin = String(user.role).toLowerCase() === 'admin';
-if (!isAdmin) {
-  document.getElementById('adminExtras')?.classList.add('hide');
-  // Leave history visible for everyone
-}
+    const lastUpdateEl = document.getElementById('lastUpdate');
+    const statusMsg = document.getElementById('statusMsg');
+    const logBody = document.getElementById('logBody');
 
-    function fmtTs(ms){ if (!ms) return '—'; const d = new Date(ms); return d.toLocaleString(); }
-    function validInt(v){ const n = Number(v); return Number.isInteger(n) && n !== 0; }
-    function toggleApply(){ if (applyBtn) applyBtn.disabled = !validInt(customDeltaEl.value); }
-    customDeltaEl?.addEventListener('input', toggleApply);
+    function setStatus(msg, good) {
+      statusMsg.textContent = msg || '';
+      statusMsg.style.color = good ? '#0a0' : '#b30000';
+    }
 
-    async function api(path, opts={}){
+    async function api(path, opts={}) {
       const res = await fetch(API_ROOT + path, {
         method: opts.method || 'GET',
-        headers: { 'Content-Type': 'application/json', 'x-user': user.username },
+        headers: { 'Content-Type':'application/json', 'x-user': user.username },
         body: opts.body ? JSON.stringify(opts.body) : undefined
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) throw new Error(await res.text());
       return res.json();
     }
 
-    async function loadSnapshot(){
-      if (!partNumber) return;
-      const data = await api(`/api/inventory/${encodeURIComponent(partNumber)}`);
-      qtyEl.textContent = data.qty ?? 0;
-      metaEl.textContent = data.updatedAt ? `${fmtTs(data.updatedAt)} by ${data.updatedBy||'unknown'}` : 'never';
+    async function loadPart() {
+      // try backend for live qty
+      let live = null;
+      try {
+        live = await api(`/api/inventory/${encodeURIComponent(partNumber)}`);
+      } catch (e) {
+        // ignore, maybe part not in DB yet
+      }
+
+      // match against catalog for description/location
+      const cat = (window.catalog || []).find(c => String(c.partNumber).trim() === partNumber);
+      const description = live?.description || cat?.printName || '';
+      const location = live?.location || cat?.location || '';
+
+      partTitle.textContent = `Inventory — ${partNumber}`;
+      partMeta.innerHTML = `
+        <div><strong>Part Number:</strong> ${partNumber}</div>
+        <div><strong>Print Name:</strong> ${description || 'n/a'}</div>
+        <div><strong>Location:</strong> ${location || 'n/a'}</div>
+        <div class="muted">If any of this looks wrong, fix the catalog later.</div>
+      `;
+
+      qtyEl.textContent = live ? (live.qty|0) : 0;
+      lastUpdateEl.textContent = live && live.updatedAt ? `Last update: ${new Date(live.updatedAt).toLocaleString()} by ${live.updatedBy||'unknown'}` : '';
+
+      // try to load log if backend has it
+      try {
+        const log = await api(`/api/inventory/${encodeURIComponent(partNumber)}/log`);
+        renderLog(log);
+      } catch (e) {
+        // fine
+      }
     }
-    async function loadTxns(){
-  if (!partNumber) return;
-  const rows = await api(`/api/inventory/${encodeURIComponent(partNumber)}/txns?limit=50`);
-  txnBody.innerHTML = rows.map(r => `
-    <tr>
-      <td>${fmtTs(r.ts)}</td>
-      <td>${r.user || ''}</td>
-      <td>${r.delta > 0 ? '+'+r.delta : r.delta}</td>
-      <td>${r.qtyBefore} → ${r.qtyAfter}</td>
-      <td>${(r.note||'').replace(/</g,'&lt;')}</td>
-    </tr>
-  `).join('');
-}
 
-
-    async function adjust(delta){
-      if (!partNumber) return alert('Missing part number in URL.');
-      const note = (document.getElementById('noteTech')?.value || document.getElementById('note')?.value || '').trim();
-      await api(`/api/inventory/${encodeURIComponent(partNumber)}/adjust`, { method: 'POST', body: { delta, note } });
-      await loadSnapshot(); await loadTxns();
+    function renderLog(log) {
+      if (!Array.isArray(log) || !log.length) {
+        logBody.innerHTML = `<tr><td colspan="5" class="muted">No entries.</td></tr>`;
+        return;
+      }
+      logBody.innerHTML = log.map(entry => `
+        <tr>
+          <td>${entry.when ? new Date(entry.when).toLocaleString() : ''}</td>
+          <td>${entry.user || ''}</td>
+          <td>${entry.delta || ''}</td>
+          <td>${entry.before ?? ''} → ${entry.after ?? ''}</td>
+          <td>${entry.note || ''}</td>
+        </tr>
+      `).join('');
     }
 
-    document.querySelectorAll('.pill[data-delta]').forEach(btn => {
+    async function applyDelta(delta, note) {
+      const currentQty = parseInt(qtyEl.textContent || '0', 10);
+      const newQty = currentQty + delta;
+      try {
+        await api(`/api/inventory/${encodeURIComponent(partNumber)}/qty`, {
+          method: 'POST',
+          body: { qty: newQty, note: note || '' }
+        });
+        qtyEl.textContent = newQty;
+        setStatus('Updated.', true);
+        // add to log visually
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${new Date().toLocaleString()}</td><td>${user.username}</td><td>${delta}</td><td>${currentQty} → ${newQty}</td><td>${note||''}</td>`;
+        if (logBody.firstChild && !logBody.firstChild.classList?.contains('muted')) {
+          logBody.prepend(tr);
+        } else {
+          logBody.innerHTML = '';
+          logBody.appendChild(tr);
+        }
+      } catch (e) {
+        setStatus('Failed to adjust.', false);
+      }
+    }
+
+    // preset buttons
+    document.querySelectorAll('.adjbtn').forEach(btn => {
       btn.addEventListener('click', () => {
-        const delta = parseInt(btn.getAttribute('data-delta'), 10);
-        adjust(delta).catch(() => alert('Failed to adjust'));
+        const d = parseInt(btn.dataset.delta, 10);
+        applyDelta(d, '');
       });
     });
-    applyBtn?.addEventListener('click', () => {
-      const v = parseInt(customDeltaEl.value, 10);
-      if (!validInt(v)) return;
-      customDeltaEl.value = '';
-      toggleApply();
-      adjust(v).catch(() => alert('Failed to adjust'));
+
+    // custom
+    document.getElementById('applyCustom').addEventListener('click', () => {
+      const d = parseInt(document.getElementById('customDelta').value||'0', 10);
+      const note = document.getElementById('reason').value || '';
+      if (!d) return;
+      applyDelta(d, note);
+      document.getElementById('customDelta').value = '';
+      document.getElementById('reason').value = '';
     });
 
-    loadSnapshot().catch(()=>{});
-    loadTxns().catch(()=>{});
+    loadPart().catch(()=>setStatus('Failed to load part', false));
   </script>
 </body>
 </html>
