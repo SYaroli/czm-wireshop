@@ -1,147 +1,232 @@
-// routes/inventory.js
+// wireshop-backend/routes/inventory.js
+// single source of truth for inventory, DB-backed, admin-only edits
+
 const express = require('express');
 const router = express.Router();
-const db = require('../db');
+const db = require('../db'); // this already points to the persistent DB_PATH on Render
 
-// ---------- auth helpers ----------
+// ----- auth helpers (same pattern as routes/users.js) -----
+const ADMIN_USERS = (process.env.ADMIN_USERS || '')
+  .split(',')
+  .map(s => s.trim().toLowerCase())
+  .filter(Boolean);
+
 function currentUser(req) {
-  return (req.header('x-user') || '').trim();
+  return (req.header('x-user') || '').trim().toLowerCase();
 }
-function requireUser(req, res, next){
+
+function requireUser(req, res, next) {
   const u = currentUser(req);
   if (!u) return res.status(401).json({ error: 'x-user required' });
   req.user = u;
   next();
 }
-function isAdminRole(val) { return String(val || '').toLowerCase() === 'admin'; }
-function requireAdmin(req, res, next){
+
+function requireAdmin(req, res, next) {
   const u = currentUser(req);
   if (!u) return res.status(401).json({ error: 'x-user required' });
-  db.get(
-    `SELECT role FROM users WHERE username = ? COLLATE NOCASE`,
-    [u],
-    (err, row) => {
-      if (err) return res.status(500).json({ error: err.message });
-      if (!row) return res.status(403).json({ error: `Admin only (no such user: ${u})` });
-      if (!isAdminRole(row.role)) return res.status(403).json({ error: `Admin only (role=${row.role})` });
-      req.user = u;
-      next();
-    }
-  );
+  if (!ADMIN_USERS.includes(u)) return res.status(403).json({ error: 'admin only' });
+  req.user = u;
+  next();
 }
 
-// ---------- helpers ----------
-function getOne(partNumber) {
-  return new Promise((resolve, reject) => {
-    db.get(
-      `SELECT partNumber, qty, updatedAt, updatedBy FROM inventory WHERE partNumber = ?`,
-      [partNumber],
-      (err, row) => err ? reject(err) : resolve(row || null)
-    );
+// ----- ensure table exists / columns exist -----
+function ensureInventoryTable() {
+  // base table
+  db.run(
+    `CREATE TABLE IF NOT EXISTS inventory (
+      partNumber TEXT PRIMARY KEY,
+      description TEXT,
+      location TEXT,
+      qty INTEGER DEFAULT 0,
+      minQty INTEGER DEFAULT 0,
+      notes TEXT,
+      updatedAt INTEGER,
+      updatedBy TEXT
+    )`
+  );
+
+  // in case the table existed from an older version missing some columns
+  db.all(`PRAGMA table_info(inventory)`, (err, rows = []) => {
+    if (err) {
+      console.error('PRAGMA inventory failed:', err);
+      return;
+    }
+    const cols = rows.map(r => r.name);
+    const addCol = (name, def) => {
+      if (!cols.includes(name)) {
+        db.run(`ALTER TABLE inventory ADD COLUMN ${name} ${def}`, e => {
+          if (e) console.error(`ALTER TABLE inventory add ${name} failed:`, e.message);
+        });
+      }
+    };
+    addCol('description', 'TEXT');
+    addCol('location', 'TEXT');
+    addCol('minQty', 'INTEGER DEFAULT 0');
+    addCol('notes', 'TEXT');
+    addCol('updatedAt', 'INTEGER');
+    addCol('updatedBy', 'TEXT');
   });
 }
-function upsert(partNumber, qty, user) {
-  const now = Date.now();
-  return new Promise((resolve, reject) => {
-    db.run(
-      `INSERT INTO inventory (partNumber, qty, updatedAt, updatedBy)
-       VALUES (?, ?, ?, ?)
-       ON CONFLICT(partNumber) DO UPDATE SET
-         qty = excluded.qty,
-         updatedAt = excluded.updatedAt,
-         updatedBy = excluded.updatedBy`,
-      [partNumber, qty, now, user],
-      (err) => err ? reject(err) : resolve()
-    );
-  });
-}
-function insertTxn(partNumber, delta, before, after, note, user) {
-  return new Promise((resolve, reject) => {
-    db.run(
-      `INSERT INTO inventory_txns (partNumber, delta, qtyBefore, qtyAfter, note, user, ts)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [partNumber, delta, before, after, note || '', user, Date.now()],
-      function(err){ return err ? reject(err) : resolve(this.lastID); }
-    );
-  });
-}
+ensureInventoryTable();
 
-// ---------- API: snapshot ----------
-router.get('/inventory/:part', requireUser, async (req, res) => {
-  try {
-    const part = String(req.params.part).trim();
-    const row = await getOne(part);
-    res.json(row || { partNumber: part, qty: 0, updatedAt: null, updatedBy: null });
-  } catch {
-    res.status(500).json({ error: 'Failed to fetch inventory' });
-  }
-});
-
-// ---------- API: adjust ----------
-router.post('/inventory/:part/adjust', requireUser, async (req, res) => {
-  try {
-    const part = String(req.params.part).trim();
-    const delta = parseInt(req.body?.delta, 10);
-    const note  = String(req.body?.note || '');
-    if (!Number.isInteger(delta) || delta === 0) {
-      return res.status(400).json({ error: 'delta must be a non-zero integer' });
-    }
-    const current = await getOne(part) || { qty: 0 };
-    const before = current.qty | 0;
-    const after  = before + delta;
-    if (after < 0) return res.status(400).json({ error: 'resulting qty cannot be negative' });
-
-    await upsert(part, after, req.user);
-    await insertTxn(part, delta, before, after, note, req.user);
-
-    res.json({ ok: true, partNumber: part, qty: after, updatedBy: req.user, updatedAt: Date.now() });
-  } catch {
-    res.status(500).json({ error: 'Failed to adjust inventory' });
-  }
-});
-
-// ---------- API: recent txns ----------
-router.get('/inventory/:part/txns', requireUser, (req, res) => {
-  const part = String(req.params.part).trim();
-  const limit = Math.min(200, Math.max(1, parseInt(req.query.limit || '50', 10)));
-  db.all(
-    `SELECT id, delta, qtyBefore, qtyAfter, note, user, ts
-     FROM inventory_txns
-     WHERE partNumber = ?
-     ORDER BY id DESC
-     LIMIT ?`,
-    [part, limit],
-    (err, rows) => {
-      if (err) return res.status(500).json({ error: 'Failed to list txns' });
-      res.json(rows);
-    }
-  );
-});
-
-// ---------- API: admin list (locked) ----------
-router.get('/inventory', requireAdmin, (_req, res) => {
-  db.all(
-    `SELECT partNumber, qty, updatedAt, updatedBy
-     FROM inventory
-     ORDER BY partNumber COLLATE NOCASE ASC`,
-    [],
-    (err, rows) => {
-      if (err) return res.status(500).json({ error: 'Failed to list inventory' });
-      res.json(rows || []);
-    }
-  );
-});
-
-// ---------- API: list for any logged-in user (read-only) ----------
+// ----- GET all (for your inventory-list.html) -----
 router.get('/inventory-all', requireUser, (_req, res) => {
   db.all(
-    `SELECT partNumber, qty, updatedAt, updatedBy
+    `SELECT partNumber, description, location, qty, minQty, notes, updatedAt, updatedBy
      FROM inventory
      ORDER BY partNumber COLLATE NOCASE ASC`,
     [],
     (err, rows) => {
       if (err) return res.status(500).json({ error: 'Failed to list inventory' });
       res.json(rows || []);
+    }
+  );
+});
+
+// ----- GET single -----
+router.get('/inventory/:partNumber', requireUser, (req, res) => {
+  const { partNumber } = req.params;
+  db.get(
+    `SELECT partNumber, description, location, qty, minQty, notes, updatedAt, updatedBy
+     FROM inventory WHERE partNumber = ?`,
+    [partNumber],
+    (err, row) => {
+      if (err) return res.status(500).json({ error: 'DB error' });
+      if (!row) return res.status(404).json({ error: 'not found' });
+      res.json(row);
+    }
+  );
+});
+
+// ----- CREATE (admin only) -----
+router.post('/inventory', requireAdmin, (req, res) => {
+  const now = Date.now();
+  const {
+    partNumber,
+    description = '',
+    location = '',
+    qty = 0,
+    minQty = 0,
+    notes = ''
+  } = req.body || {};
+
+  if (!partNumber) return res.status(400).json({ error: 'partNumber required' });
+
+  db.run(
+    `INSERT INTO inventory (partNumber, description, location, qty, minQty, notes, updatedAt, updatedBy)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      String(partNumber).trim(),
+      String(description),
+      String(location),
+      Number(qty) || 0,
+      Number(minQty) || 0,
+      String(notes),
+      now,
+      req.user
+    ],
+    function (err) {
+      if (err) {
+        if (String(err.message || '').includes('UNIQUE')) {
+          return res.status(409).json({ error: 'part already exists' });
+        }
+        return res.status(500).json({ error: err.message });
+      }
+      db.get(
+        `SELECT partNumber, description, location, qty, minQty, notes, updatedAt, updatedBy
+         FROM inventory WHERE partNumber = ?`,
+        [partNumber],
+        (e, row) => {
+          if (e) return res.status(500).json({ error: e.message });
+          res.status(201).json(row);
+        }
+      );
+    }
+  );
+});
+
+// ----- UPDATE whole record (admin only) -----
+router.put('/inventory/:partNumber', requireAdmin, (req, res) => {
+  const now = Date.now();
+  const { partNumber } = req.params;
+  const {
+    description = '',
+    location = '',
+    qty = 0,
+    minQty = 0,
+    notes = ''
+  } = req.body || {};
+
+  db.run(
+    `UPDATE inventory
+     SET description = ?, location = ?, qty = ?, minQty = ?, notes = ?, updatedAt = ?, updatedBy = ?
+     WHERE partNumber = ?`,
+    [
+      String(description),
+      String(location),
+      Number(qty) || 0,
+      Number(minQty) || 0,
+      String(notes),
+      now,
+      req.user,
+      partNumber
+    ],
+    function (err) {
+      if (err) return res.status(500).json({ error: err.message });
+      if (this.changes === 0) return res.status(404).json({ error: 'not found' });
+      db.get(
+        `SELECT partNumber, description, location, qty, minQty, notes, updatedAt, updatedBy
+         FROM inventory WHERE partNumber = ?`,
+        [partNumber],
+        (e, row) => {
+          if (e) return res.status(500).json({ error: e.message });
+          res.json(row);
+        }
+      );
+    }
+  );
+});
+
+// ----- DELETE (admin only) -----
+router.delete('/inventory/:partNumber', requireAdmin, (req, res) => {
+  const { partNumber } = req.params;
+  db.run(
+    `DELETE FROM inventory WHERE partNumber = ?`,
+    [partNumber],
+    function (err) {
+      if (err) return res.status(500).json({ error: err.message });
+      if (this.changes === 0) return res.status(404).json({ error: 'not found' });
+      res.json({ ok: true });
+    }
+  );
+});
+
+// ----- adjust qty (non-admins can do counts) -----
+router.post('/inventory/:partNumber/qty', requireUser, (req, res) => {
+  const { partNumber } = req.params;
+  const { qty } = req.body || {};
+  const newQty = Number(qty);
+  if (Number.isNaN(newQty)) return res.status(400).json({ error: 'qty must be number' });
+
+  const now = Date.now();
+  db.run(
+    `UPDATE inventory
+     SET qty = ?, updatedAt = ?, updatedBy = ?
+     WHERE partNumber = ?`,
+    [newQty, now, req.user, partNumber],
+    function (err) {
+      if (err) return res.status(500).json({ error: err.message });
+      if (this.changes === 0) return res.status(404).json({ error: 'not found' });
+      db.get(
+        `SELECT partNumber, description, location, qty, minQty, notes, updatedAt, updatedBy
+         FROM inventory WHERE partNumber = ?`,
+        [partNumber],
+        (e, row) => {
+          if (e) return res.status(500).json({ error: e.message });
+          res.json(row);
+        }
+      );
     }
   );
 });
