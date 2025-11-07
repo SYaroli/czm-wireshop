@@ -96,6 +96,7 @@
     const CURRENT_USER = 'shane';
     const ADMIN_USERS = ['shane','admin'];
     const isAdmin = ADMIN_USERS.includes(CURRENT_USER.toLowerCase());
+    const API_BASE = 'https://wireshop-backend.onrender.com';
 
     document.getElementById('userDisplay').textContent = CURRENT_USER;
     if (isAdmin) {
@@ -103,7 +104,7 @@
     }
 
     async function fetchInventory() {
-      const res = await fetch('/api/inventory-all', {
+      const res = await fetch(`${API_BASE}/api/inventory-all`, {
         headers: { 'x-user': CURRENT_USER }
       });
       const data = await res.json();
@@ -158,7 +159,7 @@
         minQty: Number(mMinQty.value) || 0,
         notes: mNotes.value
       };
-      await fetch(`/api/inventory/${encodeURIComponent(part)}`, {
+      await fetch(`${API_BASE}/api/inventory/${encodeURIComponent(part)}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -173,7 +174,7 @@
     async function deletePart() {
       const part = mPartNumber.value;
       if (!confirm('Delete ' + part + '?')) return;
-      await fetch(`/api/inventory/${encodeURIComponent(part)}`, {
+      await fetch(`${API_BASE}/api/inventory/${encodeURIComponent(part)}`, {
         method: 'DELETE',
         headers: { 'x-user': CURRENT_USER }
       });
