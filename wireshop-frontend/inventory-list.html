@@ -87,12 +87,30 @@
   <div id="editModalBg">
     <div id="editModal">
       <h2 id="modalTitle">Edit Part</h2>
-      <div class="form-row"><label>Part Number</label><input id="mPartNumber"/></div>
-      <div class="form-row"><label>Description</label><input id="mDescription"/></div>
-      <div class="form-row"><label>Location</label><input id="mLocation"/></div>
-      <div class="form-row"><label>Qty</label><input id="mQty" type="number"/></div>
-      <div class="form-row"><label>Min Qty</label><input id="mMinQty" type="number"/></div>
-      <div class="form-row"><label>Notes</label><textarea id="mNotes" rows="2"></textarea></div>
+      <div class="form-row">
+        <label for="mPartNumber">Part Number</label>
+        <input id="mPartNumber" type="text" />
+      </div>
+      <div class="form-row">
+        <label for="mDescription">Description</label>
+        <input id="mDescription" type="text" />
+      </div>
+      <div class="form-row">
+        <label for="mLocation">Location</label>
+        <input id="mLocation" type="text" />
+      </div>
+      <div class="form-row">
+        <label for="mQty">Qty</label>
+        <input id="mQty" type="number" />
+      </div>
+      <div class="form-row">
+        <label for="mMinQty">Min Qty</label>
+        <input id="mMinQty" type="number" />
+      </div>
+      <div class="form-row">
+        <label for="mNotes">Notes</label>
+        <textarea id="mNotes" rows="2"></textarea>
+      </div>
       <div class="actions">
         <button class="apply" id="saveBtn">Save</button>
         <button class="apply" style="background:#444" id="cancelBtn">Cancel</button>
