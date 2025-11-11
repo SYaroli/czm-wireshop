@@ -1,244 +1,295 @@
-// wireshop-backend/routes/inventory.js
-// single source of truth for inventory, DB-backed, admin-only edits
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CZM • Inventory List</title>
+  <link rel="stylesheet" href="/style.css"/>
+  <style>
+    .brand-actions .navbtn{display:inline-block;background:#1a1c20;color:#bbb;padding:6px 12px;border-radius:10px;text-decoration:none;border:1px solid #3a3f44;font-weight:600;font-size:.9rem;margin-left:8px}
+    .brand-actions .navbtn.active{background:#b30000;color:#fff;border-color:#ff4d4d}
+    .toolbar{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+    .badge{background:#eee;border:1px solid #ddd;border-radius:8px;padding:4px 8px;font-weight:700}
+    .qtycell{font-weight:900;text-align:right}
+    .row-actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+    .custom-wrap{display:flex;gap:6px;align-items:center}
+    .custom-wrap input[type=number]{width:84px;padding:6px;border:1px solid #d3d8e1;border-radius:10px}
+    .apply{padding:6px 14px;border:1px solid #b30000;border-radius:10px;background:#b30000;color:#fff;font-weight:800;cursor:pointer;}
+    .apply:hover:enabled{filter:brightness(1.1)}
+    .apply:disabled{background:#b30000;border-color:#b30000;color:#fff;opacity:0.6;cursor:not-allowed}
+    .status{font-size:12px;color:#666}
+    .notes-cell{min-width:425px;white-space:normal;overflow:visible;text-overflow:initial;word-break:break-word}
+    #editModalBg{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:999;}
+    #editModal{background:#18222e;padding:16px;border-radius:6px;width:320px;box-shadow:0 4px 20px rgba(0,0,0,.5);}
+    #editModal h2{margin-top:0;font-size:16px;color:#fff;}
+    #editModal label{display:block;font-size:12px;margin-bottom:2px;color:#fff;}
+    .form-row{margin-bottom:8px;}
+    .form-row input,.form-row textarea{width:100%;padding:4px;background:#101820;border:1px solid #444;color:#fff;border-radius:4px;font-size:12px;}
+    .actions{display:flex;gap:6px;}
+    .edit{padding:6px 14px;border:1px solid #444;border-radius:10px;background:#444;color:#fff;font-weight:800;cursor:pointer;}
+    .edit:hover{filter:brightness(1.2);}
+  </style>
+</head>
+<body>
+  <div class="brand-bar">
+    <div class="brand-inner">
+      <a class="brand-logo" href="/dashboard.html">
+        <img src="/czm-logo.png" alt="CZM">
+        <h1 class="brand-title">CZM • Inventory</h1>
+      </a>
+      <div class="brand-actions">
+        <a class="navbtn" href="/dashboard.html">Dashboard</a>
+        <a class="navbtn" href="/assignments.html">Build Next</a>
+        <a class="navbtn active" href="/inventory">Inventory</a>
+        <a class="navbtn" href="/archive.html">Archive</a>
+        <a class="navbtn" href="/admin.html">Admin</a>
+        <button id="logoutBtn" class="navbtn">Logout</button>
+      </div>
+    </div>
+  </div>
 
-const express = require('express');
-const router = express.Router();
-const db = require('../db'); // this already points to the persistent DB_PATH on Render
+  <main class="page">
+    <div class="card">
+      <h2>Inventory — Snapshot</h2>
+      <div class="toolbar">
+        <div style="flex:1">
+          <label for="q">Filter</label>
+          <input id="q" type="text" placeholder="part number, print name, or location">
+        </div>
+        <div style="display:flex;align-items:end;gap:10px">
+          <label class="badge"><input type="checkbox" id="onlyNonZero"> only non-zero</label>
+          <label class="badge"><input type="checkbox" id="onlyZero"> only 0-qty</label>
+          <button id="exportBtn" class="badge">Export</button>
+          <button id="addPartBtn" class="badge" style="display:none;">Add part</button>
+          <span class="badge" id="countBadge">0 items</span>
+          <span class="status" id="status">Loading…</span>
+        </div>
+      </div>
 
-// ----- auth helpers (same pattern as routes/users.js) -----
-// start with env list
-let ADMIN_USERS = (process.env.ADMIN_USERS || '')
-  .split(',')
-  .map(s => s.trim().toLowerCase())
-  .filter(Boolean);
+      <table class="sticky-head" id="tbl">
+        <thead>
+          <tr>
+            <th style="width:210px">Part Number</th>
+            <th>Print Name</th>
+            <th style="width:180px">Location</th>
+            <th style="width:90px;text-align:right">Qty</th>
+            <th style="min-width:300px">Adjust</th>
+            <th style="min-width:425px">Notes</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </main>
 
-// force-add the two humans who actually use this thing
-const builtIns = [
-  'shane',
-  'shane.yaroli',
-  'tyler.ellis',
-  'tyler',
-];
-for (const u of builtIns) {
-  if (!ADMIN_USERS.includes(u)) ADMIN_USERS.push(u);
-}
+  <div id="editModalBg">
+    <div id="editModal">
+      <h2 id="modalTitle">Edit Part</h2>
+      <div class="form-row">
+        <label for="mPartNumber">Part Number</label>
+        <input id="mPartNumber" type="text" />
+      </div>
+      <div class="form-row">
+        <label for="mDescription">Description</label>
+        <input id="mDescription" type="text" />
+      </div>
+      <div class="form-row">
+        <label for="mLocation">Location</label>
+        <input id="mLocation" type="text" />
+      </div>
+      <div class="form-row">
+        <label for="mQty">Qty</label>
+        <input id="mQty" type="number" />
+      </div>
+      <div class="form-row">
+        <label for="mNotes">Notes</label>
+        <textarea id="mNotes" rows="2"></textarea>
+      </div>
+      <div class="actions">
+        <button class="apply" id="saveBtn">Save</button>
+        <button class="apply" style="background:#444" id="cancelBtn">Cancel</button>
+        <button class="apply" style="margin-left:auto;background:#444" id="deleteBtn">Delete</button>
+      </div>
+    </div>
+  </div>
 
-function currentUser(req) {
-  return (req.header('x-user') || '').trim().toLowerCase();
-}
+  <script src="/catalog.js"></script>
+  <script>
+    const API_ROOT = 'https://wireshop-backend.onrender.com';
+    const user = (()=>{try{return JSON.parse(localStorage.getItem('user')||'{}');}catch{return{};}})();
+    if(!user||!user.username)window.location.href='/index.html';
+    document.getElementById('logoutBtn').onclick=()=>{localStorage.removeItem('user');window.location.href='/index.html';};
 
-function requireUser(req, res, next) {
-  const u = currentUser(req);
-  if (!u) return res.status(401).json({ error: 'x-user required' });
-  req.user = u;
-  next();
-}
+    const ADMIN_USERS = ['shane','admin','shane.yaroli','Shane.Yaroli','Tyler.Ellis','tyler.ellis','tyler'];
+    const isAdmin=ADMIN_USERS.map(x=>x.toLowerCase()).includes((user.username||'').toLowerCase());
+    if(isAdmin)document.getElementById('addPartBtn').style.display='';
 
-function requireAdmin(req, res, next) {
-  const u = currentUser(req);
-  if (!u) return res.status(401).json({ error: 'x-user required' });
-  if (!ADMIN_USERS.includes(u)) return res.status(403).json({ error: 'admin only' });
-  req.user = u;
-  next();
-}
+    const tbody=document.getElementById('tbody');
+    const qEl=document.getElementById('q');
+    const onlyNonZeroEl=document.getElementById('onlyNonZero');
+    const onlyZeroEl=document.getElementById('onlyZero');
+    const countBadge=document.getElementById('countBadge');
+    const statusEl=document.getElementById('status');
 
-// ----- ensure table exists / columns exist -----
-function ensureInventoryTable() {
-  db.run(
-    `CREATE TABLE IF NOT EXISTS inventory (
-      partNumber TEXT PRIMARY KEY,
-      description TEXT,
-      location TEXT,
-      qty INTEGER DEFAULT 0,
-      minQty INTEGER DEFAULT 0,
-      notes TEXT,
-      updatedAt INTEGER,
-      updatedBy TEXT
-    )`
-  );
+    let rows=[];
+    const esc=s=>String(s??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;");
 
-  db.all(`PRAGMA table_info(inventory)`, (err, rows = []) => {
-    if (err) {
-      console.error('PRAGMA inventory failed:', err);
-      return;
+    async function api(path,opts={}){
+      const res=await fetch(API_ROOT+path,{
+        method:opts.method||'GET',
+        headers:{'Content-Type':'application/json','x-user':user.username},
+        body:opts.body?JSON.stringify(opts.body):undefined
+      });
+      if(!res.ok)throw new Error(await res.text());
+      return res.json();
     }
-    const cols = rows.map(r => r.name);
-    const addCol = (name, def) => {
-      if (!cols.includes(name)) {
-        db.run(`ALTER TABLE inventory ADD COLUMN ${name} ${def}`, e => {
-          if (e) console.error(`ALTER TABLE inventory add ${name} failed:`, e.message);
+
+    async function load(){
+      statusEl.textContent='Loading…';
+      // catalog from static file
+      const catalog=(window.catalog||[]).map(c=>({
+        pn:String(c.partNumber||'').trim(),
+        name:c.printName||'',
+        loc:c.location||'',
+        note:(c.notes&&String(c.notes).trim().toLowerCase()!=='nan')?String(c.notes):''
+      })).filter(r=>r.pn);
+
+      // current inventory from DB
+      const snap=await api('/api/inventory-all');
+      const invMap=new Map(snap.map(r=>[String(r.partNumber),r]));
+
+      // build rows, but prefer DB fields when present
+      rows=catalog.map(r=>{
+        const s=invMap.get(r.pn);
+        if(s)invMap.delete(r.pn);
+        return{
+          partNumber:r.pn,
+          description: s && s.description ? s.description : r.name,
+          location:   s && s.location   ? s.location   : r.loc,
+          notes:      s && s.notes      ? s.notes      : r.note,
+          qty:        s ? (s.qty|0)     : 0
+        };
+      });
+
+      // any rows that exist only in DB (added from UI)
+      for(const [pn,s] of invMap){
+        rows.push({
+          partNumber: pn,
+          description: s.description || '',
+          location: s.location || '',
+          notes: s.notes || '',
+          qty: s.qty|0
         });
       }
-    };
-    addCol('description', 'TEXT');
-    addCol('location', 'TEXT');
-    addCol('minQty', 'INTEGER DEFAULT 0');
-    addCol('notes', 'TEXT');
-    addCol('updatedAt', 'INTEGER');
-    addCol('updatedBy', 'TEXT');
-  });
-}
-ensureInventoryTable();
 
-// ----- GET all (for your inventory-list.html) -----
-router.get('/inventory-all', requireUser, (_req, res) => {
-  db.all(
-    `SELECT partNumber, description, location, qty, minQty, notes, updatedAt, updatedBy
-     FROM inventory
-     ORDER BY partNumber COLLATE NOCASE ASC`,
-    [],
-    (err, rows) => {
-      if (err) return res.status(500).json({ error: 'Failed to list inventory' });
-      res.json(rows || []);
+      rows.sort((a,b)=>a.partNumber.localeCompare(b.partNumber,undefined,{numeric:true}));
+      build();
+      statusEl.textContent=`Loaded ${rows.length} items`;
     }
-  );
-});
 
-// ----- GET single -----
-router.get('/inventory/:partNumber', requireUser, (req, res) => {
-  const { partNumber } = req.params;
-  db.get(
-    `SELECT partNumber, description, location, qty, minQty, notes, updatedAt, updatedBy
-     FROM inventory WHERE partNumber = ?`,
-    [partNumber],
-    (err, row) => {
-      if (err) return res.status(500).json({ error: 'DB error' });
-      if (!row) return res.status(404).json({ error: 'not found' });
-      res.json(row);
+    function build(){
+      const q=qEl.value.trim().toLowerCase();
+      const onlyNZ=onlyNonZeroEl.checked;
+      const onlyZ=onlyZeroEl.checked;
+      const filtered=rows.filter(r=>{
+        if(onlyZ&&(r.qty|0)!==0)return false;
+        if(onlyNZ&&(r.qty|0)===0)return false;
+        if(!q)return true;
+        return(
+          (r.partNumber||'').toLowerCase().includes(q)||
+          (r.description||'').toLowerCase().includes(q)||
+          (r.location||'').toLowerCase().includes(q)||
+          (r.notes||'').toLowerCase().includes(q)
+        );
+      });
+      countBadge.textContent=`${filtered.length} items`;
+      tbody.innerHTML=filtered.map(r=>`
+        <tr data-pn="${r.partNumber}">
+          <td><a href="/inv/${encodeURIComponent(r.partNumber)}" target="_blank">${esc(r.partNumber)}</a></td>
+          <td>${esc(r.description||'')}</td>
+          <td>${esc(r.location||'')}</td>
+          <td class="qtycell">${r.qty|0}</td>
+          <td>
+            <div class="row-actions">
+              <input type="number" class="customDelta" placeholder="+/−">
+              <button class="apply">Apply</button>
+              ${isAdmin?`<button class="edit" data-edit="${esc(r.partNumber)}">Edit</button>`:''}
+            </div>
+          </td>
+          <td class="notes-cell"><span title="${esc(r.notes||'')}">${esc(r.notes||'')}</span></td>
+        </tr>
+      `).join('');
     }
-  );
-});
 
-// ----- CREATE (admin only) -----
-router.post('/inventory', requireAdmin, (req, res) => {
-  const now = Date.now();
-  const {
-    partNumber,
-    description = '',
-    location = '',
-    qty = 0,
-    minQty = 0,
-    notes = ''
-  } = req.body || {};
+    tbody.addEventListener('click',async e=>{
+      const editBtn=e.target.closest('button[data-edit]');
+      if(editBtn)return openEdit(editBtn.getAttribute('data-edit'),false);
+      const applyBtn=e.target.closest('button.apply');
+      if(!applyBtn||applyBtn.hasAttribute('data-edit'))return;
+      const tr=e.target.closest('tr');const pn=tr?.dataset?.pn;if(!pn)return;
+      const inp=tr.querySelector('input.customDelta');let delta=parseInt(inp?.value||'0',10);
+      if(!Number.isInteger(delta)||delta===0)return;inp.value='';
+      const r=rows.find(x=>x.partNumber===pn);const newQty=(r.qty|0)+delta;
+      await api(`/api/inventory/${encodeURIComponent(pn)}/qty`,{method:'POST',body:{qty:newQty}});
+      r.qty=newQty;build();
+    });
 
-  if (!partNumber) return res.status(400).json({ error: 'partNumber required' });
+    qEl.oninput=build;
+    onlyNonZeroEl.onchange=build;
+    onlyZeroEl.onchange=build;
 
-  db.run(
-    `INSERT INTO inventory (partNumber, description, location, qty, minQty, notes, updatedAt, updatedBy)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    [
-      String(partNumber).trim(),
-      String(description),
-      String(location),
-      Number(qty) || 0,
-      Number(minQty) || 0,
-      String(notes),
-      now,
-      req.user
-    ],
-    function (err) {
-      if (err) {
-        if (String(err.message || '').includes('UNIQUE')) {
-          return res.status(409).json({ error: 'part already exists' });
-        }
-        return res.status(500).json({ error: err.message });
+    const modalBg=document.getElementById('editModalBg');
+    const mPartNumber=document.getElementById('mPartNumber');
+    const mDescription=document.getElementById('mDescription');
+    const mLocation=document.getElementById('mLocation');
+    const mQty=document.getElementById('mQty');
+    const mNotes=document.getElementById('mNotes');
+    const modalTitle=document.getElementById('modalTitle');
+
+    function openEdit(pn,isNew){
+      if(isNew){
+        modalTitle.textContent='Add Part';
+        mPartNumber.readOnly=false;
+        mPartNumber.value='';mDescription.value='';mLocation.value='';mQty.value=0;mNotes.value='';
+        modalBg.style.display='flex';return;
       }
-      db.get(
-        `SELECT partNumber, description, location, qty, minQty, notes, updatedAt, updatedBy
-         FROM inventory WHERE partNumber = ?`,
-        [partNumber],
-        (e, row) => {
-          if (e) return res.status(500).json({ error: e.message });
-          res.status(201).json(row);
-        }
-      );
+      const row=rows.find(r=>r.partNumber===pn);if(!row)return;
+      modalTitle.textContent='Edit Part';
+      mPartNumber.readOnly=true;
+      mPartNumber.value=row.partNumber;
+      mDescription.value=row.description||'';
+      mLocation.value=row.location||'';
+      mQty.value=row.qty||0;
+      mNotes.value=row.notes||'';
+      modalBg.style.display='flex';
     }
-  );
-});
 
-// ----- UPDATE whole record (admin only) -----
-router.put('/inventory/:partNumber', requireAdmin, (req, res) => {
-  const now = Date.now();
-  const { partNumber } = req.params;
-  const {
-    description = '',
-    location = '',
-    qty = 0,
-    minQty = 0,
-    notes = ''
-  } = req.body || {};
+    document.getElementById('addPartBtn').onclick=()=>openEdit('',true);
+    document.getElementById('cancelBtn').onclick=()=>modalBg.style.display='none';
 
-  db.run(
-    `UPDATE inventory
-     SET description = ?, location = ?, qty = ?, minQty = ?, notes = ?, updatedAt = ?, updatedBy = ?
-     WHERE partNumber = ?`,
-    [
-      String(description),
-      String(location),
-      Number(qty) || 0,
-      Number(minQty) || 0,
-      String(notes),
-      now,
-      req.user,
-      partNumber
-    ],
-    function (err) {
-      if (err) return res.status(500).json({ error: err.message });
-      if (this.changes === 0) return res.status(404).json({ error: 'not found' });
-      db.get(
-        `SELECT partNumber, description, location, qty, minQty, notes, updatedAt, updatedBy
-         FROM inventory WHERE partNumber = ?`,
-        [partNumber],
-        (e, row) => {
-          if (e) return res.status(500).json({ error: e.message });
-          res.json(row);
-        }
-      );
-    }
-  );
-});
+    document.getElementById('saveBtn').onclick=async()=>{
+      const part=mPartNumber.value.trim();if(!part)return alert('Part number required.');
+      const payload={
+        partNumber:part,
+        description:mDescription.value,
+        location:mLocation.value,
+        qty:Number(mQty.value)||0,
+        notes:mNotes.value
+      };
+      const isNew=!rows.find(r=>r.partNumber===part);
+      await api(`/api/inventory${isNew?'':`/${encodeURIComponent(part)}`}`,{method:isNew?'POST':'PUT',body:payload});
+      modalBg.style.display='none';
+      load();
+    };
 
-// ----- DELETE (admin only) -----
-router.delete('/inventory/:partNumber', requireAdmin, (req, res) => {
-  const { partNumber } = req.params;
-  db.run(
-    `DELETE FROM inventory WHERE partNumber = ?`,
-    [partNumber],
-    function (err) {
-      if (err) return res.status(500).json({ error: err.message });
-      if (this.changes === 0) return res.status(404).json({ error: 'not found' });
-      res.json({ ok: true });
-    }
-  );
-});
+    document.getElementById('deleteBtn').onclick=async()=>{
+      const part=mPartNumber.value.trim();if(!part||!confirm(`Delete ${part}?`))return;
+      await api(`/api/inventory/${encodeURIComponent(part)}`,{method:'DELETE'});
+      modalBg.style.display='none';
+      load();
+    };
 
-// ----- adjust qty (non-admins can do counts) -----
-router.post('/inventory/:partNumber/qty', requireUser, (req, res) => {
-  const { partNumber } = req.params;
-  const { qty } = req.body || {};
-  const newQty = Number(qty);
-  if (Number.isNaN(newQty)) return res.status(400).json({ error: 'qty must be number' });
-
-  const now = Date.now();
-  db.run(
-    `UPDATE inventory
-     SET qty = ?, updatedAt = ?, updatedBy = ?
-     WHERE partNumber = ?`,
-    [newQty, now, req.user, partNumber],
-    function (err) {
-      if (err) return res.status(500).json({ error: err.message });
-      if (this.changes === 0) return res.status(404).json({ error: 'not found' });
-      db.get(
-        `SELECT partNumber, description, location, qty, minQty, notes, updatedAt, updatedBy
-         FROM inventory WHERE partNumber = ?`,
-        [partNumber],
-        (e, row) => {
-          if (e) return res.status(500).json({ error: e.message });
-          res.json(row);
-        }
-      );
-    }
-  );
-});
-
-module.exports = router;
+    load().catch(()=>statusEl.textContent='Failed to load');
+  </script>
+</body>
+</html>
