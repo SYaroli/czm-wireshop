@@ -6,7 +6,6 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <link rel="stylesheet" href="style.css" />
   <style>
-    /* page frame stays like your current one */
     body {
       background: #eef0f3;
     }
@@ -57,17 +56,21 @@
       padding: 0 10px;
       font-size: 13px;
       cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
     }
     .toolbar-btn.red {
       background: #c30000;
       color: #fff;
       border-color: #a00000;
     }
+    /* wider adjust column so Apply/Edit fit */
     .table-head {
       background: #0a0b0d;
       color: #fff;
       display: grid;
-      grid-template-columns: 130px 150px 90px 40px 120px 1fr;
+      grid-template-columns: 130px 160px 90px 50px 180px 1fr;
       gap: 0;
       padding: 6px 16px;
       font-size: 12px;
@@ -76,7 +79,7 @@
     }
     .list-body .row {
       display: grid;
-      grid-template-columns: 130px 150px 90px 40px 120px 1fr;
+      grid-template-columns: 130px 160px 90px 50px 180px 1fr;
       gap: 0;
       padding: 7px 16px;
       border-bottom: 1px solid #eee;
@@ -87,12 +90,15 @@
       background: #fafbfc;
     }
     .qty-input {
-      width: 70px;
+      width: 58px;
       border: 1px solid #d0d0d0;
       border-radius: 20px;
       height: 28px;
       padding: 0 6px;
       text-align: center;
+      display: inline-block;
+      vertical-align: middle;
+      margin-right: 4px;
     }
     .apply-btn {
       background: #b70000;
@@ -100,9 +106,11 @@
       border: none;
       border-radius: 5px;
       height: 28px;
-      width: 55px;
+      width: 58px;
       cursor: pointer;
-      margin-right: 6px;
+      display: inline-block;
+      vertical-align: middle;
+      margin-right: 4px;
     }
     .edit-btn {
       background: #3a3a3a;
@@ -110,8 +118,10 @@
       border: none;
       border-radius: 5px;
       height: 28px;
-      width: 55px;
+      width: 58px;
       cursor: pointer;
+      display: inline-block;
+      vertical-align: middle;
     }
     .notes-cell {
       font-size: 11px;
@@ -190,8 +200,8 @@
       <h2 style="margin:0;font-size:16px;font-weight:600;">Inventory — Snapshot</h2>
       <div class="filter-row">
         <input id="filterBox" type="text" placeholder="part number, print name, or location" />
-        <button id="onlyNonZero" class="toolbar-btn"><input type="checkbox" style="vertical-align:middle;margin-right:4px;">only non-zero</button>
-        <button id="onlyZero" class="toolbar-btn"><input type="checkbox" style="vertical-align:middle;margin-right:4px;">only 0-qty</button>
+        <button id="onlyNonZero" class="toolbar-btn"><input type="checkbox">only non-zero</button>
+        <button id="onlyZero" class="toolbar-btn"><input type="checkbox">only 0-qty</button>
         <button id="exportBtn" class="toolbar-btn">Export</button>
         <button id="addBtn" class="toolbar-btn red">Add part</button>
         <span id="countLabel" style="font-size:12px;margin-left:auto;">0 items</span>
@@ -236,10 +246,8 @@
     </div>
   </div>
 
-  <!-- bring in catalog so window.catalog exists -->
   <script src="catalog.js"></script>
   <script>
-    // yes I'm writing browser JS again, because we apparently live in 2012
     const API_BASE = 'https://wireshop-backend.onrender.com/api';
     const listBody = document.getElementById('listBody');
     const filterBox = document.getElementById('filterBox');
@@ -248,8 +256,8 @@
     const onlyZeroBtn = document.getElementById('onlyZero');
     const editModalBackdrop = document.getElementById('editModalBackdrop');
 
-    let ALL_ROWS = [];   // unified rows we will render
-    let DB_ROWS = {};    // map partNumber -> row from backend
+    let ALL_ROWS = [];
+    let DB_ROWS = {};
     let currentUser = null;
     let modalMode = 'edit';
 
@@ -269,29 +277,23 @@
         alert('no user in localStorage. backend needs x-user.');
         return;
       }
-
-      // 1. fetch DB inventory
       const invRes = await fetch(API_BASE + '/inventory-all', {
         headers: {
-          'x-user': currentUser.username || currentUser.name || currentUser.user || currentUser // your app stores "username":"shane.yaroli"
+          'x-user': currentUser.username || currentUser.name || currentUser.user || currentUser
         }
       });
       const invData = await invRes.json();
-      // build map
       DB_ROWS = {};
       invData.forEach(r => {
         DB_ROWS[r.partNumber] = r;
       });
 
-      // 2. merge with catalog
-      const cat = Array.isArray(window.catalog) ? window.catalog : [];  // from catalog.js :contentReference[oaicite:1]{index=1}
+      const cat = Array.isArray(window.catalog) ? window.catalog : [];
       const merged = [];
 
-      // add everything from catalog, overriding with DB when present
       cat.forEach(c => {
         const db = DB_ROWS[c.partNumber];
         if (db) {
-          // important rule: if DB has the part, we trust the DB, even if the field is ''
           merged.push({
             partNumber: db.partNumber,
             description: (db.description !== undefined && db.description !== null) ? db.description : c.printName,
@@ -301,7 +303,6 @@
             notes: (db.notes !== undefined && db.notes !== null) ? db.notes : (c.notes || '')
           });
         } else {
-          // no DB row, so show catalog
           merged.push({
             partNumber: c.partNumber,
             description: c.printName || '',
@@ -313,7 +314,6 @@
         }
       });
 
-      // also add DB parts that are not in catalog
       invData.forEach(db => {
         if (!cat.find(c => c.partNumber === db.partNumber)) {
           merged.push({
@@ -327,7 +327,6 @@
         }
       });
 
-      // sort by part number
       merged.sort((a,b)=> (a.partNumber||'').localeCompare(b.partNumber||''));
       ALL_ROWS = merged;
       renderList();
@@ -342,7 +341,6 @@
       let shown = 0;
 
       ALL_ROWS.forEach(row => {
-        // filtering
         if (filter) {
           const hay = (row.partNumber + ' ' + (row.printName||'') + ' ' + (row.location||'')).toLowerCase();
           if (!hay.includes(filter)) return;
@@ -353,7 +351,6 @@
         const div = document.createElement('div');
         div.className = 'row';
 
-        // part link
         const partA = document.createElement('a');
         partA.href = '/inv/' + encodeURIComponent(row.partNumber);
         partA.textContent = row.partNumber;
@@ -427,13 +424,11 @@
         alert(data.error || 'failed to adjust');
         return;
       }
-      // update local
       const row = ALL_ROWS.find(r => r.partNumber === partNumber);
       if (row) row.qty = newQty;
       renderList();
     }
 
-    // modal logic
     let editingPart = null;
     function openEdit(row, isNew=false) {
       modalMode = isNew ? 'add' : 'edit';
@@ -445,7 +440,6 @@
       document.getElementById('mLoc').value = editingPart.location || '';
       document.getElementById('mQty').value = editingPart.qty != null ? editingPart.qty : 0;
       document.getElementById('mNotes').value = editingPart.notes || '';
-      // show
       editModalBackdrop.style.display = 'flex';
       document.getElementById('deleteBtn').style.display = isNew ? 'none' : 'inline-block';
     }
@@ -501,7 +495,7 @@
       }
 
       editModalBackdrop.style.display = 'none';
-      await loadData(); // reload so we have correct “DB wins” view
+      await loadData();
     }
 
     async function deleteModal() {
@@ -523,7 +517,6 @@
       await loadData();
     }
 
-    // events
     filterBox.addEventListener('input', renderList);
     onlyNonZeroBtn.addEventListener('click', () => {
       const chk = onlyNonZeroBtn.querySelector('input');
@@ -540,7 +533,6 @@
     document.getElementById('saveBtn').addEventListener('click', saveModal);
     document.getElementById('deleteBtn').addEventListener('click', deleteModal);
 
-    // export is still dumb CSV
     document.getElementById('exportBtn').addEventListener('click', () => {
       let csv = 'partNumber,description,location,qty,notes\n';
       ALL_ROWS.forEach(r => {
@@ -555,7 +547,6 @@
       URL.revokeObjectURL(url);
     });
 
-    // init
     loadData();
   </script>
 </body>
