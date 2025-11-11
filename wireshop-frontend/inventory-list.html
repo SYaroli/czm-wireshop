@@ -108,9 +108,9 @@
     </div>
   </div>
 
-  <script src="/catalog.js"></script>
   <script>
     const API_ROOT = 'https://wireshop-backend.onrender.com';
+
     const user = (()=>{try{return JSON.parse(localStorage.getItem('user')||'{}');}catch{return{};}})();
     if(!user||!user.username)window.location.href='/index.html';
     document.getElementById('logoutBtn').onclick=()=>{localStorage.removeItem('user');window.location.href='/index.html';};
@@ -144,38 +144,14 @@
 
     async function load() {
       statusEl.textContent = 'Loading…';
-
-      const catalog = (window.catalog||[]).map(c=>({
-        pn: String(c.partNumber||'').trim(),
-        name: c.printName||'',
-        loc: c.location||'',
-        note: (c.notes && String(c.notes).trim().toLowerCase() !== 'nan') ? String(c.notes) : ''
-      })).filter(r=>r.pn);
-
       const snap = await api('/api/inventory-all');
-      const invMap = new Map(snap.map(r=>[String(r.partNumber), r]));
-
-      rows = catalog.map(r=>{
-        const s = invMap.get(r.pn);
-        if (s) invMap.delete(r.pn);
-        return {
-          partNumber: r.pn,
-          description: s && s.description ? s.description : r.name,
-          location:   s && s.location   ? s.location   : r.loc,
-          notes:      s && s.notes      ? s.notes      : r.note,
-          qty:        s ? (s.qty|0)     : 0
-        };
-      });
-
-      for (const [pn, s] of invMap) {
-        rows.push({
-          partNumber: pn,
-          description: s.description || '',
-          location: s.location || '',
-          notes: s.notes || '',
-          qty: s.qty|0
-        });
-      }
+      rows = snap.map(s => ({
+        partNumber: String(s.partNumber || '').trim(),
+        description: s.description || '',
+        location: s.location || '',
+        notes: s.notes || '',
+        qty: s.qty|0
+      })).filter(r => r.partNumber);
 
       rows.sort((a,b)=>a.partNumber.localeCompare(b.partNumber,undefined,{numeric:true}));
       build();
@@ -288,14 +264,12 @@
         notes: mNotes.value
       };
 
-      // try update first
       try {
         await api(`/api/inventory/${encodeURIComponent(part)}`, {
           method: 'PUT',
           body: payload
         });
       } catch (err) {
-        // if it doesn't exist in DB yet, create it
         if (String(err.message || err).includes('not found')) {
           await api(`/api/inventory`, {
             method: 'POST',
@@ -316,13 +290,28 @@
       try {
         await api(`/api/inventory/${encodeURIComponent(part)}`, {method:'DELETE'});
       } catch (err) {
-        // if it's not in DB, that's fine; it was just from catalog
         if (!String(err.message || err).includes('not found')) {
           throw err;
         }
       }
       modalBg.style.display = 'none';
       load();
+    };
+
+    document.getElementById('exportBtn').onclick = () => {
+      const hdr = ['partNumber','description','location','qty','notes'];
+      const csv = [hdr.join(',')].concat(rows.map(r=>[
+        r.partNumber,
+        `"${(r.description||'').replace(/"/g,'""')}"`,
+        `"${(r.location||'').replace(/"/g,'""')}"`,
+        r.qty|0,
+        `"${(r.notes||'').replace(/"/g,'""')}"`,
+      ].join(','))).join('\n');
+      const blob = new Blob([csv],{type:'text/csv'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'inventory.csv';
+      a.click();
     };
 
     load().catch(()=>statusEl.textContent='Failed to load');
