@@ -142,7 +142,6 @@
     async function load() {
       statusEl.textContent = 'Loading…';
 
-      // static catalog (fallback)
       const catalog = (window.catalog||[]).map(c=>({
         pn: String(c.partNumber||'').trim(),
         name: c.printName||'',
@@ -150,7 +149,6 @@
         note: (c.notes && String(c.notes).trim().toLowerCase() !== 'nan') ? String(c.notes) : ''
       })).filter(r=>r.pn);
 
-      // live DB
       const snap = await api('/api/inventory-all');
       const invMap = new Map(snap.map(r=>[String(r.partNumber), r]));
 
@@ -166,7 +164,6 @@
         };
       });
 
-      // rows that exist only in DB (added through UI)
       for (const [pn, s] of invMap) {
         rows.push({
           partNumber: pn,
@@ -287,11 +284,21 @@
         qty: Number(mQty.value)||0,
         notes: mNotes.value
       };
-      const isNew = !rows.find(r=>r.partNumber===part);
-      await api(`/api/inventory${isNew?'':`/${encodeURIComponent(part)}`}`, {
-        method: isNew ? 'POST' : 'PUT',
-        body: payload
-      });
+      try {
+        await api(`/api/inventory/${encodeURIComponent(part)}`, {
+          method: 'PUT',
+          body: payload
+        });
+      } catch (err) {
+        if (String(err).includes('not found')) {
+          await api(`/api/inventory`, {
+            method: 'POST',
+            body: payload
+          });
+        } else {
+          throw err;
+        }
+      }
       modalBg.style.display = 'none';
       load();
     };
