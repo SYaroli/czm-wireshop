@@ -6,10 +6,22 @@ const router = express.Router();
 const db = require('../db'); // this already points to the persistent DB_PATH on Render
 
 // ----- auth helpers (same pattern as routes/users.js) -----
-const ADMIN_USERS = (process.env.ADMIN_USERS || '')
+// start with env list
+let ADMIN_USERS = (process.env.ADMIN_USERS || '')
   .split(',')
   .map(s => s.trim().toLowerCase())
   .filter(Boolean);
+
+// force-add the two humans who actually use this thing
+const builtIns = [
+  'shane',
+  'shane.yaroli',
+  'tyler.ellis',
+  'tyler',
+];
+for (const u of builtIns) {
+  if (!ADMIN_USERS.includes(u)) ADMIN_USERS.push(u);
+}
 
 function currentUser(req) {
   return (req.header('x-user') || '').trim().toLowerCase();
@@ -32,7 +44,6 @@ function requireAdmin(req, res, next) {
 
 // ----- ensure table exists / columns exist -----
 function ensureInventoryTable() {
-  // base table
   db.run(
     `CREATE TABLE IF NOT EXISTS inventory (
       partNumber TEXT PRIMARY KEY,
@@ -46,7 +57,6 @@ function ensureInventoryTable() {
     )`
   );
 
-  // in case the table existed from an older version missing some columns
   db.all(`PRAGMA table_info(inventory)`, (err, rows = []) => {
     if (err) {
       console.error('PRAGMA inventory failed:', err);
