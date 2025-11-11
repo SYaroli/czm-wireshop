@@ -12,7 +12,7 @@
     .badge{background:#eee;border:1px solid #ddd;border-radius:8px;padding:4px 8px;font-weight:700}
     .qtycell{font-weight:900;text-align:right}
     .row-actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
-    .custom-wrap input[type=number], .row-actions input[type=number]{width:84px;padding:6px;border:1px solid #d3d8e1;border-radius:10px}
+    .row-actions input[type=number]{width:84px;padding:6px;border:1px solid #d3d8e1;border-radius:10px}
     .apply{padding:6px 14px;border:1px solid #b30000;border-radius:10px;background:#b30000;color:#fff;font-weight:800;cursor:pointer;}
     .edit{padding:6px 14px;border:1px solid #444;border-radius:10px;background:#444;color:#fff;font-weight:800;cursor:pointer;}
     .notes-cell{min-width:425px;word-break:break-word}
@@ -135,7 +135,10 @@
         headers:{'Content-Type':'application/json','x-user':user.username},
         body:opts.body?JSON.stringify(opts.body):undefined
       });
-      if(!res.ok) throw new Error(await res.text());
+      if(!res.ok) {
+        const text = await res.text();
+        throw new Error(text || ('HTTP '+res.status));
+      }
       return res.json();
     }
 
@@ -284,13 +287,16 @@
         qty: Number(mQty.value)||0,
         notes: mNotes.value
       };
+
+      // try update first
       try {
         await api(`/api/inventory/${encodeURIComponent(part)}`, {
           method: 'PUT',
           body: payload
         });
       } catch (err) {
-        if (String(err).includes('not found')) {
+        // if it doesn't exist in DB yet, create it
+        if (String(err.message || err).includes('not found')) {
           await api(`/api/inventory`, {
             method: 'POST',
             body: payload
@@ -299,6 +305,7 @@
           throw err;
         }
       }
+
       modalBg.style.display = 'none';
       load();
     };
@@ -306,7 +313,14 @@
     document.getElementById('deleteBtn').onclick = async () => {
       const part = mPartNumber.value.trim();
       if (!part || !confirm(`Delete ${part}?`)) return;
-      await api(`/api/inventory/${encodeURIComponent(part)}`, {method:'DELETE'});
+      try {
+        await api(`/api/inventory/${encodeURIComponent(part)}`, {method:'DELETE'});
+      } catch (err) {
+        // if it's not in DB, that's fine; it was just from catalog
+        if (!String(err.message || err).includes('not found')) {
+          throw err;
+        }
+      }
       modalBg.style.display = 'none';
       load();
     };
