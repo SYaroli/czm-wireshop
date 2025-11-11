@@ -108,17 +108,14 @@
     </div>
   </div>
 
-  <!-- keep this for now -->
-  <script src="/catalog.js"></script>
+  <!-- IMPORTANT: real path -->
+  <script src="/wireshop-frontend/catalog.js"></script>
   <script>
     const API_ROOT = 'https://wireshop-backend.onrender.com';
-
-    // current user
     const user = (()=>{try{return JSON.parse(localStorage.getItem('user')||'{}');}catch{return{};}})();
     if(!user||!user.username)window.location.href='/index.html';
     document.getElementById('logoutBtn').onclick=()=>{localStorage.removeItem('user');window.location.href='/index.html';};
 
-    // admins
     const ADMIN_USERS = ['shane','admin','shane.yaroli','Shane.Yaroli','Tyler.Ellis','tyler.ellis','tyler'];
     const isAdmin = ADMIN_USERS.map(x=>x.toLowerCase()).includes((user.username||'').toLowerCase());
     if(isAdmin)document.getElementById('addPartBtn').style.display='';
@@ -129,21 +126,16 @@
     const onlyZeroEl = document.getElementById('onlyZero');
     const countBadge = document.getElementById('countBadge');
     const statusEl = document.getElementById('status');
-
     let mergedRows = [];
 
     const esc = s => String(s??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;");
 
     function sniffCatalog() {
-      // try a bunch of names
       if (window.catalog && Array.isArray(window.catalog)) return window.catalog;
       if (window.inventory && Array.isArray(window.inventory)) return window.inventory;
       if (window.inventoryCatalog && Array.isArray(window.inventoryCatalog)) return window.inventoryCatalog;
       if (window.parts && Array.isArray(window.parts)) return window.parts;
-      // last resort: global "catalog" (not on window)
-      try {
-        if (typeof catalog !== 'undefined' && Array.isArray(catalog)) return catalog;
-      } catch (_) {}
+      try { if (typeof catalog !== 'undefined' && Array.isArray(catalog)) return catalog; } catch(_) {}
       return [];
     }
 
@@ -162,11 +154,8 @@
 
     async function loadAll() {
       statusEl.textContent = 'Loading…';
-
       const dbPromise = api('/api/inventory-all').catch(()=>[]);
-      // catalog is already loaded by the <script>, just read it
       const catRows = sniffCatalog();
-
       const dbRows = await dbPromise;
 
       const dbMap = new Map();
@@ -183,15 +172,12 @@
       }
 
       const rows = [];
-
-      // catalog first, so old info shows up
       for (const c of catRows) {
         const pn = String(c.partNumber||'').trim();
         if (!pn) continue;
         const fromDb = dbMap.get(pn);
         rows.push({
           partNumber: pn,
-          // DB wins, but fall back to catalog fields whatever they are
           description: fromDb ? (fromDb.description ?? '') : (c.printName || c.description || ''),
           location:   fromDb ? (fromDb.location   ?? '') : (c.location || ''),
           notes:      fromDb ? (fromDb.notes      ?? '') : ((c.notes && c.notes!=='NaN') ? c.notes : ''),
@@ -199,8 +185,6 @@
         });
         if (fromDb) dbMap.delete(pn);
       }
-
-      // any db-only parts
       for (const [pn, d] of dbMap) {
         rows.push({
           partNumber: pn,
