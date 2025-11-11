@@ -108,7 +108,7 @@
     </div>
   </div>
 
-  <!-- keep this for now, we still need the data -->
+  <!-- keep this for now -->
   <script src="/catalog.js"></script>
   <script>
     const API_ROOT = 'https://wireshop-backend.onrender.com';
@@ -134,6 +134,19 @@
 
     const esc = s => String(s??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;");
 
+    function sniffCatalog() {
+      // try a bunch of names
+      if (window.catalog && Array.isArray(window.catalog)) return window.catalog;
+      if (window.inventory && Array.isArray(window.inventory)) return window.inventory;
+      if (window.inventoryCatalog && Array.isArray(window.inventoryCatalog)) return window.inventoryCatalog;
+      if (window.parts && Array.isArray(window.parts)) return window.parts;
+      // last resort: global "catalog" (not on window)
+      try {
+        if (typeof catalog !== 'undefined' && Array.isArray(catalog)) return catalog;
+      } catch (_) {}
+      return [];
+    }
+
     async function api(path,opts={}) {
       const res = await fetch(API_ROOT+path,{
         method:opts.method||'GET',
@@ -151,11 +164,11 @@
       statusEl.textContent = 'Loading…';
 
       const dbPromise = api('/api/inventory-all').catch(()=>[]);
-      const catalogPromise = Promise.resolve(window.catalog || []);
+      // catalog is already loaded by the <script>, just read it
+      const catRows = sniffCatalog();
 
-      const [dbRows, catRows] = await Promise.all([dbPromise, catalogPromise]);
+      const dbRows = await dbPromise;
 
-      // make maps
       const dbMap = new Map();
       for (const r of dbRows) {
         const pn = String(r.partNumber||'').trim();
@@ -171,14 +184,15 @@
 
       const rows = [];
 
-      // start with catalog
+      // catalog first, so old info shows up
       for (const c of catRows) {
         const pn = String(c.partNumber||'').trim();
         if (!pn) continue;
         const fromDb = dbMap.get(pn);
         rows.push({
           partNumber: pn,
-          description: fromDb ? (fromDb.description ?? '') : (c.printName || ''),
+          // DB wins, but fall back to catalog fields whatever they are
+          description: fromDb ? (fromDb.description ?? '') : (c.printName || c.description || ''),
           location:   fromDb ? (fromDb.location   ?? '') : (c.location || ''),
           notes:      fromDb ? (fromDb.notes      ?? '') : ((c.notes && c.notes!=='NaN') ? c.notes : ''),
           qty:        fromDb ? (fromDb.qty|0)        : 0
@@ -326,7 +340,6 @@
       }
 
       modalBg.style.display = 'none';
-      // refresh to re-merge DB+catalog
       loadAll();
     };
 
