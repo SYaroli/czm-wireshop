@@ -108,13 +108,17 @@
     </div>
   </div>
 
+  <!-- keep this for now, we still need the data -->
+  <script src="/catalog.js"></script>
   <script>
     const API_ROOT = 'https://wireshop-backend.onrender.com';
 
+    // current user
     const user = (()=>{try{return JSON.parse(localStorage.getItem('user')||'{}');}catch{return{};}})();
     if(!user||!user.username)window.location.href='/index.html';
     document.getElementById('logoutBtn').onclick=()=>{localStorage.removeItem('user');window.location.href='/index.html';};
 
+    // admins
     const ADMIN_USERS = ['shane','admin','shane.yaroli','Shane.Yaroli','Tyler.Ellis','tyler.ellis','tyler'];
     const isAdmin = ADMIN_USERS.map(x=>x.toLowerCase()).includes((user.username||'').toLowerCase());
     if(isAdmin)document.getElementById('addPartBtn').style.display='';
@@ -126,7 +130,8 @@
     const countBadge = document.getElementById('countBadge');
     const statusEl = document.getElementById('status');
 
-    let rows = [];
+    let mergedRows = [];
+
     const esc = s => String(s??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;");
 
     async function api(path,opts={}) {
@@ -135,25 +140,65 @@
         headers:{'Content-Type':'application/json','x-user':user.username},
         body:opts.body?JSON.stringify(opts.body):undefined
       });
-      if(!res.ok) {
-        const text = await res.text();
-        throw new Error(text || ('HTTP '+res.status));
+      if(!res.ok){
+        const t = await res.text();
+        throw new Error(t||('HTTP '+res.status));
       }
       return res.json();
     }
 
-    async function load() {
+    async function loadAll() {
       statusEl.textContent = 'Loading…';
-      const snap = await api('/api/inventory-all');
-      rows = snap.map(s => ({
-        partNumber: String(s.partNumber || '').trim(),
-        description: s.description || '',
-        location: s.location || '',
-        notes: s.notes || '',
-        qty: s.qty|0
-      })).filter(r => r.partNumber);
+
+      const dbPromise = api('/api/inventory-all').catch(()=>[]);
+      const catalogPromise = Promise.resolve(window.catalog || []);
+
+      const [dbRows, catRows] = await Promise.all([dbPromise, catalogPromise]);
+
+      // make maps
+      const dbMap = new Map();
+      for (const r of dbRows) {
+        const pn = String(r.partNumber||'').trim();
+        if (!pn) continue;
+        dbMap.set(pn, {
+          partNumber: pn,
+          description: r.description ?? '',
+          location: r.location ?? '',
+          notes: r.notes ?? '',
+          qty: r.qty|0
+        });
+      }
+
+      const rows = [];
+
+      // start with catalog
+      for (const c of catRows) {
+        const pn = String(c.partNumber||'').trim();
+        if (!pn) continue;
+        const fromDb = dbMap.get(pn);
+        rows.push({
+          partNumber: pn,
+          description: fromDb ? (fromDb.description ?? '') : (c.printName || ''),
+          location:   fromDb ? (fromDb.location   ?? '') : (c.location || ''),
+          notes:      fromDb ? (fromDb.notes      ?? '') : ((c.notes && c.notes!=='NaN') ? c.notes : ''),
+          qty:        fromDb ? (fromDb.qty|0)        : 0
+        });
+        if (fromDb) dbMap.delete(pn);
+      }
+
+      // any db-only parts
+      for (const [pn, d] of dbMap) {
+        rows.push({
+          partNumber: pn,
+          description: d.description ?? '',
+          location: d.location ?? '',
+          notes: d.notes ?? '',
+          qty: d.qty|0
+        });
+      }
 
       rows.sort((a,b)=>a.partNumber.localeCompare(b.partNumber,undefined,{numeric:true}));
+      mergedRows = rows;
       build();
       statusEl.textContent = `Loaded ${rows.length} items`;
     }
@@ -163,7 +208,7 @@
       const onlyNZ = onlyNonZeroEl.checked;
       const onlyZ  = onlyZeroEl.checked;
 
-      const filtered = rows.filter(r=>{
+      const filtered = mergedRows.filter(r=>{
         if (onlyZ  && (r.qty|0) !== 0) return false;
         if (onlyNZ && (r.qty|0) === 0) return false;
         if (!q) return true;
@@ -207,7 +252,7 @@
       let delta = parseInt(inp?.value||'0', 10);
       if (!Number.isInteger(delta) || delta === 0) return;
       inp.value = '';
-      const r = rows.find(x=>x.partNumber===pn);
+      const r = mergedRows.find(x=>x.partNumber===pn);
       const newQty = (r.qty|0) + delta;
       await api(`/api/inventory/${encodeURIComponent(pn)}/qty`, {method:'POST', body:{qty:newQty}});
       r.qty = newQty;
@@ -238,7 +283,7 @@
         modalBg.style.display = 'flex';
         return;
       }
-      const row = rows.find(r=>r.partNumber===pn);
+      const row = mergedRows.find(r=>r.partNumber===pn);
       if (!row) return;
       modalTitle.textContent = 'Edit Part';
       mPartNumber.readOnly = true;
@@ -281,7 +326,8 @@
       }
 
       modalBg.style.display = 'none';
-      load();
+      // refresh to re-merge DB+catalog
+      loadAll();
     };
 
     document.getElementById('deleteBtn').onclick = async () => {
@@ -295,12 +341,12 @@
         }
       }
       modalBg.style.display = 'none';
-      load();
+      loadAll();
     };
 
     document.getElementById('exportBtn').onclick = () => {
       const hdr = ['partNumber','description','location','qty','notes'];
-      const csv = [hdr.join(',')].concat(rows.map(r=>[
+      const csv = [hdr.join(',')].concat(mergedRows.map(r=>[
         r.partNumber,
         `"${(r.description||'').replace(/"/g,'""')}"`,
         `"${(r.location||'').replace(/"/g,'""')}"`,
@@ -314,7 +360,7 @@
       a.click();
     };
 
-    load().catch(()=>statusEl.textContent='Failed to load');
+    loadAll().catch(()=>statusEl.textContent='Failed to load');
   </script>
 </body>
 </html>
