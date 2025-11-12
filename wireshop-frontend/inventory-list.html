@@ -1,335 +1,416 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="utf-8" />
   <title>CZM • Inventory</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <link rel="stylesheet" href="style.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" href="/czm-logo.png" />
   <style>
-    /* ---------- layout fixes for cramped buttons ---------- */
-    body { background:#eef0f3; }
-    .topbar {
-      width:100%; height:50px; background:#111; border-bottom:4px solid #c30000;
-      display:flex; align-items:center; padding:0 16px; box-sizing:border-box;
+    :root{
+      --bg:#0f1115;
+      --panel:#171a21;
+      --line:#2a2f3a;
+      --text:#e8eef8;
+      --muted:#9fb0c7;
+      --brand:#c40d0d;
+      --btn:#2b3140;
+      --btn-border:#3a4254;
+      --btn-hover:#3a4254;
+      --ok:#0f8b4c;
+      --shadow: 0 6px 18px rgba(0,0,0,.35);
+      --radius: 10px;
     }
-    .topbar .title { color:#fff; font-weight:600; margin-left:12px; }
+    *{box-sizing:border-box}
+    html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font:14px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial}
+    a{color:#7bb3ff;text-decoration:none}
+    a:hover{text-decoration:underline}
 
-    /* widen the shell so Adjust has space */
-    .inventory-shell {
-      max-width: 1100px;     /* was ~820px */
-      margin:28px auto; background:#fff; border-radius:6px;
-      box-shadow:0 2px 4px rgba(0,0,0,.08); padding:0 0 12px 0;
+    /* Top bar */
+    .topbar{
+      height:44px; display:flex; align-items:center; gap:10px;
+      padding:0 14px; background:#0b0d11; border-bottom:1px solid var(--line);
     }
-    .inventory-header { padding:14px 16px 6px 16px; }
-    .filter-row { display:flex; gap:8px; align-items:center; margin-top:10px; }
-    .filter-row input[type="text"] {
-      flex:1; height:34px; border:1px solid #ccc; border-radius:4px; padding:0 10px;
-    }
-    .toolbar-btn{
-      background:#eee; border:1px solid #ccc; border-radius:4px; height:34px; padding:0 12px;
-      font-size:13px; cursor:pointer; display:flex; align-items:center; gap:6px;
-    }
-    .toolbar-btn.red{ background:#c30000; color:#fff; border-color:#a00000; }
+    .brand{font-weight:700; letter-spacing:.3px; opacity:.9}
 
-    /* make the Adjust column wider and give consistent grid */
-    .table-head{
-      background:#0a0b0d; color:#fff; display:grid;
-      /* part, name, loc, qty, adjust, notes */
-      grid-template-columns: 150px 240px 100px 60px 260px 1fr;
-      padding:8px 16px; font-size:12px; font-weight:600; margin-top:12px;
-    }
-    .list-body .row{
-      display:grid;
-      grid-template-columns: 150px 240px 100px 60px 260px 1fr;
-      padding:9px 16px; border-bottom:1px solid #eee; background:#fff; align-items:center;
-    }
-    .list-body .row:nth-child(odd){ background:#fafbfc; }
+    /* Container */
+    .wrap{max-width:1150px; margin:22px auto; padding:0 16px}
 
-    /* adjust cell: align input/button/button in one neat row */
-    .adjust-cell{ display:flex; gap:8px; align-items:center; }
-    .qty-input{
-      width:70px; height:32px; border:1px solid #d0d0d0; border-radius:20px; padding:0 8px;
-      text-align:center;
-    }
-    .apply-btn,.edit-btn{
-      height:32px; min-width:68px; padding:0 10px; border:none; border-radius:6px; cursor:pointer;
-    }
-    .apply-btn{ background:#b70000; color:#fff; }
-    .edit-btn{ background:#3a3a3a; color:#fff; }
+    /* Card */
+    .card{background:var(--panel); border:1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow)}
+    .card__head{padding:14px 14px 8px; border-bottom:1px solid var(--line)}
+    .title{font-weight:700; font-size:16px; margin:0 0 8px}
 
-    .notes-cell{ font-size:12px; color:#333; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .table-head div{ white-space:nowrap; }
+    /* Controls row */
+    .controls{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
+    .input{height:34px; background:#0e1117; color:var(--text); border:1px solid var(--btn-border); border-radius:8px; padding:6px 10px; outline:none; min-width:280px}
+    .check{display:flex; align-items:center; gap:6px; color:var(--muted); font-size:12px; padding:6px 8px; border:1px solid var(--btn-border); border-radius:8px; background:#0e1117; height:34px}
+    .btn{height:34px; padding:0 12px; border:1px solid var(--btn-border); background:var(--btn); color:var(--text); border-radius:8px; cursor:pointer}
+    .btn:hover{background:var(--btn-hover)}
+    .btn--brand{background:var(--brand); border-color:#8c0a0a}
+    .btn--brand:hover{filter:brightness(.95)}
+    .muted{color:var(--muted); font-size:12px}
 
-    /* modal */
-    .modal-backdrop{ position:fixed; inset:0; background:rgba(0,0,0,.3); display:none; align-items:center; justify-content:center; z-index:50; }
-    .modal{ background:#122032; color:#fff; padding:16px; width:380px; border-radius:6px; box-shadow:0 8px 20px rgba(0,0,0,.4); }
-    .modal h3{ margin:0 0 10px 0; font-size:18px; }
-    .modal label{ display:block; font-size:12px; margin:8px 0 4px; }
-    .modal input,.modal textarea{
-      width:100%; border:none; border-radius:4px; height:34px; padding:6px 8px; outline:none; font-size:14px; color:#000; background:#fff;
-    }
-    .modal textarea{ height:90px; resize:vertical; }
-    .modal-actions{ margin-top:14px; display:flex; gap:10px; justify-content:flex-end; }
-    .btn-small{ border:none; border-radius:5px; padding:6px 12px; cursor:pointer; }
-    .btn-red{ background:#c30000; color:#fff; }
-    .btn-gray{ background:#c5c5c5; color:#000; }
+    /* Table */
+    .table{width:100%; border-collapse:separate; border-spacing:0}
+    .table th, .table td{padding:10px 10px; border-bottom:1px solid var(--line)}
+    .table thead th{position:sticky; top:0; background:var(--panel); z-index:2; font-weight:700; text-align:left}
+    .col-num{width:160px}
+    .col-print{width:280px}
+    .col-loc{width:100px}
+    .col-qty{width:60px; text-align:right}
+    .col-adjust{width:220px}
+    .col-notes{min-width:220px}
 
-    /* responsive: gradually reduce the Adjust column and shell width */
-    @media (max-width: 1200px){
-      .inventory-shell{ max-width: 1000px; }
-      .table-head, .list-body .row{
-        grid-template-columns: 150px 220px 90px 56px 220px 1fr;
-      }
+    /* Adjust cell layout */
+    .adjust{display:flex; align-items:center; gap:8px}
+    .delta{width:68px; text-align:center}
+    .pill{height:28px; padding:0 12px; border-radius:14px; border:1px solid var(--btn-border); background:var(--btn); color:var(--text); cursor:pointer; font-size:12px}
+    .pill--brand{background:var(--brand); border-color:#8c0a0a}
+    .pill:hover{background:var(--btn-hover)}
+    .pill--brand:hover{filter:brightness(.95)}
+    .pill--edit{background:#454b5c;border-color:#4f576c}
+
+    /* Modal */
+    dialog{
+      border:1px solid var(--line); border-radius:12px; background:var(--panel); color:var(--text);
+      width:520px; padding:0; box-shadow: var(--shadow);
     }
-    @media (max-width: 1024px){
-      .inventory-shell{ max-width: 920px; }
-      .table-head, .list-body .row{
-        grid-template-columns: 140px 200px 80px 56px 200px 1fr;
-      }
-      .qty-input{ width:64px; }
-    }
+    dialog::backdrop{background:rgba(0,0,0,.55)}
+    .m-head{padding:14px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; align-items:center}
+    .m-title{margin:0; font-weight:700}
+    .m-body{padding:14px; display:grid; gap:10px}
+    .grid2{display:grid; grid-template-columns:1fr 140px; gap:10px}
+    .m-row{display:flex; flex-direction:column; gap:6px}
+    .m-row label{font-size:12px; color:var(--muted)}
+    .m-actions{padding:12px 14px; border-top:1px solid var(--line); display:flex; gap:8px; justify-content:flex-end}
+    .full{width:100%}
+    .danger{background:#8c0a0a}
+    .danger:hover{filter:brightness(.95)}
+
+    .right{margin-left:auto}
   </style>
 </head>
 <body>
-  <div class="topbar"><div class="title">CZM • Inventory</div></div>
-
-  <div class="inventory-shell">
-    <div class="inventory-header">
-      <h2 style="margin:0;font-size:16px;font-weight:600;">Inventory — Snapshot</h2>
-      <div class="filter-row">
-        <input id="filterBox" type="text" placeholder="part number, print name, or location" />
-        <button id="onlyNonZero" class="toolbar-btn"><input type="checkbox">only non-zero</button>
-        <button id="onlyZero" class="toolbar-btn"><input type="checkbox">only 0-qty</button>
-        <button id="exportBtn" class="toolbar-btn">Export</button>
-        <button id="addBtn" class="toolbar-btn red">Add part</button>
-        <span id="countLabel" style="font-size:12px;margin-left:auto;">0 items</span>
-      </div>
-    </div>
-
-    <div class="table-head">
-      <div>Part Number</div>
-      <div>Print Name</div>
-      <div>Location</div>
-      <div>Qty</div>
-      <div>Adjust</div>
-      <div>Notes</div>
-    </div>
-    <div id="listBody" class="list-body"></div>
+  <div class="topbar">
+    <div class="brand">CZM • Inventory</div>
+    <div class="muted right" id="who"></div>
   </div>
 
-  <!-- edit/add modal -->
-  <div id="editModalBackdrop" class="modal-backdrop">
-    <div class="modal">
-      <h3 id="modalTitle">Edit Part</h3>
-      <label for="mPart">Part Number</label>
-      <input id="mPart" readonly />
-      <label for="mDesc">Description</label>
-      <input id="mDesc" />
-      <label for="mLoc">Location</label>
-      <input id="mLoc" />
-      <label for="mQty">Qty</label>
-      <input id="mQty" type="number" />
-      <label for="mNotes">Notes</label>
-      <textarea id="mNotes"></textarea>
-      <div class="modal-actions">
-        <button id="saveBtn" class="btn-small btn-red">Save</button>
-        <button id="cancelBtn" class="btn-small btn-gray">Cancel</button>
-        <button id="deleteBtn" class="btn-small btn-gray" style="margin-left:auto;">Delete</button>
+  <div class="wrap">
+    <div class="card">
+      <div class="card__head">
+        <h3 class="title">Inventory — Snapshot</h3>
+        <div class="controls">
+          <input id="filter" class="input" placeholder="part number, print name, or location" />
+          <label class="check"><input id="onlyNonZero" type="checkbox" /> only non-zero</label>
+          <label class="check"><input id="onlyZero" type="checkbox" /> only 0-qty</label>
+          <button id="exportBtn" class="btn">Export</button>
+          <button id="addBtn" class="btn btn--brand">Add part</button>
+          <div class="muted" id="count">0 items</div>
+        </div>
+      </div>
+
+      <div style="overflow:auto">
+        <table class="table" id="table">
+          <thead>
+            <tr>
+              <th class="col-num">Part Number</th>
+              <th class="col-print">Print Name</th>
+              <th class="col-loc">Location</th>
+              <th class="col-qty">Qty</th>
+              <th class="col-adjust">Adjust</th>
+              <th class="col-notes">Notes</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
       </div>
     </div>
   </div>
 
-  <!-- keep catalog merge behavior exactly as before -->
-  <script src="catalog.js"></script>
+  <!-- Edit / Add modal -->
+  <dialog id="editModal">
+    <div class="m-head">
+      <h4 class="m-title" id="modalTitle">Edit Part</h4>
+      <button class="btn" id="closeModal">Close</button>
+    </div>
+    <div class="m-body">
+      <div class="m-row">
+        <label for="mPart">Part Number</label>
+        <input id="mPart" class="input full" />
+      </div>
+
+      <div class="m-row">
+        <label for="mPrint">Print Name</label>
+        <input id="mPrint" class="input full" />
+      </div>
+
+      <div class="grid2">
+        <div class="m-row">
+          <label for="mLoc">Location</label>
+          <input id="mLoc" class="input" />
+        </div>
+        <div class="m-row">
+          <label for="mQty">Qty</label>
+          <input id="mQty" class="input" type="number" />
+        </div>
+      </div>
+
+      <div class="m-row">
+        <label for="mNotes">Notes</label>
+        <textarea id="mNotes" class="input full" rows="3" style="resize:vertical"></textarea>
+      </div>
+    </div>
+    <div class="m-actions">
+      <button id="deleteBtn" class="btn danger">Delete</button>
+      <button id="saveBtn" class="btn btn--brand">Save</button>
+    </div>
+  </dialog>
+
   <script>
-    const API_BASE = 'https://wireshop-backend.onrender.com/api';
-    const listBody = document.getElementById('listBody');
-    const filterBox = document.getElementById('filterBox');
-    const countLabel = document.getElementById('countLabel');
-    const onlyNonZeroBtn = document.getElementById('onlyNonZero');
-    const onlyZeroBtn = document.getElementById('onlyZero');
-    const editModalBackdrop = document.getElementById('editModalBackdrop');
+    // ====== CONFIG / STATE ====================================================
+    const API = '/api';
+    const XUSER = (localStorage.getItem('x-user') || '').trim() || 'shane.yaroli';
+    document.getElementById('who').textContent = `user: ${XUSER}`;
+    const headers = {'Content-Type':'application/json','x-user':XUSER};
 
-    let ALL_ROWS = [];
-    let DB_ROWS = {};
-    let currentUser = null;
-    let modalMode = 'edit';
+    let data = [];
+    let filtered = [];
+    let editingPart = null;
+    let modalMode = 'edit';   // <-- keep SINGLE declaration (fix for the duplicate error)
 
-    function getUser() {
-      try { const raw = localStorage.getItem('user'); return raw ? JSON.parse(raw) : null; }
-      catch(e){ return null; }
+    // ====== HELPERS ===========================================================
+    const $ = (id) => document.getElementById(id);
+    function smart(v, ...alts){ for(const k of [v, ...alts]) if(k !== undefined && k !== null) return k; return ''; }
+    function matchFilter(row, q){
+      if(!q) return true;
+      q = q.toLowerCase();
+      return (row.partNumber||'').toLowerCase().includes(q)
+          || (row.printName||'').toLowerCase().includes(q)
+          || (row.location||'').toLowerCase().includes(q)
+          || (row.notes||'').toLowerCase().includes(q);
+    }
+    function normalizeItem(it){
+      return {
+        partNumber: smart(it.partNumber, it.part_number, it.part),
+        printName: smart(it.printName, it.print_name, it.description, ''),
+        location: smart(it.location, ''),
+        qty: Number(smart(it.qty, it.quantity, 0)),
+        notes: smart(it.notes, '')
+      };
     }
 
-    async function loadData() {
-      currentUser = getUser();
-      if (!currentUser) { alert('no user in localStorage. backend needs x-user.'); return; }
+    // ====== RENDER ============================================================
+    function render(){
+      const tbody = $('tbody');
+      tbody.innerHTML = '';
+      const onlyNZ = $('onlyNonZero').checked;
+      const onlyZ  = $('onlyZero').checked;
+      const q = $('filter').value.trim().toLowerCase();
 
-      const invRes = await fetch(API_BASE + '/inventory-all', {
-        headers: { 'x-user': currentUser.username || currentUser.name || currentUser.user || currentUser }
-      });
-      const invData = await invRes.json();
-      DB_ROWS = {}; invData.forEach(r => DB_ROWS[r.partNumber] = r);
+      filtered = data.filter(r => matchFilter(r, q))
+                     .filter(r => onlyNZ ? r.qty !== 0 : true)
+                     .filter(r => onlyZ ? r.qty === 0 : true);
 
-      const cat = Array.isArray(window.catalog) ? window.catalog : [];
-      const merged = [];
+      $('count').textContent = `${filtered.length} items`;
 
-      cat.forEach(c => {
-        const db = DB_ROWS[c.partNumber];
-        if (db) {
-          merged.push({
-            partNumber: db.partNumber,
-            description: (db.description ?? c.printName) || '',
-            printName:   (db.description ?? c.printName) || '',
-            location:    (db.location ?? c.location) || '',
-            qty: typeof db.qty === 'number' ? db.qty : 0,
-            notes: (db.notes ?? c.notes) || ''
-          });
-        } else {
-          merged.push({
-            partNumber: c.partNumber,
-            description: c.printName || '',
-            printName: c.printName || '',
-            location: c.location || '',
-            qty: 0,
-            notes: c.notes || ''
-          });
-        }
-      });
+      for(const row of filtered){
+        const tr = document.createElement('tr');
 
-      invData.forEach(db => {
-        if (!cat.find(c => c.partNumber === db.partNumber)) {
-          merged.push({
-            partNumber: db.partNumber,
-            description: db.description || '',
-            printName: db.description || '',
-            location: db.location || '',
-            qty: typeof db.qty === 'number' ? db.qty : 0,
-            notes: db.notes || ''
-          });
-        }
-      });
+        // Part Number
+        const tdPN = document.createElement('td'); tdPN.className='col-num';
+        const a = document.createElement('a'); a.href = `/inv/${row.partNumber}`; a.textContent = row.partNumber; tdPN.appendChild(a);
+        tr.appendChild(tdPN);
 
-      merged.sort((a,b)=> (a.partNumber||'').localeCompare(b.partNumber||''));
-      ALL_ROWS = merged;
-      renderList();
+        // Print
+        const tdPrint = document.createElement('td'); tdPrint.className='col-print';
+        tdPrint.textContent = row.printName || '—';
+        tr.appendChild(tdPrint);
+
+        // Location
+        const tdLoc = document.createElement('td'); tdLoc.className='col-loc';
+        tdLoc.textContent = row.location || '—';
+        tr.appendChild(tdLoc);
+
+        // Qty
+        const tdQty = document.createElement('td'); tdQty.className='col-qty';
+        tdQty.textContent = row.qty;
+        tr.appendChild(tdQty);
+
+        // Adjust
+        const tdAdj = document.createElement('td'); tdAdj.className='col-adjust';
+        const adjWrap = document.createElement('div'); adjWrap.className='adjust';
+
+        const delta = document.createElement('input'); delta.className='input delta'; delta.placeholder='+/-';
+        adjWrap.appendChild(delta);
+
+        const apply = document.createElement('button'); apply.className='pill pill--brand'; apply.textContent='Apply';
+        apply.addEventListener('click', async () => {
+          const n = Number(delta.value);
+          if(!Number.isFinite(n) || n === 0) return;
+          try{
+            // adjust endpoint best-guess
+            const res = await fetch(`${API}/inventory/${encodeURIComponent(row.partNumber)}/adjust`, {
+              method:'POST', headers, body: JSON.stringify({ delta: n, note:'' })
+            });
+            if(!res.ok){
+              // fall back to legacy endpoint if present
+              const legacy = await fetch(`${API}/inventory-adjust`, {
+                method:'POST', headers, body: JSON.stringify({ partNumber: row.partNumber, delta: n })
+              });
+              if(!legacy.ok) throw new Error('adjust failed');
+            }
+            await loadData();  // refresh
+          }catch(err){
+            alert('Failed to adjust: ' + err.message);
+          }
+        });
+        adjWrap.appendChild(apply);
+
+        const edit = document.createElement('button'); edit.className='pill pill--edit'; edit.textContent='Edit';
+        edit.addEventListener('click', ()=> openEdit(row.partNumber));
+        adjWrap.appendChild(edit);
+
+        tdAdj.appendChild(adjWrap);
+        tr.appendChild(tdAdj);
+
+        // Notes
+        const tdNotes = document.createElement('td'); tdNotes.className='col-notes';
+        tdNotes.textContent = row.notes || '';
+        tr.appendChild(tdNotes);
+
+        tbody.appendChild(tr);
+      }
     }
 
-    function renderList() {
-      const filter = filterBox.value.trim().toLowerCase();
-      const onlyNonZero = onlyNonZeroBtn.querySelector('input').checked;
-      const onlyZero = onlyZeroBtn.querySelector('input').checked;
-
-      listBody.innerHTML = ''; let shown = 0;
-
-      ALL_ROWS.forEach(row => {
-        if (filter){
-          const hay = (row.partNumber + ' ' + (row.printName||'') + ' ' + (row.location||'')).toLowerCase();
-          if (!hay.includes(filter)) return;
-        }
-        if (onlyNonZero && (!row.qty || row.qty === 0)) return;
-        if (onlyZero && (row.qty && row.qty !== 0)) return;
-
-        const div = document.createElement('div'); div.className = 'row';
-
-        const partA = document.createElement('a');
-        partA.href = '/inv/' + encodeURIComponent(row.partNumber);
-        partA.textContent = row.partNumber;
-        partA.style.color = '#003574'; partA.style.fontSize='12px';
-
-        const nameDiv = document.createElement('div'); nameDiv.textContent = row.printName || ''; nameDiv.style.fontSize='12px';
-        const locDiv  = document.createElement('div'); locDiv.textContent  = row.location  || ''; locDiv.style.fontSize='12px';
-        const qtyDiv  = document.createElement('div'); qtyDiv.textContent  = row.qty != null ? row.qty : 0; qtyDiv.style.fontSize='12px';
-
-        const adjustDiv = document.createElement('div'); adjustDiv.className = 'adjust-cell';
-        const adjustInput = document.createElement('input'); adjustInput.type='text'; adjustInput.className='qty-input'; adjustInput.placeholder = '+/-';
-        const applyBtn = document.createElement('button'); applyBtn.className='apply-btn'; applyBtn.textContent='Apply';
-        applyBtn.onclick = () => applyAdjust(row.partNumber, row.qty, adjustInput.value);
-        const editBtn = document.createElement('button'); editBtn.className='edit-btn'; editBtn.textContent='Edit';
-        editBtn.onclick = () => openEdit(row);
-        adjustDiv.append(adjustInput, applyBtn, editBtn);
-
-        const notesDiv = document.createElement('div'); notesDiv.className='notes-cell'; notesDiv.textContent = row.notes || '';
-
-        div.append(partA, nameDiv, locDiv, qtyDiv, adjustDiv, notesDiv);
-        listBody.appendChild(div); shown++;
-      });
-
-      countLabel.textContent = shown + ' items';
+    // ====== DATA IO ===========================================================
+    async function loadData(){
+      $('count').textContent = 'loading…';
+      try{
+        const res = await fetch(`${API}/inventory-all`, {headers});
+        if(!res.ok) throw new Error('load failed');
+        const json = await res.json();
+        data = (Array.isArray(json) ? json : json.items || []).map(normalizeItem);
+      }catch(err){
+        console.error(err);
+        data = [];
+      }
+      render();
     }
 
-    async function applyAdjust(partNumber, currentQty, deltaStr) {
-      const delta = Number(deltaStr); if (isNaN(delta)) { alert('enter a number'); return; }
-      const newQty = (Number(currentQty)||0) + delta;
-      const res = await fetch(API_BASE + '/inventory/' + encodeURIComponent(partNumber) + '/qty', {
-        method:'POST',
-        headers:{ 'Content-Type':'application/json', 'x-user': currentUser.username || currentUser.name || currentUser.user || currentUser },
-        body: JSON.stringify({ qty:newQty })
-      });
-      const data = await res.json(); if (!res.ok){ alert(data.error || 'failed to adjust'); return; }
-      const row = ALL_ROWS.find(r => r.partNumber === partNumber); if (row) row.qty = newQty; renderList();
+    async function openEdit(partNumber){
+      modalMode = 'edit';
+      $('modalTitle').textContent = 'Edit Part';
+      $('deleteBtn').style.display = '';
+
+      try{
+        const res = await fetch(`${API}/inventory/${encodeURIComponent(partNumber)}`, {headers});
+        if(!res.ok) throw new Error('not found');
+        const it = normalizeItem(await res.json());
+        editingPart = it.partNumber;
+
+        $('mPart').value  = it.partNumber;
+        $('mPrint').value = it.printName;
+        $('mLoc').value   = it.location;
+        $('mQty').value   = it.qty;
+        $('mNotes').value = it.notes;
+      }catch(err){
+        alert('Failed to open: ' + err.message);
+        return;
+      }
+      $('editModal').showModal();
     }
 
-    let editingPart = null, modalMode = 'edit';
-    function openEdit(row, isNew=false){
-      modalMode = isNew ? 'add' : 'edit';
-      editingPart = row ? {...row} : {partNumber:'', printName:'', location:'', qty:0, notes:''};
-      document.getElementById('modalTitle').textContent = isNew ? 'Add Part' : 'Edit Part';
-      document.getElementById('mPart').readOnly = !isNew;
-      document.getElementById('mPart').value  = editingPart.partNumber || '';
-      document.getElementById('mDesc').value  = editingPart.printName  || '';
-      document.getElementById('mLoc').value   = editingPart.location   || '';
-      document.getElementById('mQty').value   = editingPart.qty != null ? editingPart.qty : 0;
-      document.getElementById('mNotes').value = editingPart.notes      || '';
-      document.getElementById('deleteBtn').style.display = isNew ? 'none' : 'inline-block';
-      editModalBackdrop.style.display = 'flex';
+    function openAdd(){
+      modalMode = 'add';
+      $('modalTitle').textContent = 'Add Part';
+      $('deleteBtn').style.display = 'none';
+      editingPart = null;
+
+      $('mPart').value  = '';
+      $('mPrint').value = '';
+      $('mLoc').value   = '';
+      $('mQty').value   = 0;
+      $('mNotes').value = '';
+
+      $('editModal').showModal();
     }
 
     async function saveModal(){
-      const part = document.getElementById('mPart').value.trim();
-      const desc = document.getElementById('mDesc').value;
-      const loc  = document.getElementById('mLoc').value;
-      const qty  = Number(document.getElementById('mQty').value || 0);
-      const notes= document.getElementById('mNotes').value;
-      if (!part){ alert('part number required'); return; }
+      const payload = {
+        partNumber: $('mPart').value.trim(),
+        printName:  $('mPrint').value.trim(),
+        location:   $('mLoc').value.trim(),
+        qty:        Number($('mQty').value || 0),
+        notes:      $('mNotes').value
+      };
 
-      const payload = { partNumber:part, description:desc, location:loc, qty, minQty:0, notes };
-      const hdrs = { 'Content-Type':'application/json', 'x-user': currentUser.username || currentUser.name || currentUser.user || currentUser };
-
-      const url = API_BASE + '/inventory' + (modalMode === 'add' ? '' : '/' + encodeURIComponent(part));
-      const method = modalMode === 'add' ? 'POST' : 'PUT';
-      const res = await fetch(url, { method, headers:hdrs, body: JSON.stringify(payload) });
-      const data = await res.json(); if (!res.ok){ alert(data.error || 'failed to save'); return; }
-
-      editModalBackdrop.style.display='none'; await loadData();
+      try{
+        if(modalMode === 'add'){
+          const res = await fetch(`${API}/inventory`, {method:'POST', headers, body: JSON.stringify(payload)});
+          if(!res.ok) throw new Error('create failed');
+        }else{
+          // Allow clearing strings; send explicit empty values (no local fallback)
+          const res = await fetch(`${API}/inventory/${encodeURIComponent(editingPart)}`, {
+            method:'PUT', headers, body: JSON.stringify(payload)
+          });
+          if(!res.ok) throw new Error('save failed');
+        }
+        $('editModal').close();
+        await loadData();
+      }catch(err){
+        alert('Failed to save: ' + err.message);
+      }
     }
 
     async function deleteModal(){
-      const part = document.getElementById('mPart').value.trim(); if (!part) return;
-      if (!confirm('Delete ' + part + '?')) return;
-      const res = await fetch(API_BASE + '/inventory/' + encodeURIComponent(part), {
-        method:'DELETE', headers:{ 'x-user': currentUser.username || currentUser.name || currentUser.user || currentUser }
-      });
-      const data = await res.json(); if (!res.ok){ alert(data.error || 'failed to delete'); return; }
-      editModalBackdrop.style.display='none'; await loadData();
+      if(!editingPart) return;
+      if(!confirm(`Delete ${editingPart}?`)) return;
+      try{
+        const res = await fetch(`${API}/inventory/${encodeURIComponent(editingPart)}`, {method:'DELETE', headers});
+        if(!res.ok) throw new Error('delete failed');
+        $('editModal').close();
+        await loadData();
+      }catch(err){
+        alert('Failed to delete: ' + err.message);
+      }
     }
 
-    filterBox.addEventListener('input', renderList);
-    onlyNonZeroBtn.addEventListener('click', ()=>{ const c=onlyNonZeroBtn.querySelector('input'); c.checked=!c.checked; renderList(); });
-    onlyZeroBtn.addEventListener('click',    ()=>{ const c=onlyZeroBtn.querySelector('input');    c.checked=!c.checked; renderList(); });
-    document.getElementById('addBtn').addEventListener('click', ()=>openEdit(null,true));
-    document.getElementById('cancelBtn').addEventListener('click', ()=> editModalBackdrop.style.display='none');
-    document.getElementById('saveBtn').addEventListener('click', saveModal);
-    document.getElementById('deleteBtn').addEventListener('click', deleteModal);
-
-    document.getElementById('exportBtn').addEventListener('click', () => {
-      let csv = 'partNumber,description,location,qty,notes\n';
-      ALL_ROWS.forEach(r => {
-        csv += `"${r.partNumber}","${(r.printName||'').replace(/"/g,'""')}","${(r.location||'').replace(/"/g,'""')}",${r.qty||0},"${(r.notes||'').replace(/"/g,'""')}"\n`;
-      });
-      const blob = new Blob([csv], {type:'text/csv'}), url = URL.createObjectURL(blob);
-      const a = document.createElement('a'); a.href = url; a.download = 'inventory.csv'; a.click(); URL.revokeObjectURL(url);
+    // ====== EVENTS ============================================================
+    $('filter').addEventListener('input', render);
+    $('onlyNonZero').addEventListener('change', e=>{
+      if(e.target.checked) $('onlyZero').checked = false;
+      render();
+    });
+    $('onlyZero').addEventListener('change', e=>{
+      if(e.target.checked) $('onlyNonZero').checked = false;
+      render();
     });
 
+    $('addBtn').addEventListener('click', openAdd);
+    $('saveBtn').addEventListener('click', saveModal);
+    $('deleteBtn').addEventListener('click', deleteModal);
+    $('closeModal').addEventListener('click', ()=> $('editModal').close());
+
+    $('exportBtn').addEventListener('click', async ()=>{
+      const rows = filtered.length ? filtered : data;
+      const header = ['partNumber','printName','location','qty','notes'];
+      const csv = [header.join(',')].concat(
+        rows.map(r => header.map(k=>{
+          const v = r[k] ?? '';
+          return `"${String(v).replace(/"/g,'""')}"`;
+        }).join(','))
+      ).join('\n');
+
+      const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `inventory_export_${new Date().toISOString().slice(0,10)}.csv`;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    });
+
+    // ====== START =============================================================
     loadData();
   </script>
 </body>
