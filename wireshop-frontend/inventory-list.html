@@ -6,31 +6,35 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <link rel="stylesheet" href="style.css" />
   <style>
-    /* frame */
     body { background:#eef0f3; }
     .topbar{width:100%;height:50px;background:#111;border-bottom:4px solid #c30000;display:flex;align-items:center;padding:0 16px;box-sizing:border-box;}
     .topbar .title{color:#fff;font-weight:600;margin-left:12px;}
 
-    /* widen the canvas so controls have breathing room */
     .inventory-shell{
-      max-width: 1200px;          /* was ~820; more space fixes crowding */
+      max-width: 1200px;
       margin: 28px auto;
       background:#fff;border-radius:6px;box-shadow:0 2px 4px rgba(0,0,0,.08);
       padding:0 0 12px 0;
     }
 
     .inventory-header{padding:14px 16px 6px 16px;}
-    .filter-row{display:flex;gap:8px;align-items:center;margin-top:10px;}
+    .filter-row{display:flex;gap:10px;align-items:center;margin-top:10px;flex-wrap:wrap;}
     .filter-row input[type="text"]{flex:1;height:32px;border:1px solid #ccc;border-radius:4px;padding:0 10px;}
 
-    .toolbar-btn{background:#eee;border:1px solid #ccc;border-radius:4px;height:32px;padding:0 10px;font-size:13px;cursor:pointer;}
-    .toolbar-btn.red{background:#c30000;color:#fff;border-color:#a00000;}
-    #countLabel{font-size:12px;margin-left:auto;}
+    /* pill-style checkbox */
+    .cb{
+      display:flex;align-items:center;gap:8px;height:32px;
+      padding:0 10px;border:1px solid #ccc;border-radius:6px;background:#f7f7f7;user-select:none;cursor:pointer;
+    }
+    .cb input{margin:0; width:16px; height:16px;}
+    .cb span{font-size:13px;line-height:1;}
 
-    /* table */
+    .toolbar-btn{background:#eee;border:1px solid #ccc;border-radius:6px;height:32px;padding:0 12px;font-size:13px;cursor:pointer;}
+    .toolbar-btn.red{background:#c30000;color:#fff;border-color:#a00000;}
+    #countLabel{font-size:12px;margin-left:auto;white-space:nowrap;}
+
     .table-head{
       background:#0a0b0d;color:#fff;display:grid;
-      /* give the Adjust column a lot more room */
       grid-template-columns: 150px 220px 100px 60px 280px 1fr;
       gap:0;padding:8px 16px;font-size:12px;font-weight:600;margin-top:12px;
     }
@@ -41,16 +45,14 @@
     }
     .list-body .row:nth-child(odd){background:#fafbfc;}
 
-    /* Adjust cell layout: tidy, spaced, never overlap */
     .adjust-controls{display:flex;align-items:center;gap:10px;flex-wrap:nowrap;}
     .qty-input{width:76px;border:1px solid #d0d0d0;border-radius:20px;height:30px;padding:0 8px;text-align:center;}
 
-    /* buttons */
     .apply-btn{background:#b70000;color:#fff;border:none;border-radius:6px;height:32px;min-width:64px;padding:0 10px;cursor:pointer;}
     .edit-btn{background:#3a3a3a;color:#fff;border:none;border-radius:6px;height:32px;min-width:64px;padding:0 10px;cursor:pointer;}
 
     .notes-cell{font-size:12px;color:#333;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-    /* modal */
+
     .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.3);display:none;align-items:center;justify-content:center;z-index:50;}
     .modal{background:#122032;color:#fff;padding:16px;width:420px;border-radius:6px;box-shadow:0 8px 20px rgba(0,0,0,.4);}
     .modal h3{margin:0 0 10px 0;font-size:18px;}
@@ -61,12 +63,11 @@
     .btn-small{border:none;border-radius:6px;padding:6px 14px;cursor:pointer;}
     .btn-red{background:#c30000;color:#fff;}
     .btn-gray{background:#c5c5c5;color:#000;}
-    /* responsive tweak */
+
     @media (max-width: 900px){
       .inventory-shell{max-width:100%;margin:0;box-shadow:none;border-radius:0;}
       .table-head,.list-body .row{
-        grid-template-columns: 140px 1fr 90px 60px 240px; /* drop separate notes column */
-        grid-auto-flow:row;
+        grid-template-columns: 140px 1fr 90px 60px 240px;
       }
       .notes-cell{grid-column:1 / -1;margin-top:4px;}
     }
@@ -80,8 +81,8 @@
       <h2 style="margin:0;font-size:16px;font-weight:600;">Inventory — Snapshot</h2>
       <div class="filter-row">
         <input id="filterBox" type="text" placeholder="part number, print name, or location" />
-        <button id="onlyNonZero" class="toolbar-btn"><input type="checkbox" style="vertical-align:middle;margin-right:4px;">only non-zero</button>
-        <button id="onlyZero" class="toolbar-btn"><input type="checkbox" style="vertical-align:middle;margin-right:4px;">only 0-qty</button>
+        <label class="cb"><input id="cbNonZero" type="checkbox"><span>only non-zero</span></label>
+        <label class="cb"><input id="cbOnlyZero" type="checkbox"><span>only 0-qty</span></label>
         <button id="exportBtn" class="toolbar-btn">Export</button>
         <button id="addBtn" class="toolbar-btn red">Add part</button>
         <span id="countLabel">0 items</span>
@@ -111,15 +112,14 @@
     </div>
   </div>
 
-  <!-- data bootstrap -->
   <script src="catalog.js"></script>
   <script>
     const API_BASE = 'https://wireshop-backend.onrender.com/api';
     const listBody = document.getElementById('listBody');
     const filterBox = document.getElementById('filterBox');
     const countLabel = document.getElementById('countLabel');
-    const onlyNonZeroBtn = document.getElementById('onlyNonZero');
-    const onlyZeroBtn = document.getElementById('onlyZero');
+    const cbNonZero = document.getElementById('cbNonZero');
+    const cbOnlyZero = document.getElementById('cbOnlyZero');
     const editModalBackdrop = document.getElementById('editModalBackdrop');
 
     let ALL_ROWS = [];
@@ -186,8 +186,8 @@
 
     function renderList(){
       const filter = filterBox.value.trim().toLowerCase();
-      const onlyNZ = onlyNonZeroBtn.querySelector('input').checked;
-      const onlyZ = onlyZeroBtn.querySelector('input').checked;
+      const onlyNZ = cbNonZero.checked;
+      const onlyZ = cbOnlyZero.checked;
 
       listBody.innerHTML=''; let shown=0;
       ALL_ROWS.forEach(row=>{
@@ -278,14 +278,13 @@
     }
 
     filterBox.addEventListener('input',renderList);
-    onlyNonZeroBtn.addEventListener('click',()=>{const c=onlyNonZeroBtn.querySelector('input');c.checked=!c.checked;renderList();});
-    onlyZeroBtn.addEventListener('click',()=>{const c=onlyZeroBtn.querySelector('input');c.checked=!c.checked;renderList();});
+    cbNonZero.addEventListener('change',renderList);
+    cbOnlyZero.addEventListener('change',renderList);
     document.getElementById('addBtn').addEventListener('click',()=>openEdit(null,true));
     document.getElementById('cancelBtn').addEventListener('click',()=>editModalBackdrop.style.display='none');
     document.getElementById('saveBtn').addEventListener('click',saveModal);
     document.getElementById('deleteBtn').addEventListener('click',deleteModal);
 
-    // simple CSV export
     document.getElementById('exportBtn').addEventListener('click',()=>{
       let csv='partNumber,description,location,qty,notes\n';
       ALL_ROWS.forEach(r=>{csv+=`"${r.partNumber}","${(r.printName||'').replace(/"/g,'""')}","${(r.location||'').replace(/"/g,'""')}",${r.qty||0},"${(r.notes||'').replace(/"/g,'""')}"\n`;});
