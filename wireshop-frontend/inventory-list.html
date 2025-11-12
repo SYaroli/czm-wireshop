@@ -6,79 +6,82 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <link rel="stylesheet" href="style.css" />
   <style>
-    body { background:#eef0f3; }
-    .topbar{width:100%;height:50px;background:#111;border-bottom:4px solid #c30000;display:flex;align-items:center;padding:0 16px;box-sizing:border-box;}
-    .topbar .title{color:#fff;font-weight:600;margin-left:12px;}
+    /* Page chrome */
+    body{background:#eef0f3;margin:0;}
+    .topbar{display:flex;justify-content:space-between;align-items:center;height:50px;padding:0 16px;background:#111;border-bottom:4px solid #c30000;}
+    .brand{display:flex;align-items:center;gap:10px;color:#fff;font-weight:600;font-size:14px}
+    .brand img{height:18px;opacity:.95}
+    .nav{display:flex;gap:8px}
+    .nav a{display:inline-flex;align-items:center;gap:8px;height:30px;padding:0 10px;border-radius:6px;background:#2a2a2a;color:#fff;text-decoration:none;font-size:13px}
+    .nav a.active{background:#c30000}
+    .nav a:hover{background:#3a3a3a}
 
-    .inventory-shell{
-      max-width: 1200px;
-      margin: 28px auto;
-      background:#fff;border-radius:6px;box-shadow:0 2px 4px rgba(0,0,0,.08);
-      padding:0 0 12px 0;
-    }
+    /* Card shell */
+    .inventory-shell{max-width:1200px;margin:24px auto;background:#fff;border-radius:6px;box-shadow:0 2px 4px rgba(0,0,0,.08);padding:0 0 12px}
+    .inventory-header{padding:14px 16px 6px}
+    .inventory-header h2{margin:0 0 6px;font-size:16px;font-weight:600}
 
-    .inventory-header{padding:14px 16px 6px 16px;}
-    .filter-row{display:flex;gap:10px;align-items:center;margin-top:10px;flex-wrap:wrap;}
-    .filter-row input[type="text"]{flex:1;height:32px;border:1px solid #ccc;border-radius:4px;padding:0 10px;}
+    /* Filter toolbar */
+    .filter-row{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+    .filter-row input[type="text"]{flex:1;min-width:260px;height:32px;border:1px solid #cfd4da;border-radius:6px;padding:0 10px}
+    .cb{display:flex;align-items:center;gap:8px;height:32px;padding:0 10px;border:1px solid #cfd4da;border-radius:6px;background:#f7f8fa;user-select:none}
+    .cb input{margin:0;width:16px;height:16px}
+    .toolbar-btn{background:#eee;border:1px solid #cfd4da;border-radius:6px;height:32px;padding:0 12px;font-size:13px;cursor:pointer}
+    .toolbar-btn.red{background:#c30000;color:#fff;border-color:#a00000}
+    #countLabel{font-size:12px;margin-left:auto;white-space:nowrap}
 
-    /* pill-style checkbox */
-    .cb{
-      display:flex;align-items:center;gap:8px;height:32px;
-      padding:0 10px;border:1px solid #ccc;border-radius:6px;background:#f7f7f7;user-select:none;cursor:pointer;
-    }
-    .cb input{margin:0; width:16px; height:16px;}
-    .cb span{font-size:13px;line-height:1;}
+    /* Header row */
+    .table-head{background:#0a0b0d;color:#fff;display:grid;grid-template-columns:150px 220px 100px 60px 280px 1fr;gap:0;padding:8px 16px;font-size:12px;font-weight:600;margin-top:12px}
 
-    .toolbar-btn{background:#eee;border:1px solid #ccc;border-radius:6px;height:32px;padding:0 12px;font-size:13px;cursor:pointer;}
-    .toolbar-btn.red{background:#c30000;color:#fff;border-color:#a00000;}
-    #countLabel{font-size:12px;margin-left:auto;white-space:nowrap;}
+    /* Data rows */
+    .list-body .row{display:grid;grid-template-columns:150px 220px 100px 60px 280px 1fr;gap:0;padding:10px 16px;border-bottom:1px solid #eef2f6;background:#fff;align-items:center}
+    .list-body .row:nth-child(odd){background:#fafbfc}
+    .notes-cell{font-size:12px;color:#333;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
-    .table-head{
-      background:#0a0b0d;color:#fff;display:grid;
-      grid-template-columns: 150px 220px 100px 60px 280px 1fr;
-      gap:0;padding:8px 16px;font-size:12px;font-weight:600;margin-top:12px;
-    }
-    .list-body .row{
-      display:grid;
-      grid-template-columns: 150px 220px 100px 60px 280px 1fr;
-      gap:0;padding:10px 16px;border-bottom:1px solid #eee;background:#fff;align-items:center;
-    }
-    .list-body .row:nth-child(odd){background:#fafbfc;}
+    /* Adjust + actions */
+    .adjust-controls{display:flex;align-items:center;gap:10px;flex-wrap:nowrap}
+    .qty-input{width:76px;border:1px solid #d0d3d8;border-radius:20px;height:30px;padding:0 8px;text-align:center}
+    .apply-btn{background:#b70000;color:#fff;border:none;border-radius:6px;height:32px;min-width:64px;padding:0 10px;cursor:pointer}
+    .edit-btn{background:#3a3a3a;color:#fff;border:none;border-radius:6px;height:32px;min-width:64px;padding:0 10px;cursor:pointer}
+    .muted{color:#9aa3ad;font-size:12px}
 
-    .adjust-controls{display:flex;align-items:center;gap:10px;flex-wrap:nowrap;}
-    .qty-input{width:76px;border:1px solid #d0d0d0;border-radius:20px;height:30px;padding:0 8px;text-align:center;}
+    /* Modal */
+    .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:center;justify-content:center;z-index:50}
+    .modal{background:#122032;color:#fff;padding:16px;width:420px;border-radius:8px;box-shadow:0 8px 20px rgba(0,0,0,.4)}
+    .modal h3{margin:0 0 10px;font-size:18px}
+    .modal label{display:block;font-size:12px;margin-top:8px;margin-bottom:4px}
+    .modal input,.modal textarea{width:100%;border:none;border-radius:6px;height:34px;padding:6px 8px;outline:none;font-size:14px;color:#000}
+    .modal textarea{height:90px;resize:vertical}
+    .modal-actions{margin-top:14px;display:flex;gap:10px;justify-content:flex-end}
+    .btn-small{border:none;border-radius:6px;padding:6px 14px;cursor:pointer}
+    .btn-red{background:#c30000;color:#fff}
+    .btn-gray{background:#c5c5c5;color:#000}
 
-    .apply-btn{background:#b70000;color:#fff;border:none;border-radius:6px;height:32px;min-width:64px;padding:0 10px;cursor:pointer;}
-    .edit-btn{background:#3a3a3a;color:#fff;border:none;border-radius:6px;height:32px;min-width:64px;padding:0 10px;cursor:pointer;}
-
-    .notes-cell{font-size:12px;color:#333;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-
-    .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.3);display:none;align-items:center;justify-content:center;z-index:50;}
-    .modal{background:#122032;color:#fff;padding:16px;width:420px;border-radius:6px;box-shadow:0 8px 20px rgba(0,0,0,.4);}
-    .modal h3{margin:0 0 10px 0;font-size:18px;}
-    .modal label{display:block;font-size:12px;margin-top:8px;margin-bottom:4px;}
-    .modal input,.modal textarea{width:100%;border:none;border-radius:4px;height:34px;padding:6px 8px;outline:none;font-size:14px;color:#000;}
-    .modal textarea{height:90px;resize:vertical;}
-    .modal-actions{margin-top:14px;display:flex;gap:10px;justify-content:flex-end;}
-    .btn-small{border:none;border-radius:6px;padding:6px 14px;cursor:pointer;}
-    .btn-red{background:#c30000;color:#fff;}
-    .btn-gray{background:#c5c5c5;color:#000;}
-
-    @media (max-width: 900px){
-      .inventory-shell{max-width:100%;margin:0;box-shadow:none;border-radius:0;}
-      .table-head,.list-body .row{
-        grid-template-columns: 140px 1fr 90px 60px 240px;
-      }
-      .notes-cell{grid-column:1 / -1;margin-top:4px;}
+    @media (max-width:900px){
+      .inventory-shell{max-width:100%;margin:0;border-radius:0;box-shadow:none}
+      .table-head,.list-body .row{grid-template-columns:140px 1fr 90px 60px 240px}
+      .notes-cell{grid-column:1 / -1;margin-top:4px}
     }
   </style>
 </head>
 <body>
-  <div class="topbar"><div class="title">CZM • Inventory</div></div>
+  <!-- Top navigation -->
+  <div class="topbar">
+    <div class="brand">
+      <img src="czm-logo.png" alt="CZM" />
+      <span>CZM • Inventory</span>
+    </div>
+    <div class="nav">
+      <a href="/assignments.html">Build Next</a>
+      <a href="/inventory" class="active">Inventory</a>
+      <a href="/logout" id="logoutLink">Logout</a>
+    </div>
+  </div>
 
+  <!-- Inventory card -->
   <div class="inventory-shell">
     <div class="inventory-header">
-      <h2 style="margin:0;font-size:16px;font-weight:600;">Inventory — Snapshot</h2>
+      <h2>Inventory — Snapshot</h2>
       <div class="filter-row">
         <input id="filterBox" type="text" placeholder="part number, print name, or location" />
         <label class="cb"><input id="cbNonZero" type="checkbox"><span>only non-zero</span></label>
@@ -95,7 +98,7 @@
     <div id="listBody" class="list-body"></div>
   </div>
 
-  <!-- modal -->
+  <!-- Edit/Add modal -->
   <div id="editModalBackdrop" class="modal-backdrop">
     <div class="modal">
       <h3 id="modalTitle">Edit Part</h3>
@@ -112,37 +115,63 @@
     </div>
   </div>
 
+  <!-- Data sources -->
+  <script src="users.js"></script>
   <script src="catalog.js"></script>
   <script>
     const API_BASE = 'https://wireshop-backend.onrender.com/api';
+
     const listBody = document.getElementById('listBody');
     const filterBox = document.getElementById('filterBox');
     const countLabel = document.getElementById('countLabel');
     const cbNonZero = document.getElementById('cbNonZero');
     const cbOnlyZero = document.getElementById('cbOnlyZero');
     const editModalBackdrop = document.getElementById('editModalBackdrop');
+    const addBtn = document.getElementById('addBtn');
 
     let ALL_ROWS = [];
     let DB_ROWS = {};
     let currentUser = null;
+    let isAdmin = false;
     let modalMode = 'edit';
     let editingPart = null;
 
     function getUser(){
-      try{ const raw = localStorage.getItem('user'); return raw ? JSON.parse(raw) : null; }catch(e){ return null; }
+      try{
+        const raw = localStorage.getItem('user');
+        return raw ? JSON.parse(raw) : null;
+      }catch(e){ return null; }
+    }
+
+    function computeIsAdmin(u){
+      const uname = (u?.username || u?.name || u?.user || '').trim();
+      const fromUsersJs =
+        (window.ADMIN_USERS && Array.isArray(window.ADMIN_USERS) && window.ADMIN_USERS.includes(uname)) ||
+        (window.ADMINS && Array.isArray(window.ADMINS) && window.ADMINS.includes(uname));
+      if (fromUsersJs) return true;
+      // Fallback to your known admins so you’re not locked out if users.js changes
+      const FALLBACK = ['Shane.Yaroli','Tyler.Ellis'];
+      return FALLBACK.includes(uname);
     }
 
     async function loadData(){
       currentUser = getUser();
-      if(!currentUser){ alert('no user in localStorage.'); return; }
+      if(!currentUser){ alert('No user in localStorage. Please log in.'); return; }
+      isAdmin = computeIsAdmin(currentUser);
 
-      const invRes = await fetch(API_BASE+'/inventory-all',{ headers:{'x-user': currentUser.username||currentUser.name||currentUser.user||currentUser }});
+      // gate admin UI bits
+      addBtn.style.display = isAdmin ? 'inline-block' : 'none';
+
+      const invRes = await fetch(API_BASE+'/inventory-all',{
+        headers:{'x-user': currentUser.username||currentUser.name||currentUser.user||currentUser}
+      });
       const invData = await invRes.json();
-      DB_ROWS = {}; invData.forEach(r=> DB_ROWS[r.partNumber]=r);
+      DB_ROWS = {}; invData.forEach(r => DB_ROWS[r.partNumber]=r);
 
       const cat = Array.isArray(window.catalog) ? window.catalog : [];
       const merged = [];
 
+      // catalog + db merge (db overrides when present)
       cat.forEach(c=>{
         const db = DB_ROWS[c.partNumber];
         if(db){
@@ -166,6 +195,7 @@
         }
       });
 
+      // db-only rows
       invData.forEach(db=>{
         if(!cat.find(c=>c.partNumber===db.partNumber)){
           merged.push({
@@ -179,7 +209,7 @@
         }
       });
 
-      merged.sort((a,b)=> (a.partNumber||'').localeCompare(b.partNumber||''));
+      merged.sort((a,b)=>(a.partNumber||'').localeCompare(b.partNumber||''));
       ALL_ROWS = merged;
       renderList();
     }
@@ -202,17 +232,24 @@
 
         const partA = document.createElement('a');
         partA.href = '/inv/'+encodeURIComponent(row.partNumber);
-        partA.textContent = row.partNumber; partA.style.color='#003574'; partA.style.fontSize='12px';
+        partA.textContent = row.partNumber;
+        partA.style.color='#003574'; partA.style.fontSize='12px';
 
         const nameDiv = document.createElement('div'); nameDiv.textContent=row.printName||''; nameDiv.style.fontSize='12px';
         const locDiv = document.createElement('div'); locDiv.textContent=row.location||''; locDiv.style.fontSize='12px';
         const qtyDiv = document.createElement('div'); qtyDiv.textContent = row.qty!=null?row.qty:0; qtyDiv.style.fontSize='12px';
 
         const adjustDiv = document.createElement('div'); adjustDiv.className='adjust-controls';
-        const adjustInput = document.createElement('input'); adjustInput.type='text'; adjustInput.className='qty-input'; adjustInput.placeholder='+/-';
-        const applyBtn = document.createElement('button'); applyBtn.className='apply-btn'; applyBtn.textContent='Apply'; applyBtn.onclick=()=>applyAdjust(row.partNumber,row.qty,adjustInput.value);
-        const editBtn = document.createElement('button'); editBtn.className='edit-btn'; editBtn.textContent='Edit'; editBtn.onclick=()=>openEdit(row);
-        adjustDiv.append(adjustInput,applyBtn,editBtn);
+        if (isAdmin){
+          const adjustInput = document.createElement('input'); adjustInput.type='text'; adjustInput.className='qty-input'; adjustInput.placeholder='+/-';
+          const applyBtn = document.createElement('button'); applyBtn.className='apply-btn'; applyBtn.textContent='Apply';
+          applyBtn.onclick = ()=>applyAdjust(row.partNumber,row.qty,adjustInput.value);
+          const editBtn = document.createElement('button'); editBtn.className='edit-btn'; editBtn.textContent='Edit';
+          editBtn.onclick = ()=>openEdit(row);
+          adjustDiv.append(adjustInput,applyBtn,editBtn);
+        } else {
+          adjustDiv.innerHTML = '<span class="muted">—</span>';
+        }
 
         const notesDiv = document.createElement('div'); notesDiv.className='notes-cell'; notesDiv.textContent=row.notes||'';
 
@@ -223,6 +260,7 @@
     }
 
     async function applyAdjust(partNumber,currentQty,deltaStr){
+      if(!isAdmin) return;
       const delta = Number(deltaStr); if(isNaN(delta)){alert('enter a number');return;}
       const newQty=(Number(currentQty)||0)+delta;
       const res=await fetch(API_BASE+'/inventory/'+encodeURIComponent(partNumber)+'/qty',{
@@ -235,6 +273,7 @@
     }
 
     function openEdit(row,isNew=false){
+      if(!isAdmin) return;
       modalMode = isNew?'add':'edit';
       editingPart = row ? {...row} : {partNumber:'',printName:'',location:'',qty:0,notes:''};
       document.getElementById('modalTitle').textContent = isNew?'Add Part':'Edit Part';
@@ -249,6 +288,7 @@
     }
 
     async function saveModal(){
+      if(!isAdmin) return;
       const part=document.getElementById('mPart').value.trim();
       const desc=document.getElementById('mDesc').value;
       const loc=document.getElementById('mLoc').value;
@@ -270,28 +310,35 @@
     }
 
     async function deleteModal(){
+      if(!isAdmin) return;
       const part=document.getElementById('mPart').value.trim(); if(!part) return;
       if(!confirm('Delete '+part+'?')) return;
-      const res=await fetch(API_BASE+'/inventory/'+encodeURIComponent(part),{method:'DELETE',headers:{'x-user': currentUser.username||currentUser.name||currentUser.user||currentUser}});
+      const res=await fetch(API_BASE+'/inventory/'+encodeURIComponent(part),{
+        method:'DELETE',
+        headers:{'x-user': currentUser.username||currentUser.name||currentUser.user||currentUser}
+      });
       const data=await res.json(); if(!res.ok){alert(data.error||'failed to delete');return;}
       editModalBackdrop.style.display='none'; await loadData();
     }
 
+    // Events
     filterBox.addEventListener('input',renderList);
     cbNonZero.addEventListener('change',renderList);
     cbOnlyZero.addEventListener('change',renderList);
-    document.getElementById('addBtn').addEventListener('click',()=>openEdit(null,true));
+    document.getElementById('exportBtn').addEventListener('click',()=>{
+      let csv='partNumber,description,location,qty,notes\n';
+      ALL_ROWS.forEach(r=>{
+        csv+=`"${r.partNumber}","${(r.printName||'').replace(/"/g,'""')}","${(r.location||'').replace(/"/g,'""')}",${r.qty||0},"${(r.notes||'').replace(/"/g,'""')}"\n`;
+      });
+      const blob=new Blob([csv],{type:'text/csv'}); const url=URL.createObjectURL(blob);
+      const a=document.createElement('a'); a.href=url; a.download='inventory.csv'; a.click(); URL.revokeObjectURL(url);
+    });
+    addBtn.addEventListener('click',()=>openEdit(null,true));
     document.getElementById('cancelBtn').addEventListener('click',()=>editModalBackdrop.style.display='none');
     document.getElementById('saveBtn').addEventListener('click',saveModal);
     document.getElementById('deleteBtn').addEventListener('click',deleteModal);
 
-    document.getElementById('exportBtn').addEventListener('click',()=>{
-      let csv='partNumber,description,location,qty,notes\n';
-      ALL_ROWS.forEach(r=>{csv+=`"${r.partNumber}","${(r.printName||'').replace(/"/g,'""')}","${(r.location||'').replace(/"/g,'""')}",${r.qty||0},"${(r.notes||'').replace(/"/g,'""')}"\n`;});
-      const blob=new Blob([csv],{type:'text/csv'}); const url=URL.createObjectURL(blob);
-      const a=document.createElement('a'); a.href=url; a.download='inventory.csv'; a.click(); URL.revokeObjectURL(url);
-    });
-
+    // Kickoff
     loadData();
   </script>
 </body>
