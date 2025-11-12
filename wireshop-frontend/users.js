@@ -12,8 +12,10 @@ window.users = [
   { username: "Josh.Browher",       pin: "1234", role: "admin" },
   { username: "Allen.Durrence",     pin: "1234", role: "admin" },
   { username: "Robert.Wallace",     pin: "1234", role: "admin" },
-  { username: "Supply"        ,     pin: "1234", role: "assembler" }
+  { username: "Supply"        ,     pin: "1234", role: "assembler" },
+  { username: "Jeremiah.Grainger",  pin: "1234", role: "assembler" }
 ];
+
 
 
 
