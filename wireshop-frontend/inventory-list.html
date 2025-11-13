@@ -1,745 +1,343 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>CZM WireShop Inventory List</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!-- Favicon -->
-  <link rel="icon" href="czm-logo.png" type="image/png">
-
+  <meta charset="UTF-8" />
+  <title>CZM • Inventory</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="stylesheet" href="/style.css" />
   <style>
-    /* Global Reset & Base Styles */
-    *{box-sizing:border-box;margin:0;padding:0}
-    body{
-      font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-      background:#06070a;
-      color:#e5e7eb;
-      min-height:100vh;
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-      justify-content:flex-start;
-      padding:20px;
-    }
-    .app-shell{
-      display:flex;
-      flex-direction:column;
-      align-items:stretch;
-      justify-content:flex-start;
-      width:100%;
-      max-width:1400px;
-      gap:1.5rem;
-    }
+    /* Brand bar (match assignments.html) */
+    .brand-bar{background:#0f1114;border-bottom:4px solid #c30000}
+    .brand-inner{max-width:1200px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;padding:8px 12px}
+    .brand-logo{display:flex;align-items:center;gap:10px;color:#fff;text-decoration:none}
+    .brand-logo img{height:22px;opacity:.95}
+    .brand-title{font-size:16px;margin:0;color:#fff}
+    .brand-actions .navbtn{display:inline-block;background:#1a1c20;color:#bbb;padding:6px 12px;border-radius:10px;text-decoration:none;border:1px solid #3a3f44;font-weight:600;font-size:.9rem;margin-left:8px}
+    .brand-actions .navbtn.active{background:#b30000;color:#fff;border-color:#ff4d4d}
+    .brand-actions .navbtn:hover{background:#24272b;color:#fff}
 
-    /* Header */
-    .header{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:1.5rem;
-      width:100%;
-      padding:0.75rem 1.25rem;
-      background:radial-gradient(circle at top left,#111827 0,#020617 55%);
-      border-radius:0.75rem;
-      box-shadow:0 18px 45px rgba(0,0,0,.8);
-      border:1px solid rgba(148,163,184,.25);
-    }
-    .brand{
-      display:flex;
-      align-items:center;
-      gap:.9rem;
-    }
-    .brand-logo{
-      background:#e11d48;
-      border-radius:.9rem;
-      width:44px;
-      height:44px;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      box-shadow:0 0 25px rgba(248,113,113,.6);
-      border:1px solid rgba(248,113,113,.6);
-    }
-    .brand-logo span{
-      font-weight:800;
-      font-size:1.2rem;
-      color:#f9fafb;
-      letter-spacing:.08em;
-    }
-    .brand-text h1{
-      font-size:1.45rem;
-      color:#f9fafb;
-      letter-spacing:.05em;
-      text-transform:uppercase;
-      font-weight:700;
-    }
-    .brand-text p{
-      font-size:.8rem;
-      color:#9ca3af;
-      margin-top:.2rem;
-    }
+    /* Page chrome */
+    body{background:#eef0f3;margin:0}
 
-    /* Navigation container */
-    .brand-actions{
-      display:flex;
-      align-items:center;
-      gap:.75rem;
-    }
-    .navbtn{
-      border-radius:999px;
-      padding:.55rem 1rem;
-      font-size:.85rem;
-      font-weight:600;
-      border:1px solid rgba(148,163,184,.5);
-      background:rgba(15,23,42,.8);
-      color:#e5e7eb;
-      cursor:pointer;
-      letter-spacing:.04em;
-      text-transform:uppercase;
-      display:inline-flex;
-      align-items:center;
-      gap:.35rem;
-      transition:.18s ease-out;
-      text-decoration:none;
-    }
-    .navbtn span.icon{
-      font-size:1.05rem;
-      opacity:.9;
-    }
-    .navbtn.primary{
-      background:linear-gradient(135deg,#ef4444,#b91c1c);
-      border-color:rgba(248,113,113,.7);
-      color:#fef2f2;
-      box-shadow:0 0 18px rgba(248,113,113,.65);
-    }
-    .navbtn:hover{
-      transform:translateY(-1px);
-      box-shadow:0 20px 40px rgba(0,0,0,.9);
-      border-color:rgba(248,250,252,.7);
-    }
-    .navbtn.primary:hover{
-      filter:brightness(1.05);
-    }
+    /* Card shell */
+    .inventory-shell{max-width:1200px;margin:24px auto;background:#fff;border-radius:6px;box-shadow:0 2px 4px rgba(0,0,0,.08);padding:0 0 12px}
+    .inventory-header{padding:14px 16px 6px}
+    .inventory-header h2{margin:0 0 6px;font-size:16px;font-weight:600}
 
-    .user-pill{
-      padding:.35rem .9rem;
-      border-radius:999px;
-      background:rgba(15,23,42,.9);
-      border:1px solid rgba(148,163,184,.5);
-      font-size:.8rem;
-      color:#9ca3af;
-    }
+    /* Filter toolbar */
+    .filter-row{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+    .filter-row input[type="text"]{flex:1;min-width:260px;height:32px;border:1px solid #cfd4da;border-radius:6px;padding:0 10px}
+    .cb{display:flex;align-items:center;gap:8px;height:32px;padding:0 10px;border:1px solid #cfd4da;border-radius:6px;background:#f7f8fa;user-select:none}
+    .cb input{margin:0;width:16px;height:16px}
+    .toolbar-btn{background:#eee;border:1px solid #cfd4da;border-radius:6px;height:32px;padding:0 12px;font-size:13px;cursor:pointer}
+    .toolbar-btn.red{background:#c30000;color:#fff;border-color:#a00000}
+    #countLabel{font-size:12px;margin-left:auto;white-space:nowrap}
 
-    /* Main content card */
-    .card{
-      width:100%;
-      background:radial-gradient(circle at top left,#111827 0,#020617 60%);
-      border-radius:1rem;
-      padding:1.5rem 1.25rem 1.75rem;
-      box-shadow:0 18px 45px rgba(0,0,0,.8);
-      border:1px solid rgba(148,163,184,.25);
-      display:flex;
-      flex-direction:column;
-      gap:1rem;
-    }
-    .card-header{
-      display:flex;
-      justify-content:space-between;
-      align-items:flex-end;
-      gap:1rem;
-      flex-wrap:wrap;
-    }
-    .card-title{
-      display:flex;
-      flex-direction:column;
-      gap:.1rem;
-    }
-    .card-title h2{
-      font-size:1.2rem;
-      color:#e5e7eb;
-      letter-spacing:.05em;
-      text-transform:uppercase;
-    }
-    .card-title p{
-      font-size:.8rem;
-      color:#9ca3af;
-    }
+    /* Header row */
+    .table-head{background:#0a0b0d;color:#fff;display:grid;grid-template-columns:150px 220px 100px 60px 280px 1fr;gap:0;padding:8px 16px;font-size:12px;font-weight:600;margin-top:12px}
 
-    .filters{
-      display:flex;
-      gap:.5rem;
-      flex-wrap:wrap;
-      align-items:center;
-    }
-    .filters input[type="text"],
-    .filters select{
-      background:rgba(15,23,42,.9);
-      border-radius:.6rem;
-      border:1px solid rgba(148,163,184,.6);
-      padding:.4rem .7rem;
-      color:#e5e7eb;
-      font-size:.8rem;
-      min-width:150px;
-    }
-    .filters input::placeholder{
-      color:#6b7280;
-    }
+    /* Data rows */
+    .list-body .row{display:grid;grid-template-columns:150px 220px 100px 60px 280px 1fr;gap:0;padding:10px 16px;border-bottom:1px solid #eef2f6;background:#fff;align-items:center}
+    .list-body .row:nth-child(odd){background:#fafbfc}
+    .notes-cell{font-size:12px;color:#333;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
-    .pill{
-      font-size:.75rem;
-      padding:.3rem .7rem;
-      border-radius:999px;
-      border:1px solid rgba(148,163,184,.5);
-      color:#9ca3af;
-      background:rgba(15,23,42,.9);
-      display:inline-flex;
-      align-items:center;
-      gap:.25rem;
-    }
-    .pill-dot{
-      width:7px;
-      height:7px;
-      border-radius:999px;
-      background:#22c55e;
-      box-shadow:0 0 10px rgba(34,197,94,.8);
-    }
+    /* Adjust + actions */
+    .adjust-controls{display:flex;align-items:center;gap:10px;flex-wrap:nowrap}
+    .qty-input{width:76px;border:1px solid #d0d3d8;border-radius:20px;height:30px;padding:0 8px;text-align:center}
+    .apply-btn{background:#b70000;color:#fff;border:none;border-radius:6px;height:32px;min-width:64px;padding:0 10px;cursor:pointer}
+    .edit-btn{background:#3a3a3a;color:#fff;border:none;border-radius:6px;height:32px;min-width:64px;padding:0 10px;cursor:pointer}
+    .muted{color:#9aa3ad;font-size:12px}
 
-    /* Table */
-    .table-container{
-      width:100%;
-      border-radius:.9rem;
-      border:1px solid rgba(55,65,81,.9);
-      background:rgba(15,23,42,.9);
-      overflow:hidden;
-    }
-    table{
-      width:100%;
-      border-collapse:collapse;
-      font-size:.8rem;
-    }
-    thead{
-      background:linear-gradient(90deg,rgba(15,23,42,.9),rgba(30,64,175,.35));
-    }
-    thead th{
-      text-align:left;
-      padding:.55rem .7rem;
-      color:#9ca3af;
-      font-weight:600;
-      letter-spacing:.04em;
-      text-transform:uppercase;
-      border-bottom:1px solid rgba(31,41,55,.9);
-      white-space:nowrap;
-    }
-    tbody tr{
-      border-bottom:1px solid rgba(31,41,55,.9);
-    }
-    tbody tr:nth-child(even){
-      background:rgba(15,23,42,.7);
-    }
-    tbody td{
-      padding:.47rem .7rem;
-      vertical-align:top;
-    }
-    tbody tr:hover{
-      background:rgba(30,64,175,.22);
-    }
+    /* Modal */
+    .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:center;justify-content:center;z-index:50}
+    .modal{background:#122032;color:#fff;padding:16px;width:420px;border-radius:8px;box-shadow:0 8px 20px rgba(0,0,0,.4)}
+    .modal h3{margin:0 0 10px;font-size:18px}
+    .modal label{display:block;font-size:12px;margin-top:8px;margin-bottom:4px}
+    .modal input,.modal textarea{width:100%;border:none;border-radius:6px;height:34px;padding:6px 8px;outline:none;font-size:14px;color:#000}
+    .modal textarea{height:90px;resize:vertical}
+    .modal-actions{margin-top:14px;display:flex;gap:10px;justify-content:flex-end}
+    .btn-small{border:none;border-radius:6px;padding:6px 14px;cursor:pointer}
+    .btn-red{background:#c30000;color:#fff}
+    .btn-gray{background:#c5c5c5;color:#000}
 
-    .cell-code{
-      font-family:ui-monospace,Menlo,Monaco,"SFMono-Regular",monospace;
-      font-size:.78rem;
-      color:#e5e7eb;
-    }
-    .cell-qty{
-      font-weight:700;
-      color:#e5e7eb;
-    }
-    .cell-qty.low{
-      color:#f97373;
-    }
-    .cell-qty.medium{
-      color:#facc15;
-    }
-    .cell-qty.high{
-      color:#22c55e;
-    }
-
-    .tag{
-      display:inline-flex;
-      align-items:center;
-      padding:.18rem .45rem;
-      border-radius:999px;
-      font-size:.7rem;
-      border:1px solid rgba(148,163,184,.6);
-      color:#9ca3af;
-      background:rgba(15,23,42,.9);
-      margin-right:.25rem;
-      margin-bottom:.18rem;
-    }
-
-    .footer{
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      margin-top:.75rem;
-      font-size:.75rem;
-      color:#6b7280;
-      flex-wrap:wrap;
-      gap:.5rem;
-    }
-    .footer strong{
-      color:#f9fafb;
-    }
-
-    /* Loading & Empty States */
-    .status-message{
-      padding:.8rem 1rem;
-      border-radius:.75rem;
-      border:1px dashed rgba(148,163,184,.6);
-      color:#9ca3af;
-      font-size:.8rem;
-      display:flex;
-      align-items:center;
-      gap:.6rem;
-      margin-top:.5rem;
-    }
-    .status-dot{
-      width:9px;
-      height:9px;
-      border-radius:999px;
-      background:#22c55e;
-      box-shadow:0 0 10px rgba(34,197,94,.8);
-    }
-
-    /* Pagination */
-    .pagination{
-      display:flex;
-      align-items:center;
-      gap:.4rem;
-      font-size:.8rem;
-    }
-    .pagination button{
-      border-radius:.5rem;
-      border:1px solid rgba(148,163,184,.6);
-      background:rgba(15,23,42,.9);
-      color:#e5e7eb;
-      padding:.25rem .5rem;
-      cursor:pointer;
-      font-size:.75rem;
-    }
-    .pagination button:disabled{
-      opacity:.4;
-      cursor:not-allowed;
-    }
-
-    /* Responsive */
-    @media (max-width:768px){
-      body{padding:10px}
-      .header{
-        flex-direction:column;
-        align-items:flex-start;
-      }
-      .brand-actions{width:100%;justify-content:flex-start;flex-wrap:wrap}
-      .card{padding:1.1rem .9rem 1.25rem}
-      .card-header{
-        flex-direction:column;
-        align-items:flex-start;
-      }
-      thead{display:none}
-      table,tbody,tr,td{display:block;width:100%}
-      tbody tr{margin-bottom:.75rem;border-radius:.75rem;border:1px solid rgba(31,41,55,.9)}
-      tbody td{
-        padding:.35rem .6rem;
-        display:flex;
-        justify-content:space-between;
-        gap:.7rem;
-      }
-      tbody td::before{
-        content:attr(data-label);
-        font-weight:600;
-        color:#9ca3af;
-        text-transform:uppercase;
-        font-size:.7rem;
-      }
-    }
-
-    .login-warning{
-      margin-top:.75rem;
-      padding:.6rem .9rem;
-      border-radius:.75rem;
-      background:rgba(127,29,29,.85);
-      color:#fecaca;
-      border:1px solid rgba(248,113,113,.7);
-      font-size:.8rem;
-    }
-
-    .highlight-count{
-      color:#f97316;
-      font-weight:600;
-    }
-
-    /* Scroll */
-    .table-container{
-      max-height:70vh;
-      overflow:auto;
-    }
-
-    ::-webkit-scrollbar{
-      width:.5rem;
-      height:.5rem;
-    }
-    ::-webkit-scrollbar-track{
-      background:#020617;
-    }
-    ::-webkit-scrollbar-thumb{
-      background:#4b5563;
-      border-radius:999px;
-    }
-    ::-webkit-scrollbar-thumb:hover{
-      background:#9ca3af;
-    }
-
-    .brand-actions .navbtn{
-      font-size:.8rem;
-      padding:.45rem .9rem;
-    }
-    .brand-actions .navbtn.primary{
-      background:linear-gradient(135deg,#ef4444,#991b1b);
-      border-color:#ef4444;
-    }
-    .brand-actions .navbtn.logout{
-      border-color:#f97373;
-      color:#fecaca;
-    }
-    .brand-actions .navbtn.logout:hover{
-      background:rgba(127,29,29,.9);
-    }
-    .brand-actions .navbtn:hover{
-      background:#111827;
-    }
-    .brand-actions .navbtn.primary:hover{
-      background:#b91c1c;
+    @media (max-width:900px){
+      .inventory-shell{max-width:100%;margin:0;border-radius:0;box-shadow:none}
+      .table-head,.list-body .row{grid-template-columns:140px 1fr 90px 60px 240px}
+      .notes-cell{grid-column:1 / -1;margin-top:4px}
     }
   </style>
 </head>
 <body>
-
-<div class="app-shell">
-
-  <!-- Header with brand + nav -->
-  <header class="header">
-    <div class="brand">
-      <div class="brand-logo">
-        <span>CZM</span>
-      </div>
-      <div class="brand-text">
-        <h1>WireShop</h1>
-        <p>Inventory Master List</p>
+  <!-- Top navigation (same structure as Build Next) -->
+  <div class="brand-bar">
+    <div class="brand-inner">
+      <a class="brand-logo" href="/dashboard.html">
+        <img src="/czm-logo.png" alt="CZM">
+        <h1 class="brand-title">CZM • Inventory</h1>
+      </a>
+      <div class="brand-actions">
+        <a class="navbtn" href="/dashboard.html">Dashboard</a>
+        <a class="navbtn" href="/assignments.html">Build Next</a>
+        <a class="navbtn active" href="/inventory">Inventory</a>
+        <a class="navbtn" href="/archive.html">Archive</a>
+        <a class="navbtn" href="/admin.html">Admin</a>
+        <button id="logoutBtn" class="navbtn">Logout</button>
       </div>
     </div>
+  </div>
 
-    <div class="brand-actions">
-      <button class="navbtn" onclick="goToBuildNext()">
-        <span class="icon">▶</span>
-        <span>Build Next</span>
-      </button>
-      <button class="navbtn primary" onclick="goToInventory()">
-        <span class="icon">📦</span>
-        <span>Inventory</span>
-      </button>
-      <button class="navbtn logout" onclick="doLogout()">
-        <span class="icon">⎋</span>
-        <span>Logout</span>
-      </button>
-      <div class="user-pill" id="userDisplay">User: -</div>
-    </div>
-  </header>
-
-  <!-- Main content -->
-  <main class="card">
-    <div class="card-header">
-      <div class="card-title">
-        <h2>Inventory Overview</h2>
-        <p>Read-only list of all harness inventory entries.</p>
-      </div>
-
-      <div class="filters">
-        <input type="text" id="searchInput" placeholder="Search by part, SKU, description..." oninput="applyFilters()">
-        <select id="lowFilter" onchange="applyFilters()">
-          <option value="">All levels</option>
-          <option value="low">Low only</option>
-          <option value="medium">Medium</option>
-          <option value="high">High</option>
-        </select>
-        <div class="pill">
-          <span class="pill-dot"></span>
-          <span id="statusSummary">Loading...</span>
-        </div>
+  <!-- Inventory card -->
+  <div class="inventory-shell">
+    <div class="inventory-header">
+      <h2>Inventory — Snapshot</h2>
+      <div class="filter-row">
+        <input id="filterBox" type="text" placeholder="part number, print name, or location" />
+        <label class="cb"><input id="cbNonZero" type="checkbox"><span>only non-zero</span></label>
+        <label class="cb"><input id="cbOnlyZero" type="checkbox"><span>only 0-qty</span></label>
+        <button id="exportBtn" class="toolbar-btn">Export</button>
+        <button id="addBtn" class="toolbar-btn red">Add part</button>
+        <span id="countLabel">0 items</span>
       </div>
     </div>
 
-    <div id="loginWarning" class="login-warning" style="display:none;">
-      You are not logged in. Please return to the login page and sign in to access inventory data.
+    <div class="table-head">
+      <div>Part Number</div><div>Print Name</div><div>Location</div><div>Qty</div><div>Adjust</div><div>Notes</div>
     </div>
+    <div id="listBody" class="list-body"></div>
+  </div>
 
-    <div class="table-container">
-      <table id="inventoryTable">
-        <thead>
-        <tr>
-          <th style="min-width:140px;">Part Number</th>
-          <th style="min-width:220px;">Description</th>
-          <th style="min-width:80px;">Qty</th>
-          <th style="min-width:80px;">Min</th>
-          <th style="min-width:90px;">Location</th>
-          <th style="min-width:130px;">Print / Notes</th>
-        </tr>
-        </thead>
-        <tbody id="inventoryBody">
-        <!-- Rows injected by JS -->
-        </tbody>
-      </table>
-    </div>
-
-    <div class="footer">
-      <div>
-        <span>Total parts: <strong id="totalCount">0</strong></span>
-        <span> • Low stock: <span class="highlight-count" id="lowCount">0</span></span>
-      </div>
-      <div class="pagination">
-        <button onclick="prevPage()" id="prevBtn">Prev</button>
-        <span id="pageInfo">Page 1</span>
-        <button onclick="nextPage()" id="nextBtn">Next</button>
+  <!-- Edit/Add modal -->
+  <div id="editModalBackdrop" class="modal-backdrop">
+    <div class="modal">
+      <h3 id="modalTitle">Edit Part</h3>
+      <label for="mPart">Part Number</label><input id="mPart" readonly />
+      <label for="mDesc">Description</label><input id="mDesc" />
+      <label for="mLoc">Location</label><input id="mLoc" />
+      <label for="mQty">Qty</label><input id="mQty" type="number" />
+      <label for="mNotes">Notes</label><textarea id="mNotes"></textarea>
+      <div class="modal-actions">
+        <button id="saveBtn" class="btn-small btn-red">Save</button>
+        <button id="cancelBtn" class="btn-small btn-gray">Cancel</button>
+        <button id="deleteBtn" class="btn-small btn-gray" style="margin-left:auto;">Delete</button>
       </div>
     </div>
+  </div>
 
-    <div id="statusMessage" class="status-message" style="display:none;">
-      <div class="status-dot"></div>
-      <span id="statusText"></span>
-    </div>
-  </main>
-</div>
+  <!-- Data sources -->
+  <script src="/users.js"></script>
+  <script src="/catalog.js"></script>
+  <script>
+    const API_BASE = 'https://wireshop-backend.onrender.com/api';
 
-<script>
-  const backendBase = window.BACKEND_BASE || 'https://wireshop-backend.onrender.com';
+    // simple auth + logout (match assignments.html behavior)
+    const currentUser = (()=>{ try{ return JSON.parse(localStorage.getItem('user')||'{}'); }catch{ return {}; } })();
+    if (!currentUser || !currentUser.username) { window.location.href = '/index.html'; }
+    document.getElementById('logoutBtn')?.addEventListener('click', ()=>{ localStorage.removeItem('user'); location.href = '/index.html'; });
 
-  let currentUser = null;
-  let inventoryData = [];
-  let filteredData = [];
-  let currentPage = 1;
-  const pageSize = 50;
+    const listBody = document.getElementById('listBody');
+    const filterBox = document.getElementById('filterBox');
+    const countLabel = document.getElementById('countLabel');
+    const cbNonZero = document.getElementById('cbNonZero');
+    const cbOnlyZero = document.getElementById('cbOnlyZero');
+    const editModalBackdrop = document.getElementById('editModalBackdrop');
+    const addBtn = document.getElementById('addBtn');
 
-  function showStatus(msg){
-    const box=document.getElementById('statusMessage');
-    const text=document.getElementById('statusText');
-    text.textContent=msg;
-    box.style.display='flex';
-  }
+    let ALL_ROWS = [];
+    let DB_ROWS = {};
+    let isAdmin = false;
+    let modalMode = 'edit';
+    let editingPart = null;
 
-  function hideStatus(){
-    document.getElementById('statusMessage').style.display='none';
-  }
-
-  function readSession(){
-    try{
-      const raw=localStorage.getItem('wireShopSession');
-      if(!raw)return null;
-      return JSON.parse(raw);
-    }catch(e){
-      return null;
-    }
-  }
-
-  function ensureLoggedIn(){
-    const session=readSession();
-    if(!session || !session.username){
-      document.getElementById('loginWarning').style.display='block';
-      showStatus('No active session found. Log in to see live data.');
-      return null;
-    }
-    currentUser=session.username;
-    document.getElementById('userDisplay').textContent='User: '+currentUser;
-    return session;
-  }
-
-  function goToBuildNext(){
-    window.location.href='assignments.html';
-  }
-  function goToInventory(){
-    window.location.href='inventory.html';
-  }
-  function doLogout(){
-    localStorage.removeItem('wireShopSession');
-    window.location.href='index.html';
-  }
-
-  async function api(path,options={}){
-    const session=ensureLoggedIn();
-    if(!session)throw new Error('Not logged in');
-    const headers={'Content-Type':'application/json','x-wire-user':session.username};
-    const res=await fetch(backendBase+path,{
-      method:options.method||'GET',
-      headers,
-      body:options.body?JSON.stringify(options.body):undefined
-    });
-    if(!res.ok){
-      const text=await res.text();
-      throw new Error('API '+res.status+': '+text);
-    }
-    return res.json();
-  }
-
-  async function loadData(){
-    const session=ensureLoggedIn();
-    if(!session)return;
-    showStatus('Loading inventory from server...');
-    try{
-      const data=await api('/api/inventory-list');
-      inventoryData=data.items||[];
-      applyFilters();
-      hideStatus();
-    }catch(err){
-      console.error(err);
-      showStatus('Failed to load inventory: '+err.message);
-    }
-  }
-
-  function renderTable(){
-    const tbody=document.getElementById('inventoryBody');
-    tbody.innerHTML='';
-    if(!filteredData.length){
-      const tr=document.createElement('tr');
-      const td=document.createElement('td');
-      td.colSpan=6;
-      td.textContent='No items match the current filters.';
-      td.style.textAlign='center';
-      td.style.color='#9ca3af';
-      td.style.padding='0.8rem';
-      tr.appendChild(td);
-      tbody.appendChild(tr);
-      document.getElementById('pageInfo').textContent='Page 0 of 0';
-      document.getElementById('prevBtn').disabled=true;
-      document.getElementById('nextBtn').disabled=true;
-      return;
+    function computeIsAdmin(u){
+      const uname = (u?.username || u?.name || u?.user || '').trim();
+      const fromUsersJs =
+        (window.ADMIN_USERS && Array.isArray(window.ADMIN_USERS) && window.ADMIN_USERS.includes(uname)) ||
+        (window.ADMINS && Array.isArray(window.ADMINS) && window.ADMINS.includes(uname));
+      if (fromUsersJs) return true;
+      const FALLBACK = ['Shane.Yaroli','Tyler.Ellis'];
+      return FALLBACK.includes(uname);
     }
 
-    const totalPages=Math.ceil(filteredData.length/pageSize)||1;
-    if(currentPage>totalPages)currentPage=totalPages;
-    const start=(currentPage-1)*pageSize;
-    const pageItems=filteredData.slice(start,start+pageSize);
+    async function loadData(){
+      isAdmin = computeIsAdmin(currentUser);
+      addBtn.style.display = isAdmin ? 'inline-block' : 'none';
 
-    for(const item of pageItems){
-      const tr=document.createElement('tr');
+      const invRes = await fetch(API_BASE+'/inventory-all',{
+        headers:{'x-user': currentUser.username||currentUser.name||currentUser.user||currentUser}
+      });
+      const invData = await invRes.json();
+      DB_ROWS = {}; invData.forEach(r => DB_ROWS[r.partNumber]=r);
 
-      const tdPN=document.createElement('td');
-      tdPN.className='cell-code';
-      tdPN.textContent=item.partNumber||'';
-      tdPN.setAttribute('data-label','Part');
-      tr.appendChild(tdPN);
+      const cat = Array.isArray(window.catalog) ? window.catalog : [];
+      const merged = [];
 
-      const tdDesc=document.createElement('td');
-      tdDesc.textContent=item.description||'';
-      tdDesc.setAttribute('data-label','Description');
-      tr.appendChild(tdDesc);
-
-      const tdQty=document.createElement('td');
-      const qty=item.qty ?? 0;
-      const min=item.minQty ?? 0;
-      tdQty.className='cell-qty';
-      if(qty<=0 || qty<min)tdQty.classList.add('low');
-      else if(qty<min*2)tdQty.classList.add('medium');
-      else tdQty.classList.add('high');
-      tdQty.textContent=qty;
-      tdQty.setAttribute('data-label','Qty');
-      tr.appendChild(tdQty);
-
-      const tdMin=document.createElement('td');
-      tdMin.textContent=min;
-      tdMin.setAttribute('data-label','Min');
-      tr.appendChild(tdMin);
-
-      const tdLoc=document.createElement('td');
-      tdLoc.textContent=item.location||'';
-      tdLoc.setAttribute('data-label','Location');
-      tr.appendChild(tdLoc);
-
-      const tdNotes=document.createElement('td');
-      const tags=[];
-      if(item.printName)tags.push({label:'Print',value:item.printName});
-      if(item.notes)tags.push({label:'Notes',value:item.notes});
-      if(!tags.length){
-        tdNotes.textContent='-';
-      }else{
-        for(const t of tags){
-          const span=document.createElement('span');
-          span.className='tag';
-          span.textContent=t.label+': '+t.value;
-          tdNotes.appendChild(span);
+      cat.forEach(c=>{
+        const db = DB_ROWS[c.partNumber];
+        if(db){
+          merged.push({
+            partNumber: db.partNumber,
+            description: db.description ?? c.printName ?? '',
+            printName: db.description ?? c.printName ?? '',
+            location: db.location ?? (c.location||''),
+            qty: typeof db.qty === 'number' ? db.qty : 0,
+            notes: db.notes ?? (c.notes||'')
+          });
+        }else{
+          merged.push({
+            partNumber: c.partNumber,
+            description: c.printName||'',
+            printName: c.printName||'',
+            location: c.location||'',
+            qty: 0,
+            notes: c.notes||''
+          });
         }
-      }
-      tdNotes.setAttribute('data-label','Print/Notes');
-      tr.appendChild(tdNotes);
+      });
 
-      tbody.appendChild(tr);
+      invData.forEach(db=>{
+        if(!cat.find(c=>c.partNumber===db.partNumber)){
+          merged.push({
+            partNumber: db.partNumber,
+            description: db.description ?? '',
+            printName: db.description ?? '',
+            location: db.location ?? '',
+            qty: typeof db.qty === 'number' ? db.qty : 0,
+            notes: db.notes ?? ''
+          });
+        }
+      });
+
+      merged.sort((a,b)=>(a.partNumber||'').localeCompare(b.partNumber||''));
+      ALL_ROWS = merged;
+      renderList();
     }
 
-    document.getElementById('pageInfo').textContent=
-      'Page '+currentPage+' of '+Math.ceil(filteredData.length/pageSize);
-    document.getElementById('prevBtn').disabled=currentPage<=1;
-    document.getElementById('nextBtn').disabled=currentPage>=Math.ceil(filteredData.length/pageSize);
-  }
+    function renderList(){
+      const filter = filterBox.value.trim().toLowerCase();
+      const onlyNZ = cbNonZero.checked;
+      const onlyZ = cbOnlyZero.checked;
 
-  function applyFilters(){
-    const search=document.getElementById('searchInput').value.toLowerCase();
-    const level=document.getElementById('lowFilter').value;
+      listBody.innerHTML=''; let shown=0;
+      ALL_ROWS.forEach(row=>{
+        if(filter){
+          const hay = (row.partNumber+' '+(row.printName||'')+' '+(row.location||'')).toLowerCase();
+          if(!hay.includes(filter)) return;
+        }
+        if(onlyNZ && (!row.qty || row.qty===0)) return;
+        if(onlyZ && (row.qty && row.qty!==0)) return;
 
-    filteredData=inventoryData.filter(item=>{
-      const text=(item.partNumber||'')+' '+(item.description||'')+' '+(item.location||'')+
-        ' '+(item.printName||'')+' '+(item.notes||'');
-      if(search && !text.toLowerCase().includes(search))return false;
+        const div = document.createElement('div'); div.className='row';
 
-      if(level){
-        const qty=item.qty ?? 0;
-        const min=item.minQty ?? 0;
-        const isLow=qty<=0 || qty<min;
-        const isMedium=!isLow && qty<min*2;
-        const isHigh=!isLow && !isMedium;
-        if(level==='low' && !isLow)return false;
-        if(level==='medium' && !isMedium)return false;
-        if(level==='high' && !isHigh)return false;
+        const partA = document.createElement('a');
+        partA.href = '/inv/'+encodeURIComponent(row.partNumber);
+        partA.textContent = row.partNumber;
+        partA.style.color='#003574'; partA.style.fontSize='12px';
+
+        const nameDiv = document.createElement('div'); nameDiv.textContent=row.printName||''; nameDiv.style.fontSize='12px';
+        const locDiv = document.createElement('div'); locDiv.textContent=row.location||''; locDiv.style.fontSize='12px';
+        const qtyDiv = document.createElement('div'); qtyDiv.textContent = row.qty!=null?row.qty:0; qtyDiv.style.fontSize='12px';
+
+        const adjustDiv = document.createElement('div'); adjustDiv.className='adjust-controls';
+        if (isAdmin){
+          const adjustInput = document.createElement('input'); adjustInput.type='text'; adjustInput.className='qty-input'; adjustInput.placeholder='+/-';
+          const applyBtn = document.createElement('button'); applyBtn.className='apply-btn'; applyBtn.textContent='Apply';
+          applyBtn.onclick = ()=>applyAdjust(row.partNumber,row.qty,adjustInput.value);
+          const editBtn = document.createElement('button'); editBtn.className='edit-btn'; editBtn.textContent='Edit';
+          editBtn.onclick = ()=>openEdit(row);
+          adjustDiv.append(adjustInput,applyBtn,editBtn);
+        } else {
+          adjustDiv.innerHTML = '<span class="muted">—</span>';
+        }
+
+        const notesDiv = document.createElement('div'); notesDiv.className='notes-cell'; notesDiv.textContent=row.notes||'';
+
+        div.append(partA,nameDiv,locDiv,qtyDiv,adjustDiv,notesDiv);
+        listBody.appendChild(div); shown++;
+      });
+      countLabel.textContent = shown+' items';
+    }
+
+    async function applyAdjust(partNumber,currentQty,deltaStr){
+      if(!isAdmin) return;
+      const delta = Number(deltaStr); if(isNaN(delta)){alert('enter a number');return;}
+      const newQty=(Number(currentQty)||0)+delta;
+      const res=await fetch(API_BASE+'/inventory/'+encodeURIComponent(partNumber)+'/qty',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','x-user': currentUser.username||currentUser.name||currentUser.user||currentUser},
+        body:JSON.stringify({qty:newQty})
+      });
+      const data=await res.json(); if(!res.ok){alert(data.error||'failed to adjust');return;}
+      const row=ALL_ROWS.find(r=>r.partNumber===partNumber); if(row) row.qty=newQty; renderList();
+    }
+
+    function openEdit(row,isNew=false){
+      if(!isAdmin) return;
+      modalMode = isNew?'add':'edit';
+      editingPart = row ? {...row} : {partNumber:'',printName:'',location:'',qty:0,notes:''};
+      document.getElementById('modalTitle').textContent = isNew?'Add Part':'Edit Part';
+      document.getElementById('mPart').readOnly = !isNew;
+      document.getElementById('mPart').value = editingPart.partNumber||'';
+      document.getElementById('mDesc').value = editingPart.printName||'';
+      document.getElementById('mLoc').value = editingPart.location||'';
+      document.getElementById('mQty').value = editingPart.qty!=null?editingPart.qty:0;
+      document.getElementById('mNotes').value = editingPart.notes||'';
+      editModalBackdrop.style.display='flex';
+      document.getElementById('deleteBtn').style.display = isNew?'none':'inline-block';
+    }
+
+    async function saveModal(){
+      if(!isAdmin) return;
+      const part=document.getElementById('mPart').value.trim();
+      const desc=document.getElementById('mDesc').value;
+      const loc=document.getElementById('mLoc').value;
+      const qty=Number(document.getElementById('mQty').value||0);
+      const notes=document.getElementById('mNotes').value;
+      if(!part){alert('part number required');return;}
+
+      const payload={partNumber:part,description:desc,location:loc,qty,minQty:0,notes};
+      const hdrs={'Content-Type':'application/json','x-user': currentUser.username||currentUser.name||currentUser.user||currentUser};
+
+      if(modalMode==='add'){
+        const res=await fetch(API_BASE+'/inventory',{method:'POST',headers:hdrs,body:JSON.stringify(payload)});
+        const data=await res.json(); if(!res.ok){alert(data.error||'failed to add');return;}
+      }else{
+        const res=await fetch(API_BASE+'/inventory/'+encodeURIComponent(part),{method:'PUT',headers:hdrs,body:JSON.stringify(payload)});
+        const data=await res.json(); if(!res.ok){alert(data.error||'failed to save');return;}
       }
-      return true;
+      editModalBackdrop.style.display='none'; await loadData();
+    }
+
+    async function deleteModal(){
+      if(!isAdmin) return;
+      const part=document.getElementById('mPart').value.trim(); if(!part) return;
+      if(!confirm('Delete '+part+'?')) return;
+      const res=await fetch(API_BASE+'/inventory/'+encodeURIComponent(part),{
+        method:'DELETE',
+        headers:{'x-user': currentUser.username||currentUser.name||currentUser.user||currentUser}
+      });
+      const data=await res.json(); if(!res.ok){alert(data.error||'failed to delete');return;}
+      editModalBackdrop.style.display='none'; await loadData();
+    }
+
+    // Events
+    document.getElementById('exportBtn').addEventListener('click',()=>{
+      let csv='partNumber,description,location,qty,notes\n';
+      ALL_ROWS.forEach(r=>{
+        csv+=`"${r.partNumber}","${(r.printName||'').replace(/"/g,'""')}","${(r.location||'').replace(/"/g,'""')}",${r.qty||0},"${(r.notes||'').replace(/"/g,'""')}"\n`;
+      });
+      const blob=new Blob([csv],{type:'text/csv'}); const url=URL.createObjectURL(blob);
+      const a=document.createElement('a'); a.href=url; a.download='inventory.csv'; a.click(); URL.revokeObjectURL(url);
     });
+    document.getElementById('addBtn').addEventListener('click',()=>openEdit(null,true));
+    document.getElementById('cancelBtn').addEventListener('click',()=>editModalBackdrop.style.display='none');
+    document.getElementById('saveBtn').addEventListener('click',saveModal);
+    document.getElementById('deleteBtn').addEventListener('click',deleteModal);
+    filterBox.addEventListener('input',renderList);
+    cbNonZero.addEventListener('change',renderList);
+    cbOnlyZero.addEventListener('change',renderList);
 
-    const lowCount=inventoryData.filter(it=>{
-      const qty=it.qty ?? 0;
-      const min=it.minQty ?? 0;
-      return qty<=0 || qty<min;
-    }).length;
-
-    document.getElementById('totalCount').textContent=inventoryData.length;
-    document.getElementById('lowCount').textContent=lowCount;
-    document.getElementById('statusSummary').textContent=
-      'Showing '+filteredData.length+' of '+inventoryData.length+' items';
-
-    currentPage=1;
-    renderTable();
-  }
-
-  function prevPage(){
-    if(currentPage>1){
-      currentPage--;
-      renderTable();
-    }
-  }
-  function nextPage(){
-    const totalPages=Math.ceil(filteredData.length/pageSize)||1;
-    if(currentPage<totalPages){
-      currentPage++;
-      renderTable();
-    }
-  }
-
-  // Kickoff
-  loadData();
-</script>
+    // Kickoff
+    loadData();
+  </script>
 </body>
 </html>
