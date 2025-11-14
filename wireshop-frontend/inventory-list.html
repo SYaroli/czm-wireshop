@@ -2,342 +2,422 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>CZM • Inventory</title>
+  <title>CZM • Build Next</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <link rel="stylesheet" href="/style.css" />
   <style>
-    /* Brand bar (match assignments.html) */
+    /* Layout tweaks specific to assignments page */
+    .page-shell{max-width:1200px;margin:0 auto;padding:16px}
+    .header-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+    .filters-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+    .filters-row select,
+    .filters-row input{min-width:150px}
+    .summary-pill{font-size:0.8rem;padding:4px 8px;border-radius:999px;border:1px solid rgba(148,163,184,.6);color:#e5e7eb;background:rgba(15,23,42,.9)}
+    .summary-pill strong{color:#f97316}
+    .table-wrap{margin-top:8px}
+    .qtyDone{width:60px}
+    .text-right{text-align:right}
+    .muted{color:#9ca3af;font-size:0.8rem}
+    .btn-link{background:none;border:none;color:#93c5fd;text-decoration:underline;cursor:pointer;font-size:0.8rem;padding:0}
+    .badge{display:inline-block;padding:2px 6px;border-radius:999px;font-size:0.7rem}
+    .badge-pri1{background:#064e3b;color:#bbf7d0}
+    .badge-pri2{background:#1e3a8a;color:#bfdbfe}
+    .badge-pri3{background:#7f1d1d;color:#fecaca}
     .brand-bar{background:#0f1114;border-bottom:4px solid #c30000}
-    .brand-inner{max-width:1200px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;padding:8px 12px}
-    .brand-logo{display:flex;align-items:center;gap:10px;color:#fff;text-decoration:none}
-    .brand-logo img{height:22px;opacity:.95}
-    .brand-title{font-size:16px;margin:0;color:#fff}
-    .brand-actions .navbtn{display:inline-block;background:#1a1c20;color:#bbb;padding:6px 12px;border-radius:10px;text-decoration:none;border:1px solid #3a3f44;font-weight:600;font-size:.9rem;margin-left:8px}
-    .brand-actions .navbtn.active{background:#b30000;color:#fff;border-color:#ff4d4d}
-    .brand-actions .navbtn:hover{background:#24272b;color:#fff}
-
-    /* Page chrome */
-    body{background:#eef0f3;margin:0}
-
-    /* Card shell */
-    .inventory-shell{max-width:1200px;margin:24px auto;background:#fff;border-radius:6px;box-shadow:0 2px 4px rgba(0,0,0,.08);padding:0 0 12px}
-    .inventory-header{padding:14px 16px 6px}
-    .inventory-header h2{margin:0 0 6px;font-size:16px;font-weight:600}
-
-    /* Filter toolbar */
-    .filter-row{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
-    .filter-row input[type="text"]{flex:1;min-width:260px;height:32px;border:1px solid #cfd4da;border-radius:6px;padding:0 10px}
-    .cb{display:flex;align-items:center;gap:8px;height:32px;padding:0 10px;border:1px solid #cfd4da;border-radius:6px;background:#f7f8fa;user-select:none}
-    .cb input{margin:0;width:16px;height:16px}
-    .toolbar-btn{background:#eee;border:1px solid #cfd4da;border-radius:6px;height:32px;padding:0 12px;font-size:13px;cursor:pointer}
-    .toolbar-btn.red{background:#c30000;color:#fff;border-color:#a00000}
-    #countLabel{font-size:12px;margin-left:auto;white-space:nowrap}
-
-    /* Header row */
-    .table-head{background:#0a0b0d;color:#fff;display:grid;grid-template-columns:150px 220px 100px 60px 280px 1fr;gap:0;padding:8px 16px;font-size:12px;font-weight:600;margin-top:12px}
-
-    /* Data rows */
-    .list-body .row{display:grid;grid-template-columns:150px 220px 100px 60px 280px 1fr;gap:0;padding:10px 16px;border-bottom:1px solid #eef2f6;background:#fff;align-items:center}
-    .list-body .row:nth-child(odd){background:#fafbfc}
-    .notes-cell{font-size:12px;color:#333;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-
-    /* Adjust + actions */
-    .adjust-controls{display:flex;align-items:center;gap:10px;flex-wrap:nowrap}
-    .qty-input{width:76px;border:1px solid #d0d3d8;border-radius:20px;height:30px;padding:0 8px;text-align:center}
-    .apply-btn{background:#b70000;color:#fff;border:none;border-radius:6px;height:32px;min-width:64px;padding:0 10px;cursor:pointer}
-    .edit-btn{background:#3a3a3a;color:#fff;border:none;border-radius:6px;height:32px;min-width:64px;padding:0 10px;cursor:pointer}
-    .muted{color:#9aa3ad;font-size:12px}
-
-    /* Modal */
-    .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:center;justify-content:center;z-index:50}
-    .modal{background:#122032;color:#fff;padding:16px;width:420px;border-radius:8px;box-shadow:0 8px 20px rgba(0,0,0,.4)}
-    .modal h3{margin:0 0 10px;font-size:18px}
-    .modal label{display:block;font-size:12px;margin-top:8px;margin-bottom:4px}
-    .modal input,.modal textarea{width:100%;border:none;border-radius:6px;height:34px;padding:6px 8px;outline:none;font-size:14px;color:#000}
-    .modal textarea{height:90px;resize:vertical}
-    .modal-actions{margin-top:14px;display:flex;gap:10px;justify-content:flex-end}
-    .btn-small{border:none;border-radius:6px;padding:6px 14px;cursor:pointer}
-    .btn-red{background:#c30000;color:#fff}
-    .btn-gray{background:#c5c5c5;color:#000}
-
-    @media (max-width:900px){
-      .inventory-shell{max-width:100%;margin:0;border-radius:0;box-shadow:none}
-      .table-head,.list-body .row{grid-template-columns:140px 1fr 90px 60px 240px}
-      .notes-cell{grid-column:1 / -1;margin-top:4px}
+    .brand-inner{max-width:1200px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;padding:10px 16px}
+    .brand-left{display:flex;align-items:center;gap:10px}
+    .brand-logo{width:38px;height:38px;border-radius:50%;background:#c30000;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:0.9rem;box-shadow:0 0 14px rgba(220,38,38,.8)}
+    .brand-title{font-size:0.95rem;font-weight:600;letter-spacing:.08em;color:#e5e7eb;text-transform:uppercase}
+    .brand-sub{font-size:0.75rem;color:#9ca3af}
+    .brand-nav{display:flex;align-items:center;gap:8px}
+    .brand-btn{padding:6px 12px;border-radius:999px;border:1px solid rgba(148,163,184,.6);background:#020617;color:#e5e7eb;font-size:0.75rem;font-weight:500;cursor:pointer;letter-spacing:.05em;text-transform:uppercase}
+    .brand-btn.primary{background:#c30000;border-color:#fecaca;color:#fee2e2;box-shadow:0 0 12px rgba(248,113,113,.7)}
+    .brand-btn.logout{border-color:#fecaca;color:#fecaca}
+    .brand-user{font-size:0.8rem;color:#9ca3af;padding:4px 10px;border-radius:999px;border:1px solid rgba(148,163,184,.4);background:#020617}
+    .status-bar{font-size:0.8rem;margin-top:4px;color:#9ca3af}
+    .status-bar strong{color:#e5e7eb}
+    .chip{display:inline-flex;align-items:center;gap:4px;padding:3px 7px;border-radius:999px;border:1px solid rgba(148,163,184,.6);font-size:0.75rem;color:#e5e7eb;background:rgba(15,23,42,.9)}
+    .chip-dot{width:7px;height:7px;border-radius:999px;background:#22c55e;box-shadow:0 0 8px rgba(34,197,94,.9)}
+    @media (max-width:768px){
+      .brand-inner{flex-direction:column;align-items:flex-start;gap:8px}
+      .header-row{flex-direction:column;align-items:flex-start}
+      .filters-row{flex-direction:column;align-items:flex-start}
     }
   </style>
 </head>
 <body>
-  <!-- Top navigation (same structure as Build Next) -->
   <div class="brand-bar">
     <div class="brand-inner">
-      <a class="brand-logo" href="/dashboard.html">
-        <img src="/czm-logo.png" alt="CZM">
-        <h1 class="brand-title">CZM • Inventory</h1>
-      </a>
-      <div class="brand-actions">
-        <a class="navbtn" href="/dashboard.html">Dashboard</a>
-        <a class="navbtn" href="/assignments.html">Build Next</a>
-        <a class="navbtn active" href="/inventory">Inventory</a>
-        <a class="navbtn" href="/archive.html">Archive</a>
-        <a class="navbtn" href="/admin.html">Admin</a>
-        <button id="logoutBtn" class="navbtn">Logout</button>
+      <div class="brand-left">
+        <div class="brand-logo">CZM</div>
+        <div>
+          <div class="brand-title">WireShop</div>
+          <div class="brand-sub">Build Next • Assignments</div>
+        </div>
+      </div>
+      <div class="brand-nav">
+        <button class="brand-btn primary" onclick="location.href='assignments.html'">Build Next</button>
+        <button class="brand-btn" onclick="location.href='inventory.html'">Inventory</button>
+        <button class="brand-btn" onclick="location.href='inventory-list.html'">Inventory List</button>
+        <button class="brand-btn logout" id="logoutBtn">Logout</button>
+        <div class="brand-user" id="userLabel">User: -</div>
       </div>
     </div>
   </div>
 
-  <!-- Inventory card -->
-  <div class="inventory-shell">
-    <div class="inventory-header">
-      <h2>Inventory — Snapshot</h2>
-      <div class="filter-row">
-        <input id="filterBox" type="text" placeholder="part number, print name, or location" />
-        <label class="cb"><input id="cbNonZero" type="checkbox"><span>only non-zero</span></label>
-        <label class="cb"><input id="cbOnlyZero" type="checkbox"><span>only 0-qty</span></label>
-        <button id="exportBtn" class="toolbar-btn">Export</button>
-        <button id="addBtn" class="toolbar-btn red">Add part</button>
-        <span id="countLabel">0 items</span>
+  <div class="page-shell">
+    <div class="header-row">
+      <div>
+        <h1>Build Queue</h1>
+        <div class="status-bar">
+          <span id="statusText">Loading assignments…</span>
+        </div>
+      </div>
+      <div class="summary-pill">
+        Open: <strong id="openCount">0</strong> • In Progress: <strong id="inProgCount">0</strong> • Completed (today): <strong id="doneCount">0</strong>
       </div>
     </div>
 
-    <div class="table-head">
-      <div>Part Number</div><div>Print Name</div><div>Location</div><div>Qty</div><div>Adjust</div><div>Notes</div>
+    <div class="filters-row">
+      <select id="filterMachine">
+        <option value="">All machines</option>
+      </select>
+      <select id="filterStatus">
+        <option value="">All statuses</option>
+        <option value="open">Open</option>
+        <option value="inprogress">In progress</option>
+        <option value="done">Completed</option>
+      </select>
+      <select id="filterPriority">
+        <option value="">All priorities</option>
+        <option value="1">Priority 1 (Hot)</option>
+        <option value="2">Priority 2</option>
+        <option value="3">Priority 3</option>
+      </select>
+      <input type="text" id="filterPart" placeholder="Filter by part number or description" />
+      <button id="btnRefresh" class="brand-btn">Refresh</button>
+      <button id="btnAdd" class="brand-btn">Add Job</button>
+      <button id="clearDoneBtn" class="brand-btn">Clear Done</button>
+      <button id="exportBtn" class="brand-btn">Export Done</button>
+      <span class="chip">
+        <span class="chip-dot"></span>
+        Live from backend
+      </span>
     </div>
-    <div id="listBody" class="list-body"></div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Machine</th>
+            <th>Part</th>
+            <th>Description</th>
+            <th>Qty</th>
+            <th>Priority</th>
+            <th>Assigned</th>
+            <th>Status</th>
+            <th>Actions</th>
+            <th class="text-right">Complete Qty</th>
+          </tr>
+        </thead>
+        <tbody id="assignBody">
+          <tr><td colspan="9" class="muted">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p class="muted" id="lastUpdated"></p>
   </div>
 
-  <!-- Edit/Add modal -->
-  <div id="editModalBackdrop" class="modal-backdrop">
-    <div class="modal">
-      <h3 id="modalTitle">Edit Part</h3>
-      <label for="mPart">Part Number</label><input id="mPart" readonly />
-      <label for="mDesc">Description</label><input id="mDesc" />
-      <label for="mLoc">Location</label><input id="mLoc" />
-      <label for="mQty">Qty</label><input id="mQty" type="number" />
-      <label for="mNotes">Notes</label><textarea id="mNotes"></textarea>
-      <div class="modal-actions">
-        <button id="saveBtn" class="btn-small btn-red">Save</button>
-        <button id="cancelBtn" class="btn-small btn-gray">Cancel</button>
-        <button id="deleteBtn" class="btn-small btn-gray" style="margin-left:auto;">Delete</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Data sources -->
   <script src="/users.js"></script>
-  <script src="/catalog.js"></script>
   <script>
-    const API_BASE = 'https://wireshop-backend.onrender.com/api';
+    const API_ROOT = (window.BACKEND_BASE || 'https://wireshop-backend.onrender.com') + '/api';
 
-    // simple auth + logout (match assignments.html behavior)
-    const currentUser = (()=>{ try{ return JSON.parse(localStorage.getItem('user')||'{}'); }catch{ return {}; } })();
-    if (!currentUser || !currentUser.username) { window.location.href = '/index.html'; }
-    document.getElementById('logoutBtn')?.addEventListener('click', ()=>{ localStorage.removeItem('user'); location.href = '/index.html'; });
-
-    const listBody = document.getElementById('listBody');
-    const filterBox = document.getElementById('filterBox');
-    const countLabel = document.getElementById('countLabel');
-    const cbNonZero = document.getElementById('cbNonZero');
-    const cbOnlyZero = document.getElementById('cbOnlyZero');
-    const editModalBackdrop = document.getElementById('editModalBackdrop');
-    const addBtn = document.getElementById('addBtn');
-
-    let ALL_ROWS = [];
-    let DB_ROWS = {};
+    let user = null;
     let isAdmin = false;
-    let modalMode = 'edit';
-    let editingPart = null;
+    let assignments = [];
+    let machines = [];
+
+    function readSession(){
+      try{
+        const raw = localStorage.getItem('wireShopSession');
+        if(!raw) return null;
+        return JSON.parse(raw);
+      }catch(e){
+        return null;
+      }
+    }
+
+    function ensureUser(){
+      const session = readSession();
+      if(!session || !session.username){
+        location.href = 'index.html';
+        return null;
+      }
+      return { username: session.username, role: session.role || '' };
+    }
 
     function computeIsAdmin(u){
-      const uname = (u?.username || u?.name || u?.user || '').trim();
-      const fromUsersJs =
-        (window.ADMIN_USERS && Array.isArray(window.ADMIN_USERS) && window.ADMIN_USERS.includes(uname)) ||
-        (window.ADMINS && Array.isArray(window.ADMINS) && window.ADMINS.includes(uname));
-      if (fromUsersJs) return true;
+      if(!u) return false;
+      const uname = String(u.username || u.name || u.user || '').trim();
+      if(window.ADMIN_USERS && Array.isArray(window.ADMIN_USERS) && window.ADMIN_USERS.includes(uname)) return true;
+      if(window.ADMINS && Array.isArray(window.ADMINS) && window.ADMINS.includes(uname)) return true;
       const FALLBACK = ['Shane.Yaroli','Tyler.Ellis'];
       return FALLBACK.includes(uname);
     }
 
-    async function loadData(){
-      isAdmin = computeIsAdmin(currentUser);
-      addBtn.style.display = isAdmin ? 'inline-block' : 'none';
-
-      const invRes = await fetch(API_BASE+'/inventory-all',{
-        headers:{'x-user': currentUser.username||currentUser.name||currentUser.user||currentUser}
-      });
-      const invData = await invRes.json();
-      DB_ROWS = {}; invData.forEach(r => DB_ROWS[r.partNumber]=r);
-
-      const cat = Array.isArray(window.catalog) ? window.catalog : [];
-      const merged = [];
-
-      cat.forEach(c=>{
-        const db = DB_ROWS[c.partNumber];
-        if(db){
-          merged.push({
-            partNumber: db.partNumber,
-            description: db.description ?? c.printName ?? '',
-            printName: db.description ?? c.printName ?? '',
-            location: db.location ?? (c.location||''),
-            qty: typeof db.qty === 'number' ? db.qty : 0,
-            notes: db.notes ?? (c.notes||'')
-          });
-        }else{
-          merged.push({
-            partNumber: c.partNumber,
-            description: c.printName||'',
-            printName: c.printName||'',
-            location: c.location||'',
-            qty: 0,
-            notes: c.notes||''
-          });
-        }
-      });
-
-      invData.forEach(db=>{
-        if(!cat.find(c=>c.partNumber===db.partNumber)){
-          merged.push({
-            partNumber: db.partNumber,
-            description: db.description ?? '',
-            printName: db.description ?? '',
-            location: db.location ?? '',
-            qty: typeof db.qty === 'number' ? db.qty : 0,
-            notes: db.notes ?? ''
-          });
-        }
-      });
-
-      merged.sort((a,b)=>(a.partNumber||'').localeCompare(b.partNumber||''));
-      ALL_ROWS = merged;
-      renderList();
+    function setStatus(msg){
+      document.getElementById('statusText').textContent = msg;
     }
 
-    function renderList(){
-      const filter = filterBox.value.trim().toLowerCase();
-      const onlyNZ = cbNonZero.checked;
-      const onlyZ = cbOnlyZero.checked;
-
-      listBody.innerHTML=''; let shown=0;
-      ALL_ROWS.forEach(row=>{
-        if(filter){
-          const hay = (row.partNumber+' '+(row.printName||'')+' '+(row.location||'')).toLowerCase();
-          if(!hay.includes(filter)) return;
-        }
-        if(onlyNZ && (!row.qty || row.qty===0)) return;
-        if(onlyZ && (row.qty && row.qty!==0)) return;
-
-        const div = document.createElement('div'); div.className='row';
-
-        const partA = document.createElement('a');
-        partA.href = '/inv/'+encodeURIComponent(row.partNumber);
-        partA.textContent = row.partNumber;
-        partA.style.color='#003574'; partA.style.fontSize='12px';
-
-        const nameDiv = document.createElement('div'); nameDiv.textContent=row.printName||''; nameDiv.style.fontSize='12px';
-        const locDiv = document.createElement('div'); locDiv.textContent=row.location||''; locDiv.style.fontSize='12px';
-        const qtyDiv = document.createElement('div'); qtyDiv.textContent = row.qty!=null?row.qty:0; qtyDiv.style.fontSize='12px';
-
-        const adjustDiv = document.createElement('div'); adjustDiv.className='adjust-controls';
-        if (isAdmin){
-          const adjustInput = document.createElement('input'); adjustInput.type='text'; adjustInput.className='qty-input'; adjustInput.placeholder='+/-';
-          const applyBtn = document.createElement('button'); applyBtn.className='apply-btn'; applyBtn.textContent='Apply';
-          applyBtn.onclick = ()=>applyAdjust(row.partNumber,row.qty,adjustInput.value);
-          const editBtn = document.createElement('button'); editBtn.className='edit-btn'; editBtn.textContent='Edit';
-          editBtn.onclick = ()=>openEdit(row);
-          adjustDiv.append(adjustInput,applyBtn,editBtn);
-        } else {
-          adjustDiv.innerHTML = '<span class="muted">—</span>';
-        }
-
-        const notesDiv = document.createElement('div'); notesDiv.className='notes-cell'; notesDiv.textContent=row.notes||'';
-
-        div.append(partA,nameDiv,locDiv,qtyDiv,adjustDiv,notesDiv);
-        listBody.appendChild(div); shown++;
+    function updateCounts(){
+      let open=0,inprog=0,done=0;
+      const today = new Date().toDateString();
+      assignments.forEach(a=>{
+        if(a.status==='open') open++;
+        else if(a.status==='inprogress') inprog++;
+        else if(a.status==='done' && a.completedAt && new Date(a.completedAt).toDateString()===today) done++;
       });
-      countLabel.textContent = shown+' items';
+      document.getElementById('openCount').textContent=open;
+      document.getElementById('inProgCount').textContent=inprog;
+      document.getElementById('doneCount').textContent=done;
     }
 
-    async function applyAdjust(partNumber,currentQty,deltaStr){
-      if(!isAdmin) return;
-      const delta = Number(deltaStr); if(isNaN(delta)){alert('enter a number');return;}
-      const newQty=(Number(currentQty)||0)+delta;
-      const res=await fetch(API_BASE+'/inventory/'+encodeURIComponent(partNumber)+'/qty',{
-        method:'POST',
-        headers:{'Content-Type':'application/json','x-user': currentUser.username||currentUser.name||currentUser.user||currentUser},
-        body:JSON.stringify({qty:newQty})
+    function buildMachineOptions(){
+      const sel = document.getElementById('filterMachine');
+      const unique = Array.from(new Set(assignments.map(a=>a.machine).filter(Boolean))).sort();
+      sel.innerHTML = '<option value="">All machines</option>' + unique.map(m=>`<option value="${m}">${m}</option>`).join('');
+    }
+
+    function esc(s){ return String(s??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;'); }
+    function ts(ms){ if(!ms) return ''; return new Date(ms).toLocaleString(); }
+
+    async function api(path, opts={}){
+      const res = await fetch(API_ROOT + path, {
+        method: opts.method || 'GET',
+        headers: {
+          'Content-Type':'application/json',
+          'x-user': user.username,
+          'x-role': String(user.role || '')
+        },
+        body: opts.body ? JSON.stringify(opts.body) : undefined
       });
-      const data=await res.json(); if(!res.ok){alert(data.error||'failed to adjust');return;}
-      const row=ALL_ROWS.find(r=>r.partNumber===partNumber); if(row) row.qty=newQty; renderList();
+      if (!res.ok) throw new Error('HTTP '+res.status);
+      return res.json();
     }
 
-    function openEdit(row,isNew=false){
-      if(!isAdmin) return;
-      modalMode = isNew?'add':'edit';
-      editingPart = row ? {...row} : {partNumber:'',printName:'',location:'',qty:0,notes:''};
-      document.getElementById('modalTitle').textContent = isNew?'Add Part':'Edit Part';
-      document.getElementById('mPart').readOnly = !isNew;
-      document.getElementById('mPart').value = editingPart.partNumber||'';
-      document.getElementById('mDesc').value = editingPart.printName||'';
-      document.getElementById('mLoc').value = editingPart.location||'';
-      document.getElementById('mQty').value = editingPart.qty!=null?editingPart.qty:0;
-      document.getElementById('mNotes').value = editingPart.notes||'';
-      editModalBackdrop.style.display='flex';
-      document.getElementById('deleteBtn').style.display = isNew?'none':'inline-block';
-    }
+    const pnInput = document.getElementById('part');
+    const qAdd = document.getElementById('qAdd');
+    const prioritySel = document.getElementById('prioritySel');
 
-    async function saveModal(){
-      if(!isAdmin) return;
-      const part=document.getElementById('mPart').value.trim();
-      const desc=document.getElementById('mDesc').value;
-      const loc=document.getElementById('mLoc').value;
-      const qty=Number(document.getElementById('mQty').value||0);
-      const notes=document.getElementById('mNotes').value;
-      if(!part){alert('part number required');return;}
-
-      const payload={partNumber:part,description:desc,location:loc,qty,minQty:0,notes};
-      const hdrs={'Content-Type':'application/json','x-user': currentUser.username||currentUser.name||currentUser.user||currentUser};
-
-      if(modalMode==='add'){
-        const res=await fetch(API_BASE+'/inventory',{method:'POST',headers:hdrs,body:JSON.stringify(payload)});
-        const data=await res.json(); if(!res.ok){alert(data.error||'failed to add');return;}
-      }else{
-        const res=await fetch(API_BASE+'/inventory/'+encodeURIComponent(part),{method:'PUT',headers:hdrs,body:JSON.stringify(payload)});
-        const data=await res.json(); if(!res.ok){alert(data.error||'failed to save');return;}
+    document.getElementById('btnAdd')?.addEventListener('click', async ()=>{
+      const pn = (pnInput.value||'').trim();
+      const qty = Number(qAdd.value||0);
+      const pri = Number(prioritySel.value||0) | 0;
+      if (!pn) return alert('Pick a part');
+      if (!Number.isInteger(qty) || qty <= 0) return alert('Qty must be positive');
+      try{
+        await api('/build-tasks', { method:'POST', body:{ partNumber:pn, qty, priority:pri } });
+        await refreshAll();
+      }catch(e){
+        alert('Add failed');
       }
-      editModalBackdrop.style.display='none'; await loadData();
-    }
-
-    async function deleteModal(){
-      if(!isAdmin) return;
-      const part=document.getElementById('mPart').value.trim(); if(!part) return;
-      if(!confirm('Delete '+part+'?')) return;
-      const res=await fetch(API_BASE+'/inventory/'+encodeURIComponent(part),{
-        method:'DELETE',
-        headers:{'x-user': currentUser.username||currentUser.name||currentUser.user||currentUser}
-      });
-      const data=await res.json(); if(!res.ok){alert(data.error||'failed to delete');return;}
-      editModalBackdrop.style.display='none'; await loadData();
-    }
-
-    // Events
-    document.getElementById('exportBtn').addEventListener('click',()=>{
-      let csv='partNumber,description,location,qty,notes\n';
-      ALL_ROWS.forEach(r=>{
-        csv+=`"${r.partNumber}","${(r.printName||'').replace(/"/g,'""')}","${(r.location||'').replace(/"/g,'""')}",${r.qty||0},"${(r.notes||'').replace(/"/g,'""')}"\n`;
-      });
-      const blob=new Blob([csv],{type:'text/csv'}); const url=URL.createObjectURL(blob);
-      const a=document.createElement('a'); a.href=url; a.download='inventory.csv'; a.click(); URL.revokeObjectURL(url);
     });
-    document.getElementById('addBtn').addEventListener('click',()=>openEdit(null,true));
-    document.getElementById('cancelBtn').addEventListener('click',()=>editModalBackdrop.style.display='none');
-    document.getElementById('saveBtn').addEventListener('click',saveModal);
-    document.getElementById('deleteBtn').addEventListener('click',deleteModal);
-    filterBox.addEventListener('input',renderList);
-    cbNonZero.addEventListener('change',renderList);
-    cbOnlyZero.addEventListener('change',renderList);
 
-    // Kickoff
-    loadData();
+    function renderAssignments(){
+      const tbody = document.getElementById('assignBody');
+      const fMachine = document.getElementById('filterMachine').value;
+      const fStatus = document.getElementById('filterStatus').value;
+      const fPriority = document.getElementById('filterPriority').value;
+      const fPart = document.getElementById('filterPart').value.toLowerCase();
+
+      let rows = assignments.slice();
+
+      if (fMachine) rows = rows.filter(r => r.machine === fMachine);
+      if (fStatus) rows = rows.filter(r => r.status === fStatus);
+      if (fPriority) rows = rows.filter(r => String(r.priority||'') === fPriority);
+      if (fPart) {
+        rows = rows.filter(r => {
+          const text = (r.partNumber||'') + ' ' + (r.description||'');
+          return text.toLowerCase().includes(fPart);
+        });
+      }
+
+      if (!rows.length){
+        tbody.innerHTML = '<tr><td colspan="9" class="muted">No assignments match the filters.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = rows.map(r=>{
+        const priBadge = r.priority===1 ? 'badge-pri1' : r.priority===2 ? 'badge-pri2' : 'badge-pri3';
+        const priLabel = r.priority===1 ? 'Hot' : r.priority===2 ? 'Normal' : 'Low';
+        const statusLabel = r.status==='open' ? 'Open' :
+                            r.status==='inprogress' ? 'In Progress' :
+                            'Done';
+        const canClaim = r.status==='open';
+        const canStart = r.status==='open' && r.claimedBy===user.username;
+        const canComplete = r.status==='inprogress' && r.claimedBy===user.username;
+        const canCancel = isAdmin && r.status!=='done';
+        const canUnclaim = isAdmin && r.status==='open' && r.claimedBy;
+        const disabled = r.status==='done';
+
+        return `
+          <tr data-id="${r.id}">
+            <td>${esc(r.machine||'')}</td>
+            <td>${esc(r.partNumber||'')}</td>
+            <td>${esc(r.description||'')}</td>
+            <td>${r.qty||0}</td>
+            <td><span class="badge ${priBadge}">${priLabel}</span></td>
+            <td>${esc(r.claimedBy||'-')}</td>
+            <td>${statusLabel}</td>
+            <td>
+              ${canClaim ? `<button class="btn-link act-claim">Claim</button>` : ''}
+              ${canStart ? `<button class="btn-link act-start">Start</button>` : ''}
+              ${canComplete ? `<button class="btn-link act-complete">Complete</button>` : ''}
+              ${canCancel ? `<button class="btn-link act-cancel">Cancel</button>` : ''}
+              ${canUnclaim ? `<button class="btn-link act-unclaim">Unclaim</button>` : ''}
+            </td>
+            <td class="text-right">
+              ${canComplete ? `<input type="number" class="qtyDone" min="1" max="${r.qty||1}" value="${r.qty||1}" />` : ''}
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      document.getElementById('lastUpdated').textContent =
+        'Last updated: '+new Date().toLocaleTimeString();
+    }
+
+    async function refreshAll(){
+      try{
+        setStatus('Loading from backend…');
+        const data = await api('/build-tasks');
+        assignments = data.assignments||[];
+        machines = data.machines||[];
+        buildMachineOptions();
+        renderAssignments();
+        updateCounts();
+        setStatus('Live from backend');
+      }catch(e){
+        console.error(e);
+        setStatus('Failed to load: '+e.message);
+      }
+    }
+
+    document.getElementById('filterMachine').addEventListener('change', renderAssignments);
+    document.getElementById('filterStatus').addEventListener('change', renderAssignments);
+    document.getElementById('filterPriority').addEventListener('change', renderAssignments);
+    document.getElementById('filterPart').addEventListener('input', renderAssignments);
+
+    document.getElementById('assignBody').addEventListener('click', async (e)=>{
+      const btn = e.target.closest('button');
+      if (!btn) return;
+      const tr = btn.closest('tr');
+      const id = tr?.dataset?.id;
+      if (!id) return;
+
+      const claimId = btn.classList.contains('act-claim') ? id : null;
+      const startId = btn.classList.contains('act-start') ? id : null;
+      const completeId = btn.classList.contains('act-complete') ? id : null;
+      const cancelId = btn.classList.contains('act-cancel') ? id : null;
+      const unclaimId = btn.classList.contains('act-unclaim') ? id : null;
+
+      try{
+        if (claimId){
+          await api(`/api/build-tasks/${claimId}/claim`, { method:'PATCH' });
+          await refreshAll(); return;
+        }
+        if (startId){
+          await api(`/api/build-tasks/${startId}/start`, { method:'PATCH' });
+          await refreshAll(); return;
+        }
+        if (cancelId && isAdmin){
+          await api(`/api/build-tasks/${cancelId}/cancel`, { method:'PATCH' });
+          await refreshAll(); return;
+        }
+        if (unclaimId && isAdmin){
+          await api(`/api/build-tasks/${unclaimId}/unclaim`, { method:'PATCH' });
+          await refreshAll(); return;
+        }
+        if (completeId){
+          const tr = e.target.closest('tr');
+          const qtyBox = tr?.querySelector('.qtyDone');
+          const qty = Number(qtyBox?.value||0);
+          if (!Number.isInteger(qty) || qty <= 0) { alert('Enter a positive quantity'); return; }
+          const res = await api(`/api/build-tasks/${completeId}/complete`, { method:'PATCH', body:{ qty } });
+          const pn = res?.addToInventory?.partNumber;
+          const inc = Number(res?.addToInventory?.qty||0);
+          if (pn && inc > 0){
+            // update inventory qty using new /qty endpoint
+            let currentQty = 0;
+            try {
+              const invItem = await api(`/api/inventory/${encodeURIComponent(pn)}`);
+              currentQty = Number(invItem?.qty || 0);
+            } catch (e) {
+              console.warn('Failed to read current inventory qty, assuming 0', e);
+            }
+            const newQty = currentQty + inc;
+            await api(`/api/inventory/${encodeURIComponent(pn)}/qty`, {
+              method:'POST',
+              body:{ qty: newQty }
+            });
+          }
+          await refreshAll(); return;
+        }
+      } catch(err){
+        alert('Action failed');
+      }
+    });
+
+    document.getElementById('clearDoneBtn')?.addEventListener('click', async ()=>{
+      if (!isAdmin) return;
+      try{
+        await api('/api/build-task-events?type=complete', { method:'DELETE' });
+        await refreshAll();
+      }catch(e){ alert('Clear failed'); }
+    });
+
+    document.getElementById('exportBtn')?.addEventListener('click', async ()=>{
+      try{
+        const res = await api('/api/build-task-events?type=complete', { method:'GET' });
+        const rows = res.events || [];
+        if (!rows.length){ alert('No completed events to export.'); return; }
+        const header = ['When','User','Machine','Part Number','Description','Qty'];
+        const csv = [header.join(',')].concat(rows.map(r=>[
+          `"${new Date(r.when).toLocaleString().replace(/"/g,'""')}"`,
+          `"${(r.user||'').replace(/"/g,'""')}"`,
+          `"${(r.machine||'').replace(/"/g,'""')}"`,
+          `"${(r.partNumber||'').replace(/"/g,'""')}"`,
+          `"${(r.description||'').replace(/"/g,'""')}"`,
+          r.qty||0
+        ].join(','))).join('\n');
+
+        const blob = new Blob([csv],{type:'text/csv'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'build-completed.csv';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }catch(e){
+        alert('Export failed');
+      }
+    });
+
+    document.getElementById('logoutBtn').addEventListener('click', ()=>{
+      localStorage.removeItem('wireShopSession');
+      location.href='index.html';
+    });
+
+    (function init(){
+      user = ensureUser();
+      if (!user) return;
+      isAdmin = computeIsAdmin(user);
+      document.getElementById('userLabel').textContent = 'User: '+user.username + (isAdmin ? ' (Admin)' : '');
+      refreshAll();
+    })();
   </script>
 </body>
 </html>
