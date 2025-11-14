@@ -12,62 +12,63 @@
     .brand-logo{display:flex;align-items:center;gap:10px;color:#fff;text-decoration:none}
     .brand-logo img{height:22px;opacity:.95}
     .brand-title{font-size:16px;margin:0;color:#fff}
-    .brand-actions .navbtn{display:inline-block;background:#1a1c1f;color:#fff;border-radius:20px;padding:6px 12px;text-decoration:none;border:1px solid #3a3f44;font-weight:600;font-size:.9rem;margin-left:8px}
+    .brand-actions .navbtn{display:inline-block;background:#1a1c20;color:#bbb;padding:6px 12px;border-radius:10px;text-decoration:none;border:1px solid #3a3f44;font-weight:600;font-size:.9rem;margin-left:8px}
     .brand-actions .navbtn.active{background:#b30000;color:#fff;border-color:#ff4d4d}
+    .brand-actions .navbtn:hover{background:#24272b;color:#fff}
 
-    body{background:#f1f3f7;font-family:system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;margin:0;padding:0}
-    .page-wrap{max-width:1200px;margin:20px auto;padding:0 12px}
-    .card{background:#fff;border-radius:6px;box-shadow:0 2px 6px rgba(0,0,0,.05);margin-bottom:14px;overflow:hidden;}
-    .card-head{padding:16px 18px;border-bottom:1px solid #eee;font-weight:700;}
-    .card-sub{font-size:12px;color:#6b7280;margin-top:2px}
-    .card-body{padding:16px 18px;}
+    /* Page chrome */
+    body{background:#eef0f3;margin:0}
 
+    /* Card shell */
+    .inventory-shell{max-width:1200px;margin:24px auto;background:#fff;border-radius:6px;box-shadow:0 2px 4px rgba(0,0,0,.08);padding:0 0 12px}
+    .inventory-header{padding:14px 16px 6px}
+    .inventory-header h2{margin:0 0 6px;font-size:16px;font-weight:600}
+
+    /* Filter toolbar */
     .filter-row{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
     .filter-row input[type="text"]{flex:1;min-width:260px;height:32px;border:1px solid #cfd4da;border-radius:6px;padding:0 10px}
-    .cb{display:flex;align-items:center;gap:8px;height:32px;padding:0 10px;font-size:13px;border:1px solid #cfd4da;border-radius:6px;background:#f7f8fa;user-select:none}
+    .cb{display:flex;align-items:center;gap:8px;height:32px;padding:0 10px;border:1px solid #cfd4da;border-radius:6px;background:#f7f8fa;user-select:none}
     .cb input{margin:0;width:16px;height:16px}
     .toolbar-btn{background:#eee;border:1px solid #cfd4da;border-radius:6px;height:32px;padding:0 12px;font-size:13px;cursor:pointer}
     .toolbar-btn.red{background:#c30000;color:#fff;border-color:#a00000}
     #countLabel{font-size:12px;margin-left:auto;white-space:nowrap}
 
     /* Header row */
-    .table-head{background:#0a0b0d;color:#fff;display:grid;grid-template-columns:150px 260px 80px 80px 130px minmax(160px,1fr);gap:0;border-radius:6px;margin-top:12px}
-    .table-head div{padding:8px 16px;font-size:12px;font-weight:600}
+    .table-head{background:#0a0b0d;color:#fff;display:grid;grid-template-columns:150px 220px 100px 60px 280px 1fr;gap:0;padding:8px 16px;font-size:12px;font-weight:600;margin-top:12px}
 
     /* Data rows */
-    .list-body .row{display:grid;grid-template-columns:150px 260px 80px 80px 130px minmax(160px,1fr);gap:0;border-bottom:1px solid #eef2f6;background:#fff;align-items:center}
+    .list-body .row{display:grid;grid-template-columns:150px 220px 100px 60px 280px 1fr;gap:0;padding:10px 16px;border-bottom:1px solid #eef2f6;background:#fff;align-items:center}
     .list-body .row:nth-child(odd){background:#fafbfc}
-    .list-body .cell{padding:8px 16px;font-size:13px}
-    .pn{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;font-size:12px}
-    .qty-low{color:#b91c1c;font-weight:700}
-    .qty-ok{color:#0f766e;font-weight:700}
     .notes-cell{font-size:12px;color:#333;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .tag{display:inline-block;background:#e5e7eb;color:#374151;border-radius:999px;padding:1px 6px;font-size:11px;margin-right:4px;margin-bottom:3px}
 
-    .list-body{border-radius:6px;overflow:hidden;border:1px solid #d1d5db;background:#fff;margin-top:2px}
-
-    .foot-row{display:flex;align-items:center;justify-content:space-between;margin-top:10px;font-size:12px;color:#6b7280}
-    .foot-row strong{color:#111827}
-    .pill{display:inline-flex;align-items:center;border-radius:999px;border:1px solid #cfd4da;padding:3px 10px;font-size:12px;background:#f9fafb}
-    .pill-dot{width:8px;height:8px;border-radius:999px;margin-right:6px;background:#22c55e;box-shadow:0 0 8px rgba(34,197,94,.8)}
+    /* Adjust + actions */
+    .adjust-controls{display:flex;align-items:center;gap:10px;flex-wrap:nowrap}
+    .qty-input{width:76px;border:1px solid #d0d3d8;border-radius:20px;height:30px;padding:0 8px;text-align:center}
+    .apply-btn{background:#b70000;color:#fff;border:none;border-radius:6px;height:32px;min-width:64px;padding:0 10px;cursor:pointer}
+    .edit-btn{background:#3a3a3a;color:#fff;border:none;border-radius:6px;height:32px;min-width:64px;padding:0 10px;cursor:pointer}
+    .muted{color:#9aa3ad;font-size:12px}
 
     /* Modal */
-    .modal-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.55);display:none;align-items:center;justify-content:center;z-index:40}
-    .modal{background:#fff;border-radius:8px;box-shadow:0 20px 40px rgba(15,23,42,.6);max-width:420px;width:100%;padding:18px}
-    .modal h2{margin:0 0 8px;font-size:16px}
-    .modal p{margin:0 0 8px;font-size:12px;color:#4b5563}
-    .modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px}
-    .modal-grid label{font-size:12px;color:#374151;display:block;margin-bottom:4px}
-    .modal-grid input,.modal-grid textarea{width:100%;box-sizing:border-box;border-radius:6px;border:1px solid #d1d5db;padding:6px 8px;font-size:13px}
-    .modal-grid textarea{resize:vertical;min-height:60px}
-    .modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
-    .btn{border-radius:6px;height:32px;padding:0 12px;border:1px solid transparent;font-size:13px;cursor:pointer}
-    .btn-primary{background:#c30000;color:#fff;border-color:#a00000}
+    .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:center;justify-content:center;z-index:50}
+    .modal{background:#122032;color:#fff;padding:16px;width:420px;border-radius:8px;box-shadow:0 8px 20px rgba(0,0,0,.4)}
+    .modal h3{margin:0 0 10px;font-size:18px}
+    .modal label{display:block;font-size:12px;margin-top:8px;margin-bottom:4px}
+    .modal input,.modal textarea{width:100%;border:none;border-radius:6px;height:34px;padding:6px 8px;outline:none;font-size:14px;color:#000}
+    .modal textarea{height:90px;resize:vertical}
+    .modal-actions{margin-top:14px;display:flex;gap:10px;justify-content:flex-end}
+    .btn-small{border:none;border-radius:6px;padding:6px 14px;cursor:pointer}
+    .btn-red{background:#c30000;color:#fff}
     .btn-gray{background:#c5c5c5;color:#000}
+
+    @media (max-width:900px){
+      .inventory-shell{max-width:100%;margin:0;border-radius:0;box-shadow:none}
+      .table-head,.list-body .row{grid-template-columns:140px 1fr 90px 60px 240px}
+      .notes-cell{grid-column:1 / -1;margin-top:4px}
+    }
   </style>
 </head>
 <body>
-  <!-- Brand bar -->
+  <!-- Top navigation (same structure as Build Next) -->
   <div class="brand-bar">
     <div class="brand-inner">
       <a class="brand-logo" href="/dashboard.html">
@@ -85,103 +86,53 @@
     </div>
   </div>
 
-  <main class="page-wrap">
-    <section class="card">
-      <div class="card-head">
-        Inventory Overview
-        <div class="card-sub">Merged view of DB inventory + catalog; zero / missing stock is highlighted.</div>
+  <!-- Inventory card -->
+  <div class="inventory-shell">
+    <div class="inventory-header">
+      <h2>Inventory — Snapshot</h2>
+      <div class="filter-row">
+        <input id="filterBox" type="text" placeholder="part number, print name, or location" />
+        <label class="cb"><input id="cbNonZero" type="checkbox"><span>only non-zero</span></label>
+        <label class="cb"><input id="cbOnlyZero" type="checkbox"><span>only 0-qty</span></label>
+        <button id="exportBtn" class="toolbar-btn">Export</button>
+        <button id="addBtn" class="toolbar-btn red">Add part</button>
+        <span id="countLabel">0 items</span>
       </div>
-      <div class="card-body">
-        <div class="filter-row">
-          <input type="text" id="filterBox" placeholder="Filter by part, description, location, print, or notes…" />
-          <label class="cb">
-            <input type="checkbox" id="cbNonZero" checked />
-            <span>Hide zero / missing rows</span>
-          </label>
-          <label class="cb">
-            <input type="checkbox" id="cbOnlyZero" />
-            <span>Show ONLY zero / missing</span>
-          </label>
-          <button class="toolbar-btn" id="addBtn">Add Part</button>
-          <button class="toolbar-btn red" id="exportBtn">Export CSV</button>
-          <span id="countLabel">0 parts</span>
-        </div>
+    </div>
 
-        <div class="table-head">
-          <div>Part Number</div>
-          <div>Description</div>
-          <div>Qty</div>
-          <div>Min</div>
-          <div>Location</div>
-          <div>Print / Notes</div>
-        </div>
+    <div class="table-head">
+      <div>Part Number</div><div>Print Name</div><div>Location</div><div>Qty</div><div>Adjust</div><div>Notes</div>
+    </div>
+    <div id="listBody" class="list-body"></div>
+  </div>
 
-        <div class="list-body" id="listBody">
-          <!-- rows injected -->
-        </div>
-
-        <div class="foot-row">
-          <div class="pill">
-            <span class="pill-dot"></span>
-            <span id="statusLabel">Loading from backend…</span>
-          </div>
-          <div>
-            <span>Total parts: <strong id="totalParts">0</strong></span>
-            &nbsp;•&nbsp;
-            <span>Below min / zero: <strong id="lowParts">0</strong></span>
-          </div>
-        </div>
-      </div>
-    </section>
-  </main>
-
-  <!-- Edit/Add Modal -->
-  <div class="modal-backdrop" id="editModalBackdrop">
+  <!-- Edit/Add modal -->
+  <div id="editModalBackdrop" class="modal-backdrop">
     <div class="modal">
-      <h2 id="modalTitle">Edit Part</h2>
-      <p id="modalSubtitle">Update inventory details.</p>
-      <div class="modal-grid">
-        <div>
-          <label for="modalPartNumber">Part number</label>
-          <input id="modalPartNumber" type="text" readonly />
-        </div>
-        <div>
-          <label for="modalLocation">Location</label>
-          <input id="modalLocation" type="text" />
-        </div>
-        <div>
-          <label for="modalQty">Quantity</label>
-          <input id="modalQty" type="number" step="1" />
-        </div>
-        <div>
-          <label for="modalMinQty">Min qty</label>
-          <input id="modalMinQty" type="number" step="1" />
-        </div>
-        <div style="grid-column:1/-1">
-          <label for="modalDescription">Description / Print</label>
-          <textarea id="modalDescription"></textarea>
-        </div>
-        <div style="grid-column:1/-1">
-          <label for="modalNotes">Notes</label>
-          <textarea id="modalNotes"></textarea>
-        </div>
-      </div>
+      <h3 id="modalTitle">Edit Part</h3>
+      <label for="mPart">Part Number</label><input id="mPart" readonly />
+      <label for="mDesc">Description</label><input id="mDesc" />
+      <label for="mLoc">Location</label><input id="mLoc" />
+      <label for="mQty">Qty</label><input id="mQty" type="number" />
+      <label for="mNotes">Notes</label><textarea id="mNotes"></textarea>
       <div class="modal-actions">
-        <button class="btn btn-gray" id="cancelBtn">Cancel</button>
-        <button class="btn btn-primary" id="saveBtn">Save</button>
-        <button class="btn btn-primary" id="deleteBtn" style="margin-left:auto;background:#7f1d1d;border-color:#991b1b">Delete</button>
+        <button id="saveBtn" class="btn-small btn-red">Save</button>
+        <button id="cancelBtn" class="btn-small btn-gray">Cancel</button>
+        <button id="deleteBtn" class="btn-small btn-gray" style="margin-left:auto;">Delete</button>
       </div>
     </div>
   </div>
 
+  <!-- Data sources -->
+  <script src="/users.js"></script>
   <script src="/catalog.js"></script>
   <script>
     const API_BASE = 'https://wireshop-backend.onrender.com/api';
 
-    // read current user (same as assignments.html behavior)
+    // simple auth + logout (match assignments.html behavior)
     const currentUser = (()=>{ try{ return JSON.parse(localStorage.getItem('user')||'{}'); }catch{ return {}; } })();
     if (!currentUser || !currentUser.username) { window.location.href = '/index.html'; }
-    document.getElementById('logoutBtn')?.addEventListener('click',()=>{ localStorage.removeItem('user'); location.href = '/index.html'; });
+    document.getElementById('logoutBtn')?.addEventListener('click', ()=>{ localStorage.removeItem('user'); location.href = '/index.html'; });
 
     const listBody = document.getElementById('listBody');
     const filterBox = document.getElementById('filterBox');
@@ -229,200 +180,156 @@
             printName: db.description ?? c.printName ?? '',
             location: db.location ?? (c.location||''),
             qty: typeof db.qty === 'number' ? db.qty : 0,
-            notes: db.notes ?? (c.notes||''),
-            minQty: typeof db.minQty === 'number' ? db.minQty : (c.minQty||0)
+            notes: db.notes ?? (c.notes||'')
           });
         }else{
           merged.push({
             partNumber: c.partNumber,
-            description: c.printName || '',
-            printName: c.printName || '',
+            description: c.printName||'',
+            printName: c.printName||'',
             location: c.location||'',
             qty: 0,
-            notes: c.notes||'',
-            minQty: c.minQty||0
+            notes: c.notes||''
           });
         }
       });
 
-      const extras = Object.keys(DB_ROWS).filter(pn => !cat.some(c=>c.partNumber===pn));
-      extras.forEach(pn=>{
-        const db = DB_ROWS[pn];
-        merged.push({
-          partNumber: db.partNumber,
-          description: db.description || '',
-          printName: db.description || '',
-          location: db.location||'',
-          qty: typeof db.qty === 'number' ? db.qty : 0,
-          notes: db.notes||'',
-          minQty: typeof db.minQty === 'number' ? db.minQty : 0
-        });
+      invData.forEach(db=>{
+        if(!cat.find(c=>c.partNumber===db.partNumber)){
+          merged.push({
+            partNumber: db.partNumber,
+            description: db.description ?? '',
+            printName: db.description ?? '',
+            location: db.location ?? '',
+            qty: typeof db.qty === 'number' ? db.qty : 0,
+            notes: db.notes ?? ''
+          });
+        }
       });
 
-      ALL_ROWS = merged.sort((a,b)=> (a.partNumber||'').localeCompare(b.partNumber||''));
+      merged.sort((a,b)=>(a.partNumber||'').localeCompare(b.partNumber||''));
+      ALL_ROWS = merged;
       renderList();
     }
 
-    function esc(s){ return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-
-    function qtyClass(row){
-      const q = row.qty ?? 0;
-      const min = row.minQty ?? 0;
-      if (q <= 0 || q < min) return 'qty-low';
-      return 'qty-ok';
-    }
-
-    function rowMatchesFilters(row, text, hideNonZero, onlyZero){
-      const blob = (row.partNumber||'')+' '+(row.description||'')+' '+(row.location||' ')+' '+(row.printName||'')+' '+(row.notes||'');
-      if (text && !blob.toLowerCase().includes(text)) return false;
-      const isZero = (row.qty ?? 0) <= 0;
-      const isLow  = (row.qty ?? 0) < (row.minQty ?? 0);
-      if (hideNonZero && !isZero && !isLow) return false;
-      if (onlyZero && !isZero && !isLow) return false;
-      return true;
-    }
-
     function renderList(){
-      const text = filterBox.value.trim().toLowerCase();
-      const hideNonZero = cbNonZero.checked;
-      const onlyZero = cbOnlyZero.checked;
+      const filter = filterBox.value.trim().toLowerCase();
+      const onlyNZ = cbNonZero.checked;
+      const onlyZ = cbOnlyZero.checked;
 
-      const rows = ALL_ROWS.filter(r => rowMatchesFilters(r, text, hideNonZero, onlyZero));
-      listBody.innerHTML = '';
+      listBody.innerHTML=''; let shown=0;
+      ALL_ROWS.forEach(row=>{
+        if(filter){
+          const hay = (row.partNumber+' '+(row.printName||'')+' '+(row.location||'')).toLowerCase();
+          if(!hay.includes(filter)) return;
+        }
+        if(onlyNZ && (!row.qty || row.qty===0)) return;
+        if(onlyZ && (row.qty && row.qty!==0)) return;
 
-      rows.forEach(row=>{
-        const div = document.createElement('div');
-        div.className = 'row';
-        div.dataset.part = row.partNumber;
+        const div = document.createElement('div'); div.className='row';
 
-        const isZero = (row.qty ?? 0) <= 0;
-        const isLow  = (row.qty ?? 0) < (row.minQty ?? 0);
-        if (isZero || isLow) div.style.background = '#fef2f2';
+        const partA = document.createElement('a');
+        partA.href = '/inv/'+encodeURIComponent(row.partNumber);
+        partA.textContent = row.partNumber;
+        partA.style.color='#003574'; partA.style.fontSize='12px';
 
-        div.innerHTML = `
-          <div class="cell pn">${esc(row.partNumber||'')}</div>
-          <div class="cell">${esc(row.description||'')}</div>
-          <div class="cell ${qtyClass(row)}">${row.qty ?? 0}</div>
-          <div class="cell">${row.minQty ?? 0}</div>
-          <div class="cell">${esc(row.location||'')}</div>
-          <div class="cell notes-cell">
-            ${row.printName ? `<span class="tag">Print: ${esc(row.printName)}</span>` : ''}
-            ${row.notes ? `<span class="tag">Notes: ${esc(row.notes)}</span>` : ''}
-          </div>
-        `;
+        const nameDiv = document.createElement('div'); nameDiv.textContent=row.printName||''; nameDiv.style.fontSize='12px';
+        const locDiv = document.createElement('div'); locDiv.textContent=row.location||''; locDiv.style.fontSize='12px';
+        const qtyDiv = document.createElement('div'); qtyDiv.textContent = row.qty!=null?row.qty:0; qtyDiv.style.fontSize='12px';
 
+        const adjustDiv = document.createElement('div'); adjustDiv.className='adjust-controls';
         if (isAdmin){
-          div.style.cursor = 'pointer';
-          div.addEventListener('click',()=> openModal('edit', row.partNumber));
+          const adjustInput = document.createElement('input'); adjustInput.type='text'; adjustInput.className='qty-input'; adjustInput.placeholder='+/-';
+          const applyBtn = document.createElement('button'); applyBtn.className='apply-btn'; applyBtn.textContent='Apply';
+          applyBtn.onclick = ()=>applyAdjust(row.partNumber,row.qty,adjustInput.value);
+          const editBtn = document.createElement('button'); editBtn.className='edit-btn'; editBtn.textContent='Edit';
+          editBtn.onclick = ()=>openEdit(row);
+          adjustDiv.append(adjustInput,applyBtn,editBtn);
+        } else {
+          adjustDiv.innerHTML = '<span class="muted">—</span>';
         }
 
-        listBody.appendChild(div);
+        const notesDiv = document.createElement('div'); notesDiv.className='notes-cell'; notesDiv.textContent=row.notes||'';
+
+        div.append(partA,nameDiv,locDiv,qtyDiv,adjustDiv,notesDiv);
+        listBody.appendChild(div); shown++;
       });
-
-      countLabel.textContent = `${rows.length} parts`;
-      document.getElementById('totalParts').textContent = ALL_ROWS.length;
-      document.getElementById('lowParts').textContent =
-        ALL_ROWS.filter(r => (r.qty ?? 0) <= 0 || (r.qty ?? 0) < (r.minQty ?? 0)).length;
-      document.getElementById('statusLabel').textContent = 'Live from backend';
+      countLabel.textContent = shown+' items';
     }
 
-    function openModal(mode, partNumber){
-      modalMode = mode;
-      editingPart = partNumber || null;
-      const titleEl = document.getElementById('modalTitle');
-      const subtitleEl = document.getElementById('modalSubtitle');
-
-      if (mode === 'add'){
-        titleEl.textContent = 'Add Part';
-        subtitleEl.textContent = 'Create a new inventory record.';
-        document.getElementById('modalPartNumber').readOnly = false;
-        document.getElementById('modalPartNumber').value = partNumber || '';
-        document.getElementById('modalDescription').value = '';
-        document.getElementById('modalLocation').value = '';
-        document.getElementById('modalQty').value = '';
-        document.getElementById('modalMinQty').value = '';
-        document.getElementById('modalNotes').value = '';
-        document.getElementById('deleteBtn').style.display = 'none';
-      }else{
-        titleEl.textContent = 'Edit Part';
-        subtitleEl.textContent = 'Update inventory details.';
-        const row = ALL_ROWS.find(r => r.partNumber === partNumber) || {};
-        document.getElementById('modalPartNumber').readOnly = true;
-        document.getElementById('modalPartNumber').value = row.partNumber || '';
-        document.getElementById('modalDescription').value = row.description || '';
-        document.getElementById('modalLocation').value = row.location || '';
-        document.getElementById('modalQty').value = row.qty ?? '';
-        document.getElementById('modalMinQty').value = row.minQty ?? '';
-        document.getElementById('modalNotes').value = row.notes || '';
-        document.getElementById('deleteBtn').style.display = 'inline-block';
-      }
-
-      editModalBackdrop.style.display = 'flex';
+    async function applyAdjust(partNumber,currentQty,deltaStr){
+      if(!isAdmin) return;
+      const delta = Number(deltaStr); if(isNaN(delta)){alert('enter a number');return;}
+      const newQty=(Number(currentQty)||0)+delta;
+      const res=await fetch(API_BASE+'/inventory/'+encodeURIComponent(partNumber)+'/qty',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','x-user': currentUser.username||currentUser.name||currentUser.user||currentUser},
+        body:JSON.stringify({qty:newQty})
+      });
+      const data=await res.json(); if(!res.ok){alert(data.error||'failed to adjust');return;}
+      const row=ALL_ROWS.find(r=>r.partNumber===partNumber); if(row) row.qty=newQty; renderList();
     }
 
-    function closeModal(){
-      editModalBackdrop.style.display = 'none';
+    function openEdit(row,isNew=false){
+      if(!isAdmin) return;
+      modalMode = isNew?'add':'edit';
+      editingPart = row ? {...row} : {partNumber:'',printName:'',location:'',qty:0,notes:''};
+      document.getElementById('modalTitle').textContent = isNew?'Add Part':'Edit Part';
+      document.getElementById('mPart').readOnly = !isNew;
+      document.getElementById('mPart').value = editingPart.partNumber||'';
+      document.getElementById('mDesc').value = editingPart.printName||'';
+      document.getElementById('mLoc').value = editingPart.location||'';
+      document.getElementById('mQty').value = editingPart.qty!=null?editingPart.qty:0;
+      document.getElementById('mNotes').value = editingPart.notes||'';
+      editModalBackdrop.style.display='flex';
+      document.getElementById('deleteBtn').style.display = isNew?'none':'inline-block';
     }
 
     async function saveModal(){
-      const pn = document.getElementById('modalPartNumber').value.trim();
-      const desc = document.getElementById('modalDescription').value.trim();
-      const loc = document.getElementById('modalLocation').value.trim();
-      const qty = Number(document.getElementById('modalQty').value || 0);
-      const minQty = Number(document.getElementById('modalMinQty').value || 0);
-      const notes = document.getElementById('modalNotes').value.trim();
-      if (!pn){ alert('Part number is required'); return; }
+      if(!isAdmin) return;
+      const part=document.getElementById('mPart').value.trim();
+      const desc=document.getElementById('mDesc').value;
+      const loc=document.getElementById('mLoc').value;
+      const qty=Number(document.getElementById('mQty').value||0);
+      const notes=document.getElementById('mNotes').value;
+      if(!part){alert('part number required');return;}
 
-      const body = { partNumber: pn, description: desc, location: loc, qty, minQty, notes };
+      const payload={partNumber:part,description:desc,location:loc,qty,minQty:0,notes};
+      const hdrs={'Content-Type':'application/json','x-user': currentUser.username||currentUser.name||currentUser.user||currentUser};
 
-      const method = modalMode === 'add' ? 'POST' : 'PUT';
-      const url = modalMode === 'add'
-        ? `${API_BASE}/inventory`
-        : `${API_BASE}/inventory/${encodeURIComponent(pn)}`;
-
-      const res = await fetch(url,{
-        method,
-        headers:{
-          'Content-Type':'application/json',
-          'x-user': currentUser.username||currentUser.name||currentUser.user||currentUser
-        },
-        body: JSON.stringify(body)
-      });
-
-      if (!res.ok){
-        const msg = await res.text().catch(()=> '');
-        alert(`Save failed: ${res.status} ${msg}`);
-        return;
+      if(modalMode==='add'){
+        const res=await fetch(API_BASE+'/inventory',{method:'POST',headers:hdrs,body:JSON.stringify(payload)});
+        const data=await res.json(); if(!res.ok){alert(data.error||'failed to add');return;}
+      }else{
+        const res=await fetch(API_BASE+'/inventory/'+encodeURIComponent(part),{method:'PUT',headers:hdrs,body:JSON.stringify(payload)});
+        const data=await res.json(); if(!res.ok){alert(data.error||'failed to save');return;}
       }
-
-      closeModal();
-      document.getElementById('statusLabel').textContent = 'Saved; refreshing…';
-      await loadData();
+      editModalBackdrop.style.display='none'; await loadData();
     }
 
     async function deleteModal(){
-      if (!editingPart) return;
-      if (!confirm(`Delete ${editingPart} from inventory?`)) return;
-
-      const res = await fetch(`${API_BASE}/inventory/${encodeURIComponent(editingPart)}`,{
+      if(!isAdmin) return;
+      const part=document.getElementById('mPart').value.trim(); if(!part) return;
+      if(!confirm('Delete '+part+'?')) return;
+      const res=await fetch(API_BASE+'/inventory/'+encodeURIComponent(part),{
         method:'DELETE',
         headers:{'x-user': currentUser.username||currentUser.name||currentUser.user||currentUser}
       });
-
-      if (!res.ok){
-        const msg = await res.text().catch(()=> '');
-        alert(`Delete failed: ${res.status} ${msg}`);
-        return;
-      }
-
-      closeModal();
-      await loadData();
+      const data=await res.json(); if(!res.ok){alert(data.error||'failed to delete');return;}
+      editModalBackdrop.style.display='none'; await loadData();
     }
 
-    document.getElementById('cancelBtn').addEventListener('click',closeModal);
-    editModalBackdrop.addEventListener('click',e=>{ if (e.target===editModalBackdrop) closeModal(); });
-    addBtn.addEventListener('click',()=> openModal('add',''));
-
+    // Events
+    document.getElementById('exportBtn').addEventListener('click',()=>{
+      let csv='partNumber,description,location,qty,notes\n';
+      ALL_ROWS.forEach(r=>{
+        csv+=`"${r.partNumber}","${(r.printName||'').replace(/"/g,'""')}","${(r.location||'').replace(/"/g,'""')}",${r.qty||0},"${(r.notes||'').replace(/"/g,'""')}"\n`;
+      });
+      const blob=new Blob([csv],{type:'text/csv'}); const url=URL.createObjectURL(blob);
+      const a=document.createElement('a'); a.href=url; a.download='inventory.csv'; a.click(); URL.revokeObjectURL(url);
+    });
+    document.getElementById('addBtn').addEventListener('click',()=>openEdit(null,true));
+    document.getElementById('cancelBtn').addEventListener('click',()=>editModalBackdrop.style.display='none');
     document.getElementById('saveBtn').addEventListener('click',saveModal);
     document.getElementById('deleteBtn').addEventListener('click',deleteModal);
     filterBox.addEventListener('input',renderList);
