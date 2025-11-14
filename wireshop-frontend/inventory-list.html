@@ -2,422 +2,435 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>CZM • Build Next</title>
+  <title>CZM • Inventory</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <link rel="stylesheet" href="/style.css" />
   <style>
-    /* Layout tweaks specific to assignments page */
-    .page-shell{max-width:1200px;margin:0 auto;padding:16px}
-    .header-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
-    .filters-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
-    .filters-row select,
-    .filters-row input{min-width:150px}
-    .summary-pill{font-size:0.8rem;padding:4px 8px;border-radius:999px;border:1px solid rgba(148,163,184,.6);color:#e5e7eb;background:rgba(15,23,42,.9)}
-    .summary-pill strong{color:#f97316}
-    .table-wrap{margin-top:8px}
-    .qtyDone{width:60px}
-    .text-right{text-align:right}
-    .muted{color:#9ca3af;font-size:0.8rem}
-    .btn-link{background:none;border:none;color:#93c5fd;text-decoration:underline;cursor:pointer;font-size:0.8rem;padding:0}
-    .badge{display:inline-block;padding:2px 6px;border-radius:999px;font-size:0.7rem}
-    .badge-pri1{background:#064e3b;color:#bbf7d0}
-    .badge-pri2{background:#1e3a8a;color:#bfdbfe}
-    .badge-pri3{background:#7f1d1d;color:#fecaca}
+    /* Brand bar (match assignments.html) */
     .brand-bar{background:#0f1114;border-bottom:4px solid #c30000}
-    .brand-inner{max-width:1200px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;padding:10px 16px}
-    .brand-left{display:flex;align-items:center;gap:10px}
-    .brand-logo{width:38px;height:38px;border-radius:50%;background:#c30000;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:0.9rem;box-shadow:0 0 14px rgba(220,38,38,.8)}
-    .brand-title{font-size:0.95rem;font-weight:600;letter-spacing:.08em;color:#e5e7eb;text-transform:uppercase}
-    .brand-sub{font-size:0.75rem;color:#9ca3af}
-    .brand-nav{display:flex;align-items:center;gap:8px}
-    .brand-btn{padding:6px 12px;border-radius:999px;border:1px solid rgba(148,163,184,.6);background:#020617;color:#e5e7eb;font-size:0.75rem;font-weight:500;cursor:pointer;letter-spacing:.05em;text-transform:uppercase}
-    .brand-btn.primary{background:#c30000;border-color:#fecaca;color:#fee2e2;box-shadow:0 0 12px rgba(248,113,113,.7)}
-    .brand-btn.logout{border-color:#fecaca;color:#fecaca}
-    .brand-user{font-size:0.8rem;color:#9ca3af;padding:4px 10px;border-radius:999px;border:1px solid rgba(148,163,184,.4);background:#020617}
-    .status-bar{font-size:0.8rem;margin-top:4px;color:#9ca3af}
-    .status-bar strong{color:#e5e7eb}
-    .chip{display:inline-flex;align-items:center;gap:4px;padding:3px 7px;border-radius:999px;border:1px solid rgba(148,163,184,.6);font-size:0.75rem;color:#e5e7eb;background:rgba(15,23,42,.9)}
-    .chip-dot{width:7px;height:7px;border-radius:999px;background:#22c55e;box-shadow:0 0 8px rgba(34,197,94,.9)}
-    @media (max-width:768px){
-      .brand-inner{flex-direction:column;align-items:flex-start;gap:8px}
-      .header-row{flex-direction:column;align-items:flex-start}
-      .filters-row{flex-direction:column;align-items:flex-start}
-    }
+    .brand-inner{max-width:1200px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;padding:8px 12px}
+    .brand-logo{display:flex;align-items:center;gap:10px;color:#fff;text-decoration:none}
+    .brand-logo img{height:22px;opacity:.95}
+    .brand-title{font-size:16px;margin:0;color:#fff}
+    .brand-actions .navbtn{display:inline-block;background:#1a1c1f;color:#fff;border-radius:20px;padding:6px 12px;text-decoration:none;border:1px solid #3a3f44;font-weight:600;font-size:.9rem;margin-left:8px}
+    .brand-actions .navbtn.active{background:#b30000;color:#fff;border-color:#ff4d4d}
+
+    body{background:#f1f3f7;font-family:system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;margin:0;padding:0}
+    .page-wrap{max-width:1200px;margin:20px auto;padding:0 12px}
+    .card{background:#fff;border-radius:6px;box-shadow:0 2px 6px rgba(0,0,0,.05);margin-bottom:14px;overflow:hidden;}
+    .card-head{padding:16px 18px;border-bottom:1px solid #eee;font-weight:700;}
+    .card-sub{font-size:12px;color:#6b7280;margin-top:2px}
+    .card-body{padding:16px 18px;}
+
+    .filter-row{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+    .filter-row input[type="text"]{flex:1;min-width:260px;height:32px;border:1px solid #cfd4da;border-radius:6px;padding:0 10px}
+    .cb{display:flex;align-items:center;gap:8px;height:32px;padding:0 10px;font-size:13px;border:1px solid #cfd4da;border-radius:6px;background:#f7f8fa;user-select:none}
+    .cb input{margin:0;width:16px;height:16px}
+    .toolbar-btn{background:#eee;border:1px solid #cfd4da;border-radius:6px;height:32px;padding:0 12px;font-size:13px;cursor:pointer}
+    .toolbar-btn.red{background:#c30000;color:#fff;border-color:#a00000}
+    #countLabel{font-size:12px;margin-left:auto;white-space:nowrap}
+
+    /* Header row */
+    .table-head{background:#0a0b0d;color:#fff;display:grid;grid-template-columns:150px 260px 80px 80px 130px minmax(160px,1fr);gap:0;border-radius:6px;margin-top:12px}
+    .table-head div{padding:8px 16px;font-size:12px;font-weight:600}
+
+    /* Data rows */
+    .list-body .row{display:grid;grid-template-columns:150px 260px 80px 80px 130px minmax(160px,1fr);gap:0;border-bottom:1px solid #eef2f6;background:#fff;align-items:center}
+    .list-body .row:nth-child(odd){background:#fafbfc}
+    .list-body .cell{padding:8px 16px;font-size:13px}
+    .pn{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;font-size:12px}
+    .qty-low{color:#b91c1c;font-weight:700}
+    .qty-ok{color:#0f766e;font-weight:700}
+    .notes-cell{font-size:12px;color:#333;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .tag{display:inline-block;background:#e5e7eb;color:#374151;border-radius:999px;padding:1px 6px;font-size:11px;margin-right:4px;margin-bottom:3px}
+
+    .list-body{border-radius:6px;overflow:hidden;border:1px solid #d1d5db;background:#fff;margin-top:2px}
+
+    .foot-row{display:flex;align-items:center;justify-content:space-between;margin-top:10px;font-size:12px;color:#6b7280}
+    .foot-row strong{color:#111827}
+    .pill{display:inline-flex;align-items:center;border-radius:999px;border:1px solid #cfd4da;padding:3px 10px;font-size:12px;background:#f9fafb}
+    .pill-dot{width:8px;height:8px;border-radius:999px;margin-right:6px;background:#22c55e;box-shadow:0 0 8px rgba(34,197,94,.8)}
+
+    /* Modal */
+    .modal-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.55);display:none;align-items:center;justify-content:center;z-index:40}
+    .modal{background:#fff;border-radius:8px;box-shadow:0 20px 40px rgba(15,23,42,.6);max-width:420px;width:100%;padding:18px}
+    .modal h2{margin:0 0 8px;font-size:16px}
+    .modal p{margin:0 0 8px;font-size:12px;color:#4b5563}
+    .modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px}
+    .modal-grid label{font-size:12px;color:#374151;display:block;margin-bottom:4px}
+    .modal-grid input,.modal-grid textarea{width:100%;box-sizing:border-box;border-radius:6px;border:1px solid #d1d5db;padding:6px 8px;font-size:13px}
+    .modal-grid textarea{resize:vertical;min-height:60px}
+    .modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
+    .btn{border-radius:6px;height:32px;padding:0 12px;border:1px solid transparent;font-size:13px;cursor:pointer}
+    .btn-primary{background:#c30000;color:#fff;border-color:#a00000}
+    .btn-gray{background:#c5c5c5;color:#000}
   </style>
 </head>
 <body>
+  <!-- Brand bar -->
   <div class="brand-bar">
     <div class="brand-inner">
-      <div class="brand-left">
-        <div class="brand-logo">CZM</div>
+      <a class="brand-logo" href="/dashboard.html">
+        <img src="/czm-logo.png" alt="CZM">
+        <h1 class="brand-title">CZM • Inventory</h1>
+      </a>
+      <div class="brand-actions">
+        <a class="navbtn" href="/dashboard.html">Dashboard</a>
+        <a class="navbtn" href="/assignments.html">Build Next</a>
+        <a class="navbtn active" href="/inventory">Inventory</a>
+        <a class="navbtn" href="/archive.html">Archive</a>
+        <a class="navbtn" href="/admin.html">Admin</a>
+        <button id="logoutBtn" class="navbtn">Logout</button>
+      </div>
+    </div>
+  </div>
+
+  <main class="page-wrap">
+    <section class="card">
+      <div class="card-head">
+        Inventory Overview
+        <div class="card-sub">Merged view of DB inventory + catalog; zero / missing stock is highlighted.</div>
+      </div>
+      <div class="card-body">
+        <div class="filter-row">
+          <input type="text" id="filterBox" placeholder="Filter by part, description, location, print, or notes…" />
+          <label class="cb">
+            <input type="checkbox" id="cbNonZero" checked />
+            <span>Hide zero / missing rows</span>
+          </label>
+          <label class="cb">
+            <input type="checkbox" id="cbOnlyZero" />
+            <span>Show ONLY zero / missing</span>
+          </label>
+          <button class="toolbar-btn" id="addBtn">Add Part</button>
+          <button class="toolbar-btn red" id="exportBtn">Export CSV</button>
+          <span id="countLabel">0 parts</span>
+        </div>
+
+        <div class="table-head">
+          <div>Part Number</div>
+          <div>Description</div>
+          <div>Qty</div>
+          <div>Min</div>
+          <div>Location</div>
+          <div>Print / Notes</div>
+        </div>
+
+        <div class="list-body" id="listBody">
+          <!-- rows injected -->
+        </div>
+
+        <div class="foot-row">
+          <div class="pill">
+            <span class="pill-dot"></span>
+            <span id="statusLabel">Loading from backend…</span>
+          </div>
+          <div>
+            <span>Total parts: <strong id="totalParts">0</strong></span>
+            &nbsp;•&nbsp;
+            <span>Below min / zero: <strong id="lowParts">0</strong></span>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Edit/Add Modal -->
+  <div class="modal-backdrop" id="editModalBackdrop">
+    <div class="modal">
+      <h2 id="modalTitle">Edit Part</h2>
+      <p id="modalSubtitle">Update inventory details.</p>
+      <div class="modal-grid">
         <div>
-          <div class="brand-title">WireShop</div>
-          <div class="brand-sub">Build Next • Assignments</div>
+          <label for="modalPartNumber">Part number</label>
+          <input id="modalPartNumber" type="text" readonly />
+        </div>
+        <div>
+          <label for="modalLocation">Location</label>
+          <input id="modalLocation" type="text" />
+        </div>
+        <div>
+          <label for="modalQty">Quantity</label>
+          <input id="modalQty" type="number" step="1" />
+        </div>
+        <div>
+          <label for="modalMinQty">Min qty</label>
+          <input id="modalMinQty" type="number" step="1" />
+        </div>
+        <div style="grid-column:1/-1">
+          <label for="modalDescription">Description / Print</label>
+          <textarea id="modalDescription"></textarea>
+        </div>
+        <div style="grid-column:1/-1">
+          <label for="modalNotes">Notes</label>
+          <textarea id="modalNotes"></textarea>
         </div>
       </div>
-      <div class="brand-nav">
-        <button class="brand-btn primary" onclick="location.href='assignments.html'">Build Next</button>
-        <button class="brand-btn" onclick="location.href='inventory.html'">Inventory</button>
-        <button class="brand-btn" onclick="location.href='inventory-list.html'">Inventory List</button>
-        <button class="brand-btn logout" id="logoutBtn">Logout</button>
-        <div class="brand-user" id="userLabel">User: -</div>
+      <div class="modal-actions">
+        <button class="btn btn-gray" id="cancelBtn">Cancel</button>
+        <button class="btn btn-primary" id="saveBtn">Save</button>
+        <button class="btn btn-primary" id="deleteBtn" style="margin-left:auto;background:#7f1d1d;border-color:#991b1b">Delete</button>
       </div>
     </div>
   </div>
 
-  <div class="page-shell">
-    <div class="header-row">
-      <div>
-        <h1>Build Queue</h1>
-        <div class="status-bar">
-          <span id="statusText">Loading assignments…</span>
-        </div>
-      </div>
-      <div class="summary-pill">
-        Open: <strong id="openCount">0</strong> • In Progress: <strong id="inProgCount">0</strong> • Completed (today): <strong id="doneCount">0</strong>
-      </div>
-    </div>
-
-    <div class="filters-row">
-      <select id="filterMachine">
-        <option value="">All machines</option>
-      </select>
-      <select id="filterStatus">
-        <option value="">All statuses</option>
-        <option value="open">Open</option>
-        <option value="inprogress">In progress</option>
-        <option value="done">Completed</option>
-      </select>
-      <select id="filterPriority">
-        <option value="">All priorities</option>
-        <option value="1">Priority 1 (Hot)</option>
-        <option value="2">Priority 2</option>
-        <option value="3">Priority 3</option>
-      </select>
-      <input type="text" id="filterPart" placeholder="Filter by part number or description" />
-      <button id="btnRefresh" class="brand-btn">Refresh</button>
-      <button id="btnAdd" class="brand-btn">Add Job</button>
-      <button id="clearDoneBtn" class="brand-btn">Clear Done</button>
-      <button id="exportBtn" class="brand-btn">Export Done</button>
-      <span class="chip">
-        <span class="chip-dot"></span>
-        Live from backend
-      </span>
-    </div>
-
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Machine</th>
-            <th>Part</th>
-            <th>Description</th>
-            <th>Qty</th>
-            <th>Priority</th>
-            <th>Assigned</th>
-            <th>Status</th>
-            <th>Actions</th>
-            <th class="text-right">Complete Qty</th>
-          </tr>
-        </thead>
-        <tbody id="assignBody">
-          <tr><td colspan="9" class="muted">Loading…</td></tr>
-        </tbody>
-      </table>
-    </div>
-
-    <p class="muted" id="lastUpdated"></p>
-  </div>
-
-  <script src="/users.js"></script>
+  <script src="/catalog.js"></script>
   <script>
-    const API_ROOT = (window.BACKEND_BASE || 'https://wireshop-backend.onrender.com') + '/api';
+    const API_BASE = 'https://wireshop-backend.onrender.com/api';
 
-    let user = null;
+    // read current user (same as assignments.html behavior)
+    const currentUser = (()=>{ try{ return JSON.parse(localStorage.getItem('user')||'{}'); }catch{ return {}; } })();
+    if (!currentUser || !currentUser.username) { window.location.href = '/index.html'; }
+    document.getElementById('logoutBtn')?.addEventListener('click',()=>{ localStorage.removeItem('user'); location.href = '/index.html'; });
+
+    const listBody = document.getElementById('listBody');
+    const filterBox = document.getElementById('filterBox');
+    const countLabel = document.getElementById('countLabel');
+    const cbNonZero = document.getElementById('cbNonZero');
+    const cbOnlyZero = document.getElementById('cbOnlyZero');
+    const editModalBackdrop = document.getElementById('editModalBackdrop');
+    const addBtn = document.getElementById('addBtn');
+
+    let ALL_ROWS = [];
+    let DB_ROWS = {};
     let isAdmin = false;
-    let assignments = [];
-    let machines = [];
-
-    function readSession(){
-      try{
-        const raw = localStorage.getItem('wireShopSession');
-        if(!raw) return null;
-        return JSON.parse(raw);
-      }catch(e){
-        return null;
-      }
-    }
-
-    function ensureUser(){
-      const session = readSession();
-      if(!session || !session.username){
-        location.href = 'index.html';
-        return null;
-      }
-      return { username: session.username, role: session.role || '' };
-    }
+    let modalMode = 'edit';
+    let editingPart = null;
 
     function computeIsAdmin(u){
-      if(!u) return false;
-      const uname = String(u.username || u.name || u.user || '').trim();
-      if(window.ADMIN_USERS && Array.isArray(window.ADMIN_USERS) && window.ADMIN_USERS.includes(uname)) return true;
-      if(window.ADMINS && Array.isArray(window.ADMINS) && window.ADMINS.includes(uname)) return true;
+      const uname = (u?.username || u?.name || u?.user || '').trim();
+      const fromUsersJs =
+        (window.ADMIN_USERS && Array.isArray(window.ADMIN_USERS) && window.ADMIN_USERS.includes(uname)) ||
+        (window.ADMINS && Array.isArray(window.ADMINS) && window.ADMINS.includes(uname));
+      if (fromUsersJs) return true;
       const FALLBACK = ['Shane.Yaroli','Tyler.Ellis'];
       return FALLBACK.includes(uname);
     }
 
-    function setStatus(msg){
-      document.getElementById('statusText').textContent = msg;
-    }
+    async function loadData(){
+      isAdmin = computeIsAdmin(currentUser);
+      addBtn.style.display = isAdmin ? 'inline-block' : 'none';
 
-    function updateCounts(){
-      let open=0,inprog=0,done=0;
-      const today = new Date().toDateString();
-      assignments.forEach(a=>{
-        if(a.status==='open') open++;
-        else if(a.status==='inprogress') inprog++;
-        else if(a.status==='done' && a.completedAt && new Date(a.completedAt).toDateString()===today) done++;
+      const invRes = await fetch(API_BASE+'/inventory-all',{
+        headers:{'x-user': currentUser.username||currentUser.name||currentUser.user||currentUser}
       });
-      document.getElementById('openCount').textContent=open;
-      document.getElementById('inProgCount').textContent=inprog;
-      document.getElementById('doneCount').textContent=done;
-    }
+      const invData = await invRes.json();
+      DB_ROWS = {}; invData.forEach(r => DB_ROWS[r.partNumber]=r);
 
-    function buildMachineOptions(){
-      const sel = document.getElementById('filterMachine');
-      const unique = Array.from(new Set(assignments.map(a=>a.machine).filter(Boolean))).sort();
-      sel.innerHTML = '<option value="">All machines</option>' + unique.map(m=>`<option value="${m}">${m}</option>`).join('');
-    }
+      const cat = Array.isArray(window.catalog) ? window.catalog : [];
+      const merged = [];
 
-    function esc(s){ return String(s??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;'); }
-    function ts(ms){ if(!ms) return ''; return new Date(ms).toLocaleString(); }
-
-    async function api(path, opts={}){
-      const res = await fetch(API_ROOT + path, {
-        method: opts.method || 'GET',
-        headers: {
-          'Content-Type':'application/json',
-          'x-user': user.username,
-          'x-role': String(user.role || '')
-        },
-        body: opts.body ? JSON.stringify(opts.body) : undefined
+      cat.forEach(c=>{
+        const db = DB_ROWS[c.partNumber];
+        if(db){
+          merged.push({
+            partNumber: db.partNumber,
+            description: db.description ?? c.printName ?? '',
+            printName: db.description ?? c.printName ?? '',
+            location: db.location ?? (c.location||''),
+            qty: typeof db.qty === 'number' ? db.qty : 0,
+            notes: db.notes ?? (c.notes||''),
+            minQty: typeof db.minQty === 'number' ? db.minQty : (c.minQty||0)
+          });
+        }else{
+          merged.push({
+            partNumber: c.partNumber,
+            description: c.printName || '',
+            printName: c.printName || '',
+            location: c.location||'',
+            qty: 0,
+            notes: c.notes||'',
+            minQty: c.minQty||0
+          });
+        }
       });
-      if (!res.ok) throw new Error('HTTP '+res.status);
-      return res.json();
-    }
 
-    const pnInput = document.getElementById('part');
-    const qAdd = document.getElementById('qAdd');
-    const prioritySel = document.getElementById('prioritySel');
-
-    document.getElementById('btnAdd')?.addEventListener('click', async ()=>{
-      const pn = (pnInput.value||'').trim();
-      const qty = Number(qAdd.value||0);
-      const pri = Number(prioritySel.value||0) | 0;
-      if (!pn) return alert('Pick a part');
-      if (!Number.isInteger(qty) || qty <= 0) return alert('Qty must be positive');
-      try{
-        await api('/build-tasks', { method:'POST', body:{ partNumber:pn, qty, priority:pri } });
-        await refreshAll();
-      }catch(e){
-        alert('Add failed');
-      }
-    });
-
-    function renderAssignments(){
-      const tbody = document.getElementById('assignBody');
-      const fMachine = document.getElementById('filterMachine').value;
-      const fStatus = document.getElementById('filterStatus').value;
-      const fPriority = document.getElementById('filterPriority').value;
-      const fPart = document.getElementById('filterPart').value.toLowerCase();
-
-      let rows = assignments.slice();
-
-      if (fMachine) rows = rows.filter(r => r.machine === fMachine);
-      if (fStatus) rows = rows.filter(r => r.status === fStatus);
-      if (fPriority) rows = rows.filter(r => String(r.priority||'') === fPriority);
-      if (fPart) {
-        rows = rows.filter(r => {
-          const text = (r.partNumber||'') + ' ' + (r.description||'');
-          return text.toLowerCase().includes(fPart);
+      const extras = Object.keys(DB_ROWS).filter(pn => !cat.some(c=>c.partNumber===pn));
+      extras.forEach(pn=>{
+        const db = DB_ROWS[pn];
+        merged.push({
+          partNumber: db.partNumber,
+          description: db.description || '',
+          printName: db.description || '',
+          location: db.location||'',
+          qty: typeof db.qty === 'number' ? db.qty : 0,
+          notes: db.notes||'',
+          minQty: typeof db.minQty === 'number' ? db.minQty : 0
         });
+      });
+
+      ALL_ROWS = merged.sort((a,b)=> (a.partNumber||'').localeCompare(b.partNumber||''));
+      renderList();
+    }
+
+    function esc(s){ return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+    function qtyClass(row){
+      const q = row.qty ?? 0;
+      const min = row.minQty ?? 0;
+      if (q <= 0 || q < min) return 'qty-low';
+      return 'qty-ok';
+    }
+
+    function rowMatchesFilters(row, text, hideNonZero, onlyZero){
+      const blob = (row.partNumber||'')+' '+(row.description||'')+' '+(row.location||' ')+' '+(row.printName||'')+' '+(row.notes||'');
+      if (text && !blob.toLowerCase().includes(text)) return false;
+      const isZero = (row.qty ?? 0) <= 0;
+      const isLow  = (row.qty ?? 0) < (row.minQty ?? 0);
+      if (hideNonZero && !isZero && !isLow) return false;
+      if (onlyZero && !isZero && !isLow) return false;
+      return true;
+    }
+
+    function renderList(){
+      const text = filterBox.value.trim().toLowerCase();
+      const hideNonZero = cbNonZero.checked;
+      const onlyZero = cbOnlyZero.checked;
+
+      const rows = ALL_ROWS.filter(r => rowMatchesFilters(r, text, hideNonZero, onlyZero));
+      listBody.innerHTML = '';
+
+      rows.forEach(row=>{
+        const div = document.createElement('div');
+        div.className = 'row';
+        div.dataset.part = row.partNumber;
+
+        const isZero = (row.qty ?? 0) <= 0;
+        const isLow  = (row.qty ?? 0) < (row.minQty ?? 0);
+        if (isZero || isLow) div.style.background = '#fef2f2';
+
+        div.innerHTML = `
+          <div class="cell pn">${esc(row.partNumber||'')}</div>
+          <div class="cell">${esc(row.description||'')}</div>
+          <div class="cell ${qtyClass(row)}">${row.qty ?? 0}</div>
+          <div class="cell">${row.minQty ?? 0}</div>
+          <div class="cell">${esc(row.location||'')}</div>
+          <div class="cell notes-cell">
+            ${row.printName ? `<span class="tag">Print: ${esc(row.printName)}</span>` : ''}
+            ${row.notes ? `<span class="tag">Notes: ${esc(row.notes)}</span>` : ''}
+          </div>
+        `;
+
+        if (isAdmin){
+          div.style.cursor = 'pointer';
+          div.addEventListener('click',()=> openModal('edit', row.partNumber));
+        }
+
+        listBody.appendChild(div);
+      });
+
+      countLabel.textContent = `${rows.length} parts`;
+      document.getElementById('totalParts').textContent = ALL_ROWS.length;
+      document.getElementById('lowParts').textContent =
+        ALL_ROWS.filter(r => (r.qty ?? 0) <= 0 || (r.qty ?? 0) < (r.minQty ?? 0)).length;
+      document.getElementById('statusLabel').textContent = 'Live from backend';
+    }
+
+    function openModal(mode, partNumber){
+      modalMode = mode;
+      editingPart = partNumber || null;
+      const titleEl = document.getElementById('modalTitle');
+      const subtitleEl = document.getElementById('modalSubtitle');
+
+      if (mode === 'add'){
+        titleEl.textContent = 'Add Part';
+        subtitleEl.textContent = 'Create a new inventory record.';
+        document.getElementById('modalPartNumber').readOnly = false;
+        document.getElementById('modalPartNumber').value = partNumber || '';
+        document.getElementById('modalDescription').value = '';
+        document.getElementById('modalLocation').value = '';
+        document.getElementById('modalQty').value = '';
+        document.getElementById('modalMinQty').value = '';
+        document.getElementById('modalNotes').value = '';
+        document.getElementById('deleteBtn').style.display = 'none';
+      }else{
+        titleEl.textContent = 'Edit Part';
+        subtitleEl.textContent = 'Update inventory details.';
+        const row = ALL_ROWS.find(r => r.partNumber === partNumber) || {};
+        document.getElementById('modalPartNumber').readOnly = true;
+        document.getElementById('modalPartNumber').value = row.partNumber || '';
+        document.getElementById('modalDescription').value = row.description || '';
+        document.getElementById('modalLocation').value = row.location || '';
+        document.getElementById('modalQty').value = row.qty ?? '';
+        document.getElementById('modalMinQty').value = row.minQty ?? '';
+        document.getElementById('modalNotes').value = row.notes || '';
+        document.getElementById('deleteBtn').style.display = 'inline-block';
       }
 
-      if (!rows.length){
-        tbody.innerHTML = '<tr><td colspan="9" class="muted">No assignments match the filters.</td></tr>';
+      editModalBackdrop.style.display = 'flex';
+    }
+
+    function closeModal(){
+      editModalBackdrop.style.display = 'none';
+    }
+
+    async function saveModal(){
+      const pn = document.getElementById('modalPartNumber').value.trim();
+      const desc = document.getElementById('modalDescription').value.trim();
+      const loc = document.getElementById('modalLocation').value.trim();
+      const qty = Number(document.getElementById('modalQty').value || 0);
+      const minQty = Number(document.getElementById('modalMinQty').value || 0);
+      const notes = document.getElementById('modalNotes').value.trim();
+      if (!pn){ alert('Part number is required'); return; }
+
+      const body = { partNumber: pn, description: desc, location: loc, qty, minQty, notes };
+
+      const method = modalMode === 'add' ? 'POST' : 'PUT';
+      const url = modalMode === 'add'
+        ? `${API_BASE}/inventory`
+        : `${API_BASE}/inventory/${encodeURIComponent(pn)}`;
+
+      const res = await fetch(url,{
+        method,
+        headers:{
+          'Content-Type':'application/json',
+          'x-user': currentUser.username||currentUser.name||currentUser.user||currentUser
+        },
+        body: JSON.stringify(body)
+      });
+
+      if (!res.ok){
+        const msg = await res.text().catch(()=> '');
+        alert(`Save failed: ${res.status} ${msg}`);
         return;
       }
 
-      tbody.innerHTML = rows.map(r=>{
-        const priBadge = r.priority===1 ? 'badge-pri1' : r.priority===2 ? 'badge-pri2' : 'badge-pri3';
-        const priLabel = r.priority===1 ? 'Hot' : r.priority===2 ? 'Normal' : 'Low';
-        const statusLabel = r.status==='open' ? 'Open' :
-                            r.status==='inprogress' ? 'In Progress' :
-                            'Done';
-        const canClaim = r.status==='open';
-        const canStart = r.status==='open' && r.claimedBy===user.username;
-        const canComplete = r.status==='inprogress' && r.claimedBy===user.username;
-        const canCancel = isAdmin && r.status!=='done';
-        const canUnclaim = isAdmin && r.status==='open' && r.claimedBy;
-        const disabled = r.status==='done';
-
-        return `
-          <tr data-id="${r.id}">
-            <td>${esc(r.machine||'')}</td>
-            <td>${esc(r.partNumber||'')}</td>
-            <td>${esc(r.description||'')}</td>
-            <td>${r.qty||0}</td>
-            <td><span class="badge ${priBadge}">${priLabel}</span></td>
-            <td>${esc(r.claimedBy||'-')}</td>
-            <td>${statusLabel}</td>
-            <td>
-              ${canClaim ? `<button class="btn-link act-claim">Claim</button>` : ''}
-              ${canStart ? `<button class="btn-link act-start">Start</button>` : ''}
-              ${canComplete ? `<button class="btn-link act-complete">Complete</button>` : ''}
-              ${canCancel ? `<button class="btn-link act-cancel">Cancel</button>` : ''}
-              ${canUnclaim ? `<button class="btn-link act-unclaim">Unclaim</button>` : ''}
-            </td>
-            <td class="text-right">
-              ${canComplete ? `<input type="number" class="qtyDone" min="1" max="${r.qty||1}" value="${r.qty||1}" />` : ''}
-            </td>
-          </tr>
-        `;
-      }).join('');
-
-      document.getElementById('lastUpdated').textContent =
-        'Last updated: '+new Date().toLocaleTimeString();
+      closeModal();
+      document.getElementById('statusLabel').textContent = 'Saved; refreshing…';
+      await loadData();
     }
 
-    async function refreshAll(){
-      try{
-        setStatus('Loading from backend…');
-        const data = await api('/build-tasks');
-        assignments = data.assignments||[];
-        machines = data.machines||[];
-        buildMachineOptions();
-        renderAssignments();
-        updateCounts();
-        setStatus('Live from backend');
-      }catch(e){
-        console.error(e);
-        setStatus('Failed to load: '+e.message);
+    async function deleteModal(){
+      if (!editingPart) return;
+      if (!confirm(`Delete ${editingPart} from inventory?`)) return;
+
+      const res = await fetch(`${API_BASE}/inventory/${encodeURIComponent(editingPart)}`,{
+        method:'DELETE',
+        headers:{'x-user': currentUser.username||currentUser.name||currentUser.user||currentUser}
+      });
+
+      if (!res.ok){
+        const msg = await res.text().catch(()=> '');
+        alert(`Delete failed: ${res.status} ${msg}`);
+        return;
       }
+
+      closeModal();
+      await loadData();
     }
 
-    document.getElementById('filterMachine').addEventListener('change', renderAssignments);
-    document.getElementById('filterStatus').addEventListener('change', renderAssignments);
-    document.getElementById('filterPriority').addEventListener('change', renderAssignments);
-    document.getElementById('filterPart').addEventListener('input', renderAssignments);
+    document.getElementById('cancelBtn').addEventListener('click',closeModal);
+    editModalBackdrop.addEventListener('click',e=>{ if (e.target===editModalBackdrop) closeModal(); });
+    addBtn.addEventListener('click',()=> openModal('add',''));
 
-    document.getElementById('assignBody').addEventListener('click', async (e)=>{
-      const btn = e.target.closest('button');
-      if (!btn) return;
-      const tr = btn.closest('tr');
-      const id = tr?.dataset?.id;
-      if (!id) return;
+    document.getElementById('saveBtn').addEventListener('click',saveModal);
+    document.getElementById('deleteBtn').addEventListener('click',deleteModal);
+    filterBox.addEventListener('input',renderList);
+    cbNonZero.addEventListener('change',renderList);
+    cbOnlyZero.addEventListener('change',renderList);
 
-      const claimId = btn.classList.contains('act-claim') ? id : null;
-      const startId = btn.classList.contains('act-start') ? id : null;
-      const completeId = btn.classList.contains('act-complete') ? id : null;
-      const cancelId = btn.classList.contains('act-cancel') ? id : null;
-      const unclaimId = btn.classList.contains('act-unclaim') ? id : null;
-
-      try{
-        if (claimId){
-          await api(`/api/build-tasks/${claimId}/claim`, { method:'PATCH' });
-          await refreshAll(); return;
-        }
-        if (startId){
-          await api(`/api/build-tasks/${startId}/start`, { method:'PATCH' });
-          await refreshAll(); return;
-        }
-        if (cancelId && isAdmin){
-          await api(`/api/build-tasks/${cancelId}/cancel`, { method:'PATCH' });
-          await refreshAll(); return;
-        }
-        if (unclaimId && isAdmin){
-          await api(`/api/build-tasks/${unclaimId}/unclaim`, { method:'PATCH' });
-          await refreshAll(); return;
-        }
-        if (completeId){
-          const tr = e.target.closest('tr');
-          const qtyBox = tr?.querySelector('.qtyDone');
-          const qty = Number(qtyBox?.value||0);
-          if (!Number.isInteger(qty) || qty <= 0) { alert('Enter a positive quantity'); return; }
-          const res = await api(`/api/build-tasks/${completeId}/complete`, { method:'PATCH', body:{ qty } });
-          const pn = res?.addToInventory?.partNumber;
-          const inc = Number(res?.addToInventory?.qty||0);
-          if (pn && inc > 0){
-            // update inventory qty using new /qty endpoint
-            let currentQty = 0;
-            try {
-              const invItem = await api(`/api/inventory/${encodeURIComponent(pn)}`);
-              currentQty = Number(invItem?.qty || 0);
-            } catch (e) {
-              console.warn('Failed to read current inventory qty, assuming 0', e);
-            }
-            const newQty = currentQty + inc;
-            await api(`/api/inventory/${encodeURIComponent(pn)}/qty`, {
-              method:'POST',
-              body:{ qty: newQty }
-            });
-          }
-          await refreshAll(); return;
-        }
-      } catch(err){
-        alert('Action failed');
-      }
-    });
-
-    document.getElementById('clearDoneBtn')?.addEventListener('click', async ()=>{
-      if (!isAdmin) return;
-      try{
-        await api('/api/build-task-events?type=complete', { method:'DELETE' });
-        await refreshAll();
-      }catch(e){ alert('Clear failed'); }
-    });
-
-    document.getElementById('exportBtn')?.addEventListener('click', async ()=>{
-      try{
-        const res = await api('/api/build-task-events?type=complete', { method:'GET' });
-        const rows = res.events || [];
-        if (!rows.length){ alert('No completed events to export.'); return; }
-        const header = ['When','User','Machine','Part Number','Description','Qty'];
-        const csv = [header.join(',')].concat(rows.map(r=>[
-          `"${new Date(r.when).toLocaleString().replace(/"/g,'""')}"`,
-          `"${(r.user||'').replace(/"/g,'""')}"`,
-          `"${(r.machine||'').replace(/"/g,'""')}"`,
-          `"${(r.partNumber||'').replace(/"/g,'""')}"`,
-          `"${(r.description||'').replace(/"/g,'""')}"`,
-          r.qty||0
-        ].join(','))).join('\n');
-
-        const blob = new Blob([csv],{type:'text/csv'});
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'build-completed.csv';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      }catch(e){
-        alert('Export failed');
-      }
-    });
-
-    document.getElementById('logoutBtn').addEventListener('click', ()=>{
-      localStorage.removeItem('wireShopSession');
-      location.href='index.html';
-    });
-
-    (function init(){
-      user = ensureUser();
-      if (!user) return;
-      isAdmin = computeIsAdmin(user);
-      document.getElementById('userLabel').textContent = 'User: '+user.username + (isAdmin ? ' (Admin)' : '');
-      refreshAll();
-    })();
+    // Kickoff
+    loadData();
   </script>
 </body>
 </html>
