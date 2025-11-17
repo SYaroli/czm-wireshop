@@ -182,16 +182,53 @@
       }catch(_){}
     }
 
-    // catalog helpers
-    const CATALOG = Array.isArray(window.catalog) ? window.catalog : [];
-    const byPN = new Map(CATALOG.map(x => [String(x.partNumber), x]));
-    const options = CATALOG.map(c => {
-      const pn = String(c.partNumber||'').trim();
-      const name = (c.printName||'').trim();
-      return `<option value="${pn}">${name ? name + ' — ' + pn : pn}</option>`;
-    }).join('');
-    document.getElementById('partsList').innerHTML = options;
+    // catalog + inventory helpers (NEW)
+let byPN = new Map();
 
+async function loadPartList() {
+  const cat = Array.isArray(window.catalog) ? window.catalog : [];
+  let inv = [];
+  try {
+    inv = await api('/api/inventory-all');
+  } catch (e) {
+    console.warn('Failed to load inventory-all', e);
+  }
+
+  const map = new Map();
+
+  // From catalog.js
+  cat.forEach(c => {
+    const pn = String(c.partNumber || '').trim();
+    if (!pn) return;
+    map.set(pn, {
+      partNumber: pn,
+      printName: (c.printName || '').trim()
+    });
+  });
+
+  // Include DB-only parts
+  inv.forEach(r => {
+    const pn = String(r.partNumber || '').trim();
+    if (!pn || map.has(pn)) return;
+    map.set(pn, {
+      partNumber: pn,
+      printName: (r.description || '').trim()
+    });
+  });
+
+  const list = Array.from(map.values())
+    .sort((a, b) => a.partNumber.localeCompare(b.partNumber));
+
+  byPN = new Map(list.map(x => [x.partNumber, x]));
+
+  const options = list.map(c => {
+    const pn = c.partNumber;
+    const name = c.printName;
+    return `<option value="${pn}">${name ? name + ' — ' + pn : pn}</option>`;
+  }).join('');
+
+  document.getElementById('partsList').innerHTML = options;
+}
     function esc(s){ return String(s??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;'); }
     function ts(ms){ if(!ms) return ''; return new Date(ms).toLocaleString(); }
 
