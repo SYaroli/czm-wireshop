@@ -55,24 +55,42 @@ router.get('/inventory/:partNumber', requireUser, (req,res)=>{
     });
 });
 
-router.post('/inventory', requireAdmin, (req,res)=>{
-  const {partNumber,description='',location='',qty=0,minQty=0,notes=''} = req.body||{};
-  if(!partNumber) return res.status(400).json({error:'partNumber required'});
-  const now = Date.now();
-  db.run(
-    `INSERT INTO inventory (partNumber,description,location,qty,minQty,notes,updatedAt,updatedBy)
-     VALUES (?,?,?,?,?,?,?,?)`,
-    [partNumber,description,location,qty,minQty,notes,now,req.user],
-    function(err){
-      if(err){
-        if(String(err.message).includes('UNIQUE')) return res.status(409).json({error:'exists'});
-        return res.status(500).json({error:'db error'});
-      }
-      res.json({ok:true});
-    }
-  );
-});
+router.post('/inventory/:partNumber/qty', requireUser, (req, res) => {
+  const { qty, note = '' } = req.body || {};
+  if (qty === undefined) return res.status(400).json({ error: 'qty required' });
 
+  const partNumber = req.params.partNumber;
+  const now = Date.now();
+
+  // get current qty first
+  db.get(`SELECT qty FROM inventory WHERE partNumber = ?`, [partNumber], (err, row) => {
+    if (err) return res.status(500).json({ error: 'db error' });
+    if (!row) return res.status(404).json({ error: 'not found' });
+
+    const before = Number(row.qty) || 0;
+    const after  = Number(qty) || 0;
+    const delta  = after - before;
+
+    db.run(
+      `UPDATE inventory SET qty = ?, updatedAt = ?, updatedBy = ? WHERE partNumber = ?`,
+      [after, now, req.user, partNumber],
+      function (err2) {
+        if (err2) return res.status(500).json({ error: 'db error' });
+        if (this.changes === 0) return res.status(404).json({ error: 'not found' });
+
+        db.run(
+          `INSERT INTO inventory_txns (partNumber, delta, qtyBefore, qtyAfter, note, user, ts)
+           VALUES (?,?,?,?,?,?,?)`,
+          [partNumber, delta, before, after, note, req.user, now],
+          (err3) => {
+            if (err3) console.error('inventory_txns insert failed', err3);
+            res.json({ ok: true, qty: after, updatedAt: now, updatedBy: req.user });
+          }
+        );
+      }
+    );
+  });
+});
 router.put('/inventory/:partNumber', requireAdmin, (req,res)=>{
   const {description='',location='',qty=0,minQty=0,notes=''} = req.body||{};
   const now = Date.now();
@@ -111,3 +129,4 @@ router.delete('/inventory/:partNumber', requireAdmin, (req,res)=>{
 });
 
 module.exports = router;
+
