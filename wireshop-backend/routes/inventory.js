@@ -38,21 +38,43 @@ db.run(`CREATE TABLE IF NOT EXISTS inventory (
   updatedBy TEXT
 )`);
 
+// NEW: persistent log table for inventory history
+db.run(`CREATE TABLE IF NOT EXISTS inventory_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  partNumber TEXT NOT NULL,
+  ts INTEGER NOT NULL,
+  user TEXT,
+  delta INTEGER,
+  qtyBefore INTEGER,
+  qtyAfter INTEGER,
+  note TEXT
+)`);
+
 router.get('/inventory-all', requireUser, (req,res)=>{
-  db.all(`SELECT partNumber,description,location,qty,minQty,notes,updatedAt,updatedBy FROM inventory ORDER BY partNumber`, [], (err,rows)=>{
-    if(err) return res.status(500).json({error:'db error'});
-    res.json(rows||[]);
-  });
+  db.all(
+    `SELECT partNumber,description,location,qty,minQty,notes,updatedAt,updatedBy
+     FROM inventory
+     ORDER BY partNumber`,
+    [],
+    (err,rows)=>{
+      if(err) return res.status(500).json({error:'db error'});
+      res.json(rows||[]);
+    }
+  );
 });
 
 router.get('/inventory/:partNumber', requireUser, (req,res)=>{
-  db.get(`SELECT partNumber,description,location,qty,minQty,notes,updatedAt,updatedBy FROM inventory WHERE partNumber = ?`,
+  db.get(
+    `SELECT partNumber,description,location,qty,minQty,notes,updatedAt,updatedBy
+     FROM inventory
+     WHERE partNumber = ?`,
     [req.params.partNumber],
     (err,row)=>{
       if(err) return res.status(500).json({error:'db error'});
       if(!row) return res.status(404).json({error:'not found'});
       res.json(row);
-    });
+    }
+  );
 });
 
 router.post('/inventory', requireAdmin, (req,res)=>{
@@ -74,10 +96,18 @@ router.post('/inventory', requireAdmin, (req,res)=>{
 });
 
 router.put('/inventory/:partNumber', requireAdmin, (req,res)=>{
-  const {description='',location='',qty=0,minQty=0,notes=''} = req.body||{};
+  const {description='',location='',qty=0,minQty=0,notes=''} = req.body||{}; 
   const now = Date.now();
   db.run(
-    `UPDATE inventory SET description=?,location=?,qty=?,minQty=?,notes=?,updatedAt=?,updatedBy=? WHERE partNumber=?`,
+    `UPDATE inventory
+       SET description=?,
+           location=?,
+           qty=?,
+           minQty=?,
+           notes=?,
+           updatedAt=?,
+           updatedBy=?
+     WHERE partNumber=?`,
     [description,location,qty,minQty,notes,now,req.user,req.params.partNumber],
     function(err){
       if(err) return res.status(500).json({error:'db error'});
@@ -92,7 +122,11 @@ router.post('/inventory/:partNumber/qty', requireUser, (req,res)=>{
   if(qty===undefined) return res.status(400).json({error:'qty required'});
   const now = Date.now();
   db.run(
-    `UPDATE inventory SET qty=?,updatedAt=?,updatedBy=? WHERE partNumber=?`,
+    `UPDATE inventory
+       SET qty=?,
+           updatedAt=?,
+           updatedBy=?
+     WHERE partNumber=?`,
     [Number(qty)||0,now,req.user,req.params.partNumber],
     function(err){
       if(err) return res.status(500).json({error:'db error'});
@@ -103,11 +137,60 @@ router.post('/inventory/:partNumber/qty', requireUser, (req,res)=>{
 });
 
 router.delete('/inventory/:partNumber', requireAdmin, (req,res)=>{
-  db.run(`DELETE FROM inventory WHERE partNumber=?`, [req.params.partNumber], function(err){
-    if(err) return res.status(500).json({error:'db error'});
-    if(this.changes===0) return res.status(404).json({error:'not found'});
-    res.json({ok:true});
-  });
+  db.run(
+    `DELETE FROM inventory WHERE partNumber=?`,
+    [req.params.partNumber],
+    function(err){
+      if(err) return res.status(500).json({error:'db error'});
+      if(this.changes===0) return res.status(404).json({error:'not found'});
+      res.json({ok:true});
+    }
+  );
+});
+
+// NEW: read log entries for a part (used by inventory.html "Recent Activity")
+router.get('/inventory/:partNumber/log', requireUser, (req,res)=>{
+  db.all(
+    `SELECT partNumber,
+            ts       AS "when",
+            user,
+            delta,
+            qtyBefore AS "before",
+            qtyAfter  AS "after",
+            note
+     FROM inventory_log
+     WHERE partNumber = ?
+     ORDER BY ts DESC
+     LIMIT 100`,
+    [req.params.partNumber],
+    (err, rows)=>{
+      if (err) return res.status(500).json({ error: 'db error' });
+      res.json(rows || []);
+    }
+  );
+});
+
+// NEW: write a log entry (frontend will call this after qty changes)
+router.post('/inventory/:partNumber/log', requireUser, (req,res)=>{
+  const { delta = 0, before = 0, after = 0, note = '' } = req.body || {};
+  const ts = Date.now();
+  db.run(
+    `INSERT INTO inventory_log (partNumber, ts, user, delta, qtyBefore, qtyAfter, note)
+     VALUES (?,?,?,?,?,?,?)`,
+    [
+      req.params.partNumber,
+      ts,
+      req.user,
+      Number(delta)||0,
+      Number(before)||0,
+      Number(after)||0,
+      note
+    ],
+    function(err){
+      if (err) return res.status(500).json({ error: 'db error' });
+      res.json({ ok: true, id: this.lastID });
+    }
+  );
 });
 
 module.exports = router;
