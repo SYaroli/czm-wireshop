@@ -470,11 +470,14 @@ async function loadPartList() {
     });
 
     // init
-    (async function init(){
-      await whoami();
-      await refreshAll().catch(()=>alert('Failed to load build queue'));
-      setInterval(()=>{ if(!document.hidden) refreshAll().catch(()=>{}); }, 15000);
-    })();
+   // init
+(async function init(){
+  await whoami();
+  await loadPartList();                    // ← add this line
+  await refreshAll().catch(()=>alert('Failed to load build queue'));
+  setInterval(()=>{ if(!document.hidden) refreshAll().catch(()=>{}); }, 15000);
+})();
+
   </script>
 </body>
 </html>
