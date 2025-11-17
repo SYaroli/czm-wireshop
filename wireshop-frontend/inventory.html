@@ -12,78 +12,90 @@
     .card-body{padding:16px 18px;}
     .adjust-btns{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px}
     .adjbtn {
-  background: #fff;
-  color: #000; /* make numbers visible */
-  border: 1px solid #d4d6da;
-  border-radius: 10px;
-  padding: 10px 18px;
-  min-width: 60px;
-  text-align: center;
-  font-weight: 700;
-  cursor: pointer;
-}
+      background: #fff;
+      color: #000; /* make numbers visible */
+      border: 1px solid #cfd4da;
+      border-radius: 999px;
+      padding: 6px 12px;
+      font-size: 13px;
+      cursor: pointer;
+      box-shadow: 0 1px 3px rgba(15,23,42,.15);
+      min-width: 46px;
+      text-align: center;
+    }
+    .adjbtn:hover{background:#f3f4f6;}
+    .qty-big{font-size:40px;font-weight:700;margin:0;}
+    .qty-sub{font-size:12px;color:#6b7280;margin-top:2px;}
+    .meta-row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:10px;font-size:13px;}
+    .meta-pill{background:#f3f4f6;border-radius:999px;padding:4px 10px;border:1px solid #e5e7eb;}
+    .meta-pill span{font-weight:600;}
+    .status-msg{font-size:12px;margin-top:6px;}
+    .status-msg.ok{color:#0a0;}
+    .status-msg.bad{color:#b30000;}
 
-.adjbtn:hover {
-  background: #b30000;
-  color: #fff;
-  border-color: #b30000;
-}
-    .inline-inputs{display:flex;gap:10px;margin-bottom:10px}
-    .inline-inputs input{flex:1;padding:6px 8px;border:1px solid #d3d8e1;border-radius:8px}
-    .apply{background:#b30000;color:#fff;border:none;border-radius:10px;padding:7px 14px;font-weight:700;cursor:pointer}
-    .qty-big{font-size:36px;font-weight:800}
-    .table-log{width:100%;border-collapse:collapse}
-    .table-log th,.table-log td{border-bottom:1px solid #eee;padding:5px 0;font-size:12px}
-    .muted{color:#666;font-size:12px}
-    .brand-bar{background:#1a1c20;padding:10px 16px;color:#fff;display:flex;align-items:center;justify-content:space-between}
-    .brand-title{font-weight:700}
-    .navbtn{background:#1a1c20;color:#eee;border:1px solid #444;padding:5px 12px;border-radius:10px;text-decoration:none;margin-left:8px;font-size:.85rem}
-    .navbtn.active{background:#b30000;border-color:#b30000}
+    .table-log{width:100%;border-collapse:collapse;font-size:12px;}
+    .table-log th,.table-log td{border-bottom:1px solid #e5e7eb;padding:6px 8px;text-align:left;}
+    .table-log th{background:#f9fafb;font-weight:600;}
+    .muted{color:#9ca3af;font-size:12px;}
+
+    .brand-bar{background:#0f1114;border-bottom:4px solid #c30000}
+    .brand-inner{max-width:1100px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;padding:8px 12px}
+    .brand-logo{display:flex;align-items:center;gap:10px;color:#fff;text-decoration:none}
+    .brand-logo img{height:22px;opacity:.95}
+    .brand-title{font-size:16px;margin:0;color:#fff}
+    .brand-actions .navbtn{display:inline-block;background:#1a1c1f;color:#fff;border-radius:20px;padding:6px 12px;text-decoration:none;border:1px solid #3a3f44;font-weight:600;font-size:.9rem;margin-left:8px}
+    .brand-actions .navbtn.active{background:#b30000;color:#fff;border-color:#ff4d4d}
+    #logoutBtn{cursor:pointer;}
+
+    .field-row{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;}
+    .field-row input[type="number"]{width:80px;padding:4px 6px;border-radius:4px;border:1px solid #cfd4da;}
+    .field-row input[type="text"]{flex:1;min-width:220px;padding:4px 6px;border-radius:4px;border:1px solid #cfd4da;}
+    .btn-primary{background:#c30000;color:#fff;border:1px solid #9f0000;border-radius:4px;padding:6px 10px;font-size:13px;cursor:pointer;}
+    .btn-primary:hover{background:#9f0000;}
   </style>
 </head>
 <body>
+  <!-- Brand bar -->
   <div class="brand-bar">
-    <div class="brand-title">CZM • Wireshop Inventory</div>
-    <div>
-      <a class="navbtn" href="/dashboard.html">Build Next</a>
-      <a class="navbtn active" href="/inventory">Inventory</a>
-      <button id="logoutBtn" class="navbtn">Logout</button>
+    <div class="brand-inner">
+      <a class="brand-logo" href="/dashboard.html">
+        <img src="/czm-logo.png" alt="CZM">
+        <h1 class="brand-title">CZM • Inventory Item</h1>
+      </a>
+      <div class="brand-actions">
+        <a class="navbtn" href="/dashboard.html">Dashboard</a>
+        <a class="navbtn" href="/assignments.html">Build Next</a>
+        <a class="navbtn active" href="/inventory-list.html">Inventory</a>
+        <a class="navbtn" href="/archive.html">Archive</a>
+        <a class="navbtn" href="/admin.html">Admin</a>
+        <button id="logoutBtn" class="navbtn">Logout</button>
+      </div>
     </div>
   </div>
 
   <main class="page-wrap">
-    <div class="card" id="headerCard">
-      <div class="card-head" id="partTitle">Inventory — </div>
-      <div class="card-body" id="partMeta">
-        <div class="muted">Loading…</div>
-      </div>
-    </div>
-
     <div class="card">
-      <div class="card-head">Quantity</div>
+      <div class="card-head" id="partTitle">Part</div>
       <div class="card-body">
-        <div class="qty-big" id="qty">0</div>
-        <div class="muted" id="lastUpdate"></div>
-      </div>
-    </div>
+        <div id="partMeta" class="meta-row"></div>
+        <p class="qty-big" id="qty">0</p>
+        <p class="qty-sub" id="lastUpdate">Last update: —</p>
+        <p class="status-msg" id="statusMsg"></p>
 
-    <div class="card">
-      <div class="card-head">Adjust</div>
-      <div class="card-body">
         <div class="adjust-btns">
-          <button class="adjbtn" data-delta="-5">−5</button>
-          <button class="adjbtn" data-delta="-1">−1</button>
-          <button class="adjbtn" data-delta="1">+1</button>
-          <button class="adjbtn" data-delta="5">+5</button>
-          <button class="adjbtn" data-delta="-10">−10</button>
-          <button class="adjbtn" data-delta="10">+10</button>
+          <button class="adjbtn" data-delta="-10">-10</button>
+          <button class="adjbtn" data-delta="-5">-5</button>
+          <button class="adjbtn" data-delta="-1">-1</button>
+          <button class="adjbtn" data-delta="+1">+1</button>
+          <button class="adjbtn" data-delta="+5">+5</button>
+          <button class="adjbtn" data-delta="+10">+10</button>
         </div>
-        <div class="inline-inputs">
-          <input id="customDelta" type="number" placeholder="e.g. 12 or -3" />
-          <input id="reason" type="text" placeholder="optional" />
-          <button id="applyCustom" class="apply">Apply custom</button>
+
+        <div class="field-row">
+          <input type="number" id="customDelta" placeholder="+/-" />
+          <input type="text" id="reason" placeholder="Reason / note" />
+          <button id="applyCustom" class="btn-primary">Apply custom</button>
         </div>
-        <div class="muted" id="statusMsg"></div>
       </div>
     </div>
 
@@ -118,7 +130,9 @@
 
     function setStatus(msg, good) {
       statusMsg.textContent = msg || '';
-      statusMsg.style.color = good ? '#0a0' : '#b30000';
+      statusMsg.classList.remove('ok','bad');
+      if (!msg) return;
+      statusMsg.classList.add(good ? 'ok' : 'bad');
     }
 
     async function api(path, opts={}) {
@@ -137,31 +151,42 @@
       try {
         live = await api(`/api/inventory/${encodeURIComponent(partNumber)}`);
       } catch (e) {
-        // ignore, maybe part not in DB yet
+        // ignore
       }
 
-      // match against catalog for description/location
-      const cat = (window.catalog || []).find(c => String(c.partNumber).trim() === partNumber);
-      const description = live?.description || cat?.printName || '';
-      const location = live?.location || cat?.location || '';
+      // catalog fallback
+      const cat = Array.isArray(window.catalog) ? window.catalog : [];
+      const fromCat = cat.find(c => String(c.partNumber) === String(partNumber));
 
-      partTitle.textContent = `Inventory — ${partNumber}`;
-      partMeta.innerHTML = `
-        <div><strong>Part Number:</strong> ${partNumber}</div>
-        <div><strong>Print Name:</strong> ${description || 'n/a'}</div>
-        <div><strong>Location:</strong> ${location || 'n/a'}</div>
-        <div class="muted">If any of this looks wrong, fix the catalog later.</div>
-      `;
+      const desc = live?.description || fromCat?.printName || '';
+      const location = live?.location || fromCat?.location || '';
+      const qty = typeof live?.qty === 'number' ? live.qty : 0;
+      const minQty = typeof live?.minQty === 'number' ? live.minQty : (fromCat?.minQty || 0);
+      const notes = live?.notes || fromCat?.notes || '';
 
-      qtyEl.textContent = live ? (live.qty|0) : 0;
-      lastUpdateEl.textContent = live && live.updatedAt ? `Last update: ${new Date(live.updatedAt).toLocaleString()} by ${live.updatedBy||'unknown'}` : '';
+      partTitle.textContent = `${partNumber} — ${desc || 'No description'}`;
+      qtyEl.textContent = qty;
 
-      // try to load log if backend has it
+      const metaBits = [];
+      if (location) metaBits.push(`<div class="meta-pill"><span>Location:</span> ${location}</div>`);
+      metaBits.push(`<div class="meta-pill"><span>Min qty:</span> ${minQty}</div>`);
+      if (notes) metaBits.push(`<div class="meta-pill"><span>Notes:</span> ${notes}</div>`);
+      const updated = live?.updatedAt ? new Date(live.updatedAt).toLocaleString() : null;
+      if (updated) {
+        lastUpdateEl.textContent = `Last update: ${updated} by ${live.updatedBy||'unknown'}`;
+      } else {
+        lastUpdateEl.textContent = 'Last update: —';
+      }
+      partMeta.innerHTML = metaBits.join('') || '<div class="meta-pill">No extra metadata.</div>';
+
+      setStatus('', true);
+
+      // load log from backend if available
       try {
         const log = await api(`/api/inventory/${encodeURIComponent(partNumber)}/log`);
         renderLog(log);
       } catch (e) {
-        // fine
+        // if log endpoint missing or errors, we just leave "No entries"
       }
     }
 
@@ -184,34 +209,52 @@
     async function applyDelta(delta, note) {
       const currentQty = parseInt(qtyEl.textContent || '0', 10);
       const newQty = currentQty + delta;
+
       try {
+        // 1) Save the new quantity
         await api(`/api/inventory/${encodeURIComponent(partNumber)}/qty`, {
           method: 'POST',
-          body: { qty: newQty, note: note || '' }
+          body: { qty: newQty }
         });
+
+        // 2) Persist a log entry to the backend
+        await api(`/api/inventory/${encodeURIComponent(partNumber)}/log`, {
+          method: 'POST',
+          body: {
+            delta,
+            before: currentQty,
+            after: newQty,
+            note: note || '',
+            user: user.username,
+            when: Date.now()
+          }
+        });
+
+        // 3) Update UI
         qtyEl.textContent = newQty;
         setStatus('Updated.', true);
-        // add to log visually
-        const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${new Date().toLocaleString()}</td><td>${user.username}</td><td>${delta}</td><td>${currentQty} → ${newQty}</td><td>${note||''}</td>`;
-        if (logBody.firstChild && !logBody.firstChild.classList?.contains('muted')) {
-          logBody.prepend(tr);
-        } else {
-          logBody.innerHTML = '';
-          logBody.appendChild(tr);
+
+        // 4) Reload log from backend so what you see is real data
+        try {
+          const log = await api(`/api/inventory/${encodeURIComponent(partNumber)}/log`);
+          renderLog(log);
+        } catch (err) {
+          console.warn('Failed to reload log', err);
         }
+
       } catch (e) {
+        console.error(e);
         setStatus('Failed to adjust.', false);
       }
     }
 
     // preset buttons
-    document.querySelectorAll('.adjbtn').forEach(btn => {
+    document.querySelectorAll('.adjbtn').forEach(btn =>
       btn.addEventListener('click', () => {
         const d = parseInt(btn.dataset.delta, 10);
         applyDelta(d, '');
-      });
-    });
+      })
+    );
 
     // custom
     document.getElementById('applyCustom').addEventListener('click', () => {
