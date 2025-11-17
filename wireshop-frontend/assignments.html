@@ -336,23 +336,43 @@
           await api(`/api/build-tasks/${unclaimId}/unclaim`, { method:'PATCH' });
           await refreshAll(); return;
         }
-        if (completeId){
+               if (completeId){
           const tr = e.target.closest('tr');
           const qtyBox = tr?.querySelector('.qtyDone');
           const qty = Number(qtyBox?.value||0);
           if (!Number.isInteger(qty) || qty <= 0) { alert('Enter a positive quantity'); return; }
-          const res = await api(`/api/build-tasks/${completeId}/complete`, { method:'PATCH', body:{ qty } });
-          const pn = res?.addToInventory?.partNumber;
-          const inc = Number(res?.addToInventory?.qty||0);
+
+          const res = await api(`/api/build-tasks/${completeId}/complete`, {
+            method:'PATCH',
+            body:{ qty }
+          });
+
+          const pn  = res?.addToInventory?.partNumber;
+          const inc = Number(res?.addToInventory?.qty || 0);
+
           if (pn && inc > 0){
-            // adjust inventory WITHOUT auto note
-            await api(`/api/inventory/${encodeURIComponent(pn)}/adjust`, {
+            // get current inventory, then write new absolute qty via /qty (matches inventory-list.html + backend)
+            let currentQty = 0;
+            try {
+              const invList = await api('/api/inventory-all');
+              const item = (invList || []).find(i => i.partNumber === pn);
+              currentQty = Number(item?.qty || 0);
+            } catch (err) {
+              console.warn('Failed to read current inventory qty, assuming 0', err);
+            }
+
+            const newQty = currentQty + inc;
+
+            await api(`/api/inventory/${encodeURIComponent(pn)}/qty`, {
               method:'POST',
-              body:{ delta: inc }
+              body:{ qty: newQty }
             });
           }
-          await refreshAll(); return;
+
+          await refreshAll(); 
+          return;
         }
+
       } catch(err){
         alert('Action failed');
       }
