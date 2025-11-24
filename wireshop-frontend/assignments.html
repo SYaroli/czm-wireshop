@@ -387,24 +387,38 @@ async function loadPartList() {
           const pn  = res?.addToInventory?.partNumber;
           const inc = Number(res?.addToInventory?.qty || 0);
 
-          if (pn && inc > 0){
-            // get current inventory, then write new absolute qty via /qty (matches inventory-list.html + backend)
-            let currentQty = 0;
-            try {
-              const invList = await api('/api/inventory-all');
-              const item = (invList || []).find(i => i.partNumber === pn);
-              currentQty = Number(item?.qty || 0);
-            } catch (err) {
-              console.warn('Failed to read current inventory qty, assuming 0', err);
-            }
+ if (pn && inc > 0){
+  // Get current inventory qty
+  let currentQty = 0;
+  try {
+    const invList = await api('/api/inventory-all');
+    const item = (invList || []).find(i => i.partNumber === pn);
+    currentQty = Number(item?.qty || 0);
+  } catch (err) {
+    console.warn('Failed to read current qty, assuming 0', err);
+  }
 
-            const newQty = currentQty + inc;
+  const newQty = currentQty + inc;
 
-            await api(`/api/inventory/${encodeURIComponent(pn)}/qty`, {
-              method:'POST',
-              body:{ qty: newQty }
-            });
-          }
+  // 1) Update qty
+  await api(`/api/inventory/${encodeURIComponent(pn)}/qty`, {
+    method: 'POST',
+    body: { qty: newQty }
+  });
+
+  // 2) Log this event so it shows on part page
+  await api(`/api/inventory/${encodeURIComponent(pn)}/log`, {
+    method: 'POST',
+    body: {
+      delta: inc,
+      before: currentQty,
+      after: newQty,
+      note: `Build Next completion (qty ${inc})`,
+      user: user.username,
+      when: Date.now()
+    }
+  });
+}
 
           await refreshAll(); 
           return;
