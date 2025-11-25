@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>CZM • Shop Inventory</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="/style.css" />
+  <style>
+    .page-wrap{max-width:1100px;margin:30px auto;}
+    .card{background:#fff;border-radius:6px;box-shadow:0 2px 6px rgba(0,0,0,.05);margin-bottom:14px;overflow:hidden;}
+    .card-head{padding:16px 18px;border-bottom:1px solid #eee;font-weight:700;}
+    .card-body{padding:16px 18px;}
+    table{width:100%;border-collapse:collapse;font-size:13px;}
+    th,td{border-bottom:1px solid #e5e7eb;padding:6px 8px;text-align:left;}
+    th{background:#f9fafb;font-weight:600;}
+    .muted{color:#9ca3af;}
+    .brand-bar{background:#0f1114;border-bottom:4px solid #c30000}
+    .brand-inner{max-width:1100px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;padding:8px 12px}
+    .brand-logo{display:flex;align-items:center;gap:10px;color:#fff;text-decoration:none}
+    .brand-logo img{height:22px;opacity:.95}
+    .brand-title{font-size:16px;margin:0;color:#fff}
+    .brand-actions .navbtn{display:inline-block;background:#1a1c1f;color:#fff;border-radius:20px;padding:6px 12px;text-decoration:none;border:1px solid #3a3f44;font-weight:600;font-size:.9rem;margin-left:8px}
+    .brand-actions .navbtn.active{background:#b30000;color:#fff;border-color:#ff4d4d}
+    #logoutBtn{cursor:pointer;}
+    .form-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;}
+    .form-row input{padding:4px 6px;border-radius:4px;border:1px solid #cfd4da;font-size:13px;}
+    .form-row input.part{width:140px;}
+    .form-row input.desc{flex:1;min-width:200px;}
+    .form-row input.qty{width:80px;}
+    .form-row input.notes{flex:1;min-width:200px;}
+    .btn-primary{background:#c30000;color:#fff;border:1px solid #9f0000;border-radius:4px;padding:6px 10px;font-size:13px;cursor:pointer;}
+    .btn-primary:hover{background:#9f0000;}
+    .btn-small{padding:3px 8px;font-size:11px;border-radius:4px;border:1px solid #d1d5db;cursor:pointer;background:#f9fafb;}
+    .btn-small:hover{background:#e5e7eb;}
+  </style>
+</head>
+<body>
+  <div class="brand-bar">
+    <div class="brand-inner">
+      <a class="brand-logo" href="/dashboard.html">
+        <img src="/czm-logo.png" alt="CZM" />
+        <h1 class="brand-title">CZM • Shop Inventory</h1>
+      </a>
+      <div class="brand-actions">
+        <a class="navbtn" href="/dashboard.html">Dashboard</a>
+        <a class="navbtn" href="/assignments.html">Build Next</a>
+        <a class="navbtn" href="/inventory-list.html">Inventory</a>
+        <a class="navbtn active" href="/shop-inventory.html">Shop Inventory</a>
+        <a class="navbtn" href="/archive.html">Archive</a>
+        <a class="navbtn" href="/admin.html">Admin</a>
+        <button id="logoutBtn" class="navbtn">Logout</button>
+      </div>
+    </div>
+  </div>
+
+  <main class="page-wrap">
+    <div class="card">
+      <div class="card-head">Add / Update Shop Item</div>
+      <div class="card-body">
+        <div class="form-row">
+          <input class="part" id="partInput" placeholder="Part number" />
+          <input class="desc" id="descInput" placeholder="Description" />
+          <input class="qty" id="qtyInput" type="number" step="1" value="0" />
+          <input class="notes" id="notesInput" placeholder="Notes" />
+          <input class="notes" id="locInput" placeholder="Location" />
+          <button id="saveItemBtn" class="btn-primary">Save</button>
+        </div>
+        <p id="statusMsg" class="muted"></p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">Shop Inventory</div>
+      <div class="card-body">
+        <table>
+          <thead>
+            <tr>
+              <th>Part</th>
+              <th>Description</th>
+              <th>Qty</th>
+              <th>Location</th>
+              <th>Notes</th>
+              <th>Updated</th>
+              <th>By</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="itemsBody">
+            <tr><td colspan="8" class="muted">No items yet.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const API_ROOT = 'https://wireshop-backend.onrender.com';
+    const user = (() => { try { return JSON.parse(localStorage.getItem('user')||'{}'); } catch { return {}; } })();
+    if (!user || !user.username) { window.location.href = '/index.html'; }
+    document.getElementById('logoutBtn').onclick = () => {
+      localStorage.removeItem('user');
+      window.location.href = '/index.html';
+    };
+
+    const statusMsg = document.getElementById('statusMsg');
+    const itemsBody = document.getElementById('itemsBody');
+
+    function setStatus(msg, good){
+      statusMsg.textContent = msg || '';
+      statusMsg.style.color = !msg ? '#9ca3af' : (good ? '#16a34a' : '#b91c1c');
+    }
+
+    async function api(path, opts={}){
+      const res = await fetch(API_ROOT + path, {
+        method: opts.method || 'GET',
+        headers: {
+          'Content-Type':'application/json',
+          'x-user': user.username
+        },
+        body: opts.body ? JSON.stringify(opts.body) : undefined
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    }
+
+    async function loadItems(){
+      let rows = [];
+      try {
+        rows = await api('/api/benchstock-all');
+      } catch (e) {
+        console.error(e);
+        setStatus('Failed to load shop inventory.', false);
+        return;
+      }
+
+      if (!rows.length){
+        itemsBody.innerHTML = `<tr><td colspan="8" class="muted">No items yet.</td></tr>`;
+        return;
+      }
+
+      itemsBody.innerHTML = rows.map(r => `
+        <tr data-part="${r.partNumber}">
+          <td>${r.partNumber}</td>
+          <td>${r.description || ''}</td>
+          <td>${r.qty ?? 0}</td>
+          <td>${r.location || ''}</td>
+          <td>${r.notes || ''}</td>
+          <td>${r.updatedAt ? new Date(r.updatedAt).toLocaleString() : ''}</td>
+          <td>${r.updatedBy || ''}</td>
+          <td>
+            <button class="btn-small js-edit">Edit</button>
+            <button class="btn-small js-del">Delete</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    async function saveItem(){
+      const part = document.getElementById('partInput').value.trim();
+      const desc = document.getElementById('descInput').value.trim();
+      const qty  = Number(document.getElementById('qtyInput').value || 0);
+      const notes = document.getElementById('notesInput').value.trim();
+      const loc   = document.getElementById('locInput').value.trim();
+
+      if (!part){
+        setStatus('Part number is required.', false);
+        return;
+      }
+
+      try {
+        // try update first
+        await api(`/api/benchstock/${encodeURIComponent(part)}`, {
+          method: 'PUT',
+          body: { description: desc, qty, notes, location: loc }
+        });
+      } catch (e) {
+        // if 404, create
+        if (String(e).includes('not found')) {
+          await api('/api/benchstock', {
+            method:'POST',
+            body:{ partNumber: part, description: desc, qty, notes, location: loc }
+          });
+        } else {
+          console.error(e);
+          setStatus('Failed to save item.', false);
+          return;
+        }
+      }
+
+      setStatus('Saved.', true);
+      document.getElementById('partInput').value = '';
+      document.getElementById('descInput').value = '';
+      document.getElementById('qtyInput').value = '0';
+      document.getElementById('notesInput').value = '';
+      document.getElementById('locInput').value = '';
+
+      await loadItems();
+    }
+
+    itemsBody.addEventListener('click', async (e)=>{
+      const tr = e.target.closest('tr[data-part]');
+      if (!tr) return;
+      const part = tr.dataset.part;
+
+      if (e.target.classList.contains('js-edit')){
+        const currentDesc = tr.children[1].textContent;
+        const currentQty  = tr.children[2].textContent;
+        const currentLoc  = tr.children[3].textContent;
+        const currentNotes= tr.children[4].textContent;
+
+        const desc = prompt('Description:', currentDesc) ?? currentDesc;
+        const qty  = Number(prompt('Qty:', currentQty) ?? currentQty || 0);
+        const loc  = prompt('Location:', currentLoc) ?? currentLoc;
+        const notes= prompt('Notes:', currentNotes) ?? currentNotes;
+
+        try {
+          await api(`/api/benchstock/${encodeURIComponent(part)}`, {
+            method:'PUT',
+            body:{ description: desc, qty, notes, location: loc }
+          });
+          setStatus('Updated.', true);
+          await loadItems();
+        } catch (err) {
+          console.error(err);
+          setStatus('Failed to update item.', false);
+        }
+      }
+
+      if (e.target.classList.contains('js-del')){
+        if (!confirm(`Delete bench stock item ${part}?`)) return;
+        try {
+          await api(`/api/benchstock/${encodeURIComponent(part)}`, {
+            method:'DELETE'
+          });
+          setStatus('Deleted.', true);
+          await loadItems();
+        } catch (err) {
+          console.error(err);
+          setStatus('Failed to delete item.', false);
+        }
+      }
+    });
+
+    document.getElementById('saveItemBtn').addEventListener('click', () => {
+      saveItem().catch(err => {
+        console.error(err);
+        setStatus('Failed to save item.', false);
+      });
+    });
+
+    loadItems().catch(()=>setStatus('Failed to load shop inventory.', false));
+  </script>
+</body>
+</html>
