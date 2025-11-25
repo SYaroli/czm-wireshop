@@ -2,48 +2,25 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>CZM • Inventory List</title>
-  <link rel="stylesheet" href="style.css" />
-  <style>
-    .brand-actions .navbtn {
-      display: inline-block !important;
-      background: #1a1c20 !important;
-      color: #bbb !important;
-      padding: 6px 12px !important;
-      border-radius: 10px !important;
-      text-decoration: none !important;
-      border: 1px solid #3a3f44 !important;
-      font-weight: 600 !important;
-      font-size: 0.9rem !important;
-      cursor: pointer !important;
-      margin-left: 8px !important;
-    }
-    .brand-actions .navbtn:hover {
-      filter: brightness(1.1);
-    }
-    .brand-actions .navbtn.active {
-      background: #b30000 !important;
-      color: #fff !important;
-      border-color: #ff4d4d !important;
-    }
-  </style>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="stylesheet" href="/style.css" />
 </head>
-<body>
-  <div class="brand-bar">
-    <div class="brand-inner">
-      <a class="brand-logo" href="dashboard.html">
-        <img src="czm-logo.png" alt="CZM" />
-        <h1 class="brand-title">CZM • Inventory List</h1>
-      </a>
 
-      <div class="brand-actions">
-        <a class="navbtn" href="/dashboard.html">Dashboard</a>
-        <a class="navbtn" href="/assignments.html">Build Next</a>
-        <a class="navbtn active" href="/inventory-list.html">Inventory</a>
-        <a class="navbtn" href="/shop-inventory.html">Shop Inventory</a>
-        <a class="navbtn" href="/archive.html">Archive</a>
-        <a class="navbtn" href="/admin.html">Admin</a>
+<body>
+  <!-- top nav (restored original style but WITH Shop Inventory button added) -->
+  <div class="top-bar">
+    <div class="top-inner">
+      <a class="brand" href="/dashboard.html">
+        <img src="/czm-logo.png" alt="CZM" class="brand-logo">
+        <span class="brand-title">CZM • Inventory List</span>
+      </a>
+      <div class="nav-links">
+        <a href="/dashboard.html" class="navbtn">Dashboard</a>
+        <a href="/assignments.html" class="navbtn">Build Next</a>
+        <a href="/inventory" class="navbtn active">Inventory</a>
+        <a href="/shop-inventory.html" class="navbtn">Shop Inventory</a>
+        <a href="/archive.html" class="navbtn">Archive</a>
         <button id="logoutBtn" class="navbtn">Logout</button>
       </div>
     </div>
@@ -52,7 +29,15 @@
   <main class="page">
     <div class="card">
       <h2>Inventory List</h2>
-      <table id="inventoryTable" class="sticky-head">
+
+      <!-- FILTERS (old version restored) -->
+      <div class="filter-row">
+        <input type="text" id="searchBox" placeholder="Search…" />
+        <label><input type="checkbox" id="showNonZero"> Only non-zero</label>
+        <label><input type="checkbox" id="showZero"> Only zero</label>
+      </div>
+
+      <table class="inv-table">
         <thead>
           <tr>
             <th>Part Number</th>
@@ -62,15 +47,14 @@
             <th>Notes</th>
           </tr>
         </thead>
-        <tbody id="inventoryTableBody">
-          <tr><td colspan="5" style="text-align:left;padding:6px 8px;">Loading…</td></tr>
-        </tbody>
+        <tbody id="invTableBody"></tbody>
       </table>
     </div>
 
+    <!-- RECENT ACTIVITY (old version restored) -->
     <div class="card">
       <h2>Recent Activity</h2>
-      <table id="historyTable" class="sticky-head">
+      <table class="activity-table">
         <thead>
           <tr>
             <th>Date</th>
@@ -79,76 +63,13 @@
             <th>Notes</th>
           </tr>
         </thead>
-        <tbody id="historyTableBody">
-          <tr><td colspan="4" style="text-align:left;padding:6px 8px;">No recent activity loaded.</td></tr>
-        </tbody>
+        <tbody id="activityBody"></tbody>
       </table>
     </div>
   </main>
 
-  <script>
-    const API_ROOT = 'https://wireshop-backend.onrender.com';
-
-    function getUser() {
-      try {
-        return JSON.parse(localStorage.getItem('user') || '{}');
-      } catch {
-        return {};
-      }
-    }
-
-    const user = getUser();
-    if (!user || !user.username) {
-      window.location.href = '/index.html';
-    }
-
-    document.getElementById('logoutBtn').addEventListener('click', () => {
-      localStorage.removeItem('user');
-      window.location.href = '/index.html';
-    });
-
-    async function api(path, options = {}) {
-      const res = await fetch(API_ROOT + path, {
-        method: options.method || 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-user': user.username
-        },
-        body: options.body ? JSON.stringify(options.body) : undefined
-      });
-      if (!res.ok) {
-        const txt = await res.text().catch(() => '');
-        throw new Error(res.status + ' ' + res.statusText + ' - ' + txt);
-      }
-      return res.json();
-    }
-
-    async function loadInventory() {
-      const tbody = document.getElementById('inventoryTableBody');
-      try {
-        const rows = await api('/api/inventory-all');
-        if (!rows.length) {
-          tbody.innerHTML = '<tr><td colspan="5" style="text-align:left;padding:6px 8px;">No inventory records found.</td></tr>';
-          return;
-        }
-        tbody.innerHTML = rows.map(r => `
-          <tr>
-            <td><a href="/inv/${encodeURIComponent(r.partNumber)}">${r.partNumber}</a></td>
-            <td>${r.description || ''}</td>
-            <td>${r.location || ''}</td>
-            <td>${r.qty ?? 0}</td>
-            <td>${r.notes || ''}</td>
-          </tr>
-        `).join('');
-      } catch (err) {
-        console.error('Failed to load inventory:', err);
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:left;padding:6px 8px;color:#b91c1c;">Error loading inventory.</td></tr>';
-      }
-    }
-
-    document.addEventListener('DOMContentLoaded', () => {
-      loadInventory();
-    });
-  </script>
+  <script src="/users.js"></script>
+  <script src="/catalog.js"></script>
+  <script src="/script.js"></script>
 </body>
 </html>
