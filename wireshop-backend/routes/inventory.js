@@ -6,7 +6,6 @@ let ADMIN_USERS = (process.env.ADMIN_USERS || '')
   .split(',')
   .map(s => s.trim().toLowerCase())
   .filter(Boolean);
-
 ['shane','shane.yaroli','tyler','tyler.ellis','Tyler.Ellis'.toLowerCase()].forEach(u => {
   if (!ADMIN_USERS.includes(u.toLowerCase())) ADMIN_USERS.push(u.toLowerCase());
 });
@@ -28,7 +27,6 @@ function requireAdmin(req,res,next){
   next();
 }
 
-// MAIN HARNESS INVENTORY
 db.run(`CREATE TABLE IF NOT EXISTS inventory (
   partNumber TEXT PRIMARY KEY,
   description TEXT,
@@ -40,7 +38,7 @@ db.run(`CREATE TABLE IF NOT EXISTS inventory (
   updatedBy TEXT
 )`);
 
-// HARNESS INVENTORY LOGS
+// NEW: persistent log table for inventory history
 db.run(`CREATE TABLE IF NOT EXISTS inventory_log (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   partNumber TEXT NOT NULL,
@@ -50,17 +48,6 @@ db.run(`CREATE TABLE IF NOT EXISTS inventory_log (
   qtyBefore INTEGER,
   qtyAfter INTEGER,
   note TEXT
-)`);
-
-// 🧰 SHOP BENCHSTOCK (NEW)
-db.run(`CREATE TABLE IF NOT EXISTS benchstock (
-  partNumber TEXT PRIMARY KEY,
-  description TEXT,
-  qty INTEGER DEFAULT 0,
-  notes TEXT,
-  location TEXT,
-  updatedAt INTEGER,
-  updatedBy TEXT
 )`);
 
 router.get('/inventory-all', requireUser, (req,res)=>{
@@ -161,7 +148,7 @@ router.delete('/inventory/:partNumber', requireAdmin, (req,res)=>{
   );
 });
 
-// INVENTORY LOG ROUTES
+// NEW: read log entries for a part (used by inventory.html "Recent Activity")
 router.get('/inventory/:partNumber/log', requireUser, (req,res)=>{
   db.all(
     `SELECT partNumber,
@@ -183,6 +170,7 @@ router.get('/inventory/:partNumber/log', requireUser, (req,res)=>{
   );
 });
 
+// NEW: write a log entry (frontend will call this after qty changes)
 router.post('/inventory/:partNumber/log', requireUser, (req,res)=>{
   const { delta = 0, before = 0, after = 0, note = '' } = req.body || {};
   const ts = Date.now();
@@ -201,76 +189,6 @@ router.post('/inventory/:partNumber/log', requireUser, (req,res)=>{
     function(err){
       if (err) return res.status(500).json({ error: 'db error' });
       res.json({ ok: true, id: this.lastID });
-    }
-  );
-});
-
-/* =============== SHOP BENCHSTOCK API (NEW) =============== */
-
-// list all benchstock
-router.get('/benchstock-all', requireUser, (req,res)=>{
-  db.all(
-    `SELECT partNumber, description, qty, notes, location, updatedAt, updatedBy
-       FROM benchstock
-      ORDER BY partNumber`,
-    [],
-    (err,rows)=>{
-      if (err) return res.status(500).json({ error: 'db error' });
-      res.json(rows || []);
-    }
-  );
-});
-
-// create benchstock item
-router.post('/benchstock', requireAdmin, (req,res)=>{
-  const { partNumber, description = '', qty = 0, notes = '', location = '' } = req.body || {};
-  if (!partNumber) return res.status(400).json({ error: 'partNumber required' });
-  const now = Date.now();
-  db.run(
-    `INSERT INTO benchstock (partNumber, description, qty, notes, location, updatedAt, updatedBy)
-     VALUES (?,?,?,?,?,?,?)`,
-    [partNumber, description, Number(qty)||0, notes, location, now, req.user],
-    function(err){
-      if (err) {
-        if (String(err.message).includes('UNIQUE')) return res.status(409).json({ error: 'exists' });
-        return res.status(500).json({ error: 'db error' });
-      }
-      res.json({ ok: true });
-    }
-  );
-});
-
-// update benchstock item
-router.put('/benchstock/:partNumber', requireAdmin, (req,res)=>{
-  const { description = '', qty = 0, notes = '', location = '' } = req.body || {};
-  const now = Date.now();
-  db.run(
-    `UPDATE benchstock
-        SET description=?,
-            qty=?,
-            notes=?,
-            location=?,
-            updatedAt=?,
-            updatedBy=?
-      WHERE partNumber=?`,
-    [description, Number(qty)||0, notes, location, now, req.user, req.params.partNumber],
-    function(err){
-      if (err) return res.status(500).json({ error: 'db error' });
-      if (this.changes === 0) return res.status(404).json({ error: 'not found' });
-      res.json({ ok: true });
-    }
-  );
-});
-
-// delete benchstock item
-router.delete('/benchstock/:partNumber', requireAdmin, (req,res)=>{
-  db.run(
-    `DELETE FROM benchstock WHERE partNumber=?`,
-    [req.params.partNumber],
-    function(err){
-      if (err) return res.status(500).json({ error: 'db error' });
-      if (this.changes === 0) return res.status(404).json({ error: 'not found' });
-      res.json({ ok: true });
     }
   );
 });
