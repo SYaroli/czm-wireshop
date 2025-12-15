@@ -168,7 +168,6 @@ window.catalog = [
   { "printName": "SP25 BASE HARNESS", "partNumber": "40602.6540.000", "saNumber": "N/A", "expectedHours": 16, "notes": null, "location": "116B" },
   { "printName": "SP25 POWER COMS HARNESS", "partNumber": "40602.6550.000", "saNumber": "N/A", "expectedHours": 8, "notes": null, "location": "116B" },
   { "printName": "EC1 HARNESS", "partNumber": "40602.6620.000", "saNumber": "N/A", "expectedHours": null, "notes": "V3", "location": "NEED BIN" },
-  { "printName": "EC2 HARNESS", "partNumber": "40602.6630.000", "saNumber": "N/A", "expectedHours": null, "notes": "V3", "location": "NEED BIN" },
   { "printName": "LOWER MAST HARNESS", "partNumber": "40602.6640.000", "saNumber": "N/A", "expectedHours": null, "notes": "V3", "location": "NEED BIN" },
   { "printName": "BASE FORWARD", "partNumber": "40602.6660.000", "saNumber": "N/A", "expectedHours": null, "notes": "V3", "location": "NEED BIN" },
   { "printName": "BASE/ROTARY", "partNumber": "40602.6670.000", "saNumber": "N/A", "expectedHours": null, "notes": "V3", "location": "NEED BIN" },
@@ -178,4 +177,5 @@ window.catalog = [
   { "printName": "BAUMER ENCODER HARNESS", "partNumber": "40602.6790.000", "saNumber": "N/A", "expectedHours": 3, "notes": null, "location": "116B" },
   { "printName": "TK90 OUTPUT EXPANDER HARNESS", "partNumber": "40602.6830.000", "saNumber": "N/A", "expectedHours": 4, "notes": null, "location": "116B" }
 ];
+
 
