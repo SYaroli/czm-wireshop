@@ -73,83 +73,8 @@
 
   <main class="page">
 
-    <!-- Live Technician Activity -->
-    <div class="card">
-      <h2 style="margin:0 0 10px 0;">Live Technician Activity</h2>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Technician</th>
-              <th>Part Number</th>
-              <th>Print Name</th>
-              <th>Expected</th>
-              <th>Action</th>
-              <th>Notes</th>
-              <th>Time Active</th>
-            </tr>
-          </thead>
-          <tbody id="liveBody">
-            <tr><td colspan="7" style="opacity:.7;">Loading…</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- Completed Jobs (Archive) -->
-    <div class="card" style="margin-top:14px;">
-      <h2 style="margin:0 0 10px 0;">Completed Jobs (Archive)</h2>
-
-      <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:end;margin:.25rem 0 .75rem">
-        <label>Technician<br>
-          <select id="fTech">
-            <option value="All">All</option>
-          </select>
-        </label>
-
-        <label>Part # contains<br>
-          <input id="fPart" type="text" placeholder="e.g. 44602"/>
-        </label>
-
-        <label>From date<br>
-          <input id="fFrom" type="date"/>
-        </label>
-
-        <label>To date<br>
-          <input id="fTo" type="date"/>
-        </label>
-
-        <button id="btnApply" class="navbtn">Apply</button>
-        <button id="btnReset" class="navbtn">Reset</button>
-        <button id="btnExport" class="navbtn">Export CSV</button>
-
-        <a href="#" id="archiveBackupLink" style="margin-left:auto;font-size:13px;">Archive Backup</a>
-        <div id="archiveCount" style="opacity:.75;font-size:13px;">0 records</div>
-      </div>
-
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Finished</th>
-              <th>Technician</th>
-              <th>Part Number</th>
-              <th>Print Name</th>
-              <th>Expected (hrs)</th>
-              <th>Notes</th>
-              <th>Total Active</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody id="archiveBody">
-            <tr><td colspan="8" style="opacity:.7;">Loading…</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
     <!-- Users -->
-    <div class="card" id="usersCard" style="margin-top:14px;">
+    <div class="card" id="usersCard">
       <h2 style="margin:0 0 10px 0;">Users</h2>
 
       <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:end;margin:.25rem 0 .75rem">
@@ -192,24 +117,13 @@
       ? 'http://localhost:3000'
       : 'https://czm-us-wireshop-backend.onrender.com';
 
-    const user = (() => { try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; } })();
+    const user = (() => {
+      try { return JSON.parse(localStorage.getItem('user') || '{}'); }
+      catch { return {}; }
+    })();
 
     function headers(){
       return { 'Content-Type':'application/json', 'x-user': user.username || '' };
-    }
-
-    function fmtDate(ms){
-      if (!ms) return '';
-      const d = new Date(ms);
-      return d.toLocaleString();
-    }
-
-    function toHMS(totalSeconds){
-      const s = Math.max(0, Math.floor(totalSeconds || 0));
-      const h = Math.floor(s / 3600);
-      const m = Math.floor((s % 3600) / 60);
-      const r = s % 60;
-      return (h>0 ? `${h}h ` : '') + `${m}m ${r}s`;
     }
 
     // auth gate
@@ -219,140 +133,6 @@
     document.getElementById('logoutBtn').addEventListener('click', () => {
       localStorage.removeItem('user');
       location.href = '/index.html';
-    });
-
-    // ---------- LIVE ----------
-    async function loadLive(){
-      const tbody = document.getElementById('liveBody');
-      try{
-        const res = await fetch(`${API_BASE}/api/jobs/live`, { headers: headers() });
-        if (!res.ok) throw new Error('live fetch failed');
-        const rows = await res.json();
-
-        if (!rows.length){
-          tbody.innerHTML = `<tr><td colspan="7" style="opacity:.7;">No active jobs</td></tr>`;
-          return;
-        }
-
-        tbody.innerHTML = '';
-        rows.forEach(r => {
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td>${r.username || ''}</td>
-            <td>${r.partNumber || ''}</td>
-            <td>${r.printName || ''}</td>
-            <td>${(r.expectedHours != null) ? r.expectedHours : ''}</td>
-            <td>${r.action || ''}</td>
-            <td>${r.note || ''}</td>
-            <td>${toHMS((r.totalActive || 0))}</td>
-          `;
-          tbody.appendChild(tr);
-        });
-      }catch(e){
-        tbody.innerHTML = `<tr><td colspan="7" style="opacity:.7;">Live load failed</td></tr>`;
-      }
-    }
-
-    // ---------- ARCHIVE ----------
-    async function loadTechListInto(selectEl){
-      try{
-        const res = await fetch(`${API_BASE}/api/users`, { headers: headers() });
-        if (!res.ok) return;
-        const list = await res.json();
-        const techs = list.map(u => u.username).filter(Boolean);
-        techs.forEach(t => {
-          const opt = document.createElement('option');
-          opt.value = t;
-          opt.textContent = t;
-          selectEl.appendChild(opt);
-        });
-      }catch{}
-    }
-
-    async function loadArchive(){
-      const tbody = document.getElementById('archiveBody');
-      try{
-        const tech = document.getElementById('fTech').value;
-        const partContains = document.getElementById('fPart').value.trim();
-        const from = document.getElementById('fFrom').value;
-        const to = document.getElementById('fTo').value;
-
-        const params = new URLSearchParams();
-        if (tech && tech !== 'All') params.set('tech', tech);
-        if (partContains) params.set('partContains', partContains);
-        if (from) params.set('from', from);
-        if (to) params.set('to', to);
-
-        const res = await fetch(`${API_BASE}/api/archive?` + params.toString(), { headers: headers() });
-        if (!res.ok) throw new Error('archive fetch failed');
-        const rows = await res.json();
-
-        document.getElementById('archiveCount').textContent = `${rows.length} records`;
-
-        if (!rows.length){
-          tbody.innerHTML = `<tr><td colspan="8" style="opacity:.7;">0 records</td></tr>`;
-          return;
-        }
-
-        tbody.innerHTML = '';
-        rows.forEach(r => {
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td>${fmtDate(r.finishedAt)}</td>
-            <td>${r.username || ''}</td>
-            <td>${r.partNumber || ''}</td>
-            <td>${r.printName || ''}</td>
-            <td>${(r.expectedHours != null) ? r.expectedHours : ''}</td>
-            <td>${r.note || ''}</td>
-            <td>${toHMS((r.totalActive || 0))}</td>
-            <td></td>
-          `;
-          tbody.appendChild(tr);
-        });
-      }catch(e){
-        tbody.innerHTML = `<tr><td colspan="8" style="opacity:.7;">Archive load failed</td></tr>`;
-      }
-    }
-
-    document.getElementById('btnApply').addEventListener('click', loadArchive);
-    document.getElementById('btnReset').addEventListener('click', () => {
-      document.getElementById('fTech').value = 'All';
-      document.getElementById('fPart').value = '';
-      document.getElementById('fFrom').value = '';
-      document.getElementById('fTo').value = '';
-      loadArchive();
-    });
-
-    document.getElementById('btnExport').addEventListener('click', async () => {
-      // Let the backend handle this if you already have it; otherwise this is a noop
-      try{
-        const res = await fetch(`${API_BASE}/api/archive/export`, { headers: headers() });
-        if (!res.ok) return alert('Export endpoint not available');
-        const blob = await res.blob();
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = 'archive.csv';
-        a.click();
-      }catch{
-        alert('Export failed');
-      }
-    });
-
-    document.getElementById('archiveBackupLink').addEventListener('click', (e) => {
-      e.preventDefault();
-      alert('If you want a real backup button, we’ll wire it to a backend endpoint next.');
-    });
-
-    // Clear Live Logs (kept)
-    document.getElementById('clearAllLogs').addEventListener('click', async () => {
-      if (!confirm('Clear ALL live jobs?')) return;
-      try{
-        const res = await fetch(`${API_BASE}/api/jobs/clear`, { method:'POST', headers: headers() });
-        if (!res.ok) return alert('Clear failed');
-        loadLive();
-      }catch{
-        alert('Clear failed');
-      }
     });
 
     // ---------- USERS ----------
@@ -478,11 +258,7 @@
 
     // boot
     (async function init(){
-      await loadLive();
       await loadUsers();
-      await loadTechListInto(document.getElementById('fTech'));
-      await loadArchive();
-      setInterval(loadLive, 5000);
     })();
   </script>
 </body>
