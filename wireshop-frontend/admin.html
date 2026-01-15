@@ -29,22 +29,23 @@
   </style>
 </head>
 <body>
-  <header class="brand">
+  <div class="brand-bar">
     <div class="brand-inner">
-      <a class="brand-logo" href="assignments.html">
+      <a class="brand-logo" href="dashboard.html">
         <img src="czm-logo.png" alt="CZM" />
         <h1 class="brand-title">CZM • Admin</h1>
       </a>
-      <div class="brand-actions">
-        <a class="navbtn" href="assignments.html">Assignments</a>
-        <a class="navbtn" href="inventory-list.html">Inventory</a>
-        <a class="navbtn active" href="admin.html">Admin</a>
-        <button id="logoutBtn" class="navbtn">Logout</button>
+
+      <div class="brand-actions" id="navActions">
+        <a href="assignments.html" class="navbtn">Assignments (Build Next)</a>
+        <a href="/inventory" class="navbtn">Inventory</a>
+        <a href="admin.html" class="navbtn active">Admin</a>
+        <a href="index.html" class="navbtn" id="logoutNav">Logout</a>
       </div>
     </div>
-  </header>
+  </div>
 
-  <main class="wrap">
+  <main class="page">
     <div class="card" style="margin-top:14px;">
       <h2 style="margin:0 0 10px 0;">Users</h2>
 
@@ -67,7 +68,7 @@
           </select>
         </label>
 
-        <button id="btnAddUser" class="navbtn">Add User</button>
+        <button id="btnAddUser" class="btn primary">Add User</button>
       </div>
 
       <div class="table-wrap">
@@ -156,7 +157,8 @@
     }
 
     // ===== Logout =====
-    document.getElementById('logoutBtn').addEventListener('click', () => {
+    document.getElementById('logoutNav').addEventListener('click', (e) => {
+      e.preventDefault();
       // Clear both current + legacy keys
       localStorage.removeItem('user');
       localStorage.removeItem('username');
