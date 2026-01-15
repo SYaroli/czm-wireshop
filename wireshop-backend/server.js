@@ -32,7 +32,7 @@ const ALLOWED_ORIGINS = new Set([
   "http://localhost:3000",
 ]);
 
-const corsOptions = {
+const corsConfig = {
   origin: function (origin, callback) {
     // allow non-browser requests (curl/postman)
     if (!origin) return callback(null, true);
@@ -42,15 +42,22 @@ const corsOptions = {
     return callback(new Error("CORS blocked origin: " + origin));
   },
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  // IMPORTANT: frontend sends these, so allow them
-  allowedHeaders: ["Content-Type", "x-user", "x-role"],
+  // Frontend sends these custom headers; if they aren't allowed, preflight fails.
+  allowedHeaders: [
+    "Content-Type",
+    "Authorization",
+    "x-user",
+    "x-role",
+    "x-pin",
+    "x-admin",
+  ],
   credentials: false,
 };
 
-app.use(cors(corsOptions));
+app.use(cors(corsConfig));
 
-// must respond to preflight WITH THE SAME CORS OPTIONS
-app.options("*", cors(corsOptions));
+// must respond to preflight with SAME config
+app.options("*", cors(corsConfig));
 
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true }));
@@ -83,10 +90,7 @@ let archiveReady = false;
     archiveReady = true;
     console.log("[ARCHIVE] Postgres archive initialized");
   } catch (err) {
-    console.error(
-      "[ARCHIVE] init failed; running without durable archive:",
-      err.message
-    );
+    console.error("[ARCHIVE] init failed; running without durable archive:", err.message);
   }
 })();
 
@@ -175,9 +179,7 @@ const lastStartByUser = new Map();
 const lastUserByClient = new Map();
 
 function clientId(req) {
-  const xff = String(req.headers["x-forwarded-for"] || "")
-    .split(",")[0]
-    .trim();
+  const xff = String(req.headers["x-forwarded-for"] || "").split(",")[0].trim();
   const ua = String(req.headers["user-agent"] || "");
   return `${xff || req.ip || "?"}|${ua}`;
 }
@@ -199,18 +201,11 @@ function looksLikeFinish(src = {}, url = "") {
   )
     return true;
   const lower = (k) => String(src[k] ?? "").toLowerCase();
-  const hay = [
-    lower("action"),
-    lower("status"),
-    lower("event"),
-    lower("op"),
-    lower("type"),
-  ].join("|");
+  const hay = [lower("action"), lower("status"), lower("event"), lower("op"), lower("type")].join("|");
   return /finish|finished|complete|completed|done|end|stop/.test(hay);
 }
 function pick(obj, keys) {
-  for (const k of keys)
-    if (obj && obj[k] != null && obj[k] !== "") return obj[k];
+  for (const k of keys) if (obj && obj[k] != null && obj[k] !== "") return obj[k];
   return null;
 }
 const toInt = (v) => {
@@ -240,8 +235,7 @@ app.use("/api/jobs", (req, res, next) => {
     if (!looksLikeFinish(src, url)) return;
 
     let username =
-      pick(src, ["technician", "tech", "username", "user", "name"]) ||
-      getClientUser(req);
+      pick(src, ["technician", "tech", "username", "user", "name"]) || getClientUser(req);
     let part =
       pick(src, [
         "part_number",
@@ -261,18 +255,10 @@ app.use("/api/jobs", (req, res, next) => {
         (username && lastStartByUser.get(username)?.started_at) ||
         null;
       const finished_at =
-        toISO(
-          pick(src, ["finished_at", "finishedAt", "finish_time", "finishTime"])
-        ) || new Date().toISOString();
+        toISO(pick(src, ["finished_at", "finishedAt", "finish_time", "finishTime"])) ||
+        new Date().toISOString();
       const expected_minutes =
-        toInt(
-          pick(src, [
-            "expected_minutes",
-            "expected",
-            "expectedMin",
-            "expectedMinutes",
-          ])
-        ) ??
+        toInt(pick(src, ["expected_minutes", "expected", "expectedMin", "expectedMinutes"])) ??
         (username && lastStartByUser.get(username)?.expected_minutes) ??
         null;
 
@@ -283,15 +269,8 @@ app.use("/api/jobs", (req, res, next) => {
         status: "archived",
         expected_minutes,
         total_active_sec:
-          toInt(
-            pick(src, [
-              "total_active_sec",
-              "totalSeconds",
-              "total",
-              "elapsed",
-              "timeActiveSec",
-            ])
-          ) ?? null,
+          toInt(pick(src, ["total_active_sec", "totalSeconds", "total", "elapsed", "timeActiveSec"])) ??
+          null,
         started_at,
         finished_at,
         notes: pick(src, ["notes", "note"]) || null,
