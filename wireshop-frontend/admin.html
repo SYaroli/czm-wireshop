@@ -65,7 +65,7 @@
       <div class="brand-actions" id="navActions">
         <a href="assignments.html" class="navbtn">Assignments</a>
         <a href="/inventory" class="navbtn">Inventory</a>
-        <a href="admin.html" class="navbtn active">Admin</a>
+        <a href="admin.html" class="navbtn active" id="adminNavBtn">Admin</a>
         <button id="logoutBtn" class="navbtn">Logout</button>
       </div>
     </div>
@@ -123,11 +123,25 @@
     })();
 
     function headers(){
-      return { 'Content-Type':'application/json', 'x-user': user.username || '' };
+      return {
+        'Content-Type': 'application/json',
+        'x-user': user.username || '',
+        'x-role': (user.role || '').toLowerCase()
+      };
     }
 
-    // auth gate
-    if (!user || !user.username) location.href = '/index.html';
+    // auth gate (must be logged in)
+    if (!user || !user.username){
+      location.href = '/index.html';
+    }
+
+    // admin gate (must be admin)
+    if ((user.role || '').toLowerCase() !== 'admin'){
+      // hide admin button and bounce them out
+      const adminBtn = document.getElementById('adminNavBtn');
+      if (adminBtn) adminBtn.style.display = 'none';
+      location.href = 'assignments.html';
+    }
 
     // logout
     document.getElementById('logoutBtn').addEventListener('click', () => {
@@ -140,10 +154,17 @@
       const tbody = document.getElementById('usersBody');
       try{
         const res = await fetch(`${API_BASE}/api/users`, { headers: headers() });
-        if (!res.ok) throw new Error('users fetch failed');
-        const list = await res.json();
 
-        if (!list.length){
+        const j = await res.json().catch(()=>({}));
+        if (!res.ok){
+          // show backend error message if it exists
+          tbody.innerHTML = `<tr><td colspan="6" style="opacity:.7;">${j.error || 'Users load failed'}</td></tr>`;
+          return;
+        }
+
+        const list = j;
+
+        if (!Array.isArray(list) || !list.length){
           tbody.innerHTML = `<tr><td colspan="6" style="opacity:.7;">No users</td></tr>`;
           return;
         }
@@ -222,7 +243,10 @@
       // delete
       if (e.target.classList.contains('uDel')){
         if (!confirm('Delete this user?')) return;
-        const res = await fetch(`${API_BASE}/api/users/${id}`, { method:'DELETE', headers: headers() });
+        const res = await fetch(`${API_BASE}/api/users/${id}`, {
+          method:'DELETE',
+          headers: headers()
+        });
         if (res.ok) loadUsers();
         return;
       }
