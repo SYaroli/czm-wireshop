@@ -1,289 +1,352 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>CZM • Admin</title>
-  <link rel="stylesheet" href="style.css"/>
-
+  <link rel="stylesheet" href="style.css" />
   <style>
-    /* Red/white header buttons */
-    .brand-actions .navbtn{
-      display:inline-block !important;
-      background:var(--red) !important;
-      color:#fff !important;
-      padding:8px 12px !important;
-      border-radius:9px !important;
-      text-decoration:none !important;
-      border:0 !important;
-      font-weight:700 !important;
-      cursor:pointer;
-      margin-left:8px !important;
-      line-height:1;
-    }
-    .brand-actions .navbtn:hover{ filter:brightness(.92) }
-    .brand-actions .navbtn.active{
-      outline:2px solid #fff;
-      outline-offset:2px;
-    }
-    .brand-actions button.navbtn{ border:0 }
-
-    /* Page spacing */
-    .page { max-width: 980px; margin: 0 auto; padding: 18px 16px 48px; }
-
-    /* Tables */
-    .table-wrap{ width:100%; overflow:auto; }
+    /* Admin page is just Users now */
+    .navbtn{ border:0; cursor:pointer; }
+    .navbtn.active{ outline:2px solid rgba(255,255,255,.25); }
+    .table-wrap{ overflow:auto; }
     table{ width:100%; border-collapse:collapse; }
-    th, td{ padding:8px 10px; border-bottom:1px solid rgba(0,0,0,.08); font-size:14px; }
-    th{ background:#111; color:#fff; font-weight:700; text-align:left; position:sticky; top:0; }
-    .small{ font-size:12px; padding:6px 10px; border-radius:8px; }
-    .danger{ background:var(--red); color:#fff; border:0; cursor:pointer; }
-    .primary{ background:#1a1c20; color:#fff; border:0; cursor:pointer; }
-
-    /* Inputs */
-    input, select{
-      width:100%;
-      padding:8px 10px;
+    th, td{ white-space:nowrap; }
+    .muted{ color:#666; font-size:12px; }
+    .msg{ margin-top:8px; font-size:13px; }
+    .msg.ok{ color:#137333; }
+    .msg.err{ color:#b00020; }
+    .btn-mini{
+      padding:6px 10px;
       border-radius:10px;
-      border:1px solid rgba(0,0,0,.15);
-      background:#fff;
-      font-size:14px;
-      box-sizing:border-box;
+      font-weight:800;
+      font-size:12px;
+      border:0;
+      cursor:pointer;
     }
-    label{ font-size:13px; opacity:.9; }
+    .btn-mini.save{ background:#111; color:#fff; }
+    .btn-mini.del{ background:#c80000; color:#fff; }
   </style>
 </head>
-
 <body>
-  <div class="brand-bar">
+  <header class="brand">
     <div class="brand-inner">
-      <a class="brand-logo" href="assignments.html" style="display:flex;align-items:center;gap:10px;text-decoration:none;">
-        <img src="czm-logo.png" alt="CZM" style="height:26px;width:auto;">
-        <div style="color:#fff;font-weight:800;">CZM • Admin</div>
+      <a class="brand-logo" href="assignments.html">
+        <img src="czm-logo.png" alt="CZM" />
+        <h1 class="brand-title">CZM • Admin</h1>
       </a>
-
-      <div class="brand-actions" id="navActions">
-        <a href="assignments.html" class="navbtn">Assignments</a>
-        <a href="/inventory" class="navbtn">Inventory</a>
-        <a href="admin.html" class="navbtn active" id="adminNavBtn">Admin</a>
+      <div class="brand-actions">
+        <a class="navbtn" href="assignments.html">Assignments</a>
+        <a class="navbtn" href="inventory-list.html">Inventory</a>
+        <a class="navbtn active" href="admin.html">Admin</a>
         <button id="logoutBtn" class="navbtn">Logout</button>
       </div>
     </div>
-  </div>
+  </header>
 
-  <main class="page">
-
-    <!-- Users -->
-    <div class="card" id="usersCard">
+  <main class="wrap">
+    <div class="card" style="margin-top:14px;">
       <h2 style="margin:0 0 10px 0;">Users</h2>
 
-      <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:end;margin:.25rem 0 .75rem">
-        <label>Username<br><input id="uName" type="text" placeholder="firstname.lastname"/></label>
-        <label>PIN<br><input id="uPin" type="text" inputmode="numeric" placeholder="1234"/></label>
-        <label>Role<br>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px;">
+        <label style="display:flex;flex-direction:column;gap:4px;">
+          <span class="muted">Username</span>
+          <input id="uName" type="text" placeholder="firstname.lastname" />
+        </label>
+
+        <label style="display:flex;flex-direction:column;gap:4px;">
+          <span class="muted">PIN</span>
+          <input id="uPin" type="text" inputmode="numeric" placeholder="1234" maxlength="10" />
+        </label>
+
+        <label style="display:flex;flex-direction:column;gap:4px;">
+          <span class="muted">Role</span>
           <select id="uRole">
-            <option value="tech">tech</option>
+            <option value="tech" selected>tech</option>
             <option value="admin">admin</option>
           </select>
         </label>
+
         <button id="btnAddUser" class="navbtn">Add User</button>
-        <div id="uMsg" style="margin-left:auto;opacity:.8"></div>
       </div>
 
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>Username</th>
-              <th>Role</th>
-              <th>Active</th>
-              <th>New PIN</th>
-              <th>Save</th>
-              <th>Delete</th>
+              <th style="text-align:left;">Username</th>
+              <th style="text-align:left;">Role</th>
+              <th style="text-align:left;">Active</th>
+              <th style="text-align:left;">New PIN</th>
+              <th style="text-align:left;">Save</th>
+              <th style="text-align:left;">Delete</th>
             </tr>
           </thead>
-          <tbody id="usersBody">
+          <tbody id="usersTableBody">
             <tr><td colspan="6" style="opacity:.7;">Loading…</td></tr>
           </tbody>
         </table>
       </div>
-    </div>
 
+      <div id="uMsg" class="msg muted"></div>
+    </div>
   </main>
 
   <script>
-    // ---------- helpers ----------
-    const API_BASE = (location.hostname.includes('localhost'))
-      ? 'http://localhost:3000'
-      : 'https://czm-us-wireshop-backend.onrender.com';
+    // ===== Config =====
+    // If you ever want to override without editing code:
+    // localStorage.setItem('API_BASE','https://wireshop-backend.onrender.com')
+    const API_BASE = (localStorage.getItem('API_BASE') || 'https://wireshop-backend.onrender.com').replace(/\/+$/,'');
+    const API_USERS = API_BASE + '/api/users';
 
-    const user = (() => {
-      try { return JSON.parse(localStorage.getItem('user') || '{}'); }
-      catch { return {}; }
-    })();
-
-    function headers(){
+    // ===== Session helpers =====
+    function getSession(){
       return {
-        'Content-Type': 'application/json',
-        'x-user': user.username || '',
-        'x-role': (user.role || '').toLowerCase()
+        username: (localStorage.getItem('username') || '').trim(),
+        role: (localStorage.getItem('role') || '').trim().toLowerCase()
       };
     }
 
-    // auth gate (must be logged in)
-    if (!user || !user.username){
-      location.href = '/index.html';
-    }
-
-    // admin gate (must be admin)
-    if ((user.role || '').toLowerCase() !== 'admin'){
-      // hide admin button and bounce them out
-      const adminBtn = document.getElementById('adminNavBtn');
-      if (adminBtn) adminBtn.style.display = 'none';
-      location.href = 'assignments.html';
-    }
-
-    // logout
-    document.getElementById('logoutBtn').addEventListener('click', () => {
-      localStorage.removeItem('user');
-      location.href = '/index.html';
-    });
-
-    // ---------- USERS ----------
-    async function loadUsers(){
-      const tbody = document.getElementById('usersBody');
-      try{
-        const res = await fetch(`${API_BASE}/api/users`, { headers: headers() });
-
-        const j = await res.json().catch(()=>({}));
-        if (!res.ok){
-          // show backend error message if it exists
-          tbody.innerHTML = `<tr><td colspan="6" style="opacity:.7;">${j.error || 'Users load failed'}</td></tr>`;
-          return;
-        }
-
-        const list = j;
-
-        if (!Array.isArray(list) || !list.length){
-          tbody.innerHTML = `<tr><td colspan="6" style="opacity:.7;">No users</td></tr>`;
-          return;
-        }
-
-        tbody.innerHTML = '';
-        list.forEach(u => {
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td>${u.username}</td>
-            <td>
-              <select class="uRole" data-uid="${u.id}">
-                <option value="tech" ${String(u.role).toLowerCase()==='tech'?'selected':''}>tech</option>
-                <option value="admin" ${String(u.role).toLowerCase()==='admin'?'selected':''}>admin</option>
-              </select>
-            </td>
-            <td style="text-align:center">
-              <input type="checkbox" class="uActive" data-uid="${u.id}" ${Number(u.active)===1?'checked':''}/>
-            </td>
-            <td>
-              <input class="uPin" data-uid="${u.id}" inputmode="numeric" placeholder="(leave blank)"/>
-            </td>
-            <td>
-              <button class="small primary uSave" data-uid="${u.id}">Save</button>
-            </td>
-            <td>
-              <button class="small danger uDel" data-uid="${u.id}">Delete</button>
-            </td>
-          `;
-          tbody.appendChild(tr);
-        });
-      }catch(e){
-        tbody.innerHTML = `<tr><td colspan="6" style="opacity:.7;">Users load failed</td></tr>`;
+    function requireAdmin(){
+      const s = getSession();
+      // no session? kick to login
+      if(!s.username){
+        window.location.replace('index.html');
+        return;
+      }
+      // only admins belong here
+      if(s.role !== 'admin'){
+        window.location.replace('assignments.html');
+        return;
       }
     }
 
-    document.getElementById('btnAddUser').addEventListener('click', async () => {
-      const name = document.getElementById('uName').value.trim();
-      const pin  = document.getElementById('uPin').value.trim();
-      const role = document.getElementById('uRole').value;
+    // ===== UI helpers =====
+    const msgEl = () => document.getElementById('uMsg');
+    function setMsg(text, kind){
+      const el = msgEl();
+      el.className = 'msg ' + (kind || 'muted');
+      el.textContent = text || '';
+    }
 
-      const msg = document.getElementById('uMsg');
-      msg.textContent = '';
+    function authHeaders(){
+      const s = getSession();
+      // your backend checks x-user for admin gating
+      return {
+        'Content-Type': 'application/json',
+        'x-user': s.username
+      };
+    }
 
-      if (!name || !pin){
-        msg.textContent = 'username & pin required';
+    function normalizeRole(r){
+      r = (r || '').toLowerCase().trim();
+      // older installs sometimes used "assembler"
+      if(r === 'assembler') return 'tech';
+      if(r !== 'admin') return 'tech';
+      return 'admin';
+    }
+
+    // ===== Logout =====
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      localStorage.removeItem('username');
+      localStorage.removeItem('role');
+      window.location.replace('index.html');
+    });
+
+    // ===== Users API =====
+    async function apiGetUsers(){
+      const res = await fetch(API_USERS, { headers: authHeaders() });
+      if(!res.ok){
+        const t = await res.text().catch(()=> '');
+        throw new Error('Users load failed: ' + res.status + ' ' + t);
+      }
+      return res.json();
+    }
+
+    async function apiAddUser(payload){
+      const res = await fetch(API_USERS, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify(payload)
+      });
+      if(!res.ok){
+        const t = await res.text().catch(()=> '');
+        throw new Error('Add user failed: ' + res.status + ' ' + t);
+      }
+      return res.json().catch(()=> ({}));
+    }
+
+    async function apiUpdateUser(username, payload){
+      const res = await fetch(API_USERS + '/' + encodeURIComponent(username), {
+        method: 'PUT',
+        headers: authHeaders(),
+        body: JSON.stringify(payload)
+      });
+      if(!res.ok){
+        const t = await res.text().catch(()=> '');
+        throw new Error('Update failed: ' + res.status + ' ' + t);
+      }
+      return res.json().catch(()=> ({}));
+    }
+
+    async function apiDeleteUser(username){
+      const res = await fetch(API_USERS + '/' + encodeURIComponent(username), {
+        method: 'DELETE',
+        headers: authHeaders()
+      });
+      if(!res.ok){
+        const t = await res.text().catch(()=> '');
+        throw new Error('Delete failed: ' + res.status + ' ' + t);
+      }
+      return res.json().catch(()=> ({}));
+    }
+
+    // ===== Rendering =====
+    function renderUsers(users){
+      const tbody = document.getElementById('usersTableBody');
+      if(!Array.isArray(users) || users.length === 0){
+        tbody.innerHTML = '<tr><td colspan="6" style="opacity:.7;">No users found</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = users.map(u => {
+        const uname = u.username || u.user || u.name || '';
+        const role = normalizeRole(u.role);
+        const active = (u.active === false) ? false : true;
+
+        return `
+          <tr data-username="${escapeAttr(uname)}">
+            <td>${escapeHtml(uname)}</td>
+            <td>
+              <select class="roleSel">
+                <option value="tech" ${role==='tech'?'selected':''}>tech</option>
+                <option value="admin" ${role==='admin'?'selected':''}>admin</option>
+              </select>
+            </td>
+            <td>
+              <label style="display:flex;align-items:center;gap:8px;">
+                <input class="activeChk" type="checkbox" ${active?'checked':''} />
+                <span class="muted">${active?'yes':'no'}</span>
+              </label>
+            </td>
+            <td>
+              <input class="pinInp" type="text" inputmode="numeric" placeholder="(leave blank)" maxlength="10" />
+            </td>
+            <td>
+              <button class="btn-mini save">Save</button>
+            </td>
+            <td>
+              <button class="btn-mini del">Delete</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    async function loadUsers(){
+      try{
+        setMsg('', 'muted');
+        const users = await apiGetUsers();
+        renderUsers(users);
+      }catch(err){
+        console.error(err);
+        document.getElementById('usersTableBody').innerHTML =
+          '<tr><td colspan="6" style="opacity:.7;">Users load failed</td></tr>';
+        setMsg(String(err.message || err), 'err');
+      }
+    }
+
+    async function addUser(){
+      const name = (document.getElementById('uName').value || '').trim();
+      const pin = (document.getElementById('uPin').value || '').trim();
+      const role = normalizeRole(document.getElementById('uRole').value);
+
+      if(!name){
+        setMsg('Username required', 'err');
+        return;
+      }
+      if(!pin){
+        setMsg('PIN required', 'err');
         return;
       }
 
       try{
-        const res = await fetch(`${API_BASE}/api/users`, {
-          method:'POST',
-          headers: headers(),
-          body: JSON.stringify({ username: name, pin, role })
-        });
-
-        const j = await res.json().catch(()=>({}));
-        if (!res.ok){
-          msg.textContent = j.error || 'Add failed';
-          return;
-        }
-
-        msg.textContent = 'User added';
+        setMsg('Adding user…', 'muted');
+        await apiAddUser({ username: name, pin, role });
         document.getElementById('uName').value = '';
         document.getElementById('uPin').value = '';
         document.getElementById('uRole').value = 'tech';
-        loadUsers();
-      }catch{
-        msg.textContent = 'Add failed';
+        setMsg('User added.', 'ok');
+        await loadUsers();
+      }catch(err){
+        console.error(err);
+        setMsg(String(err.message || err), 'err');
       }
-    });
+    }
 
-    document.getElementById('usersBody').addEventListener('click', async (e) => {
-      const id = e.target?.dataset?.uid;
-      if (!id) return;
+    function wireTableClicks(){
+      const tbody = document.getElementById('usersTableBody');
 
-      // delete
-      if (e.target.classList.contains('uDel')){
-        if (!confirm('Delete this user?')) return;
-        const res = await fetch(`${API_BASE}/api/users/${id}`, {
-          method:'DELETE',
-          headers: headers()
-        });
-        if (res.ok) loadUsers();
-        return;
-      }
+      tbody.addEventListener('click', async (e) => {
+        const tr = e.target.closest('tr[data-username]');
+        if(!tr) return;
+        const username = tr.getAttribute('data-username');
 
-      // save (role/active/pin)
-      if (e.target.classList.contains('uSave')){
-        const roleEl = document.querySelector(`.uRole[data-uid="${id}"]`);
-        const actEl  = document.querySelector(`.uActive[data-uid="${id}"]`);
-        const pinEl  = document.querySelector(`.uPin[data-uid="${id}"]`);
+        // Save
+        if(e.target.classList.contains('save')){
+          const roleSel = tr.querySelector('.roleSel');
+          const activeChk = tr.querySelector('.activeChk');
+          const pinInp = tr.querySelector('.pinInp');
 
-        const payload = {
-          role: roleEl?.value,
-          active: actEl?.checked ? 1 : 0
-        };
-        if (pinEl && pinEl.value.trim()) payload.pin = pinEl.value.trim();
+          const payload = {
+            role: normalizeRole(roleSel && roleSel.value),
+            active: !!(activeChk && activeChk.checked)
+          };
+          const newPin = (pinInp && pinInp.value || '').trim();
+          if(newPin) payload.pin = newPin;
 
-        const res = await fetch(`${API_BASE}/api/users/${id}`, {
-          method:'PATCH',
-          headers: headers(),
-          body: JSON.stringify(payload)
-        });
-
-        const j = await res.json().catch(()=>({}));
-        if (!res.ok){
-          alert(j.error || 'Save failed');
+          try{
+            setMsg('Saving…', 'muted');
+            await apiUpdateUser(username, payload);
+            if(pinInp) pinInp.value = '';
+            setMsg('Saved.', 'ok');
+            await loadUsers();
+          }catch(err){
+            console.error(err);
+            setMsg(String(err.message || err), 'err');
+          }
           return;
         }
 
-        if (pinEl) pinEl.value = '';
-        loadUsers();
-      }
-    });
+        // Delete
+        if(e.target.classList.contains('del')){
+          const ok = window.confirm('Delete user "' + username + '"?');
+          if(!ok) return;
+          try{
+            setMsg('Deleting…', 'muted');
+            await apiDeleteUser(username);
+            setMsg('Deleted.', 'ok');
+            await loadUsers();
+          }catch(err){
+            console.error(err);
+            setMsg(String(err.message || err), 'err');
+          }
+        }
+      });
+    }
+
+    function escapeHtml(s){
+      return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+    function escapeAttr(s){
+      return escapeHtml(s).replace(/`/g,'');
+    }
 
     // boot
-    (async function init(){
-      await loadUsers();
-    })();
+    requireAdmin();
+    document.getElementById('btnAddUser').addEventListener('click', addUser);
+    wireTableClicks();
+    loadUsers();
   </script>
 </body>
 </html>
