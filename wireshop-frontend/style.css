@@ -146,4 +146,11 @@ tr.row-selected td{ background:#fff6f7 !important; box-shadow: inset 0 0 0 1px r
   font-weight: 700;
 }
 .card .toolbar #status { color: #666; }
+.brand-actions{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+  align-items:center;
+}
 
