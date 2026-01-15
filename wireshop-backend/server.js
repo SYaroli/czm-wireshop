@@ -47,7 +47,7 @@ function isAllowedOrigin(origin) {
 const corsConfig = {
   origin: function (origin, callback) {
     if (isAllowedOrigin(origin)) return callback(null, true);
-    return callback(null, false);
+   return callback(new Error("Not allowed by CORS"));
   },
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   // Frontend sends these custom headers; if they aren't allowed, preflight fails.
@@ -59,7 +59,7 @@ const corsConfig = {
     "x-pin",
     "x-admin",
   ],
-  credentials: false,
+  credentials: true,
   optionsSuccessStatus: 204,
 };
 
@@ -299,3 +299,4 @@ app.use("/api/jobs", (req, res, next) => {
 
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => console.log(`WireShop backend listening on ${PORT}`));
+
