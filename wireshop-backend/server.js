@@ -32,14 +32,22 @@ const ALLOWED_ORIGINS = new Set([
   "http://localhost:3000",
 ]);
 
+function isAllowedOrigin(origin) {
+  if (!origin) return true; // non-browser (curl/postman)
+  if (ALLOWED_ORIGINS.has(origin)) return true;
+  // tolerate subdomains like https://czm-us-wireshop.com and https://www.czm-us-wireshop.com
+  try {
+    const host = new URL(origin).hostname;
+    return host === "czm-us-wireshop.com" || host.endsWith(".czm-us-wireshop.com");
+  } catch {
+    return false;
+  }
+}
+
 const corsConfig = {
   origin: function (origin, callback) {
-    // allow non-browser requests (curl/postman)
-    if (!origin) return callback(null, true);
-
-    if (ALLOWED_ORIGINS.has(origin)) return callback(null, true);
-
-    return callback(new Error("CORS blocked origin: " + origin));
+    if (isAllowedOrigin(origin)) return callback(null, true);
+    return callback(null, false);
   },
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   // Frontend sends these custom headers; if they aren't allowed, preflight fails.
@@ -52,6 +60,7 @@ const corsConfig = {
     "x-admin",
   ],
   credentials: false,
+  optionsSuccessStatus: 204,
 };
 
 app.use(cors(corsConfig));
