@@ -95,16 +95,25 @@
   <script>
     // ===== Config =====
     // If you ever want to override without editing code:
-    // localStorage.setItem('API_BASE','https://wireshop-backend.onrender.com')
-    const API_BASE = (localStorage.getItem('API_BASE') || 'https://wireshop-backend.onrender.com').replace(/\/+$/,'');
+    // localStorage.setItem('API_BASE','https://czm-us-wireshop-backend.onrender.com')
+    // Default matches the rest of the site (script.js)
+    const API_BASE = (localStorage.getItem('API_BASE') || 'https://czm-us-wireshop-backend.onrender.com').replace(/\/+$/,'');
     const API_USERS = API_BASE + '/api/users';
 
     // ===== Session helpers =====
     function getSession(){
-      return {
-        username: (localStorage.getItem('username') || '').trim(),
-        role: (localStorage.getItem('role') || '').trim().toLowerCase()
-      };
+      // The app stores the logged-in user as JSON in localStorage.user
+      // { username: '...', role: 'admin'|'tech' }
+      let u = null;
+      try { u = JSON.parse(localStorage.getItem('user') || 'null'); } catch {}
+
+      // Back-compat: older pages used localStorage.username / localStorage.role
+      const legacyUsername = (localStorage.getItem('username') || '').trim();
+      const legacyRole = (localStorage.getItem('role') || '').trim().toLowerCase();
+
+      const username = (u?.username || legacyUsername || '').trim();
+      const role = String(u?.role || legacyRole || '').trim().toLowerCase();
+      return { username, role };
     }
 
     function requireAdmin(){
@@ -148,10 +157,15 @@
 
     // ===== Logout =====
     document.getElementById('logoutBtn').addEventListener('click', () => {
+      // Clear both current + legacy keys
+      localStorage.removeItem('user');
       localStorage.removeItem('username');
       localStorage.removeItem('role');
       window.location.replace('index.html');
     });
+
+    // ===== Gatekeep early =====
+    requireAdmin();
 
     // ===== Users API =====
     async function apiGetUsers(){
