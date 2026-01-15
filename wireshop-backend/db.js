@@ -5,11 +5,16 @@ const sqlite3 = require('sqlite3').verbose();
 const fs = require('fs');
 const path = require('path');
 
+// Bootstrap admin usernames (from Render env)
+const ADMIN_USERS = (process.env.ADMIN_USERS || '')
+  .split(',')
+  .map(s => s.trim().toLowerCase())
+  .filter(Boolean);
+
 // Prefer a persistent disk path when provided (Render Disk mounted at /data)
 const dbPath = process.env.DB_PATH || path.join('/data', 'wireshop.db');
 
 // Seed the persistent DB once if it's missing but a bundled db exists.
-// This preserves your current data the first time you switch to /data.
 try {
   if (process.env.DB_PATH && !fs.existsSync(dbPath)) {
     const bundled = path.join(__dirname, 'wireshop.db');
@@ -26,6 +31,21 @@ const db = new sqlite3.Database(dbPath, (err) => {
   if (err) console.error('Failed to connect to database:', err);
   else console.log('Connected to SQLite database at', dbPath);
 });
+
+function promoteBootstrapAdmins() {
+  if (!ADMIN_USERS.length) return;
+  const placeholders = ADMIN_USERS.map(() => '?').join(',');
+  db.run(
+    `UPDATE users
+        SET role='admin', active=1
+      WHERE LOWER(username) IN (${placeholders})`,
+    ADMIN_USERS,
+    (err) => {
+      if (err) console.warn('[db] promote admins failed:', err.message);
+      else console.log('[db] Promoted ADMIN_USERS to admin:', ADMIN_USERS.join(', '));
+    }
+  );
+}
 
 db.serialize(() => {
   // JOBS (current live work)
@@ -86,7 +106,7 @@ db.serialize(() => {
     createdAt INTEGER DEFAULT (strftime('%s','now')*1000)
   )`);
 
-  // USERS
+  // USERS (admin|tech only)
   db.run(`CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT NOT NULL UNIQUE COLLATE NOCASE,
@@ -122,6 +142,9 @@ db.serialize(() => {
         db.run(`DROP TABLE users`);
         db.run(`ALTER TABLE users_new RENAME TO users`);
         db.run('COMMIT');
+
+        // After rebuild, promote bootstrap admins
+        promoteBootstrapAdmins();
       });
       return;
     }
@@ -131,8 +154,13 @@ db.serialize(() => {
       if (e2) return console.error('PRAGMA users:', e2);
       const names = (rows || []).map(c => c.name);
       if (!names.includes('active')) db.run(`ALTER TABLE users ADD COLUMN active INTEGER NOT NULL DEFAULT 1`);
-      // Clean up any legacy non-admin role to tech (will be no-op on fresh DBs)
-      db.run(`UPDATE users SET role='tech' WHERE LOWER(role)!='admin'`);
+
+      // Any legacy role becomes tech unless it's admin
+      db.run(`UPDATE users SET role='tech' WHERE LOWER(role)!='admin'`, (e3) => {
+        if (e3) console.warn('[db] normalize roles failed:', e3.message);
+        // Then promote bootstrap admins
+        promoteBootstrapAdmins();
+      });
     });
   });
 
