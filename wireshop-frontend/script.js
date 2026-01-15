@@ -1,7 +1,47 @@
 // script.js — login + dashboard; part number is the ONLY selector for details; hard-freeze Pause
 document.addEventListener('DOMContentLoaded', () => {
-  const API_ROOT = 'https://wireshop-backend.onrender.com';
+  const API_ROOT = 'https://czm-us-wireshop-backend.onrender.com';
   const API_JOBS = `${API_ROOT}/api/jobs`;
+
+  // If someone lands on the old dashboard page, shove them to Build Next.
+  (function redirectDashboard(){
+    const p = (location.pathname || '').toLowerCase();
+    if (p.endsWith('/dashboard.html') || p === '/dashboard') {
+      location.replace('/assignments.html');
+    }
+  })();
+
+  // Clean the top nav: only keep Assignments, Inventory, Admin (admins only), Logout.
+  (function tidyTopNav(){
+    let user = null;
+    try { user = JSON.parse(localStorage.getItem('user') || 'null'); } catch {}
+    const role = String(user?.role || 'tech').toLowerCase();
+    const isAdmin = role === 'admin';
+
+    const bars = document.querySelectorAll('.brand-actions');
+    if (!bars.length) return;
+
+    bars.forEach(bar => {
+      // Remove unwanted links if they exist
+      bar.querySelectorAll('a').forEach(a => {
+        const href = String(a.getAttribute('href') || '').toLowerCase();
+        if (href.includes('dashboard') || href.includes('archive')) a.remove();
+      });
+
+      // Ensure Admin link exists but only visible for admins
+      let adminLink = [...bar.querySelectorAll('a')].find(a => (a.getAttribute('href') || '').toLowerCase().includes('admin'));
+      if (!adminLink) {
+        adminLink = document.createElement('a');
+        adminLink.className = 'navbtn';
+        adminLink.href = '/admin.html';
+        adminLink.textContent = 'Admin';
+        bar.insertBefore(adminLink, bar.querySelector('#logoutBtn') || bar.lastElementChild);
+      }
+      adminLink.style.display = isAdmin ? '' : 'none';
+
+      // If there is a Logout anchor, leave it. If there is a logout button, keep it.
+    });
+  })();
 
   // --------- Shared helpers ---------
   const getUser = () => { try { return JSON.parse(localStorage.getItem('user')) || null; } catch { return null; } };
@@ -71,7 +111,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (res.ok){
           const data = await res.json();
           setUser({ username: data.username, role: data.role });
-          const _p=new URLSearchParams(location.search);const _r=_p.get('redirect');window.location.href=_r?_r:'dashboard.html';return;
+          const _p=new URLSearchParams(location.search);const _r=_p.get('redirect');window.location.href=_r?_r:'assignments.html';return;
         }
       }catch{}
 
@@ -83,7 +123,7 @@ document.addEventListener('DOMContentLoaded', () => {
       );
       if (!u){ err.textContent='Invalid username or PIN.'; return; }
       err.textContent=''; setUser({ username: u.username, role: u.role });
-      const _p=new URLSearchParams(location.search);const _r=_p.get('redirect');window.location.href=_r?_r:'dashboard.html';
+      const _p=new URLSearchParams(location.search);const _r=_p.get('redirect');window.location.href=_r?_r:'assignments.html';
     });
   })();
 
@@ -218,298 +258,268 @@ document.addEventListener('DOMContentLoaded', () => {
           td.setAttribute('data-paused', String(newTotal));
           td.setAttribute('data-pause', '');
           unfreezeCell(td);
-          td.textContent = fmtDuration(start, null, 0, newTotal);
-        } else {
-          unfreezeCell(td);
         }
+      } else if (act === 'Finish') {
+        const pStart = Number(td.getAttribute('data-pause')) || 0;
+        let pausedTotal = Number(td.getAttribute('data-paused')) || 0;
+        if (pStart) pausedTotal += Math.max(0, now - pStart);
+        td.textContent = fmtDuration(start, now, 0, pausedTotal);
+        freezeCell(td);
       }
 
       return {
-        revert: ()=> {
+        revert: ()=>{
           td.setAttribute('data-pause', snapshot.pause);
           td.setAttribute('data-paused', snapshot.paused);
           td.textContent = snapshot.text;
-          if (snapshot.frozen) td.setAttribute('data-frozen', snapshot.frozen);
-          else unfreezeCell(td);
+          if (snapshot.frozen) freezeCell(td); else unfreezeCell(td);
         }
       };
     }
 
-    // ===== My Completed (local-only; per user) =====
-    const myCompletedKey = (uname)=> `myCompleted:${uname}`;
-    function readMyCompleted(uname){
-      try { return JSON.parse(localStorage.getItem(myCompletedKey(uname)) || '[]'); } catch { return []; }
-    }
-    function writeMyCompleted(uname, arr){
-      localStorage.setItem(myCompletedKey(uname), JSON.stringify(arr));
-    }
-    function fmtHMS(ms){
-      let s = Math.max(0, Math.trunc(ms/1000));
-      const h = Math.floor(s/3600); s%=3600;
-      const m = Math.floor(s/60); s%=60;
-      const pad = (n)=> String(n).padStart(2,'0');
-      return `${pad(h)}:${pad(m)}:${pad(s)}`;
-    }
-    function renderMyCompleted(uname){
-      const body = document.getElementById('myCompletedBody');
-      if (!body) return;
-      const rows = readMyCompleted(uname);
-      body.innerHTML = rows.map(r => `
-        <tr data-id="${r.uid}">
-          <td>${new Date(r.finishedAt).toLocaleString()}</td>
-          <td>${r.partNumber || ''}</td>
-          <td>${r.printName || ''}</td>
-          <td>${fmtHMS(r.totalActiveMs || 0)}</td>
-          <td><button class="danger" data-del="${r.uid}">Delete</button></td>
-        </tr>
-      `).join('');
-    }
-    // Delete a single item from local list
-    document.getElementById('myCompletedBody')?.addEventListener('click', (e)=>{
-      const btn = e.target.closest('button[data-del]');
-      if (!btn) return;
-      const uid = btn.getAttribute('data-del');
-      const list = readMyCompleted(user.username).filter(x => x.uid !== uid);
-      writeMyCompleted(user.username, list);
-      renderMyCompleted(user.username);
-    });
-    // Clear all local completions
-    document.getElementById('clearMyCompleted')?.addEventListener('click', ()=>{
-      if (!confirm('Clear your local completed list?')) return;
-      writeMyCompleted(user.username, []);
-      renderMyCompleted(user.username);
-    });
+    function renderRows(rows){
+      const active = rows.filter(r => r.username === user.username && !r.endTime);
+      const others = rows.filter(r => !(r.username === user.username && !r.endTime));
 
-    // Actions (Pause/Continue/Finish) via buttons
-    tBody.addEventListener('click', async (e)=>{
-      const btn = e.target.closest('button[data-act]');
-      if (btn) {
-        const tr = btn.closest('tr'); if (!tr) return;
-        const logId = Number(tr.dataset.id);
-        const act = btn.getAttribute('data-act');
+      // Track if selected id still exists
+      const allIds = new Set(rows.map(r => String(r.id)));
+      if (selectedLogId && !allIds.has(String(selectedLogId))) selectedLogId = null;
 
-        const group = tr.querySelectorAll('button[data-act]');
-        group.forEach(b=> b.disabled = true);
-
-        // instant local UX (with freeze)
-        const local = applyLocalTiming(tr, act);
-
-        try{
-          const body = { action: act };
-          if (act === 'Finish'){
-            body.endTime = Date.now();
-            const latestDraft = tr.querySelector('textarea.notes-box')?.value.trim();
-            if (latestDraft) body.note = latestDraft;
-          }
-          await jobsApi(`/log/${logId}`, { method:'PUT', body: JSON.stringify(body) });
-
-          const pauseBtn = tr.querySelector('button[data-act="Pause"]');
-          const contBtn  = tr.querySelector('button[data-act="Continue"]');
-          if (act === 'Pause'){ pauseBtn && (pauseBtn.disabled = true); contBtn && (contBtn.disabled = false); }
-          else if (act === 'Continue'){ contBtn && (contBtn.disabled = true); pauseBtn && (pauseBtn.disabled = false); }
-
-          if (act === 'Finish'){
-            // Add to local "My Completed" (does NOT affect backend)
-            const durTd = tr.querySelector('.dur');
-            const startMs = Number(durTd?.getAttribute('data-start')) || 0;
-            const pauseStart = Number(durTd?.getAttribute('data-pause')) || 0;
-            const pauseTotal = Number(durTd?.getAttribute('data-paused')) || 0;
-            const endMs = Date.now();
-            const extraPause = pauseStart ? Math.max(0, endMs - pauseStart) : 0;
-            const totalActiveMs = Math.max(0, endMs - startMs - (pauseTotal + extraPause));
-
-            const pn = tr.querySelector('.part-link')?.dataset.pn || tr.querySelector('.part-link')?.textContent?.trim() || '';
-            const printName = (window.catalog || []).find(p => p.partNumber === pn)?.printName || '';
-
-            const entry = { uid: `${logId}:${endMs}`, finishedAt: endMs, partNumber: pn, printName, totalActiveMs };
-            const list = readMyCompleted(user.username);
-            list.unshift(entry);
-            writeMyCompleted(user.username, list.slice(0, 200)); // keep last 200
-            renderMyCompleted(user.username);
-
-            clearDraft(logId);
-            if (selectedLogId === logId){ selectedLogId = null; fillInfoFromPart(''); }
-            await requestRefresh(true);
-          } else {
-            lastSig = '';
-          }
-        }catch(err){
-          console.error(err);
-          local.revert();
-          alert('Failed to update action.');
-        }finally{
-          group.forEach(b=> b.disabled = false);
-        }
-        return;
-      }
-
-      // Part-number click handler (the ONLY selector)
-      const link = e.target.closest('.part-link');
-      if (link) {
-        const tr = link.closest('tr'); if (!tr) return;
+      // Keep current freeze text if paused and frozen
+      const existingFreeze = {};
+      tBody.querySelectorAll('tr').forEach(tr=>{
         const id = tr.dataset.id;
-        const pn = link.dataset.pn || link.textContent.trim();
-        selectRow(tr, { id, partNumber: pn });
-      }
-    });
-
-    // ===== AUTO-SCHEDULE ENFORCER =====
-    // Windows in local time (HH:MM). Change here if your shop changes.
-    const WINDOWS = [
-      { start: '10:00', end: '10:15', kind: 'break'  },
-      { start: '12:00', end: '12:30', kind: 'lunch'  },
-      { start: '14:30', end: '14:45', kind: 'break'  },
-      { start: '17:00', end: '23:59', kind: 'dayend' } // pause and DO NOT auto-continue
-    ];
-
-    const AUTO_PAUSED = new Map(); // logId -> last auto-pause timestamp
-
-    function hmToDateToday(hm){
-      const [H,M] = hm.split(':').map(n=>parseInt(n,10));
-      const d = new Date();
-      d.setHours(H, M, 0, 0);
-      return d;
-    }
-    function nowInWindow(w){
-      const n = new Date();
-      const s = hmToDateToday(w.start);
-      const e = hmToDateToday(w.end);
-      return n >= s && n < e;
-    }
-    function currentPolicy(){
-      // If inside any window, pause. If dayend, pause sticky.
-      for (const w of WINDOWS){
-        if (nowInWindow(w)) return { shouldPause: true, sticky: w.kind === 'dayend' };
-      }
-      return { shouldPause: false, sticky: false };
-    }
-
-    // Keep the latest active rows for the enforcer
-    let CURRENT_ACTIVE = [];
-
-    async function enforceSchedule(){
-      if (!CURRENT_ACTIVE.length) return;
-      const policy = currentPolicy();
-
-      for (const log of CURRENT_ACTIVE){
-        const id = Number(log.id);
-        const current = (log.action || '').trim();
-        const logical = (current === 'Pause' || current === 'Finish') ? current : 'Continue';
-        const isPaused = logical === 'Pause';
-
-        if (policy.shouldPause) {
-          if (!isPaused) {
-            // Auto-pause
-            try {
-              await jobsApi(`/log/${id}`, { method:'PUT', body: JSON.stringify({ action:'Pause' }) });
-              AUTO_PAUSED.set(id, Date.now());
-              lastSig = ''; // force next render to refresh state
-            } catch (e) { console.error('auto-pause failed', e); }
-          }
-        } else {
-          // Outside enforced windows. Only auto-continue if WE paused it.
-          if (AUTO_PAUSED.has(id) && isPaused) {
-            try {
-              await jobsApi(`/log/${id}`, { method:'PUT', body: JSON.stringify({ action:'Continue' }) });
-              AUTO_PAUSED.delete(id);
-              lastSig = '';
-            } catch (e) { console.error('auto-continue failed', e); }
-          }
+        const td = tr.querySelector('.dur');
+        if (id && td && td.getAttribute('data-frozen')==='1') {
+          existingFreeze[id] = td.getAttribute('data-frozen-text') || td.textContent;
         }
+      });
 
-        // If sticky pause window (end of day), never auto-continue again today
-        if (policy.sticky && isPaused) {
-          AUTO_PAUSED.delete(id); // clear marker to avoid accidental continue
-        }
-      }
-    }
+      const mkRow = (r)=>{
+        const rec = (window.catalog || []).find(p => p.partNumber === r.partNumber) || {};
+        const canPause = r.action !== 'Pause';
+        const canContinue = r.action === 'Pause';
+        const canFinish = true;
 
-    async function refreshActive(force=false){
-      if (isInteracting && !force) return;
-      const rows = await jobsApi(`/logs/${encodeURIComponent(user.username)}`, { method:'GET' });
-      const active = rows.filter(r=>!r.endTime);
-      CURRENT_ACTIVE = active; // expose for enforcer
-      const sig = makeSignature(rows);
-      if (!force && sig === lastSig) return; lastSig = sig;
+        const tr = document.createElement('tr');
+        tr.dataset.id = String(r.id);
 
-      const prevScroll = tBody.parentElement?.scrollTop ?? 0;
-      tBody.innerHTML='';
-      active.forEach(log=>{
-        const tr=document.createElement('tr'); tr.dataset.id=log.id;
-        const draft=getDraft(log.id)||log.note||'';
-        const current=(log.action||'').trim(); const logical=(current==='Pause'||current==='Finish')?current:'Continue';
-        const pausedNow = !!log.pauseStart;
+        // duration text with freeze restore if needed
+        let durText = fmtDuration(r.startTime, r.endTime, r.pauseStart, r.pauseTotal);
+        if (existingFreeze[tr.dataset.id]) durText = existingFreeze[tr.dataset.id];
 
-        tr.innerHTML=`
-          <td>
-            <button class="part-link" type="button" data-pn="${log.partNumber || ''}">
-              ${log.partNumber || ''}
-            </button>
+        tr.innerHTML = `
+          <td class="pn"><button class="part-link" data-pn="${r.partNumber}" title="Select this row">${r.partNumber}</button></td>
+          <td>${rec.printName || ''}</td>
+          <td>${r.action || ''}</td>
+          <td class="notes-box">
+            <input class="noteIn" placeholder="notes..." value="${(getDraft(r.id) || r.note || '').replace(/"/g,'&quot;')}" />
           </td>
-          <td><textarea class="notes-box" data-id="${log.id}" placeholder="Type notes...">${draft}</textarea></td>
+          <td class="dur" data-start="${r.startTime||''}" data-pause="${r.pauseStart||''}" data-paused="${r.pauseTotal||0}">${durText}</td>
           <td class="actions-cell">
             <div class="btn-group">
-              <button class="btn3d small pause" data-act="Pause" ${logical==='Pause'?'disabled':''}>Pause</button>
-              <button class="btn3d small continue" data-act="Continue" ${logical==='Continue'?'disabled':''}>Continue</button>
-              <button class="btn3d small finish" data-act="Finish">Finish</button>
+              <button class="btn3d small pause" data-act="Pause" ${canPause?'':'disabled'}>Pause</button>
+              <button class="btn3d small continue" data-act="Continue" ${canContinue?'':'disabled'}>Continue</button>
+              <button class="btn3d small finish" data-act="Finish" ${canFinish?'':'disabled'}>Finish</button>
             </div>
-          </td>
-          <td>${log.startTime ? new Date(log.startTime).toLocaleString() : ''}</td>
-          <td class="dur"
-              data-start="${log.startTime || ''}"
-              data-pause="${log.pauseStart || ''}"
-              data-paused="${log.pauseTotal || 0}">
-            ${fmtDuration(log.startTime, pausedNow ? log.pauseStart : null, pausedNow ? 0 : log.pauseStart, log.pauseTotal)}
           </td>
         `;
 
-        const td = tr.querySelector('.dur');
-        if (pausedNow) freezeCell(td);
+        const tdDur = tr.querySelector('.dur');
+        if (r.action === 'Pause' || r.endTime) freezeCell(tdDur);
+        else unfreezeCell(tdDur);
 
-        tr.querySelector('textarea.notes-box').addEventListener('input', e=> setDraft(log.id, e.target.value));
-        tBody.appendChild(tr);
-      });
+        // Only part number selects row
+        tr.querySelector('.part-link').addEventListener('click', ()=>{
+          selectRow(tr, r);
+        });
 
-      if (selectedLogId && active.some(r=> r.id===selectedLogId)){
-        highlightById(selectedLogId);
-        const log=active.find(r=> r.id===selectedLogId);
-        fillInfoFromPart(log?.partNumber||'');
-      } else if (selectedLogId){
-        selectedLogId=null; fillInfoFromPart('');
-      }
+        // Notes draft persistence
+        const noteIn = tr.querySelector('.noteIn');
+        noteIn.addEventListener('input', ()=> setDraft(r.id, noteIn.value));
 
-      if (tBody.parentElement) tBody.parentElement.scrollTop = prevScroll;
+        // Action buttons
+        tr.querySelectorAll('button[data-act]').forEach(btn=>{
+          btn.addEventListener('click', async ()=>{
+            const act = btn.dataset.act;
+            const note = (noteIn.value || '').trim();
 
-      // After every refresh, try to enforce schedule.
-      enforceSchedule().catch(console.error);
+            const local = applyLocalTiming(tr, act);
+
+            try{
+              await jobsApi(`/log/${r.id}`, {
+                method:'PUT',
+                body: JSON.stringify({ action: act, note })
+              });
+              clearDraft(r.id);
+              await requestRefresh(true);
+            }catch(err){
+              console.error(err);
+              local.revert();
+              alert(`Failed to ${act}.`);
+            }
+          });
+        });
+
+        return tr;
+      };
+
+      tBody.innerHTML = '';
+      [...active, ...others].forEach(r => tBody.appendChild(mkRow(r)));
+
+      if (selectedLogId) highlightById(String(selectedLogId));
     }
 
-    async function requestRefresh(force=false){ await refreshActive(force); }
+    async function requestRefresh(force){
+      if (isInteracting && !force) return;
+      try{
+        const rows = await jobsApi(`/list`);
+        const sig = makeSignature(rows);
+        if (sig !== lastSig || force){
+          lastSig = sig;
+          renderRows(rows);
+        }
+      }catch(err){
+        console.error(err);
+      }
+    }
 
-    function tickDurations(){
+    // periodic update for running timers, but respect freeze
+    setInterval(()=>{
       tBody.querySelectorAll('.dur').forEach(td=>{
-        if (td.getAttribute('data-frozen') === '1') {
-          td.textContent = td.getAttribute('data-frozen-text') || td.textContent;
+        if (td.getAttribute('data-frozen')==='1') {
+          const frozenText = td.getAttribute('data-frozen-text');
+          if (frozenText) td.textContent = frozenText;
           return;
         }
-        const s=Number(td.getAttribute('data-start'))||0;
-        const pS=Number(td.getAttribute('data-pause'))||0;
-        const pT=Number(td.getAttribute('data-paused'))||0;
-        td.textContent=fmtDuration(s,null,pS,pT);
+        const start = Number(td.getAttribute('data-start'))||0;
+        const pStart = Number(td.getAttribute('data-pause'))||0;
+        const pTotal = Number(td.getAttribute('data-paused'))||0;
+        td.textContent = fmtDuration(start, 0, pStart, pTotal);
       });
+    }, 1000);
+
+    requestRefresh(true);
+    setInterval(()=> requestRefresh(false), 5000);
+  })();
+
+  // ---------- ARCHIVE PAGE ----------
+  (function initArchive(){
+    const tableBody = document.getElementById('archiveTableBody');
+    if (!tableBody) return;
+
+    const user = getUser();
+    if (!user) { window.location.href='index.html'; return; }
+
+    // Gate admin-only view
+    if (String(user.role||'').toLowerCase() !== 'admin'){
+      window.location.href='assignments.html';
+      return;
     }
 
-    deleteAllBtn?.addEventListener('click', async ()=>{
-      if (!confirm('Delete ALL your logs?')) return;
-      try{ await jobsApi(`/delete-logs/${encodeURIComponent(user.username)}`, { method:'DELETE' }); tBody.innerHTML=''; }
-      catch(err){ console.error(err); alert('Failed to delete logs.'); }
+    async function archiveApi(path, options={}){
+      const headers = { 'Content-Type': 'application/json', 'x-user': username() };
+      const res = await fetch(`${API_ROOT}/api/archive${path}`, { headers, ...options });
+      if (!res.ok) throw new Error(await res.text().catch(()=> 'archive error'));
+      const ct = res.headers.get('content-type') || '';
+      return ct.includes('application/json') ? res.json() : res.text();
+    }
+
+    const fTech = document.getElementById('fTech');
+    const fPart = document.getElementById('fPart');
+    const fFrom = document.getElementById('fFrom');
+    const fTo = document.getElementById('fTo');
+    const btnApply = document.getElementById('btnApply');
+    const btnReset = document.getElementById('btnReset');
+    const btnExport = document.getElementById('btnExport');
+    const countEl = document.getElementById('archiveCount');
+
+    async function loadTechs(){
+      try{
+        const res = await fetch(`${API_ROOT}/api/users`, { headers:{'Content-Type':'application/json','x-user': username()} });
+        if (!res.ok) return;
+        const users = await res.json();
+        (users||[]).forEach(u=>{
+          const opt=document.createElement('option');
+          opt.value=u.username; opt.textContent=u.username;
+          fTech.appendChild(opt);
+        });
+      }catch{}
+    }
+
+    function qp(){
+      const p = new URLSearchParams();
+      if (fTech.value && fTech.value !== 'All') p.set('tech', fTech.value);
+      if (fPart.value.trim()) p.set('partContains', fPart.value.trim());
+      if (fFrom.value) p.set('from', fFrom.value);
+      if (fTo.value) p.set('to', fTo.value);
+      return p.toString();
+    }
+
+    async function load(){
+      try{
+        const rows = await archiveApi(`?${qp()}`);
+        countEl && (countEl.textContent = `${rows.length} records`);
+        tableBody.innerHTML = '';
+        if (!rows.length){
+          tableBody.innerHTML = `<tr><td colspan="8" style="opacity:.7;">0 records</td></tr>`;
+          return;
+        }
+        rows.forEach(r=>{
+          const tr=document.createElement('tr');
+          tr.innerHTML = `
+            <td>${new Date(r.finishedAt||0).toLocaleString()}</td>
+            <td>${r.username||''}</td>
+            <td>${r.partNumber||''}</td>
+            <td>${r.printName||''}</td>
+            <td>${(r.expectedHours!=null)?r.expectedHours:''}</td>
+            <td>${r.note||''}</td>
+            <td>${fmtDuration(r.startTime, r.endTime, 0, r.pauseTotal||0)}</td>
+            <td></td>
+          `;
+          tableBody.appendChild(tr);
+        });
+      }catch(err){
+        console.error(err);
+        tableBody.innerHTML = `<tr><td colspan="8" style="opacity:.7;">Archive load failed</td></tr>`;
+      }
+    }
+
+    btnApply?.addEventListener('click', load);
+    btnReset?.addEventListener('click', ()=>{
+      fTech.value='All'; fPart.value=''; fFrom.value=''; fTo.value='';
+      load();
     });
 
-    // Boot
-    renderMyCompleted(user.username);
-    requestRefresh(true).catch(console.error);
-    setInterval(()=> requestRefresh(false), 5000);
-    setInterval(tickDurations, 1000);
-    setInterval(enforceSchedule, 15000); // check windows repeatedly
+    btnExport?.addEventListener('click', async ()=>{
+      try{
+        const res = await fetch(`${API_ROOT}/api/archive/export`, { headers:{'Content-Type':'application/json','x-user': username()} });
+        if (!res.ok) return alert('Export endpoint not available');
+        const blob = await res.blob();
+        const a=document.createElement('a');
+        a.href=URL.createObjectURL(blob);
+        a.download='archive.csv';
+        a.click();
+      }catch{ alert('Export failed'); }
+    });
+
+    loadTechs().then(load);
   })();
+
+  // ---------- ADMIN PAGE ----------
+  (function initAdmin(){
+    const usersBody = document.getElementById('usersBody');
+    const liveBody = document.getElementById('liveBody');
+    const archiveBody = document.getElementById('archiveBody');
+    const clearAllBtn = document.getElementById('clearAllLogs');
+    const addBtn = document.getElementById('btnAddUser');
+    if (!usersBody && !liveBody && !archiveBody && !clearAllBtn && !addBtn) return;
+
+    const user = getUser();
+    if (!user) { window.location.href='index.html'; return; }
+    if (String(user.role||'').toLowerCase() !== 'admin'){ window.location.href='assignments.html'; return; }
+
+    // NOTE: your admin.html now has its own embedded JS, so this block does nothing unless you still have old admin.html.
+  })();
+
 });
