@@ -20,7 +20,37 @@ const db = require("./db"); // ensures DB/tables are created
 const TRACE = String(process.env.JOBS_TRACE || "").trim() === "1";
 
 const app = express();
-app.use(cors());
+
+/* ===========================
+   CORS FIX (Render + GitHub Pages)
+   =========================== */
+const ALLOWED_ORIGINS = new Set([
+  "https://www.czm-us-wireshop.com",
+  "https://czm-us-wireshop.com",
+  "http://localhost:5500",
+  "http://127.0.0.1:5500",
+  "http://localhost:3000",
+]);
+
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      // allow non-browser requests (curl/postman)
+      if (!origin) return callback(null, true);
+
+      if (ALLOWED_ORIGINS.has(origin)) return callback(null, true);
+
+      return callback(new Error("CORS blocked origin: " + origin));
+    },
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "x-user"],
+    credentials: false,
+  })
+);
+
+// must respond to preflight
+app.options("*", cors());
+
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true }));
 
@@ -35,11 +65,11 @@ app.get("/api/auth/me", (req, res) => {
 });
 
 // ----- mount routers -----
-app.use('/api/users', usersRouter);
-app.use('/api/jobs', jobsRouter);
-app.use('/api/archive', archiveRouter);
-app.use('/api/assignments', assignmentsRouter);
-app.use('/api', inventoryRoutes);
+app.use("/api/users", usersRouter);
+app.use("/api/jobs", jobsRouter);
+app.use("/api/archive", archiveRouter);
+app.use("/api/assignments", assignmentsRouter);
+app.use("/api", inventoryRoutes);
 
 // NEW: Build Next endpoints (/api/build-tasks/*)
 attachBuildTasks(app);
@@ -60,19 +90,27 @@ let archiveReady = false;
 function parseJSON(value) {
   if (value == null) return null;
   if (typeof value === "object") return value;
-  try { return JSON.parse(value); } catch { return null; }
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
 }
-function ms(t) { return t ? new Date(t).getTime() : null; }
+function ms(t) {
+  return t ? new Date(t).getTime() : null;
+}
 
 function mapRow(r) {
   const j = parseJSON(r.job_json);
   const start = ms(r.started_at);
-  const end   = ms(r.finished_at);
+  const end = ms(r.finished_at);
 
   const totalMs =
-    (r.total_active_sec != null && Number.isFinite(Number(r.total_active_sec)))
+    r.total_active_sec != null && Number.isFinite(Number(r.total_active_sec))
       ? Number(r.total_active_sec) * 1000
-      : (start && end ? Math.max(0, end - start) : null);
+      : start && end
+      ? Math.max(0, end - start)
+      : null;
 
   return {
     id: r.id,
@@ -84,7 +122,7 @@ function mapRow(r) {
     printName: j?.printName || j?.print || null,
     expected: r.expected_minutes != null ? Number(r.expected_minutes) : null,
     note: r.notes || null,
-    totalActive: totalMs
+    totalActive: totalMs,
   };
 }
 
@@ -149,14 +187,29 @@ function getClientUser(req) {
 
 function looksLikeFinish(src = {}, url = "") {
   const u = (url || "").toLowerCase();
-  if (u.includes("/finish") || (u.endsWith("/log") && (src.action || "").toLowerCase() === "finish")) return true;
-  const lower = k => String(src[k] ?? "").toLowerCase();
+  if (
+    u.includes("/finish") ||
+    (u.endsWith("/log") && (src.action || "").toLowerCase() === "finish")
+  )
+    return true;
+  const lower = (k) => String(src[k] ?? "").toLowerCase();
   const hay = [lower("action"), lower("status"), lower("event"), lower("op"), lower("type")].join("|");
   return /finish|finished|complete|completed|done|end|stop/.test(hay);
 }
-function pick(obj, keys) { for (const k of keys) if (obj && obj[k] != null && obj[k] !== "") return obj[k]; return null; }
-const toInt = v => { if (v == null || v === "") return null; const n = Number(v); return Number.isFinite(n) ? Math.trunc(n) : null; };
-const toISO = v => { if (!v) return null; const d = new Date(v); return Number.isNaN(d.getTime()) ? null : d.toISOString(); };
+function pick(obj, keys) {
+  for (const k of keys) if (obj && obj[k] != null && obj[k] !== "") return obj[k];
+  return null;
+}
+const toInt = (v) => {
+  if (v == null || v === "") return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? Math.trunc(n) : null;
+};
+const toISO = (v) => {
+  if (!v) return null;
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+};
 
 function fetchSqliteArchiveForUser(username, cb) {
   if (!username) return cb(null, null);
@@ -176,19 +229,30 @@ app.use("/api/jobs", (req, res, next) => {
     let username =
       pick(src, ["technician", "tech", "username", "user", "name"]) || getClientUser(req);
     let part =
-      pick(src, ["part_number", "partNumber", "part", "partNo", "print", "print_number", "printNumber"]) ||
-      (username && lastStartByUser.get(username)?.part_number) || null;
+      pick(src, [
+        "part_number",
+        "partNumber",
+        "part",
+        "partNo",
+        "print",
+        "print_number",
+        "printNumber",
+      ]) ||
+      (username && lastStartByUser.get(username)?.part_number) ||
+      null;
 
     fetchSqliteArchiveForUser(username, async (_err, sRow) => {
       const started_at =
         toISO(pick(src, ["started_at", "startedAt", "start_time", "startTime"])) ||
-        (username && lastStartByUser.get(username)?.started_at) || null;
+        (username && lastStartByUser.get(username)?.started_at) ||
+        null;
       const finished_at =
         toISO(pick(src, ["finished_at", "finishedAt", "finish_time", "finishTime"])) ||
         new Date().toISOString();
       const expected_minutes =
         toInt(pick(src, ["expected_minutes", "expected", "expectedMin", "expectedMinutes"])) ??
-        (username && lastStartByUser.get(username)?.expected_minutes) ?? null;
+        (username && lastStartByUser.get(username)?.expected_minutes) ??
+        null;
 
       const payload = {
         part_number: part || sRow?.partNumber || null,
@@ -198,19 +262,17 @@ app.use("/api/jobs", (req, res, next) => {
         expected_minutes,
         total_active_sec:
           toInt(pick(src, ["total_active_sec", "totalSeconds", "total", "elapsed", "timeActiveSec"])) ??
-          (sRow ? Math.max(0, Math.trunc((sRow.totalActive || 0) / 1000))
-                : (started_at ? Math.max(0, Math.trunc((new Date(finished_at) - new Date(started_at)) / 1000)) : null)),
-        started_at: sRow ? new Date(sRow.startTime).toISOString() : started_at,
-        finished_at: sRow ? new Date(sRow.endTime).toISOString()   : finished_at,
-        notes: pick(src, ["notes", "comment"]) || sRow?.note || null,
-        job_json: sRow ? JSON.stringify({ printName: null }) : undefined
+          null,
+        started_at,
+        finished_at,
+        notes: pick(src, ["notes", "note"]) || null,
+        job_json: JSON.stringify(src || {}),
       };
 
       try {
-        await archive.saveArchivedJob(payload);
-        if (TRACE) console.log("[ARCHIVE] saved with totals:", payload.total_active_sec, "sec");
+        await archive.insertArchivedJob(payload);
       } catch (e) {
-        console.error("[ARCHIVE] auto-archive failed:", e.message);
+        if (TRACE) console.error("[ARCHIVE] insert failed:", e.message);
       }
     });
   });
@@ -218,76 +280,5 @@ app.use("/api/jobs", (req, res, next) => {
   next();
 });
 
-// ---------- Schedule Enforcer ----------
-const WINDOWS = [
-  { start: "10:00", end: "10:15", flag: 1 },
-  { start: "12:00", end: "12:30", flag: 1 },
-  { start: "14:30", end: "14:45", flag: 1 },
-  { start: "17:00", end: "23:59", flag: 2 }
-];
-
-function hmToDateToday(hm) { const [H, M] = hm.split(":").map(n => parseInt(n, 10)); const d = new Date(); d.setHours(H, M, 0, 0); return d.getTime(); }
-function nowInWindow(w) { const n = Date.now(); const s = hmToDateToday(w.start), e = hmToDateToday(w.end); return n >= s && n < e; }
-function currentPolicy() { for (const w of WINDOWS) if (nowInWindow(w)) return { shouldPause: true, flag: w.flag }; return { shouldPause: false, flag: 0 }; }
-
-async function pauseAllActive(flag) {
-  const now = Date.now();
-  return new Promise((resolve) => {
-    db.all(`SELECT * FROM jobs WHERE endTime IS NULL`, [], (err, rows = []) => {
-      if (err || !rows.length) return resolve();
-      const toPause = rows.filter(r => !r.pauseStart);
-      let pending = toPause.length; if (!pending) return resolve();
-      toPause.forEach(r => {
-        const sql = `UPDATE jobs SET action='Pause', pauseStart=?, autoPaused=? WHERE id=? AND pauseStart IS NULL`;
-        db.run(sql, [now, flag, r.id], () => { if (--pending === 0) resolve(); });
-      });
-    });
-  });
-}
-async function continueAutoPaused() {
-  const now = Date.now();
-  return new Promise((resolve) => {
-    db.all(`SELECT * FROM jobs WHERE endTime IS NULL AND pauseStart IS NOT NULL AND autoPaused = 1`, [], (err, rows = []) => {
-      if (err || !rows.length) return resolve();
-      let pending = rows.length;
-      rows.forEach(r => {
-        const paused = now - (r.pauseStart || now);
-        const sql = `UPDATE jobs SET action='Continue', pauseTotal=pauseTotal+?, pauseStart=NULL, autoPaused=0 WHERE id=?`;
-        db.run(sql, [paused, r.id], () => { if (--pending === 0) resolve(); });
-      });
-    });
-  });
-}
-
-let lastState = null;
-async function scheduleTick() {
-  const pol = currentPolicy();
-  const key = pol.shouldPause ? `P${pol.flag}` : 'RUN';
-  if (key === lastState) return;
-  lastState = key;
-
-  if (pol.shouldPause) await pauseAllActive(pol.flag);
-  else await continueAutoPaused();
-}
-setInterval(scheduleTick, 15000);
-setTimeout(scheduleTick, 2000);
-
-// ---------- Health & Static ----------
-const FRONTEND_DIR = path.join(__dirname, "..", "wireshop-frontend");
-app.use(express.static(FRONTEND_DIR));
-app.get("/archive", (_req, res) => res.sendFile(path.join(FRONTEND_DIR, "archive.html")));
-app.get("/assignments", (_req, res) => res.sendFile(path.join(FRONTEND_DIR, "assignments.html")));
-app.get("/inv/:part", (_req, res) => res.sendFile(path.join(FRONTEND_DIR, "inventory.html")));
-app.get("/", (_req, res) => res.sendFile(path.join(FRONTEND_DIR, "index.html")));
-
-// ---------- Errors ----------
-app.use((err, _req, res, _next) => {
-  console.error("[ERROR]", err);
-  res.status(500).json({ error: "Server error" });
-});
-
-// ---------- Boot ----------
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => {
-  console.log(`WireShop backend listening on port ${PORT}`);
-});
+app.listen(PORT, () => console.log(`WireShop backend listening on ${PORT}`));
