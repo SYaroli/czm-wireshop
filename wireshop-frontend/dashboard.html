@@ -1,142 +1,89 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/>
+  <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>CZM • Wireshop Dashboard</title>
-  <link rel="stylesheet" href="style.css"/>
+  <link rel="stylesheet" href="style.css" />
   <style>
-    
-    .brand-actions .navbtn:hover{ filter:brightness(.92) }
-  
-
-    
-/* Top nav pills - smaller version (canonical) */
-.brand-actions .navbtn{
-  display:inline-block !important;
-  background:#1a1c20 !important;
-  color:#bbb !important;
-  padding:6px 12px !important;
-  border-radius:10px !important;
-  text-decoration:none !important;
-  border:1px solid #3a3f44 !important;
-  font-weight:600 !important;
-  font-size:0.9rem !important;
-  cursor:pointer !important;
-  margin-left:8px !important;
-}
-.brand-actions .navbtn:hover{ filter:brightness(1.1) }
-.brand-actions .navbtn.active{
-  background:#b30000 !important;
-  color:#fff !important;
-  border-color:#ff4d4d !important;
-}
-
+    /* small guard rails so the top bar stays clean */
+    .brand-actions { display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end; }
   </style>
 </head>
 <body>
-  <div class="brand-bar">
-    <div class="brand-inner">
-      <a class="brand-logo" href="dashboard.html">
-        <img src="czm-logo.png" alt="CZM">
-        <h1 class="brand-title">CZM • Wireshop Dashboard</h1>
-      </a>
-      <div class="brand-actions" id="navActions">
+  <div class="brandbar">
+    <a href="dashboard.html" class="brand">
+      <img src="czm-logo.png" alt="CZM">
+      <h1 class="brand-title">CZM • Wireshop</h1>
+    </a>
 
-        <a href="dashboard.html" class="navbtn active">Dashboard</a>
-        <a href="assignments.html" class="navbtn">Assignments</a>
-        <a href="/inventory" class="navbtn">Inventory</a>
-        <a href="archive.html" class="navbtn">Archive</a>
-        <a href="admin.html" class="navbtn">Admin</a>
-        <a href="index.html" class="navbtn">Logout</a>
-    
-      </div>
+    <div class="brand-actions" id="navActions">
+      <a href="assignments.html" class="navbtn">Assignments (Build Next)</a>
+      <a href="/inventory" class="navbtn">Inventory</a>
+      <a href="admin.html" class="navbtn" id="adminNavBtn" style="display:none;">Admin</a>
+      <a href="index.html" class="navbtn">Logout</a>
     </div>
   </div>
 
-  
+  <!-- Welcome strip -->
+  <div class="card">
+    <h2 style="margin:0 0 6px 0;">Dashboard</h2>
+    <div id="welcomeLine" style="opacity:.9;"></div>
+  </div>
 
-  <main class="page">
-    <!-- Welcome strip -->
-    <div class="card">
-      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-        <div><strong>Welcome,</strong> <span id="welcomeName"></span></div>
-      </div>
+  <!-- Start Job -->
+  <div class="card">
+    <h2 style="margin:0 0 10px 0;">Start / Update Job</h2>
+
+    <div class="row" style="gap:10px; flex-wrap:wrap;">
+      <label>Part Number<br/>
+        <select id="partSelect" class="inline-input"></select>
+      </label>
+
+      <label>Action<br/>
+        <select id="actionSelect" class="inline-input">
+          <option value="Start">Start</option>
+          <option value="Continue">Continue</option>
+          <option value="Pause">Pause</option>
+          <option value="Finish">Finish</option>
+        </select>
+      </label>
+
+      <label>Notes<br/>
+        <input id="noteInput" class="inline-input" placeholder="Optional note..." />
+      </label>
+
+      <button id="submitJob" class="navbtn">Submit</button>
     </div>
 
-    <!-- Start Job -->
-    <div class="card">
-      <h2>Start Job</h2>
-      <div class="grid cols-3">
-        <div>
-          <label for="partSelect">Part</label>
-          <select id="partSelect">
-            <option value="">-- Select Part --</option>
-          </select>
-        </div>
-        <div class="info">
-          <p>Expected Time: <span id="expectedTime">--</span> hours</p>
-          <p>Notes: <span id="expectedNotes">--</span></p>
-          <p>Location: <span id="expectedLocation">--</span></p>
-          <p>SA#: <span id="expectedSA">--</span></p>
-        </div>
-        <div style="display:flex; align-items:end">
-          <button id="submitLog" style="width:100%;">Start Job</button>
-        </div>
-      </div>
-    </div>
+    <div id="jobMsg" style="margin-top:10px; opacity:.85;"></div>
+  </div>
 
-    <!-- Active Jobs -->
-    <div class="card">
-      <h2>Active Jobs</h2>
-      <table id="logTable" class="sticky-head">
-        <thead>
-          <tr>
-            <th>Part Number</th>
-            <th>Notes (editable)</th>
-            <th>Action</th>
-            <th>Started</th>
-            <th>Total Time</th>
-          </tr>
-        </thead>
-        <tbody id="logTableBody"></tbody>
-      </table>
-      <div style="display:flex; justify-content:flex-end; margin-top:10px;">
-        <button id="deleteAllLogs" class="danger">Delete All Logs</button>
-      </div>
+  <!-- Current job info -->
+  <div class="card">
+    <h2 style="margin:0 0 10px 0;">Current</h2>
+    <div id="currentInfo" style="opacity:.9;">--</div>
+    <div style="margin-top:8px; opacity:.8;">
+      Expected Time: <span id="expectedTime">--</span>
     </div>
-
-    <!-- My Completed -->
-    <div class="card">
-      <h2>My Completed</h2>
-      <table class="sticky-head">
-        <thead>
-          <tr>
-            <th>Finished</th>
-            <th>Part Number</th>
-            <th>Print Name</th>
-            <th>Total Time</th>
-            <th>Delete</th>
-          </tr>
-        </thead>
-        <tbody id="myCompletedBody"></tbody>
-      </table>
-      <div style="display:flex; justify-content:flex-end; margin-top:10px;">
-        <button id="clearMyCompleted" class="danger">Clear My Completed</button>
-      </div>
-    </div>
-  </main>
+  </div>
 
   <script>
-    // Set the welcome name from stored login
-    document.addEventListener('DOMContentLoaded', function(){
-      try{
-        var u = JSON.parse(localStorage.getItem('user')||'{}');
-        document.getElementById('welcomeName').textContent = u?.username || '';
-      }catch(e){}
-    });
+    // Minimal front-end gating for the Admin nav button
+    (function () {
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      const name = user.username ? String(user.username) : '';
+      const role = user.role ? String(user.role).toLowerCase() : '';
+      const isAdmin = role === 'admin';
+
+      const adminBtn = document.getElementById('adminNavBtn');
+      if (adminBtn) adminBtn.style.display = isAdmin ? '' : 'none';
+
+      const welcome = document.getElementById('welcomeLine');
+      if (welcome) welcome.textContent = name ? `Logged in as: ${name} (${role || 'tech'})` : 'Not logged in.';
+    })();
   </script>
-  <script src="catalog.js"></script>
+
   <script src="script.js"></script>
 </body>
 </html>
