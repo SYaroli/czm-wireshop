@@ -4,83 +4,105 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>CZM • Wireshop Dashboard</title>
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css"/>
   <style>
-    /* small guard rails so the top bar stays clean */
-    .brand-actions { display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end; }
+    /* keep your existing small top nav pill styling (as in your original) */
+    .brand-actions .navbtn:hover{ filter:brightness(.92) }
+    .brand-actions .navbtn{
+      display:inline-block !important;
+      background:#1a1c20 !important;
+      color:#bbb !important;
+      padding:6px 12px !important;
+      border-radius:10px !important;
+      text-decoration:none !important;
+      border:1px solid #3a3f44 !important;
+      font-size:13px !important;
+      line-height:1 !important;
+    }
+    .brand-actions .navbtn.active{
+      color:#fff !important;
+      border-color:#c00000 !important;
+      box-shadow:0 0 0 1px rgba(192,0,0,.35) inset !important;
+    }
   </style>
 </head>
+
 <body>
-  <div class="brandbar">
-    <a href="dashboard.html" class="brand">
-      <img src="czm-logo.png" alt="CZM">
-      <h1 class="brand-title">CZM • Wireshop</h1>
-    </a>
+  <div class="brand-bar">
+    <div class="brand-inner">
+      <a class="brand-logo" href="dashboard.html">
+        <img src="czm-logo.png" alt="CZM">
+        <h1 class="brand-title">CZM • Wireshop Dashboard</h1>
+      </a>
 
-    <div class="brand-actions" id="navActions">
-      <a href="assignments.html" class="navbtn">Assignments (Build Next)</a>
-      <a href="/inventory" class="navbtn">Inventory</a>
-      <a href="admin.html" class="navbtn" id="adminNavBtn" style="display:none;">Admin</a>
-      <a href="index.html" class="navbtn">Logout</a>
+      <div class="brand-actions" id="navActions">
+        <a href="dashboard.html" class="navbtn active">Dashboard</a>
+        <a href="assignments.html" class="navbtn">Assignments (Build Next)</a>
+        <a href="/inventory" class="navbtn">Inventory</a>
+        <a href="admin.html" class="navbtn" id="adminNav">Admin</a>
+        <a href="index.html" class="navbtn">Logout</a>
+      </div>
     </div>
   </div>
 
-  <!-- Welcome strip -->
-  <div class="card">
-    <h2 style="margin:0 0 6px 0;">Dashboard</h2>
-    <div id="welcomeLine" style="opacity:.9;"></div>
-  </div>
-
-  <!-- Start Job -->
-  <div class="card">
-    <h2 style="margin:0 0 10px 0;">Start / Update Job</h2>
-
-    <div class="row" style="gap:10px; flex-wrap:wrap;">
-      <label>Part Number<br/>
-        <select id="partSelect" class="inline-input"></select>
-      </label>
-
-      <label>Action<br/>
-        <select id="actionSelect" class="inline-input">
-          <option value="Start">Start</option>
-          <option value="Continue">Continue</option>
-          <option value="Pause">Pause</option>
-          <option value="Finish">Finish</option>
-        </select>
-      </label>
-
-      <label>Notes<br/>
-        <input id="noteInput" class="inline-input" placeholder="Optional note..." />
-      </label>
-
-      <button id="submitJob" class="navbtn">Submit</button>
+  <main class="page">
+    <!-- Welcome strip -->
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <div><strong>Welcome,</strong> <span id="welcomeName"></span></div>
+      </div>
     </div>
 
-    <div id="jobMsg" style="margin-top:10px; opacity:.85;"></div>
-  </div>
+    <!-- Start Job -->
+    <div class="card">
+      <h2 style="margin:0 0 10px 0;">Start / Update Job</h2>
 
-  <!-- Current job info -->
-  <div class="card">
-    <h2 style="margin:0 0 10px 0;">Current</h2>
-    <div id="currentInfo" style="opacity:.9;">--</div>
-    <div style="margin-top:8px; opacity:.8;">
-      Expected Time: <span id="expectedTime">--</span>
+      <div class="row" style="gap:10px; flex-wrap:wrap;">
+        <label style="min-width:260px;">Part Number<br/>
+          <select id="partSelect" class="inline-input"></select>
+        </label>
+
+        <label style="min-width:220px;">Action<br/>
+          <select id="actionSelect" class="inline-input">
+            <option value="Start">Start</option>
+            <option value="Continue">Continue</option>
+            <option value="Pause">Pause</option>
+            <option value="Finish">Finish</option>
+          </select>
+        </label>
+
+        <label style="flex:1; min-width:260px;">Notes<br/>
+          <input id="noteInput" class="inline-input" placeholder="Optional note..." />
+        </label>
+
+        <button id="submitJob" class="btn primary">Submit</button>
+      </div>
+
+      <div id="jobMsg" style="margin-top:10px; opacity:.85;"></div>
     </div>
-  </div>
+
+    <!-- Current -->
+    <div class="card">
+      <h2 style="margin:0 0 10px 0;">Current</h2>
+      <div id="currentInfo" style="opacity:.9;">--</div>
+      <div style="margin-top:8px; opacity:.8;">
+        Expected Time: <span id="expectedTime">--</span>
+      </div>
+    </div>
+  </main>
 
   <script>
-    // Minimal front-end gating for the Admin nav button
+    // Gate Admin link + set welcome name (keeps backend as source of truth)
     (function () {
       const user = JSON.parse(localStorage.getItem('user') || '{}');
-      const name = user.username ? String(user.username) : '';
-      const role = user.role ? String(user.role).toLowerCase() : '';
-      const isAdmin = role === 'admin';
+      const uname = user.username ? String(user.username) : '';
+      const role = user.role ? String(user.role).toLowerCase() : 'tech';
 
-      const adminBtn = document.getElementById('adminNavBtn');
-      if (adminBtn) adminBtn.style.display = isAdmin ? '' : 'none';
+      const w = document.getElementById('welcomeName');
+      if (w) w.textContent = uname ? `${uname} (${role})` : 'Unknown';
 
-      const welcome = document.getElementById('welcomeLine');
-      if (welcome) welcome.textContent = name ? `Logged in as: ${name} (${role || 'tech'})` : 'Not logged in.';
+      const adminLink = document.getElementById('adminNav');
+      if (adminLink) adminLink.style.display = (role === 'admin') ? '' : 'none';
     })();
   </script>
 
