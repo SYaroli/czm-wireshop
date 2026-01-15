@@ -15,13 +15,11 @@ try {
     const bundled = path.join(__dirname, 'wireshop.db');
     if (fs.existsSync(bundled)) {
       fs.copyFileSync(bundled, dbPath);
-      console.log('[db] Seeded persistent DB from bundled file ->', dbPath);
-    } else {
-      console.log('[db] No bundled DB found to seed, starting fresh at', dbPath);
+      console.log('[db] Seeded persistent DB from bundled wireshop.db');
     }
   }
 } catch (e) {
-  console.warn('[db] Seed check failed:', e?.message || e);
+  console.warn('[db] Seed check failed:', e && e.message ? e.message : e);
 }
 
 const db = new sqlite3.Database(dbPath, (err) => {
@@ -30,7 +28,7 @@ const db = new sqlite3.Database(dbPath, (err) => {
 });
 
 db.serialize(() => {
-  // LIVE jobs
+  // JOBS (current live work)
   db.run(`CREATE TABLE IF NOT EXISTS jobs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT,
@@ -81,26 +79,62 @@ db.serialize(() => {
   // ADJUSTMENTS ledger
   db.run(`CREATE TABLE IF NOT EXISTS jobs_adjustments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    archiveId INTEGER NOT NULL,
-    overrideStartTime INTEGER,
-    overrideEndTime INTEGER,
-    overridePauseTotal INTEGER,
-    overridePartNumber TEXT,
-    overrideNote TEXT,
-    overrideUsername TEXT,
-    reason TEXT NOT NULL,
+    archiveId INTEGER,
+    kind TEXT, -- 'manual_add' | 'edit' | 'delete'
+    payload TEXT, -- JSON blob
     adminUser TEXT,
     createdAt INTEGER DEFAULT (strftime('%s','now')*1000)
   )`);
-  db.run(`CREATE INDEX IF NOT EXISTS idx_adj_archive ON jobs_adjustments(archiveId, id)`);
 
   // USERS
   db.run(`CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT NOT NULL UNIQUE COLLATE NOCASE,
     pin TEXT NOT NULL,
-    role TEXT NOT NULL CHECK (role IN ('admin','assembler'))
+    role TEXT NOT NULL CHECK (role IN ('admin','tech')),
+    active INTEGER NOT NULL DEFAULT 1
   )`);
+
+  // ---- users table upgrade (old admin/assembler + no active) ----
+  db.get(`SELECT sql FROM sqlite_master WHERE type='table' AND name='users'`, (err, row) => {
+    if (err) return console.error('sqlite_master users:', err);
+    const createSql = String((row && row.sql) || '');
+    const hasAssembler = createSql.includes("'assembler'");
+    if (hasAssembler) {
+      // Rebuild to switch assembler -> tech and add active.
+      console.log('[db] Upgrading users table (assembler->tech, add active)');
+      db.serialize(() => {
+        db.run('BEGIN');
+        db.run(`CREATE TABLE IF NOT EXISTS users_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          username TEXT NOT NULL UNIQUE COLLATE NOCASE,
+          pin TEXT NOT NULL,
+          role TEXT NOT NULL CHECK (role IN ('admin','tech')),
+          active INTEGER NOT NULL DEFAULT 1
+        )`);
+        db.run(`INSERT INTO users_new (id, username, pin, role, active)
+                SELECT id,
+                       username,
+                       pin,
+                       CASE WHEN LOWER(role)='admin' THEN 'admin' ELSE 'tech' END,
+                       1
+                  FROM users`);
+        db.run(`DROP TABLE users`);
+        db.run(`ALTER TABLE users_new RENAME TO users`);
+        db.run('COMMIT');
+      });
+      return;
+    }
+
+    // Ensure columns exist (for older DBs) + normalize roles to tech/admin
+    db.all(`PRAGMA table_info(users)`, (e2, rows) => {
+      if (e2) return console.error('PRAGMA users:', e2);
+      const names = (rows || []).map(c => c.name);
+      if (!names.includes('active')) db.run(`ALTER TABLE users ADD COLUMN active INTEGER NOT NULL DEFAULT 1`);
+      // Clean up any legacy non-admin role to tech (will be no-op on fresh DBs)
+      db.run(`UPDATE users SET role='tech' WHERE LOWER(role)!='admin'`);
+    });
+  });
 
   // ===== INVENTORY (base) =====
   db.run(`CREATE TABLE IF NOT EXISTS inventory (
@@ -109,6 +143,7 @@ db.serialize(() => {
     updatedAt INTEGER,
     updatedBy TEXT
   )`);
+
   db.run(`CREATE TABLE IF NOT EXISTS inventory_txns (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     partNumber TEXT NOT NULL,
