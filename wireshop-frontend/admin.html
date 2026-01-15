@@ -3,8 +3,9 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>CZM • Admin Live + Archive</title>
+  <title>CZM • Admin</title>
   <link rel="stylesheet" href="style.css"/>
+
   <style>
     /* Red/white header buttons */
     .brand-actions .navbtn{
@@ -16,101 +17,68 @@
       text-decoration:none !important;
       border:0 !important;
       font-weight:700 !important;
-      cursor:pointer !important;
+      cursor:pointer;
+      margin-left:8px !important;
+      line-height:1;
     }
     .brand-actions .navbtn:hover{ filter:brightness(.92) }
-    .toolbar .muted{opacity:.75}
-    .table-wrap{overflow:auto}
-    .inline-input{width:100%; box-sizing:border-box}
-    .muted-sm{opacity:.85; font-size:.9rem}
-    .small{ font-size:.85rem; padding:6px 10px; }
+    .brand-actions .navbtn.active{
+      outline:2px solid #fff;
+      outline-offset:2px;
+    }
+    .brand-actions button.navbtn{ border:0 }
 
-    /* Modal */
-    .modal-backdrop{
-      position:fixed; inset:0; background:rgba(0,0,0,.5);
-      display:none; align-items:center; justify-content:center; z-index:1000;
+    /* Page spacing */
+    .page { max-width: 980px; margin: 0 auto; padding: 18px 16px 48px; }
+
+    /* Tables */
+    .table-wrap{ width:100%; overflow:auto; }
+    table{ width:100%; border-collapse:collapse; }
+    th, td{ padding:8px 10px; border-bottom:1px solid rgba(0,0,0,.08); font-size:14px; }
+    th{ background:#111; color:#fff; font-weight:700; text-align:left; position:sticky; top:0; }
+    .small{ font-size:12px; padding:6px 10px; border-radius:8px; }
+    .danger{ background:var(--red); color:#fff; border:0; cursor:pointer; }
+    .primary{ background:#1a1c20; color:#fff; border:0; cursor:pointer; }
+
+    /* Inputs */
+    input, select{
+      width:100%;
+      padding:8px 10px;
+      border-radius:10px;
+      border:1px solid rgba(0,0,0,.15);
+      background:#fff;
+      font-size:14px;
+      box-sizing:border-box;
     }
-    .modal{
-      background:#fff; border-radius:12px; width:min(900px, 94vw);
-      box-shadow:0 10px 30px rgba(0,0,0,.25); padding:16px 16px 12px;
-    }
-    .modal header{display:flex;align-items:center;gap:12px;margin-bottom:10px}
-    .modal h3{margin:0}
-    .modal .grid.cols-3{grid-template-columns:1fr 1fr 1fr}
-    .modal .grid.cols-2{grid-template-columns:1fr 1fr}
-    .modal footer{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
-    .danger-outline{
-      background:#fff !important; color:var(--red) !important; border:2px solid var(--red) !important;
-    }
+    label{ font-size:13px; opacity:.9; }
   </style>
-
-<style id="nav-pill-override">
-/* Compact pill buttons, high-specificity, no logic changes */
-.brand-bar .brand-inner .brand-actions a.navbtn{
-  display:inline-block !important;
-  background:#1a1c20 !important;
-  color:#bbb !important;
-  padding:6px 12px !important;
-  border-radius:10px !important;
-  text-decoration:none !important;
-  border:1px solid #3a3f44 !important;
-  font-weight:600 !important;
-  font-size:0.9rem !important;
-  margin-left:8px !important;
-  cursor:pointer !important;
-}
-.brand-bar .brand-inner .brand-actions a.navbtn:hover{ filter:brightness(1.1) !important; }
-.brand-bar .brand-inner .brand-actions a.navbtn.active{
-  background:#b30000 !important;
-  color:#fff !important;
-  border-color:#ff4d4d !important;
-}
-</style>
-
 </head>
+
 <body>
-
-<script>
-(function(){
-  function getRole(){
-    try {
-      var r = (localStorage.getItem('role') || sessionStorage.getItem('role') || '').trim().toLowerCase();
-      return r;
-    } catch(e){ return ''; }
-  }
-  function enforce(){
-    var r = getRole();
-    if (!r) { setTimeout(enforce, 150); return; }  // wait for login script to populate role
-    if (r !== 'admin') location.replace('dashboard.html');
-  }
-  enforce();
-})();
-</script>
-
   <div class="brand-bar">
     <div class="brand-inner">
-      <a class="brand-logo" href="dashboard.html">
-        <img src="czm-logo.png" alt="CZM"/>
-        <h1 class="brand-title">CZM • Admin</h1>
+      <a class="brand-logo" href="assignments.html" style="display:flex;align-items:center;gap:10px;text-decoration:none;">
+        <img src="czm-logo.png" alt="CZM" style="height:26px;width:auto;">
+        <div style="color:#fff;font-weight:800;">CZM • Admin</div>
       </a>
+
       <div class="brand-actions" id="navActions">
-       <a href="dashboard.html" class="navbtn active">Dashboard</a>
         <a href="assignments.html" class="navbtn">Assignments</a>
         <a href="/inventory" class="navbtn">Inventory</a>
-        <a href="archive.html" class="navbtn">Archive</a>
-        <a href="admin.html" class="navbtn">Admin</a>
-        <a href="index.html" class="navbtn">Logout</a>
+        <a href="admin.html" class="navbtn active">Admin</a>
+        <button id="logoutBtn" class="navbtn">Logout</button>
         <button id="clearAllLogs" class="navbtn">Clear Live Logs</button>
       </div>
     </div>
   </div>
 
-  <main class="container">
-    <!-- Live -->
+  <main class="page">
+
+    <!-- Live Technician Activity -->
     <div class="card">
-      <h2>Live Technician Activity</h2>
+      <h2 style="margin:0 0 10px 0;">Live Technician Activity</h2>
       <div class="table-wrap">
-        <table class="table">
+        <table>
           <thead>
             <tr>
               <th>Technician</th>
@@ -122,36 +90,46 @@
               <th>Time Active</th>
             </tr>
           </thead>
-          <tbody id="activityTableBody"></tbody>
+          <tbody id="liveBody">
+            <tr><td colspan="7" style="opacity:.7;">Loading…</td></tr>
+          </tbody>
         </table>
       </div>
-      <div class="muted" id="liveStatus" style="margin-top:.5rem"></div>
     </div>
 
-    <!-- Archive -->
-    <div class="card">
-      <h2>Completed Jobs (Archive)</h2>
+    <!-- Completed Jobs (Archive) -->
+    <div class="card" style="margin-top:14px;">
+      <h2 style="margin:0 0 10px 0;">Completed Jobs (Archive)</h2>
 
-      <div class="toolbar" style="display:flex;gap:.75rem;flex-wrap:wrap;align-items:end;margin-bottom:.5rem">
-        <div><label>Technician<br/>
-          <select id="fltTech"><option value="">All</option></select></label>
-        </div>
-        <div><label>Part # contains<br/>
-          <input id="fltPart" type="text" placeholder="e.g. 44602"/></label>
-        </div>
-        <div><label>From date<br/><input id="fltFrom" type="date"/></label></div>
-        <div><label>To date<br/><input id="fltTo" type="date"/></label></div>
-        <button id="btnApply" class="navbtn small">Apply</button>
-        <button id="btnReset" class="navbtn small">Reset</button>
-        <button id="btnCsv" class="navbtn small">Export CSV</button>
-        <a href="https://wireshop-backend.onrender.com/archive"
-           target="_blank" rel="noopener"
-           class="navbtn small">Archive Backup</a>
-        <div style="margin-left:auto;opacity:.8"><span id="rowCount">0</span> records</div>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:end;margin:.25rem 0 .75rem">
+        <label>Technician<br>
+          <select id="fTech">
+            <option value="All">All</option>
+          </select>
+        </label>
+
+        <label>Part # contains<br>
+          <input id="fPart" type="text" placeholder="e.g. 44602"/>
+        </label>
+
+        <label>From date<br>
+          <input id="fFrom" type="date"/>
+        </label>
+
+        <label>To date<br>
+          <input id="fTo" type="date"/>
+        </label>
+
+        <button id="btnApply" class="navbtn">Apply</button>
+        <button id="btnReset" class="navbtn">Reset</button>
+        <button id="btnExport" class="navbtn">Export CSV</button>
+
+        <a href="#" id="archiveBackupLink" style="margin-left:auto;font-size:13px;">Archive Backup</a>
+        <div id="archiveCount" style="opacity:.75;font-size:13px;">0 records</div>
       </div>
 
       <div class="table-wrap">
-        <table class="table">
+        <table>
           <thead>
             <tr>
               <th>Finished</th>
@@ -164,21 +142,22 @@
               <th>Actions</th>
             </tr>
           </thead>
-          <tbody id="archiveTableBody"></tbody>
+          <tbody id="archiveBody">
+            <tr><td colspan="8" style="opacity:.7;">Loading…</td></tr>
+          </tbody>
         </table>
       </div>
-      <div class="muted-sm" id="archStatus" style="margin-top:.5rem"></div>
     </div>
 
     <!-- Users -->
-    <div class="card" id="usersCard">
-      <h2>Users</h2>
+    <div class="card" id="usersCard" style="margin-top:14px;">
+      <h2 style="margin:0 0 10px 0;">Users</h2>
+
       <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:end;margin:.25rem 0 .75rem">
         <label>Username<br><input id="uName" type="text" placeholder="firstname.lastname"/></label>
         <label>PIN<br><input id="uPin" type="text" inputmode="numeric" placeholder="1234"/></label>
         <label>Role<br>
           <select id="uRole">
-            <option value="assembler">assembler</option>
             <option value="tech">tech</option>
             <option value="admin">admin</option>
           </select>
@@ -186,442 +165,326 @@
         <button id="btnAddUser" class="navbtn">Add User</button>
         <div id="uMsg" style="margin-left:auto;opacity:.8"></div>
       </div>
+
       <div class="table-wrap">
-        <table class="table">
-          <thead><tr><th>Username</th><th>Role</th><th>Delete</th></tr></thead>
-          <tbody id="usersTableBody"></tbody>
+        <table>
+          <thead>
+            <tr>
+              <th>Username</th>
+              <th>Role</th>
+              <th>Active</th>
+              <th>New PIN</th>
+              <th>Save</th>
+              <th>Delete</th>
+            </tr>
+          </thead>
+          <tbody id="usersBody">
+            <tr><td colspan="6" style="opacity:.7;">Loading…</td></tr>
+          </tbody>
         </table>
       </div>
     </div>
+
   </main>
 
-  <!-- EDIT MODAL -->
-  <div id="editBackdrop" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="editTitle">
-    <div class="modal">
-      <header>
-        <h3 id="editTitle">Edit Completed Job</h3>
-        <div class="muted-sm" id="editId"></div>
-        <div class="spacer"></div>
-        <button id="closeEdit" class="secondary">Close</button>
-      </header>
-
-      <div class="grid cols-3">
-        <label>Technician
-          <input id="e_user" type="text" class="inline-input" />
-        </label>
-        <label>Part Number
-          <input id="e_part" type="text" class="inline-input" />
-        </label>
-        <label>Print Name
-          <input id="e_print" type="text" class="inline-input" />
-        </label>
-
-        <label>Expected Hours
-          <input id="e_expected_hours" type="number" step="0.25" min="0" class="inline-input"/>
-        </label>
-        <label>Total Active (hh:mm)
-          <input id="e_total_hhmm" type="text" placeholder="e.g. 1:30" class="inline-input"/>
-        </label>
-        <label>Notes
-          <input id="e_note" type="text" class="inline-input"/>
-        </label>
-
-        <label>Started (local)
-          <input id="e_start" type="datetime-local" class="inline-input"/>
-        </label>
-        <label>Finished (local)
-          <input id="e_end" type="datetime-local" class="inline-input"/>
-        </label>
-        <div></div>
-      </div>
-
-      <footer>
-        <button id="deleteRow" class="danger-outline">Delete</button>
-        <button id="saveEdit" class="primary">Save Changes</button>
-      </footer>
-    </div>
-  </div>
-
   <script>
-  (function(){
-    const API_ROOT = 'https://wireshop-backend.onrender.com';
-    const API = {
-      jobs:    `${API_ROOT}/api/jobs`,
-      users:   `${API_ROOT}/api/users`,
-      archive: `${API_ROOT}/api/jobs/archive`
-    };
+    // ---------- helpers ----------
+    const API_BASE = (location.hostname.includes('localhost'))
+      ? 'http://localhost:3000'
+      : 'https://czm-us-wireshop-backend.onrender.com';
 
-    // ---------- auth helpers ----------
-    const getUser = () => { try { return JSON.parse(localStorage.getItem('user')) || null; } catch { return null; } };
-    const username = () => (getUser()?.username || '');
-    const isAdmin = () => String(getUser()?.role||'').toLowerCase() === 'admin';
-    const headers = () => ({ 'Content-Type': 'application/json', 'x-user': username() });
+    const user = (() => { try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; } })();
 
-    // Gate: only admins here
-    document.addEventListener('DOMContentLoaded', () => {
-      if (!isAdmin()) { window.location.href = 'dashboard.html'; }
+    function headers(){
+      return { 'Content-Type':'application/json', 'x-user': user.username || '' };
+    }
+
+    function fmtDate(ms){
+      if (!ms) return '';
+      const d = new Date(ms);
+      return d.toLocaleString();
+    }
+
+    function toHMS(totalSeconds){
+      const s = Math.max(0, Math.floor(totalSeconds || 0));
+      const h = Math.floor(s / 3600);
+      const m = Math.floor((s % 3600) / 60);
+      const r = s % 60;
+      return (h>0 ? `${h}h ` : '') + `${m}m ${r}s`;
+    }
+
+    // auth gate
+    if (!user || !user.username) location.href = '/index.html';
+
+    // logout
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      localStorage.removeItem('user');
+      location.href = '/index.html';
     });
 
-    // ---------- utils ----------
-    function fmtMS(ms){
-      if (!Number.isFinite(ms) || ms < 0) ms = 0;
-      const s = Math.floor(ms/1000);
-      const h = Math.floor(s/3600);
-      const m = Math.floor((s%3600)/60);
-      const sec = s%60;
-      return `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
-    }
-    function fmtHMM(mins){
-      if (mins==null || isNaN(mins)) return '';
-      const h = Math.floor(mins/60), m = Math.abs(mins%60);
-      return `${h}:${String(m).padStart(2,'0')}`;
-    }
-    const toLocalInput = (ts)=>{
-      if (!ts) return '';
-      const d = new Date(ts);
-      const off = d.getTimezoneOffset();
-      const local = new Date(d.getTime() - off*60000).toISOString().slice(0,16);
-      return local; // yyyy-MM-ddTHH:mm
-    };
-    const fromLocalInput = (val)=>{
-      if (!val) return null;
-      const t = new Date(val);
-      if (Number.isNaN(t.getTime())) return null;
-      return t.getTime();
-    };
-    function hhmmToMinutes(hhmm){
-      if (!hhmm) return null;
-      const m = String(hhmm).trim().match(/^(\d+)(?::(\d{1,2}))?$/);
-      if (!m) return null;
-      const h = parseInt(m[1],10);
-      const mm = parseInt(m[2]||'0',10);
-      if (mm>=60) return null;
-      return h*60 + mm;
-    }
-
-    // ---------- LIVE VIEW ----------
-    let liveTimer = null;
+    // ---------- LIVE ----------
     async function loadLive(){
-      const stat = document.getElementById('liveStatus');
+      const tbody = document.getElementById('liveBody');
       try{
-        const res = await fetch(`${API.jobs}/logs`, { headers: headers() });
-        if (!res.ok){ stat.textContent = 'Live fetch failed'; return; }
+        const res = await fetch(`${API_BASE}/api/jobs/live`, { headers: headers() });
+        if (!res.ok) throw new Error('live fetch failed');
         const rows = await res.json();
 
-        const tbody = document.getElementById('activityTableBody');
-        tbody.innerHTML = '';
+        if (!rows.length){
+          tbody.innerHTML = `<tr><td colspan="7" style="opacity:.7;">No active jobs</td></tr>`;
+          return;
+        }
 
-        const now = Date.now();
-        rows.forEach(r=>{
-          const pausedExtra = r.pauseStart ? (now - (r.pauseStart||now)) : 0;
-          const totalActive = Math.max(0, (now - (r.startTime||now)) - (r.pauseTotal||0) - pausedExtra);
+        tbody.innerHTML = '';
+        rows.forEach(r => {
           const tr = document.createElement('tr');
           tr.innerHTML = `
-            <td>${r.username||''}</td>
-            <td>${r.partNumber||''}</td>
-            <td>${r.printName||''}</td>
-            <td>${r.expected ?? ''}</td>
-            <td>${r.action||''}</td>
-            <td>${r.note||''}</td>
-            <td>${fmtMS(totalActive)}</td>`;
+            <td>${r.username || ''}</td>
+            <td>${r.partNumber || ''}</td>
+            <td>${r.printName || ''}</td>
+            <td>${(r.expectedHours != null) ? r.expectedHours : ''}</td>
+            <td>${r.action || ''}</td>
+            <td>${r.note || ''}</td>
+            <td>${toHMS((r.totalActive || 0))}</td>
+          `;
           tbody.appendChild(tr);
         });
-
-        stat.textContent = rows.length ? `Updated ${new Date().toLocaleTimeString()}` : 'No active jobs';
       }catch(e){
-        document.getElementById('liveStatus').textContent = 'Live fetch error';
+        tbody.innerHTML = `<tr><td colspan="7" style="opacity:.7;">Live load failed</td></tr>`;
       }
     }
-    function startLivePolling(){
-      clearInterval(liveTimer);
-      loadLive();
-      liveTimer = setInterval(loadLive, 4000);
-    }
-
-    // Clear all live logs
-    document.getElementById('clearAllLogs').addEventListener('click', async ()=>{
-      if (!confirm('Clear ALL live logs?')) return;
-      try{
-        const res = await fetch(`${API.jobs}/admin/clear-logs`, { method:'DELETE', headers: headers() });
-        if (res.ok) loadLive();
-      }catch{}
-    });
 
     // ---------- ARCHIVE ----------
-    let archiveCache = [];
-    function normalizeRow(r){
-      return {
-        id: r.id ?? r.i ?? r._id ?? r.rowid,
-        username: r.username || r.technician || '',
-        partNumber: r.partNumber || r.part_number || '',
-        printName: r.printName || r.print_name || '',
-        expectedMinutes: r.expectedMinutes ?? r.expected_minutes ?? (Number.isFinite(r.expectedHours) ? Math.round(r.expectedHours*60) : null),
-        note: r.note ?? r.notes ?? '',
-        startTime: r.startTime ?? r.startedAt ?? r.started_at ?? null,
-        endTime: r.endTime ?? r.finishedAt ?? r.finished_at ?? null,
-        totalActiveMs: (r.totalActive ?? r.total_active_ms ?? (Number.isFinite(r.total_active_sec) ? r.total_active_sec*1000 : null)) ?? null,
-        finishedAt: r.finishedAt ?? r.finished_at ?? r.endTime ?? null
-      };
+    async function loadTechListInto(selectEl){
+      try{
+        const res = await fetch(`${API_BASE}/api/users`, { headers: headers() });
+        if (!res.ok) return;
+        const list = await res.json();
+        const techs = list.map(u => u.username).filter(Boolean);
+        techs.forEach(t => {
+          const opt = document.createElement('option');
+          opt.value = t;
+          opt.textContent = t;
+          selectEl.appendChild(opt);
+        });
+      }catch{}
     }
-    async function fetchArchive(){
-      const res = await fetch(API.archive, { headers: headers() });
-      if (!res.ok) return [];
-      const list = await res.json();
-      archiveCache = Array.isArray(list) ? list.map(normalizeRow) : [];
-      return archiveCache;
-    }
-    function applyArchiveFilters(){
-      const tech = document.getElementById('fltTech').value.trim().toLowerCase();
-      const part = document.getElementById('fltPart').value.trim().toLowerCase();
-      const from = document.getElementById('fltFrom').value ? new Date(document.getElementById('fltFrom').value).getTime() : -Infinity;
-      const to = document.getElementById('fltTo').value ? new Date(document.getElementById('fltTo').value).getTime()+86400000 : Infinity;
 
-      let rows = archiveCache.slice();
-      if (tech) rows = rows.filter(r => String(r.username||'').toLowerCase() === tech);
-      if (part) rows = rows.filter(r => String(r.partNumber||'').toLowerCase().includes(part));
-      rows = rows.filter(r => {
-        const t = r.finishedAt || r.endTime || 0;
-        return t >= from && t < to;
-      });
-      return rows;
-    }
-    function renderTechFilter(){
-      const sel = document.getElementById('fltTech');
-      const names = Array.from(new Set(archiveCache.map(r=>String(r.username||'')).filter(Boolean))).sort();
-      sel.innerHTML = '<option value="">All</option>' + names.map(n=>`<option value="${n}">${n}</option>`).join('');
-    }
-    function renderArchive(){
-      const rows = applyArchiveFilters();
-      const tbody = document.getElementById('archiveTableBody');
-      tbody.innerHTML = '';
-      rows.forEach(r=>{
-        const tr = document.createElement('tr');
-        const expectedHours = Number.isFinite(r.expectedMinutes) ? (r.expectedMinutes/60) : '';
-        tr.innerHTML = `
-          <td>${r.finishedAt ? new Date(r.finishedAt).toLocaleString() : ''}</td>
-          <td>${r.username||''}</td>
-          <td>${r.partNumber||''}</td>
-          <td>${r.printName||''}</td>
-          <td>${expectedHours!=='' ? expectedHours : ''}</td>
-          <td>${r.note ? String(r.note).replace(/\n/g,' ') : ''}</td>
-          <td>${r.totalActiveMs!=null ? fmtMS(r.totalActiveMs) : ''}</td>
-          <td>
-            <button class="secondary small" data-edit="${r.id}">Edit</button>
-            <button class="danger small" data-del="${r.id}">Delete</button>
-          </td>`;
-        tbody.appendChild(tr);
-      });
-      document.getElementById('rowCount').textContent = String(rows.length);
-      document.getElementById('archStatus').textContent = rows.length ? '' : 'No records with current filters.';
-    }
     async function loadArchive(){
-      document.getElementById('archStatus').textContent = 'Loading...';
-      await fetchArchive();
-      renderTechFilter();
-      renderArchive();
-      document.getElementById('archStatus').textContent = '';
-    }
-
-    // CSV
-    document.getElementById('btnCsv').addEventListener('click', ()=>{
-      const rows = applyArchiveFilters();
-      const header = ['Finished','Technician','Part Number','Print Name','Expected Hours','Notes','Total Active'];
-      const body = rows.map(r=>{
-        const h = Number.isFinite(r.expectedMinutes) ? (r.expectedMinutes/60) : '';
-        const total = r.totalActiveMs!=null ? fmtMS(r.totalActiveMs) : '';
-        return [
-          r.finishedAt ? new Date(r.finishedAt).toLocaleString() : '',
-          r.username||'',
-          r.partNumber||'',
-          r.printName||'',
-          h,
-          (r.note||'').replace(/\n/g,' '),
-          total
-        ].map(x=>`"${String(x).replace(/"/g,'""')}"`).join(',');
-      });
-      const csv = [header.join(','), ...body].join('\n');
-      const blob = new Blob([csv], { type:'text/csv' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = `archive_export_${Date.now()}.csv`;
-      a.click();
-    });
-    document.getElementById('btnApply').addEventListener('click', renderArchive);
-    document.getElementById('btnReset').addEventListener('click', ()=>{
-      document.getElementById('fltTech').value='';
-      document.getElementById('fltPart').value='';
-      document.getElementById('fltFrom').value='';
-      document.getElementById('fltTo').value='';
-      renderArchive();
-    });
-
-    // Modal wiring
-    const $back = document.getElementById('editBackdrop');
-    const $id    = document.getElementById('editId');
-    const $user  = document.getElementById('e_user');
-    const $part  = document.getElementById('e_part');
-    const $print = document.getElementById('e_print');
-    const $expH  = document.getElementById('e_expected_hours');
-    const $note  = document.getElementById('e_note');
-    const $hhmm  = document.getElementById('e_total_hhmm');
-    const $start = document.getElementById('e_start');
-    const $end   = document.getElementById('e_end');
-
-    let EDIT = null;
-    function openEditById(id){
-      const row = archiveCache.find(r=>String(r.id)===String(id));
-      if (!row) return;
-      EDIT = row;
-      $id.textContent = `ID: ${row.id}`;
-      $user.value  = row.username || '';
-      $part.value  = row.partNumber || '';
-      $print.value = row.printName || '';
-      $expH.value  = Number.isFinite(row.expectedMinutes) ? (row.expectedMinutes/60) : '';
-      $note.value  = row.note || '';
-      $hhmm.value  = row.totalActiveMs!=null ? fmtHMM(Math.round(row.totalActiveMs/60000)) : '';
-      $start.value = toLocalInput(row.startTime);
-      $end.value   = toLocalInput(row.endTime || row.finishedAt);
-      $back.style.display = 'flex';
-    }
-    function closeEdit(){
-      $back.style.display = 'none';
-      EDIT = null;
-    }
-    async function saveEdit(){
-      if (!EDIT) return;
-      const id = EDIT.id;
-
-      const body = {
-        username: ($user.value.trim() || null),
-        partNumber: ($part.value.trim() || null),
-        printName: ($print.value.trim() || null),
-        note: ($note.value.trim() || null)
-      };
-      const hours = $expH.value ? Number($expH.value) : null;
-      if (hours!=null && !Number.isNaN(hours)) body.expectedMinutes = Math.round(hours*60);
-
-      const startTime = fromLocalInput($start.value);
-      const endTime   = fromLocalInput($end.value);
-      if (Number.isFinite(startTime)) body.startTime = startTime;
-      if (Number.isFinite(endTime))   body.endTime   = endTime;
-
-      const mins = hhmmToMinutes($hhmm.value.trim());
-      if (mins!=null) body.totalSec = Math.round(mins*60); // some backends want seconds
-
-      let ok = false;
+      const tbody = document.getElementById('archiveBody');
       try{
-        const r = await fetch(`${API.archive}/${id}`, { method:'PATCH', headers: headers(), body: JSON.stringify(body) });
-        ok = r.ok;
-      }catch{}
-      if (!ok){
-        try{
-          const r2 = await fetch(`${API.archive}/${id}/adjust`, { method:'POST', headers: headers(), body: JSON.stringify(body) });
-          ok = r2.ok;
-        }catch{}
-      }
-      if (ok){
-        closeEdit();
-        await loadArchive();
-      }else{
-        alert('Update failed.');
-      }
-    }
-    async function deleteEdit(){
-      if (!EDIT) return;
-      if (!confirm('Delete this archive record?')) return;
-      let ok = false;
-      try{
-        const r = await fetch(`${API.archive}/${EDIT.id}`, { method:'DELETE', headers: headers() });
-        ok = r.ok;
-      }catch{}
-      if (!ok){
-        try{
-          const reason = 'admin delete';
-          const r2 = await fetch(`${API.archive}/${EDIT.id}/delete`, { method:'POST', headers: headers(), body: JSON.stringify({ reason }) });
-          ok = r2.ok;
-        }catch{}
-      }
-      if (ok){
-        closeEdit();
-        await loadArchive();
-      }else{
-        alert('Delete failed.');
+        const tech = document.getElementById('fTech').value;
+        const partContains = document.getElementById('fPart').value.trim();
+        const from = document.getElementById('fFrom').value;
+        const to = document.getElementById('fTo').value;
+
+        const params = new URLSearchParams();
+        if (tech && tech !== 'All') params.set('tech', tech);
+        if (partContains) params.set('partContains', partContains);
+        if (from) params.set('from', from);
+        if (to) params.set('to', to);
+
+        const res = await fetch(`${API_BASE}/api/archive?` + params.toString(), { headers: headers() });
+        if (!res.ok) throw new Error('archive fetch failed');
+        const rows = await res.json();
+
+        document.getElementById('archiveCount').textContent = `${rows.length} records`;
+
+        if (!rows.length){
+          tbody.innerHTML = `<tr><td colspan="8" style="opacity:.7;">0 records</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = '';
+        rows.forEach(r => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${fmtDate(r.finishedAt)}</td>
+            <td>${r.username || ''}</td>
+            <td>${r.partNumber || ''}</td>
+            <td>${r.printName || ''}</td>
+            <td>${(r.expectedHours != null) ? r.expectedHours : ''}</td>
+            <td>${r.note || ''}</td>
+            <td>${toHMS((r.totalActive || 0))}</td>
+            <td></td>
+          `;
+          tbody.appendChild(tr);
+        });
+      }catch(e){
+        tbody.innerHTML = `<tr><td colspan="8" style="opacity:.7;">Archive load failed</td></tr>`;
       }
     }
 
-    document.getElementById('archiveTableBody').addEventListener('click', (e)=>{
-      const idEdit = e.target?.dataset?.edit;
-      const idDel  = e.target?.dataset?.del;
-      if (idEdit) openEditById(idEdit);
-      if (idDel){
-        EDIT = { id: idDel };
-        deleteEdit();
+    document.getElementById('btnApply').addEventListener('click', loadArchive);
+    document.getElementById('btnReset').addEventListener('click', () => {
+      document.getElementById('fTech').value = 'All';
+      document.getElementById('fPart').value = '';
+      document.getElementById('fFrom').value = '';
+      document.getElementById('fTo').value = '';
+      loadArchive();
+    });
+
+    document.getElementById('btnExport').addEventListener('click', async () => {
+      // Let the backend handle this if you already have it; otherwise this is a noop
+      try{
+        const res = await fetch(`${API_BASE}/api/archive/export`, { headers: headers() });
+        if (!res.ok) return alert('Export endpoint not available');
+        const blob = await res.blob();
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'archive.csv';
+        a.click();
+      }catch{
+        alert('Export failed');
       }
     });
-    document.getElementById('closeEdit').addEventListener('click', closeEdit);
-    document.getElementById('saveEdit').addEventListener('click', saveEdit);
-    document.getElementById('deleteRow').addEventListener('click', deleteEdit);
+
+    document.getElementById('archiveBackupLink').addEventListener('click', (e) => {
+      e.preventDefault();
+      alert('If you want a real backup button, we’ll wire it to a backend endpoint next.');
+    });
+
+    // Clear Live Logs (kept)
+    document.getElementById('clearAllLogs').addEventListener('click', async () => {
+      if (!confirm('Clear ALL live jobs?')) return;
+      try{
+        const res = await fetch(`${API_BASE}/api/jobs/clear`, { method:'POST', headers: headers() });
+        if (!res.ok) return alert('Clear failed');
+        loadLive();
+      }catch{
+        alert('Clear failed');
+      }
+    });
 
     // ---------- USERS ----------
     async function loadUsers(){
+      const tbody = document.getElementById('usersBody');
       try{
-        const res = await fetch(`${API.users}`, { headers: headers() });
-        if (!res.ok) return;
+        const res = await fetch(`${API_BASE}/api/users`, { headers: headers() });
+        if (!res.ok) throw new Error('users fetch failed');
         const list = await res.json();
-        const tbody = document.getElementById('usersTableBody');
+
+        if (!list.length){
+          tbody.innerHTML = `<tr><td colspan="6" style="opacity:.7;">No users</td></tr>`;
+          return;
+        }
+
         tbody.innerHTML = '';
-        list.forEach(u=>{
+        list.forEach(u => {
           const tr = document.createElement('tr');
           tr.innerHTML = `
             <td>${u.username}</td>
-            <td>${u.role}</td>
-            <td><button class="danger small" data-uid="${u.id}">Delete</button></td>`;
+            <td>
+              <select class="uRole" data-uid="${u.id}">
+                <option value="tech" ${String(u.role).toLowerCase()==='tech'?'selected':''}>tech</option>
+                <option value="admin" ${String(u.role).toLowerCase()==='admin'?'selected':''}>admin</option>
+              </select>
+            </td>
+            <td style="text-align:center">
+              <input type="checkbox" class="uActive" data-uid="${u.id}" ${Number(u.active)===1?'checked':''}/>
+            </td>
+            <td>
+              <input class="uPin" data-uid="${u.id}" inputmode="numeric" placeholder="(leave blank)"/>
+            </td>
+            <td>
+              <button class="small primary uSave" data-uid="${u.id}">Save</button>
+            </td>
+            <td>
+              <button class="small danger uDel" data-uid="${u.id}">Delete</button>
+            </td>
+          `;
           tbody.appendChild(tr);
         });
-      }catch{}
+      }catch(e){
+        tbody.innerHTML = `<tr><td colspan="6" style="opacity:.7;">Users load failed</td></tr>`;
+      }
     }
-    document.getElementById('btnAddUser').addEventListener('click', async ()=>{
+
+    document.getElementById('btnAddUser').addEventListener('click', async () => {
       const name = document.getElementById('uName').value.trim();
       const pin  = document.getElementById('uPin').value.trim();
       const role = document.getElementById('uRole').value;
-      if (!name || !pin){ document.getElementById('uMsg').textContent='username & pin required'; return; }
+
+      const msg = document.getElementById('uMsg');
+      msg.textContent = '';
+
+      if (!name || !pin){
+        msg.textContent = 'username & pin required';
+        return;
+      }
+
       try{
-        const res = await fetch(`${API.users}`, {
-          method:'POST', headers: headers(),
+        const res = await fetch(`${API_BASE}/api/users`, {
+          method:'POST',
+          headers: headers(),
           body: JSON.stringify({ username: name, pin, role })
         });
-        if (res.ok){
-          document.getElementById('uMsg').textContent='User added';
-          document.getElementById('uName').value='';
-          document.getElementById('uPin').value='';
-          document.getElementById('uRole').value='assembler';
-          loadUsers();
-        }else{
-          const j = await res.json().catch(()=>({}));
-          document.getElementById('uMsg').textContent = j.error || 'Add failed';
+
+        const j = await res.json().catch(()=>({}));
+        if (!res.ok){
+          msg.textContent = j.error || 'Add failed';
+          return;
         }
-      }catch{}
+
+        msg.textContent = 'User added';
+        document.getElementById('uName').value = '';
+        document.getElementById('uPin').value = '';
+        document.getElementById('uRole').value = 'tech';
+        loadUsers();
+      }catch{
+        msg.textContent = 'Add failed';
+      }
     });
-    document.getElementById('usersTableBody').addEventListener('click', async (e)=>{
+
+    document.getElementById('usersBody').addEventListener('click', async (e) => {
       const id = e.target?.dataset?.uid;
       if (!id) return;
-      if (!confirm('Delete this user?')) return;
-      try{
-        const res = await fetch(`${API.users}/${id}`, { method:'DELETE', headers: headers() });
+
+      // delete
+      if (e.target.classList.contains('uDel')){
+        if (!confirm('Delete this user?')) return;
+        const res = await fetch(`${API_BASE}/api/users/${id}`, { method:'DELETE', headers: headers() });
         if (res.ok) loadUsers();
-      }catch{}
+        return;
+      }
+
+      // save (role/active/pin)
+      if (e.target.classList.contains('uSave')){
+        const roleEl = document.querySelector(`.uRole[data-uid="${id}"]`);
+        const actEl  = document.querySelector(`.uActive[data-uid="${id}"]`);
+        const pinEl  = document.querySelector(`.uPin[data-uid="${id}"]`);
+
+        const payload = {
+          role: roleEl?.value,
+          active: actEl?.checked ? 1 : 0
+        };
+        if (pinEl && pinEl.value.trim()) payload.pin = pinEl.value.trim();
+
+        const res = await fetch(`${API_BASE}/api/users/${id}`, {
+          method:'PATCH',
+          headers: headers(),
+          body: JSON.stringify(payload)
+        });
+
+        const j = await res.json().catch(()=>({}));
+        if (!res.ok){
+          alert(j.error || 'Save failed');
+          return;
+        }
+
+        if (pinEl) pinEl.value = '';
+        loadUsers();
+      }
     });
 
-    // ---------- boot ----------
-    async function boot(){
-      if (!isAdmin()) return;
-      await Promise.all([loadUsers(), loadArchive()]);
-      startLivePolling();
-    }
-    boot();
-  })();
+    // boot
+    (async function init(){
+      await loadLive();
+      await loadUsers();
+      await loadTechListInto(document.getElementById('fTech'));
+      await loadArchive();
+      setInterval(loadLive, 5000);
+    })();
   </script>
-
-  <script src="catalog.js"></script>
 </body>
 </html>
