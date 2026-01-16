@@ -98,7 +98,8 @@
     // If you ever want to override without editing code:
     // localStorage.setItem('API_BASE','https://czm-us-wireshop-backend.onrender.com')
     // Default matches the rest of the site (script.js)
-    const API_BASE = (localStorage.getItem('API_BASE') || 'https://czm-us-wireshop-backend.onrender.com').replace(/\/+$/,'');
+    const API_BASE = (localStorage.getItem("API_BASE") || "https://wireshop-backend.onrender.com").replace(/\/+$/, "");
+
     const API_USERS = API_BASE + '/api/users';
 
     // ===== Session helpers =====
