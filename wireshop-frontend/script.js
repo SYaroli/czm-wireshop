@@ -1,6 +1,6 @@
 // script.js — login + dashboard; part number is the ONLY selector for details; hard-freeze Pause
 document.addEventListener('DOMContentLoaded', () => {
-  const API_ROOT = 'https://czm-us-wireshop-backend.onrender.com';
+  const API_ROOT = 'https://wireshop-backend.onrender.com';
   const API_JOBS = `${API_ROOT}/api/jobs`;
 
   // If someone lands on the old dashboard page, shove them to Build Next.
