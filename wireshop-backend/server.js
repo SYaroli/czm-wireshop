@@ -10,6 +10,7 @@ const attachBuildTasks = require("./build_tasks");
 process.env.TZ = process.env.TZ || "America/New_York";
 
 const usersRouter = require("./routes/users");
+const authRouter = require("./routes/auth"); // <-- ADD
 const jobsRouter = require("./routes/jobs");
 const archiveRouter = require("./routes/archive");
 const assignmentsRouter = require("./routes/assignments");
@@ -46,21 +47,17 @@ function isAllowedOrigin(origin) {
 
 const corsConfig = {
   origin: function (origin, callback) {
-    if (!origin) return callback(null, true);      // curl/postman
+    if (!origin) return callback(null, true); // curl/postman
     if (isAllowedOrigin(origin)) return callback(null, origin); // echo exact origin
     return callback(new Error("Not allowed by CORS"));
   },
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type","Authorization","x-user","x-role","x-pin","x-admin"],
+  allowedHeaders: ["Content-Type", "Authorization", "x-user", "x-role", "x-pin", "x-admin"],
   credentials: true,
   optionsSuccessStatus: 204,
 };
 
 app.use(cors(corsConfig));
-app.options("*", cors(corsConfig));
-
-app.use(cors(corsConfig));
-
 // must respond to preflight with SAME config
 app.options("*", cors(corsConfig));
 
@@ -78,6 +75,7 @@ app.get("/api/auth/me", (req, res) => {
 });
 
 // ----- mount routers -----
+app.use("/api/auth", authRouter); // <-- ADD
 app.use("/api/users", usersRouter);
 app.use("/api/jobs", jobsRouter);
 app.use("/api/archive", archiveRouter);
@@ -200,10 +198,7 @@ function getClientUser(req) {
 
 function looksLikeFinish(src = {}, url = "") {
   const u = (url || "").toLowerCase();
-  if (
-    u.includes("/finish") ||
-    (u.endsWith("/log") && (src.action || "").toLowerCase() === "finish")
-  )
+  if (u.includes("/finish") || (u.endsWith("/log") && (src.action || "").toLowerCase() === "finish"))
     return true;
   const lower = (k) => String(src[k] ?? "").toLowerCase();
   const hay = [lower("action"), lower("status"), lower("event"), lower("op"), lower("type")].join("|");
@@ -239,18 +234,9 @@ app.use("/api/jobs", (req, res, next) => {
     const url = req.originalUrl || req.url;
     if (!looksLikeFinish(src, url)) return;
 
-    let username =
-      pick(src, ["technician", "tech", "username", "user", "name"]) || getClientUser(req);
+    let username = pick(src, ["technician", "tech", "username", "user", "name"]) || getClientUser(req);
     let part =
-      pick(src, [
-        "part_number",
-        "partNumber",
-        "part",
-        "partNo",
-        "print",
-        "print_number",
-        "printNumber",
-      ]) ||
+      pick(src, ["part_number", "partNumber", "part", "partNo", "print", "print_number", "printNumber"]) ||
       (username && lastStartByUser.get(username)?.part_number) ||
       null;
 
@@ -274,8 +260,7 @@ app.use("/api/jobs", (req, res, next) => {
         status: "archived",
         expected_minutes,
         total_active_sec:
-          toInt(pick(src, ["total_active_sec", "totalSeconds", "total", "elapsed", "timeActiveSec"])) ??
-          null,
+          toInt(pick(src, ["total_active_sec", "totalSeconds", "total", "elapsed", "timeActiveSec"])) ?? null,
         started_at,
         finished_at,
         notes: pick(src, ["notes", "note"]) || null,
@@ -295,5 +280,3 @@ app.use("/api/jobs", (req, res, next) => {
 
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => console.log(`WireShop backend listening on ${PORT}`));
-
-
