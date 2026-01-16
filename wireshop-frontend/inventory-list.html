@@ -68,7 +68,7 @@
   </style>
 </head>
 <body>
-  <!-- Top navigation (same structure as Build Next) -->
+  <!-- Top navigation -->
   <div class="brand-bar">
     <div class="brand-inner">
       <a class="brand-logo" href="/dashboard.html">
@@ -80,13 +80,12 @@
         <a class="navbtn" href="/assignments.html">Build Next</a>
         <a class="navbtn active" href="/inventory">Inventory</a>
         <a class="navbtn" href="/archive.html">Archive</a>
-        <a class="navbtn" href="/admin.html">Admin</a>
+        <a id="adminNavBtn" class="navbtn" href="/admin.html">Admin</a>
         <button id="logoutBtn" class="navbtn">Logout</button>
       </div>
     </div>
   </div>
 
-  <!-- Inventory card -->
   <div class="inventory-shell">
     <div class="inventory-header">
       <h2>Inventory — Snapshot</h2>
@@ -106,7 +105,6 @@
     <div id="listBody" class="list-body"></div>
   </div>
 
-  <!-- Edit/Add modal -->
   <div id="editModalBackdrop" class="modal-backdrop">
     <div class="modal">
       <h3 id="modalTitle">Edit Part</h3>
@@ -124,15 +122,24 @@
   </div>
 
   <!-- Data sources -->
-  <script src="/users.js"></script>
   <script src="/catalog.js"></script>
   <script>
     const API_BASE = 'https://wireshop-backend.onrender.com/api';
 
-    // simple auth + logout (match assignments.html behavior)
-    const currentUser = (()=>{ try{ return JSON.parse(localStorage.getItem('user')||'{}'); }catch{ return {}; } })();
-    if (!currentUser || !currentUser.username) { window.location.href = '/index.html'; }
-    document.getElementById('logoutBtn')?.addEventListener('click', ()=>{ localStorage.removeItem('user'); location.href = '/index.html'; });
+    function getUser(){
+      try{ return JSON.parse(localStorage.getItem('user')||'null'); }catch{ return null; }
+    }
+    const currentUser = getUser();
+    if (!currentUser || !currentUser.username) window.location.href = '/index.html';
+
+    const isAdmin = String(currentUser.role || '').toLowerCase() === 'admin';
+    const adminNavBtn = document.getElementById('adminNavBtn');
+    if (adminNavBtn) adminNavBtn.style.display = isAdmin ? 'inline-block' : 'none';
+
+    document.getElementById('logoutBtn')?.addEventListener('click', ()=>{
+      localStorage.removeItem('user');
+      location.href = '/index.html';
+    });
 
     const listBody = document.getElementById('listBody');
     const filterBox = document.getElementById('filterBox');
@@ -144,27 +151,19 @@
 
     let ALL_ROWS = [];
     let DB_ROWS = {};
-    let isAdmin = false;
     let modalMode = 'edit';
     let editingPart = null;
 
-    function computeIsAdmin(u){
-      const uname = (u?.username || u?.name || u?.user || '').trim();
-      const fromUsersJs =
-        (window.ADMIN_USERS && Array.isArray(window.ADMIN_USERS) && window.ADMIN_USERS.includes(uname)) ||
-        (window.ADMINS && Array.isArray(window.ADMINS) && window.ADMINS.includes(uname));
-      if (fromUsersJs) return true;
-      const FALLBACK = ['Shane.Yaroli','Tyler.Ellis'];
-      return FALLBACK.includes(uname);
+    // Admin-only controls
+    addBtn.style.display = isAdmin ? 'inline-block' : 'none';
+    document.getElementById('deleteBtn').style.display = isAdmin ? 'inline-block' : 'none';
+
+    function userHeader(){
+      return currentUser.username;
     }
 
     async function loadData(){
-      isAdmin = computeIsAdmin(currentUser);
-      addBtn.style.display = isAdmin ? 'inline-block' : 'none';
-
-      const invRes = await fetch(API_BASE+'/inventory-all',{
-        headers:{'x-user': currentUser.username||currentUser.name||currentUser.user||currentUser}
-      });
+      const invRes = await fetch(API_BASE+'/inventory-all', { headers:{'x-user': userHeader()} });
       const invData = await invRes.json();
       DB_ROWS = {}; invData.forEach(r => DB_ROWS[r.partNumber]=r);
 
@@ -218,126 +217,184 @@
       const onlyZ = cbOnlyZero.checked;
 
       listBody.innerHTML=''; let shown=0;
-      ALL_ROWS.forEach(row=>{
-        if(filter){
-          const hay = (row.partNumber+' '+(row.printName||'')+' '+(row.location||'')).toLowerCase();
-          if(!hay.includes(filter)) return;
+
+      ALL_ROWS.forEach(r=>{
+        const hay = `${r.partNumber} ${r.printName} ${r.location} ${r.notes||''}`.toLowerCase();
+        if(filter && !hay.includes(filter)) return;
+
+        const qty = Number(r.qty||0);
+        if(onlyNZ && qty===0) return;
+        if(onlyZ && qty!==0) return;
+
+        shown++;
+        const row = document.createElement('div');
+        row.className='row';
+
+        const adjCell = document.createElement('div');
+        adjCell.className='adjust-controls';
+
+        if(isAdmin){
+          const input = document.createElement('input');
+          input.className='qty-input';
+          input.type='number';
+          input.placeholder='qty';
+          input.value='';
+
+          const apply = document.createElement('button');
+          apply.className='apply-btn';
+          apply.textContent='Apply';
+          apply.addEventListener('click', ()=>applyAdjust(r.partNumber, input.value));
+
+          const edit = document.createElement('button');
+          edit.className='edit-btn';
+          edit.textContent='Edit';
+          edit.addEventListener('click', ()=>openEdit(r.partNumber));
+
+          adjCell.appendChild(input);
+          adjCell.appendChild(apply);
+          adjCell.appendChild(edit);
+        }else{
+          const muted = document.createElement('div');
+          muted.className='muted';
+          muted.textContent='—';
+          adjCell.appendChild(muted);
         }
-        if(onlyNZ && (!row.qty || row.qty===0)) return;
-        if(onlyZ && (row.qty && row.qty!==0)) return;
 
-        const div = document.createElement('div'); div.className='row';
+        row.innerHTML = `
+          <div><a class="part-link" href="/inv/${encodeURIComponent(r.partNumber)}" target="_blank">${r.partNumber}</a></div>
+          <div>${escapeHtml(r.printName||'')}</div>
+          <div>${escapeHtml(r.location||'')}</div>
+          <div>${qty}</div>
+        `;
+        row.appendChild(adjCell);
 
-        const partA = document.createElement('a');
-        partA.href = '/inv/'+encodeURIComponent(row.partNumber);
-        partA.textContent = row.partNumber;
-        partA.style.color='#003574'; partA.style.fontSize='12px';
+        const notes = document.createElement('div');
+        notes.className='notes-cell';
+        notes.title = r.notes || '';
+        notes.textContent = r.notes || '';
+        row.appendChild(notes);
 
-        const nameDiv = document.createElement('div'); nameDiv.textContent=row.printName||''; nameDiv.style.fontSize='12px';
-        const locDiv = document.createElement('div'); locDiv.textContent=row.location||''; locDiv.style.fontSize='12px';
-        const qtyDiv = document.createElement('div'); qtyDiv.textContent = row.qty!=null?row.qty:0; qtyDiv.style.fontSize='12px';
-
-        const adjustDiv = document.createElement('div'); adjustDiv.className='adjust-controls';
-        if (isAdmin){
-          const adjustInput = document.createElement('input'); adjustInput.type='text'; adjustInput.className='qty-input'; adjustInput.placeholder='+/-';
-          const applyBtn = document.createElement('button'); applyBtn.className='apply-btn'; applyBtn.textContent='Apply';
-          applyBtn.onclick = ()=>applyAdjust(row.partNumber,row.qty,adjustInput.value);
-          const editBtn = document.createElement('button'); editBtn.className='edit-btn'; editBtn.textContent='Edit';
-          editBtn.onclick = ()=>openEdit(row);
-          adjustDiv.append(adjustInput,applyBtn,editBtn);
-        } else {
-          adjustDiv.innerHTML = '<span class="muted">—</span>';
-        }
-
-        const notesDiv = document.createElement('div'); notesDiv.className='notes-cell'; notesDiv.textContent=row.notes||'';
-
-        div.append(partA,nameDiv,locDiv,qtyDiv,adjustDiv,notesDiv);
-        listBody.appendChild(div); shown++;
+        listBody.appendChild(row);
       });
-      countLabel.textContent = shown+' items';
+
+      countLabel.textContent = `${shown} items`;
     }
 
-    async function applyAdjust(partNumber,currentQty,deltaStr){
+    function escapeHtml(s){
+      return String(s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+    }
+
+    async function applyAdjust(partNumber, newQty){
       if(!isAdmin) return;
-      const delta = Number(deltaStr); if(isNaN(delta)){alert('enter a number');return;}
-      const newQty=(Number(currentQty)||0)+delta;
-      const res=await fetch(API_BASE+'/inventory/'+encodeURIComponent(partNumber)+'/qty',{
+      const qty = Number(newQty);
+      if(!Number.isFinite(qty)) return alert('Enter a number.');
+      const res = await fetch(API_BASE+'/inventory/adjust', {
         method:'POST',
-        headers:{'Content-Type':'application/json','x-user': currentUser.username||currentUser.name||currentUser.user||currentUser},
-        body:JSON.stringify({qty:newQty})
+        headers:{'Content-Type':'application/json','x-user': userHeader()},
+        body: JSON.stringify({ partNumber, qty })
       });
-      const data=await res.json(); if(!res.ok){alert(data.error||'failed to adjust');return;}
-      const row=ALL_ROWS.find(r=>r.partNumber===partNumber); if(row) row.qty=newQty; renderList();
+      if(!res.ok) return alert('Adjust failed');
+      await loadData();
     }
 
-    function openEdit(row,isNew=false){
+    function openEdit(partNumber){
       if(!isAdmin) return;
-      modalMode = isNew?'add':'edit';
-      editingPart = row ? {...row} : {partNumber:'',printName:'',location:'',qty:0,notes:''};
-      document.getElementById('modalTitle').textContent = isNew?'Add Part':'Edit Part';
-      document.getElementById('mPart').readOnly = !isNew;
-      document.getElementById('mPart').value = editingPart.partNumber||'';
-      document.getElementById('mDesc').value = editingPart.printName||'';
-      document.getElementById('mLoc').value = editingPart.location||'';
-      document.getElementById('mQty').value = editingPart.qty!=null?editingPart.qty:0;
-      document.getElementById('mNotes').value = editingPart.notes||'';
+      modalMode = 'edit';
+      editingPart = partNumber;
+      const row = DB_ROWS[partNumber] || ALL_ROWS.find(x=>x.partNumber===partNumber) || {};
+      document.getElementById('modalTitle').textContent = 'Edit Part';
+      document.getElementById('mPart').value = partNumber || '';
+      document.getElementById('mPart').readOnly = true;
+      document.getElementById('mDesc').value = row.description ?? row.printName ?? '';
+      document.getElementById('mLoc').value = row.location ?? '';
+      document.getElementById('mQty').value = Number(row.qty ?? 0);
+      document.getElementById('mNotes').value = row.notes ?? '';
+      document.getElementById('deleteBtn').style.display = 'inline-block';
       editModalBackdrop.style.display='flex';
-      document.getElementById('deleteBtn').style.display = isNew?'none':'inline-block';
+    }
+
+    function openAdd(){
+      if(!isAdmin) return;
+      modalMode = 'add';
+      editingPart = null;
+      document.getElementById('modalTitle').textContent = 'Add Part';
+      document.getElementById('mPart').value = '';
+      document.getElementById('mPart').readOnly = false;
+      document.getElementById('mDesc').value = '';
+      document.getElementById('mLoc').value = '';
+      document.getElementById('mQty').value = 0;
+      document.getElementById('mNotes').value = '';
+      document.getElementById('deleteBtn').style.display = 'none';
+      editModalBackdrop.style.display='flex';
     }
 
     async function saveModal(){
       if(!isAdmin) return;
-      const part=document.getElementById('mPart').value.trim();
-      const desc=document.getElementById('mDesc').value;
-      const loc=document.getElementById('mLoc').value;
-      const qty=Number(document.getElementById('mQty').value||0);
-      const notes=document.getElementById('mNotes').value;
-      if(!part){alert('part number required');return;}
+      const partNumber = document.getElementById('mPart').value.trim();
+      const description = document.getElementById('mDesc').value.trim();
+      const location = document.getElementById('mLoc').value.trim();
+      const qty = Number(document.getElementById('mQty').value || 0);
+      const notes = document.getElementById('mNotes').value.trim();
 
-      const payload={partNumber:part,description:desc,location:loc,qty,minQty:0,notes};
-      const hdrs={'Content-Type':'application/json','x-user': currentUser.username||currentUser.name||currentUser.user||currentUser};
+      if(!partNumber) return alert('Part number required.');
 
-      if(modalMode==='add'){
-        const res=await fetch(API_BASE+'/inventory',{method:'POST',headers:hdrs,body:JSON.stringify(payload)});
-        const data=await res.json(); if(!res.ok){alert(data.error||'failed to add');return;}
-      }else{
-        const res=await fetch(API_BASE+'/inventory/'+encodeURIComponent(part),{method:'PUT',headers:hdrs,body:JSON.stringify(payload)});
-        const data=await res.json(); if(!res.ok){alert(data.error||'failed to save');return;}
-      }
-      editModalBackdrop.style.display='none'; await loadData();
+      const url = modalMode === 'add' ? API_BASE+'/inventory/add' : API_BASE+'/inventory/edit';
+      const payload = { partNumber, description, location, qty, notes };
+
+      const res = await fetch(url, {
+        method:'POST',
+        headers:{'Content-Type':'application/json','x-user': userHeader()},
+        body: JSON.stringify(payload)
+      });
+      if(!res.ok) return alert('Save failed');
+      closeModal();
+      await loadData();
     }
 
     async function deleteModal(){
       if(!isAdmin) return;
-      const part=document.getElementById('mPart').value.trim(); if(!part) return;
-      if(!confirm('Delete '+part+'?')) return;
-      const res=await fetch(API_BASE+'/inventory/'+encodeURIComponent(part),{
-        method:'DELETE',
-        headers:{'x-user': currentUser.username||currentUser.name||currentUser.user||currentUser}
+      const partNumber = document.getElementById('mPart').value.trim();
+      if(!partNumber) return;
+      if(!confirm(`Delete ${partNumber}?`)) return;
+
+      const res = await fetch(API_BASE+'/inventory/delete', {
+        method:'POST',
+        headers:{'Content-Type':'application/json','x-user': userHeader()},
+        body: JSON.stringify({ partNumber })
       });
-      const data=await res.json(); if(!res.ok){alert(data.error||'failed to delete');return;}
-      editModalBackdrop.style.display='none'; await loadData();
+      if(!res.ok) return alert('Delete failed');
+      closeModal();
+      await loadData();
     }
 
-    // Events
-    document.getElementById('exportBtn').addEventListener('click',()=>{
-      let csv='partNumber,description,location,qty,notes\n';
-      ALL_ROWS.forEach(r=>{
-        csv+=`"${r.partNumber}","${(r.printName||'').replace(/"/g,'""')}","${(r.location||'').replace(/"/g,'""')}",${r.qty||0},"${(r.notes||'').replace(/"/g,'""')}"\n`;
-      });
-      const blob=new Blob([csv],{type:'text/csv'}); const url=URL.createObjectURL(blob);
-      const a=document.createElement('a'); a.href=url; a.download='inventory.csv'; a.click(); URL.revokeObjectURL(url);
-    });
-    document.getElementById('addBtn').addEventListener('click',()=>openEdit(null,true));
-    document.getElementById('cancelBtn').addEventListener('click',()=>editModalBackdrop.style.display='none');
-    document.getElementById('saveBtn').addEventListener('click',saveModal);
-    document.getElementById('deleteBtn').addEventListener('click',deleteModal);
-    filterBox.addEventListener('input',renderList);
-    cbNonZero.addEventListener('change',renderList);
-    cbOnlyZero.addEventListener('change',renderList);
+    function closeModal(){
+      editModalBackdrop.style.display='none';
+    }
 
-    // Kickoff
-    loadData();
+    async function exportCsv(){
+      const res = await fetch(API_BASE+'/inventory/export', { headers:{'x-user': userHeader()} });
+      if(!res.ok) return alert('Export endpoint not available');
+      const blob = await res.blob();
+      const a=document.createElement('a');
+      a.href=URL.createObjectURL(blob);
+      a.download='inventory.csv';
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+
+    // events
+    filterBox.addEventListener('input', renderList);
+    cbNonZero.addEventListener('change', ()=>{ if(cbNonZero.checked) cbOnlyZero.checked=false; renderList(); });
+    cbOnlyZero.addEventListener('change', ()=>{ if(cbOnlyZero.checked) cbNonZero.checked=false; renderList(); });
+    document.getElementById('exportBtn').addEventListener('click', exportCsv);
+
+    addBtn.addEventListener('click', openAdd);
+    document.getElementById('cancelBtn').addEventListener('click', closeModal);
+    document.getElementById('saveBtn').addEventListener('click', saveModal);
+    document.getElementById('deleteBtn').addEventListener('click', deleteModal);
+    editModalBackdrop.addEventListener('click', (e)=>{ if(e.target===editModalBackdrop) closeModal(); });
+
+    loadData().catch(err=>{ console.error(err); alert('Inventory load failed'); });
   </script>
 </body>
 </html>
