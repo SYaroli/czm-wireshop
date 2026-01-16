@@ -115,17 +115,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }catch{}
 
-      // Fallback to static users.js
-      const u = (window.users || []).find(x =>
-        x && typeof x.username === 'string' &&
-        x.username.toLowerCase() === uname.toLowerCase() &&
-        String(x.pin) === String(pin)
-      );
-      if (!u){ err.textContent='Invalid username or PIN.'; return; }
-      err.textContent=''; setUser({ username: u.username, role: u.role });
-      const _p=new URLSearchParams(location.search);const _r=_p.get('redirect');window.location.href=_r?_r:'assignments.html';
-    });
-  })();
+     err.textContent = "Invalid username or PIN.";
+
 
   // ---------- DASHBOARD ----------
   (function initDashboard(){
