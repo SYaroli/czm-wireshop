@@ -104,7 +104,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Try backend users first
       try{
-        const res = await fetch(`${API_ROOT}/api/users/login`, {
+        const res = await fetch(`${API_ROOT}/api/auth/login`, ...
+ {
           method:'POST', headers:{'Content-Type':'application/json'},
           body: JSON.stringify({ username: uname, pin })
         });
