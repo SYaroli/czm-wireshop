@@ -102,22 +102,30 @@ document.addEventListener('DOMContentLoaded', () => {
       const uname = (document.getElementById('usernameInput').value || '').trim();
       const pin   = (document.getElementById('pinInput').value || '').trim();
 
-      // Try backend users first
+      // Try backend users only (NO users.js fallback)
       try{
-        const res = await fetch(`${API_ROOT}/api/auth/login`, ...
- {
-          method:'POST', headers:{'Content-Type':'application/json'},
+        const res = await fetch(`${API_ROOT}/api/auth/login`, {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
           body: JSON.stringify({ username: uname, pin })
         });
+
         if (res.ok){
           const data = await res.json();
           setUser({ username: data.username, role: data.role });
-          const _p=new URLSearchParams(location.search);const _r=_p.get('redirect');window.location.href=_r?_r:'assignments.html';return;
+
+          const _p = new URLSearchParams(location.search);
+          const _r = _p.get('redirect');
+          window.location.href = _r ? _r : 'assignments.html';
+          return;
         }
-      }catch{}
+      }catch(ex){
+        console.error('Login error:', ex);
+      }
 
-     err.textContent = "Invalid username or PIN.";
-
+      err.textContent = "Invalid username or PIN.";
+    });
+  })();
 
   // ---------- DASHBOARD ----------
   (function initDashboard(){
