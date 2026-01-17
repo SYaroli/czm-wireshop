@@ -26,6 +26,39 @@
     }
     .btn-mini.save{ background:#111; color:#fff; }
     .btn-mini.del{ background:#c80000; color:#fff; }
+
+    /* Make the top nav buttons match the rest of the site */
+    .brand-actions{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+    .brand-actions .btn{
+      text-decoration:none;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      padding:8px 14px;
+      border-radius:12px;
+      font-weight:800;
+      font-size:13px;
+      line-height:1;
+      border:0;
+      cursor:pointer;
+      user-select:none;
+    }
+    .brand-actions .btn.secondary{
+      background:#222;
+      color:#fff;
+    }
+    .brand-actions .btn.primary{
+      background:#c80000;
+      color:#fff;
+    }
+    .brand-actions .btn.active{
+      outline:2px solid rgba(255,255,255,.35);
+    }
   </style>
 </head>
 <body>
@@ -37,10 +70,10 @@
       </a>
 
       <div class="brand-actions" id="navActions">
-        <a href="assignments.html" class="navbtn">Assignments (Build Next)</a>
-        <a href="/inventory" class="navbtn">Inventory</a>
-        <a href="admin.html" class="navbtn active">Admin</a>
-        <a href="index.html" class="navbtn" id="logoutNav">Logout</a>
+        <a href="assignments.html" class="btn secondary">Assignments (Build Next)</a>
+        <a href="/inventory" class="btn secondary">Inventory</a>
+        <a href="admin.html" class="btn primary active">Admin</a>
+        <a href="index.html" class="btn secondary" id="logoutNav">Logout</a>
       </div>
     </div>
   </div>
