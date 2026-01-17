@@ -6,7 +6,6 @@
   <title>CZM • Admin</title>
   <link rel="stylesheet" href="style.css" />
   <style>
-    /* Admin page is just Users now */
     .navbtn{ border:0; cursor:pointer; }
     .navbtn.active{ outline:2px solid rgba(255,255,255,.25); }
     .table-wrap{ overflow:auto; }
@@ -26,113 +25,128 @@
     }
     .btn-mini.save{ background:#111; color:#fff; }
     .btn-mini.del{ background:#c80000; color:#fff; }
-
-    /* Make the top nav buttons match the rest of the site */
-    .brand-actions{
-      display:flex;
-      gap:10px;
-      align-items:center;
-      flex-wrap:wrap;
-    }
-    .brand-actions .btn{
-      text-decoration:none;
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      padding:8px 14px;
+    .pill-link{
+      display:inline-block;
+      padding:6px 10px;
       border-radius:12px;
-      font-weight:800;
-      font-size:13px;
-      line-height:1;
-      border:0;
-      cursor:pointer;
-      user-select:none;
-    }
-    .brand-actions .btn.secondary{
-      background:#222;
+      background:#1a1c20;
+      border:1px solid #3a3f44;
       color:#fff;
+      text-decoration:none;
+      font-size:12px;
+      font-weight:700;
     }
-    .brand-actions .btn.primary{
-      background:#c80000;
-      color:#fff;
+    .pill-link:hover{ filter:brightness(1.15); }
+
+    .admin-grid{
+      max-width:1200px;
+      margin:14px auto 24px;
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:14px;
+      padding:0 12px;
     }
-    .brand-actions .btn.active{
-      outline:2px solid rgba(255,255,255,.35);
+    @media(max-width: 980px){
+      .admin-grid{ grid-template-columns:1fr; }
     }
   </style>
 </head>
 <body>
-
   <div class="brand-bar">
     <div class="brand-inner">
-      <a class="brand-logo" href="/dashboard.html">
-        <img src="/czm-logo.png" alt="CZM">
+      <a class="brand-logo" href="dashboard.html">
+        <img src="czm-logo.png" alt="CZM" />
         <h1 class="brand-title">CZM • Admin</h1>
       </a>
 
-      <div class="brand-actions">
-        <a class="btn secondary" href="/assignments.html">Build Next</a>
-        <a class="btn secondary" href="/inventory">Inventory</a>
-        <a class="btn primary active" href="/admin.html">Admin</a>
-        <button id="logoutBtn" class="btn secondary" type="button">Logout</button>
+      <div class="brand-actions" id="navActions">
+        <a href="assignments.html" class="navbtn">Assignments (Build Next)</a>
+        <a href="/inventory" class="navbtn">Inventory</a>
+        <a href="admin.html" class="navbtn active">Admin</a>
+        <a href="index.html" class="navbtn" id="logoutNav">Logout</a>
       </div>
     </div>
   </div>
 
   <main class="page">
-    <div class="card" style="margin-top:14px;">
-      <h2 style="margin:0 0 10px 0;">Users</h2>
-
-      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px;">
-        <label style="display:flex;flex-direction:column;gap:4px;">
-          <span class="muted">Username</span>
-          <input id="uName" type="text" placeholder="firstname.lastname" />
-        </label>
-
-        <label style="display:flex;flex-direction:column;gap:4px;">
-          <span class="muted">PIN</span>
-          <input id="uPin" type="text" inputmode="numeric" placeholder="1234" maxlength="10" />
-        </label>
-
-        <label style="display:flex;flex-direction:column;gap:4px;">
-          <span class="muted">Role</span>
-          <select id="uRole">
-            <option value="tech" selected>tech</option>
-            <option value="admin">admin</option>
-          </select>
-        </label>
-
-        <button id="btnAddUser" class="btn primary" type="button">Add User</button>
+    <div class="admin-grid">
+      <!-- LOW STOCK ALERTS -->
+      <div class="card">
+        <h2 style="margin:0 0 10px 0;">Low Stock Alerts</h2>
+        <div class="muted" style="margin-bottom:10px;">Parts where Qty is at or below Min Qty (Min Qty must be > 0).</div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="text-align:left;">Part</th>
+                <th style="text-align:left;">Location</th>
+                <th style="text-align:left;">Qty</th>
+                <th style="text-align:left;">Min</th>
+                <th style="text-align:left;">Open</th>
+              </tr>
+            </thead>
+            <tbody id="lowStockBody">
+              <tr><td colspan="5" style="opacity:.7;">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div id="lowMsg" class="msg muted"></div>
       </div>
 
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th style="text-align:left;">Username</th>
-              <th style="text-align:left;">Role</th>
-              <th style="text-align:left;">Active</th>
-              <th style="text-align:left;">New PIN</th>
-              <th style="text-align:left;">Save</th>
-              <th style="text-align:left;">Delete</th>
-            </tr>
-          </thead>
-          <tbody id="usersTableBody">
-            <tr><td colspan="6" style="opacity:.7;">Loading…</td></tr>
-          </tbody>
-        </table>
-      </div>
+      <!-- USERS -->
+      <div class="card">
+        <h2 style="margin:0 0 10px 0;">Users</h2>
 
-      <div id="uMsg" class="msg muted"></div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px;">
+          <label style="display:flex;flex-direction:column;gap:4px;">
+            <span class="muted">Username</span>
+            <input id="uName" type="text" placeholder="firstname.lastname" />
+          </label>
+
+          <label style="display:flex;flex-direction:column;gap:4px;">
+            <span class="muted">PIN</span>
+            <input id="uPin" type="text" inputmode="numeric" placeholder="1234" maxlength="10" />
+          </label>
+
+          <label style="display:flex;flex-direction:column;gap:4px;">
+            <span class="muted">Role</span>
+            <select id="uRole">
+              <option value="tech" selected>tech</option>
+              <option value="admin">admin</option>
+            </select>
+          </label>
+
+          <button id="btnAddUser" class="btn primary" type="button">Add User</button>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="text-align:left;">Username</th>
+                <th style="text-align:left;">Role</th>
+                <th style="text-align:left;">Active</th>
+                <th style="text-align:left;">New PIN</th>
+                <th style="text-align:left;">Save</th>
+                <th style="text-align:left;">Delete</th>
+              </tr>
+            </thead>
+            <tbody id="usersTableBody">
+              <tr><td colspan="6" style="opacity:.7;">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div id="uMsg" class="msg muted"></div>
+      </div>
     </div>
   </main>
 
   <script>
-    // ===== Config =====
     const API_BASE = (localStorage.getItem("API_BASE") || "https://wireshop-backend.onrender.com").replace(/\/+$/, "");
     const API_USERS = API_BASE + '/api/users';
+    const API_INV_ALL = API_BASE + '/api/inventory-all';
 
-    // ===== Session helpers =====
     function getSession(){
       let u = null;
       try { u = JSON.parse(localStorage.getItem('user') || 'null'); } catch {}
@@ -145,28 +159,19 @@
 
     function requireAdmin(){
       const s = getSession();
-      if(!s.username){
-        window.location.replace('index.html');
-        return;
-      }
-      if(s.role !== 'admin'){
-        window.location.replace('assignments.html');
-        return;
-      }
-    }
-
-    function setMsg(text, kind){
-      const el = document.getElementById('uMsg');
-      el.className = 'msg ' + (kind || 'muted');
-      el.textContent = text || '';
+      if(!s.username){ window.location.replace('index.html'); return; }
+      if(s.role !== 'admin'){ window.location.replace('assignments.html'); return; }
     }
 
     function authHeaders(){
       const s = getSession();
-      return {
-        'Content-Type': 'application/json',
-        'x-user': s.username
-      };
+      return { 'Content-Type': 'application/json', 'x-user': s.username };
+    }
+
+    function setMsg(elId, text, kind){
+      const el = document.getElementById(elId);
+      el.className = 'msg ' + (kind || 'muted');
+      el.textContent = text || '';
     }
 
     function normalizeRole(r){
@@ -176,25 +181,69 @@
       return 'admin';
     }
 
-    // ===== Logout =====
-    document.getElementById('logoutBtn')?.addEventListener('click', () => {
+    function escapeHtml(s){
+      return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+    function escapeAttr(s){
+      return escapeHtml(s).replace(/`/g,'');
+    }
+
+    // Logout
+    document.getElementById('logoutNav')?.addEventListener('click', (e) => {
+      e.preventDefault();
       localStorage.removeItem('user');
       localStorage.removeItem('username');
       localStorage.removeItem('role');
       window.location.replace('index.html');
     });
 
-    // ===== Gatekeep early =====
     requireAdmin();
 
-    // ===== Users API =====
+    // ===== LOW STOCK =====
+    async function loadLowStock(){
+      const tbody = document.getElementById('lowStockBody');
+      tbody.innerHTML = '<tr><td colspan="5" style="opacity:.7;">Loading…</td></tr>';
+
+      try{
+        const res = await fetch(API_INV_ALL, { headers: authHeaders() });
+        const data = await res.json();
+        if(!res.ok) throw new Error(data?.error || 'failed to load inventory');
+
+        const lows = (data || [])
+          .filter(r => Number(r.minQty) > 0)
+          .filter(r => Number(r.qty) <= Number(r.minQty))
+          .sort((a,b) => (a.partNumber||'').localeCompare(b.partNumber||''));
+
+        if(lows.length === 0){
+          tbody.innerHTML = '<tr><td colspan="5" style="opacity:.7;">No low stock items 🎉</td></tr>';
+          setMsg('lowMsg','', 'muted');
+          return;
+        }
+
+        tbody.innerHTML = lows.map(r => `
+          <tr>
+            <td>${escapeHtml(r.partNumber||'')}</td>
+            <td>${escapeHtml(r.location||'')}</td>
+            <td>${Number(r.qty)||0}</td>
+            <td>${Number(r.minQty)||0}</td>
+            <td><a class="pill-link" href="/inv/${encodeURIComponent(r.partNumber)}">Open</a></td>
+          </tr>
+        `).join('');
+
+        setMsg('lowMsg', `${lows.length} item(s) need attention.`, 'err');
+      }catch(err){
+        console.error(err);
+        tbody.innerHTML = '<tr><td colspan="5" style="opacity:.7;">Low stock load failed</td></tr>';
+        setMsg('lowMsg', String(err.message || err), 'err');
+      }
+    }
+
+    // ===== USERS =====
     async function apiGetUsers(){
       const res = await fetch(API_USERS, { headers: authHeaders() });
-      if(!res.ok){
-        const t = await res.text().catch(()=> '');
-        throw new Error('Users load failed: ' + res.status + ' ' + t);
-      }
-      return res.json();
+      const data = await res.json().catch(()=>null);
+      if(!res.ok) throw new Error(data?.error || ('Users load failed: ' + res.status));
+      return data;
     }
 
     async function apiAddUser(payload){
@@ -203,24 +252,21 @@
         headers: authHeaders(),
         body: JSON.stringify(payload)
       });
-      if(!res.ok){
-        const t = await res.text().catch(()=> '');
-        throw new Error('Add user failed: ' + res.status + ' ' + t);
-      }
-      return res.json().catch(()=> ({}));
+      const data = await res.json().catch(()=>null);
+      if(!res.ok) throw new Error(data?.error || ('Add user failed: ' + res.status));
+      return data;
     }
 
+    // IMPORTANT: backend updates are PATCH by ID
     async function apiUpdateUserById(id, payload){
       const res = await fetch(API_USERS + '/' + encodeURIComponent(id), {
         method: 'PATCH',
         headers: authHeaders(),
         body: JSON.stringify(payload)
       });
-      if(!res.ok){
-        const t = await res.text().catch(()=> '');
-        throw new Error('Update failed: ' + res.status + ' ' + t);
-      }
-      return res.json().catch(()=> ({}));
+      const data = await res.json().catch(()=>null);
+      if(!res.ok) throw new Error(data?.error || ('Update failed: ' + res.status));
+      return data;
     }
 
     async function apiDeleteUser(username){
@@ -228,19 +274,9 @@
         method: 'DELETE',
         headers: authHeaders()
       });
-      if(!res.ok){
-        const t = await res.text().catch(()=> '');
-        throw new Error('Delete failed: ' + res.status + ' ' + t);
-      }
-      return res.json().catch(()=> ({}));
-    }
-
-    // ===== Rendering =====
-    function escapeHtml(s){
-      return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-    }
-    function escapeAttr(s){
-      return escapeHtml(s).replace(/`/g,'');
+      const data = await res.json().catch(()=>null);
+      if(!res.ok) throw new Error(data?.error || ('Delete failed: ' + res.status));
+      return data;
     }
 
     function renderUsers(users){
@@ -252,7 +288,7 @@
 
       tbody.innerHTML = users.map(u => {
         const id = u.id;
-        const uname = u.username || '';
+        const uname = u.username || u.user || u.name || '';
         const role = normalizeRole(u.role);
         const active = (u.active === false || Number(u.active) === 0) ? false : true;
 
@@ -274,12 +310,8 @@
             <td>
               <input class="pinInp" type="text" inputmode="numeric" placeholder="(leave blank)" maxlength="10" />
             </td>
-            <td>
-              <button class="btn-mini save" type="button">Save</button>
-            </td>
-            <td>
-              <button class="btn-mini del" type="button">Delete</button>
-            </td>
+            <td><button class="btn-mini save" type="button">Save</button></td>
+            <td><button class="btn-mini del" type="button">Delete</button></td>
           </tr>
         `;
       }).join('');
@@ -287,46 +319,40 @@
 
     async function loadUsers(){
       try{
-        setMsg('', 'muted');
+        setMsg('uMsg','', 'muted');
         const users = await apiGetUsers();
         renderUsers(users);
       }catch(err){
         console.error(err);
         document.getElementById('usersTableBody').innerHTML =
           '<tr><td colspan="6" style="opacity:.7;">Users load failed</td></tr>';
-        setMsg(String(err.message || err), 'err');
+        setMsg('uMsg', String(err.message || err), 'err');
       }
     }
 
     async function addUser(){
       const name = (document.getElementById('uName').value || '').trim();
-      const pin = (document.getElementById('uPin').value || '').trim();
+      const pin  = (document.getElementById('uPin').value || '').trim();
       const role = normalizeRole(document.getElementById('uRole').value);
 
-      if(!name){
-        setMsg('Username required', 'err');
-        return;
-      }
-      if(!pin){
-        setMsg('PIN required', 'err');
-        return;
-      }
+      if(!name){ setMsg('uMsg','Username required','err'); return; }
+      if(!pin){ setMsg('uMsg','PIN required','err'); return; }
 
       try{
-        setMsg('Adding user…', 'muted');
+        setMsg('uMsg','Adding user…','muted');
         await apiAddUser({ username: name, pin, role });
         document.getElementById('uName').value = '';
         document.getElementById('uPin').value = '';
         document.getElementById('uRole').value = 'tech';
-        setMsg('User added.', 'ok');
+        setMsg('uMsg','User added.','ok');
         await loadUsers();
       }catch(err){
         console.error(err);
-        setMsg(String(err.message || err), 'err');
+        setMsg('uMsg', String(err.message || err), 'err');
       }
     }
 
-    function wireTableClicks(){
+    function wireUserTableClicks(){
       const tbody = document.getElementById('usersTableBody');
 
       tbody.addEventListener('click', async (e) => {
@@ -351,14 +377,14 @@
           if(newPin) payload.pin = newPin;
 
           try{
-            setMsg('Saving…', 'muted');
+            setMsg('uMsg','Saving…','muted');
             await apiUpdateUserById(id, payload);
             if(pinInp) pinInp.value = '';
-            setMsg('Saved.', 'ok');
+            setMsg('uMsg','Saved.','ok');
             await loadUsers();
           }catch(err){
             console.error(err);
-            setMsg(String(err.message || err), 'err');
+            setMsg('uMsg', String(err.message || err), 'err');
           }
           return;
         }
@@ -367,23 +393,24 @@
         if(e.target.classList.contains('del')){
           const ok = window.confirm('Delete user "' + username + '"?');
           if(!ok) return;
+
           try{
-            setMsg('Deleting…', 'muted');
+            setMsg('uMsg','Deleting…','muted');
             await apiDeleteUser(username);
-            setMsg('Deleted.', 'ok');
+            setMsg('uMsg','Deleted.','ok');
             await loadUsers();
           }catch(err){
             console.error(err);
-            setMsg(String(err.message || err), 'err');
+            setMsg('uMsg', String(err.message || err), 'err');
           }
         }
       });
     }
 
     // boot
-    requireAdmin();
     document.getElementById('btnAddUser')?.addEventListener('click', addUser);
-    wireTableClicks();
+    wireUserTableClicks();
+    loadLowStock();
     loadUsers();
   </script>
 </body>
