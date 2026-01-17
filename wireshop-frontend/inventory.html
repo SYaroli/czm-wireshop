@@ -60,6 +60,10 @@
     .detail-title{font-size:13px;color:#444}
     .detail-subtle{margin-top:8px;color:#888;font-size:12px}
 
+    .log-actions{display:flex;gap:6px;align-items:center}
+    .log-btn{border:1px solid #cfd4da;background:#eee;border-radius:6px;padding:4px 8px;font-size:12px;cursor:pointer}
+    .log-btn.red{background:#c30000;color:#fff;border-color:#a00000}
+
     @media (max-width:900px){
       .inventory-shell{max-width:100%;margin:0;border-radius:0;box-shadow:none}
       .table-head,.list-body .row{grid-template-columns:140px 1fr 90px 60px 240px}
@@ -172,6 +176,9 @@
     let ALL_ROWS = [];
     let modalMode = 'edit';
 
+    // prevents double log entries (double click / Enter / slow network rage)
+    let APPLY_BUSY = false;
+
     async function loadData(){
       const uname = getUsername(currentUser);
       const invRes = await fetch(API_BASE + '/inventory-all', { headers: { 'x-user': uname } });
@@ -261,7 +268,16 @@
         if (isAdmin){
           const adjustInput = document.createElement('input'); adjustInput.type='text'; adjustInput.className='qty-input'; adjustInput.placeholder='+/-';
           const applyBtn = document.createElement('button'); applyBtn.className='apply-btn'; applyBtn.textContent='Apply';
-          applyBtn.onclick = ()=>applyAdjust(row.partNumber,row.qty,adjustInput.value);
+
+          applyBtn.onclick = ()=>applyAdjust(row.partNumber,row.qty,adjustInput.value, applyBtn);
+
+          adjustInput.addEventListener('keydown', (e)=>{
+            if(e.key === 'Enter'){
+              e.preventDefault();
+              applyAdjust(row.partNumber,row.qty,adjustInput.value, applyBtn);
+            }
+          });
+
           const editBtn = document.createElement('button'); editBtn.className='edit-btn'; editBtn.textContent='Edit';
           editBtn.onclick = ()=>openEdit(row);
           adjustDiv.append(adjustInput,applyBtn,editBtn);
@@ -337,9 +353,19 @@
           openEdit(row);
         });
 
-        document.getElementById('detailApplyBtn')?.addEventListener('click', ()=>{
-          const deltaStr = document.getElementById('detailDelta')?.value || '';
-          applyAdjust(row.partNumber, qtyVal, deltaStr);
+        const applyBtn = document.getElementById('detailApplyBtn');
+        const deltaInput = document.getElementById('detailDelta');
+
+        applyBtn?.addEventListener('click', ()=>{
+          const deltaStr = deltaInput?.value || '';
+          applyAdjust(row.partNumber, qtyVal, deltaStr, applyBtn);
+        });
+
+        deltaInput?.addEventListener('keydown', (e)=>{
+          if(e.key === 'Enter'){
+            e.preventDefault();
+            applyBtn?.click();
+          }
         });
       }
 
@@ -379,10 +405,12 @@
                   <th style="padding:6px 4px;">Delta</th>
                   <th style="padding:6px 4px;">New Qty</th>
                   <th style="padding:6px 4px;">Note</th>
+                  ${isAdmin ? `<th style="padding:6px 4px;">Admin</th>` : ``}
                 </tr>
               </thead>
               <tbody>
                 ${data.map(r=>{
+                  const id = r.id ?? '';
                   const tsRaw = pickTs(r);
                   const ts = formatTs(tsRaw);
 
@@ -398,6 +426,14 @@
                       <td style="padding:6px 4px;">${escapeHtml(String(delta))}</td>
                       <td style="padding:6px 4px;">${escapeHtml(String(newQty))}</td>
                       <td style="padding:6px 4px;white-space:pre-wrap;">${escapeHtml(String(note))}</td>
+                      ${isAdmin ? `
+                        <td style="padding:6px 4px;">
+                          <div class="log-actions">
+                            <button class="log-btn" onclick="editLogNote(${Number(id) || 0}, '${escapeJs(String(note))}')">Edit</button>
+                            <button class="log-btn red" onclick="deleteLogRow(${Number(id) || 0}, '${escapeJs(String(partNumber))}')">Delete</button>
+                          </div>
+                        </td>
+                      ` : ``}
                     </tr>
                   `;
                 }).join('')}
@@ -410,6 +446,49 @@
       }
     }
 
+    async function deleteLogRow(id, partNumber){
+      if(!isAdmin) return;
+      if(!id) return alert('Missing log id (backend needs update)');
+      if(!confirm('Delete this movement entry?')) return;
+
+      try{
+        const uname = getUsername(currentUser);
+        const res = await fetch(`${API_BASE}/inventory-log/${id}`, {
+          method: 'DELETE',
+          headers: { 'x-user': uname }
+        });
+        const data = await res.json();
+        if(!res.ok) return alert(data?.error || 'Delete failed');
+        loadMovement(partNumber);
+      }catch(e){
+        alert('Delete failed');
+      }
+    }
+
+    async function editLogNote(id, currentNote){
+      if(!isAdmin) return;
+      if(!id) return alert('Missing log id (backend needs update)');
+
+      const newNote = prompt('Edit note:', currentNote ?? '');
+      if(newNote === null) return;
+
+      const partNumber = getPartFromInvRoute();
+
+      try{
+        const uname = getUsername(currentUser);
+        const res = await fetch(`${API_BASE}/inventory-log/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type':'application/json', 'x-user': uname },
+          body: JSON.stringify({ note: newNote })
+        });
+        const data = await res.json();
+        if(!res.ok) return alert(data?.error || 'Update failed');
+        if(partNumber) loadMovement(partNumber);
+      }catch(e){
+        alert('Update failed');
+      }
+    }
+
     function escapeHtml(str){
       return String(str ?? '')
         .replace(/&/g,'&amp;')
@@ -419,7 +498,16 @@
         .replace(/'/g,'&#039;');
     }
 
-    // ---- timestamp helpers (fix for missing date/time) ----
+    function escapeJs(str){
+      return String(str ?? '')
+        .replace(/\\/g, '\\\\')
+        .replace(/'/g, "\\'")
+        .replace(/"/g, '\\"')
+        .replace(/\n/g, '\\n')
+        .replace(/\r/g, '\\r');
+    }
+
+    // ---- timestamp helpers ----
     function pickTs(r){
       return r.ts ??
              r.time ??
@@ -437,61 +525,76 @@
 
     function formatTs(v){
       if(v == null || v === '') return '';
-      // numbers: seconds or ms
       if(typeof v === 'number'){
         const ms = v < 1e12 ? v * 1000 : v;
-        ensureDate(ms);
         return new Date(ms).toLocaleString();
       }
       const s = String(v).trim();
       if(!s) return '';
 
-      // numeric string: seconds or ms
       if(/^\d+$/.test(s)){
         const n = Number(s);
         const ms = n < 1e12 ? n * 1000 : n;
-        ensureDate(ms);
         return new Date(ms).toLocaleString();
       }
 
-      // ISO-ish string
       const d = new Date(s);
       if(!isNaN(d.getTime())) return d.toLocaleString();
-
-      // last resort: show raw
       return s;
     }
+    // ---------------------------
 
-    function ensureDate(ms){
-      // just a sanity check hook, left here for quick debugging if needed
-      // (no-op in normal operation)
-      return ms;
-    }
-    // ------------------------------------------------------
-
-    async function applyAdjust(partNumber,currentQty,deltaStr){
+    async function applyAdjust(partNumber,currentQty,deltaStr, btnEl){
       if(!isAdmin) return;
-      const delta = Number(deltaStr);
-      if(isNaN(delta)){alert('enter a number');return;}
-      const newQty=(Number(currentQty)||0)+delta;
 
-      const uname = getUsername(currentUser);
-      const res=await fetch(API_BASE+'/inventory/'+encodeURIComponent(partNumber)+'/qty',{
-        method:'POST',
-        headers:{'Content-Type':'application/json','x-user': uname},
-        body:JSON.stringify({qty:newQty})
-      });
-      const data=await res.json();
-      if(!res.ok){alert(data.error||'failed to adjust');return;}
+      // lock to stop double submits -> double log entries
+      if(APPLY_BUSY) return;
+      APPLY_BUSY = true;
 
-      const row=ALL_ROWS.find(r=>r.partNumber===partNumber);
-      if(row) row.qty=newQty;
+      const oldText = btnEl ? btnEl.textContent : '';
+      if(btnEl){
+        btnEl.disabled = true;
+        btnEl.textContent = '...';
+        btnEl.style.opacity = '0.7';
+      }
 
-      const routePart = getPartFromInvRoute();
-      if(routePart){
-        openDetail(routePart);
-      } else {
-        renderList();
+      try{
+        const delta = Number(deltaStr);
+        if(isNaN(delta)){
+          alert('enter a number');
+          return;
+        }
+
+        const newQty = (Number(currentQty)||0) + delta;
+
+        const uname = getUsername(currentUser);
+        const res = await fetch(API_BASE+'/inventory/'+encodeURIComponent(partNumber)+'/qty',{
+          method:'POST',
+          headers:{'Content-Type':'application/json','x-user': uname},
+          body:JSON.stringify({qty:newQty})
+        });
+        const data = await res.json();
+        if(!res.ok){
+          alert(data.error||'failed to adjust');
+          return;
+        }
+
+        const row=ALL_ROWS.find(r=>r.partNumber===partNumber);
+        if(row) row.qty=newQty;
+
+        const routePart = getPartFromInvRoute();
+        if(routePart){
+          openDetail(routePart);
+        } else {
+          renderList();
+        }
+      } finally {
+        APPLY_BUSY = false;
+        if(btnEl){
+          btnEl.disabled = false;
+          btnEl.textContent = oldText || 'Apply';
+          btnEl.style.opacity = '1';
+        }
       }
     }
 
