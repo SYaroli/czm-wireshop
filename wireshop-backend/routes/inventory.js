@@ -6,6 +6,7 @@ let ADMIN_USERS = (process.env.ADMIN_USERS || '')
   .split(',')
   .map(s => s.trim().toLowerCase())
   .filter(Boolean);
+
 ['shane','shane.yaroli','tyler','tyler.ellis','Tyler.Ellis'.toLowerCase()].forEach(u => {
   if (!ADMIN_USERS.includes(u.toLowerCase())) ADMIN_USERS.push(u.toLowerCase());
 });
@@ -197,9 +198,11 @@ router.delete('/inventory/:partNumber', requireAdmin, (req,res)=>{
 });
 
 // read log entries for a part (used by inventory.html "Recent Activity")
+// UPDATED: now returns `id` so admin can edit/delete specific entries
 router.get('/inventory/:partNumber/log', requireUser, (req,res)=>{
   db.all(
-    `SELECT partNumber,
+    `SELECT id,
+            partNumber,
             ts       AS "when",
             user,
             delta,
@@ -209,11 +212,47 @@ router.get('/inventory/:partNumber/log', requireUser, (req,res)=>{
      FROM inventory_log
      WHERE partNumber = ?
      ORDER BY ts DESC
-     LIMIT 100`,
+     LIMIT 200`,
     [req.params.partNumber],
     (err, rows)=>{
       if (err) return res.status(500).json({ error: 'db error' });
       res.json(rows || []);
+    }
+  );
+});
+
+// admin-only: delete a log row
+router.delete('/inventory-log/:id', requireAdmin, (req,res)=>{
+  const id = Number(req.params.id);
+  if(!Number.isFinite(id)) return res.status(400).json({error:'invalid id'});
+
+  db.run(
+    `DELETE FROM inventory_log WHERE id = ?`,
+    [id],
+    function(err){
+      if(err) return res.status(500).json({error:'db error'});
+      if(this.changes === 0) return res.status(404).json({error:'not found'});
+      res.json({ok:true});
+    }
+  );
+});
+
+// admin-only: edit log note only (keep history mostly honest)
+router.put('/inventory-log/:id', requireAdmin, (req,res)=>{
+  const id = Number(req.params.id);
+  if(!Number.isFinite(id)) return res.status(400).json({error:'invalid id'});
+
+  const { note = '' } = req.body || {};
+
+  db.run(
+    `UPDATE inventory_log
+        SET note = ?
+      WHERE id = ?`,
+    [String(note || ''), id],
+    function(err){
+      if(err) return res.status(500).json({error:'db error'});
+      if(this.changes === 0) return res.status(404).json({error:'not found'});
+      res.json({ok:true});
     }
   );
 });
