@@ -129,23 +129,15 @@
 
   <script>
     // ===== Config =====
-    // If you ever want to override without editing code:
-    // localStorage.setItem('API_BASE','https://czm-us-wireshop-backend.onrender.com')
-    // Default matches the rest of the site (script.js)
     const API_BASE = (localStorage.getItem("API_BASE") || "https://wireshop-backend.onrender.com").replace(/\/+$/, "");
     const API_USERS = API_BASE + '/api/users';
 
     // ===== Session helpers =====
     function getSession(){
-      // The app stores the logged-in user as JSON in localStorage.user
-      // { username: '...', role: 'admin'|'tech' }
       let u = null;
       try { u = JSON.parse(localStorage.getItem('user') || 'null'); } catch {}
-
-      // Back-compat: older pages used localStorage.username / localStorage.role
       const legacyUsername = (localStorage.getItem('username') || '').trim();
       const legacyRole = (localStorage.getItem('role') || '').trim().toLowerCase();
-
       const username = (u?.username || legacyUsername || '').trim();
       const role = String(u?.role || legacyRole || '').trim().toLowerCase();
       return { username, role };
@@ -153,19 +145,16 @@
 
     function requireAdmin(){
       const s = getSession();
-      // no session? kick to login
       if(!s.username){
         window.location.replace('index.html');
         return;
       }
-      // only admins belong here
       if(s.role !== 'admin'){
         window.location.replace('assignments.html');
         return;
       }
     }
 
-    // ===== UI helpers =====
     function setMsg(text, kind){
       const el = document.getElementById('uMsg');
       el.className = 'msg ' + (kind || 'muted');
@@ -174,7 +163,6 @@
 
     function authHeaders(){
       const s = getSession();
-      // your backend checks x-user for admin gating
       return {
         'Content-Type': 'application/json',
         'x-user': s.username
@@ -183,7 +171,6 @@
 
     function normalizeRole(r){
       r = (r || '').toLowerCase().trim();
-      // older installs sometimes used "assembler"
       if(r === 'assembler') return 'tech';
       if(r !== 'admin') return 'tech';
       return 'admin';
@@ -191,7 +178,6 @@
 
     // ===== Logout =====
     document.getElementById('logoutBtn')?.addEventListener('click', () => {
-      // Clear both current + legacy keys
       localStorage.removeItem('user');
       localStorage.removeItem('username');
       localStorage.removeItem('role');
@@ -224,9 +210,9 @@
       return res.json().catch(()=> ({}));
     }
 
-    async function apiUpdateUser(username, payload){
-      const res = await fetch(API_USERS + '/' + encodeURIComponent(username), {
-        method: 'PUT',
+    async function apiUpdateUserById(id, payload){
+      const res = await fetch(API_USERS + '/' + encodeURIComponent(id), {
+        method: 'PATCH',
         headers: authHeaders(),
         body: JSON.stringify(payload)
       });
@@ -265,12 +251,13 @@
       }
 
       tbody.innerHTML = users.map(u => {
-        const uname = u.username || u.user || u.name || '';
+        const id = u.id;
+        const uname = u.username || '';
         const role = normalizeRole(u.role);
-        const active = (u.active === false) ? false : true;
+        const active = (u.active === false || Number(u.active) === 0) ? false : true;
 
         return `
-          <tr data-username="${escapeAttr(uname)}">
+          <tr data-id="${escapeAttr(id)}" data-username="${escapeAttr(uname)}">
             <td>${escapeHtml(uname)}</td>
             <td>
               <select class="roleSel">
@@ -343,8 +330,10 @@
       const tbody = document.getElementById('usersTableBody');
 
       tbody.addEventListener('click', async (e) => {
-        const tr = e.target.closest('tr[data-username]');
+        const tr = e.target.closest('tr[data-id]');
         if(!tr) return;
+
+        const id = tr.getAttribute('data-id');
         const username = tr.getAttribute('data-username');
 
         // Save
@@ -357,12 +346,13 @@
             role: normalizeRole(roleSel && roleSel.value),
             active: !!(activeChk && activeChk.checked)
           };
+
           const newPin = (pinInp && pinInp.value || '').trim();
           if(newPin) payload.pin = newPin;
 
           try{
             setMsg('Saving…', 'muted');
-            await apiUpdateUser(username, payload);
+            await apiUpdateUserById(id, payload);
             if(pinInp) pinInp.value = '';
             setMsg('Saved.', 'ok');
             await loadUsers();
