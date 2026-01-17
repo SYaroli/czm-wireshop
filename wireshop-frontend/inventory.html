@@ -35,11 +35,25 @@
     .list-body .row:nth-child(odd){background:#fafbfc}
     .notes-cell{font-size:12px;color:#333;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
-    .adjust-controls{display:flex;align-items:center;gap:10px;flex-wrap:nowrap}
-    .qty-input{width:76px;border:1px solid #d0d3d8;border-radius:20px;height:30px;padding:0 8px;text-align:center}
+    .adjust-controls{display:flex;align-items:center;gap:8px;flex-wrap:nowrap}
+    .qty-input{width:70px;border:1px solid #d0d3d8;border-radius:20px;height:30px;padding:0 8px;text-align:center}
     .apply-btn{background:#b70000;color:#fff;border:none;border-radius:6px;height:32px;min-width:64px;padding:0 10px;cursor:pointer}
     .edit-btn{background:#3a3a3a;color:#fff;border:none;border-radius:6px;height:32px;min-width:64px;padding:0 10px;cursor:pointer}
     .muted{color:#9aa3ad;font-size:12px}
+
+    .quick-btn{
+      border:1px solid #cfd4da;
+      background:#eee;
+      border-radius:6px;
+      height:32px;
+      min-width:44px;
+      padding:0 10px;
+      font-weight:700;
+      cursor:pointer;
+    }
+    .quick-btn.minus{background:#2f2f2f;color:#fff;border-color:#1f1f1f}
+    .quick-btn.plus{background:#0f6a00;color:#fff;border-color:#0b4d00}
+    .quick-btn:disabled{opacity:.6;cursor:not-allowed}
 
     .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:center;justify-content:center;z-index:50}
     .modal{background:#122032;color:#fff;padding:16px;width:420px;border-radius:8px;box-shadow:0 8px 20px rgba(0,0,0,.4)}
@@ -176,7 +190,6 @@
     let ALL_ROWS = [];
     let modalMode = 'edit';
 
-    // prevents double log entries (double click / Enter / slow network rage)
     let APPLY_BUSY = false;
 
     async function loadData(){
@@ -266,21 +279,37 @@
 
         const adjustDiv = document.createElement('div'); adjustDiv.className='adjust-controls';
         if (isAdmin){
-          const adjustInput = document.createElement('input'); adjustInput.type='text'; adjustInput.className='qty-input'; adjustInput.placeholder='+/-';
-          const applyBtn = document.createElement('button'); applyBtn.className='apply-btn'; applyBtn.textContent='Apply';
+          const minusBtn = document.createElement('button');
+          minusBtn.className = 'quick-btn minus';
+          minusBtn.textContent = '-1';
+          minusBtn.onclick = ()=>applyAdjust(row.partNumber,row.qty,'-1', minusBtn);
 
+          const plusBtn = document.createElement('button');
+          plusBtn.className = 'quick-btn plus';
+          plusBtn.textContent = '+1';
+          plusBtn.onclick = ()=>applyAdjust(row.partNumber,row.qty,'1', plusBtn);
+
+          const adjustInput = document.createElement('input');
+          adjustInput.type='text';
+          adjustInput.className='qty-input';
+          adjustInput.placeholder='+/-';
+
+          const applyBtn = document.createElement('button');
+          applyBtn.className='apply-btn';
+          applyBtn.textContent='Apply';
           applyBtn.onclick = ()=>applyAdjust(row.partNumber,row.qty,adjustInput.value, applyBtn);
 
           adjustInput.addEventListener('keydown', (e)=>{
             if(e.key === 'Enter'){
               e.preventDefault();
-              applyAdjust(row.partNumber,row.qty,adjustInput.value, applyBtn);
+              applyBtn.click();
             }
           });
 
           const editBtn = document.createElement('button'); editBtn.className='edit-btn'; editBtn.textContent='Edit';
           editBtn.onclick = ()=>openEdit(row);
-          adjustDiv.append(adjustInput,applyBtn,editBtn);
+
+          adjustDiv.append(minusBtn, plusBtn, adjustInput, applyBtn, editBtn);
         } else {
           adjustDiv.innerHTML = '<span class="muted">—</span>';
         }
@@ -327,7 +356,10 @@
 
           <div class="detail-title"><b>Adjust Inventory</b></div>
 
-          <div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <button id="quickMinus" class="quick-btn minus" ${isAdmin ? '' : 'disabled'}>-1</button>
+            <button id="quickPlus" class="quick-btn plus" ${isAdmin ? '' : 'disabled'}>+1</button>
+
             <input id="detailDelta" class="qty-input" type="text" placeholder="+/-" ${isAdmin ? '' : 'disabled'} />
             <button id="detailApplyBtn" class="apply-btn" ${isAdmin ? '' : 'disabled'}>Apply</button>
             ${!isAdmin ? `<span class="muted">Admin only</span>` : ``}
@@ -355,6 +387,14 @@
 
         const applyBtn = document.getElementById('detailApplyBtn');
         const deltaInput = document.getElementById('detailDelta');
+
+        document.getElementById('quickMinus')?.addEventListener('click', ()=>{
+          applyAdjust(row.partNumber, qtyVal, '-1', document.getElementById('quickMinus'));
+        });
+
+        document.getElementById('quickPlus')?.addEventListener('click', ()=>{
+          applyAdjust(row.partNumber, qtyVal, '1', document.getElementById('quickPlus'));
+        });
 
         applyBtn?.addEventListener('click', ()=>{
           const deltaStr = deltaInput?.value || '';
@@ -507,7 +547,6 @@
         .replace(/\r/g, '\\r');
     }
 
-    // ---- timestamp helpers ----
     function pickTs(r){
       return r.ts ??
              r.time ??
@@ -542,12 +581,10 @@
       if(!isNaN(d.getTime())) return d.toLocaleString();
       return s;
     }
-    // ---------------------------
 
     async function applyAdjust(partNumber,currentQty,deltaStr, btnEl){
       if(!isAdmin) return;
 
-      // lock to stop double submits -> double log entries
       if(APPLY_BUSY) return;
       APPLY_BUSY = true;
 
