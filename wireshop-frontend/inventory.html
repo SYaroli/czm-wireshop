@@ -343,7 +343,6 @@
         });
       }
 
-      // load movement table
       loadMovement(partNumber);
     }
 
@@ -384,11 +383,14 @@
               </thead>
               <tbody>
                 ${data.map(r=>{
-                  const ts = r.ts || r.createdAt || r.created_at || r.time || '';
-                  const user = r.user || r.username || r.by || '';
-                  const delta = (r.delta ?? r.change ?? r.qtyChange ?? r.qty_change ?? '');
-                  const newQty = (r.newQty ?? r.new_qty ?? r.qty ?? '');
-                  const note = r.note || r.notes || r.reason || '';
+                  const tsRaw = pickTs(r);
+                  const ts = formatTs(tsRaw);
+
+                  const user = r.user || r.username || r.by || r.actor || r.who || '';
+                  const delta = (r.delta ?? r.change ?? r.qtyChange ?? r.qty_change ?? r.diff ?? '');
+                  const newQty = (r.newQty ?? r.new_qty ?? r.qty ?? r.after ?? r.qty_after ?? '');
+                  const note = r.note || r.notes || r.reason || r.msg || '';
+
                   return `
                     <tr style="border-bottom:1px solid #f0f2f6;">
                       <td style="padding:6px 4px;white-space:nowrap;">${escapeHtml(String(ts))}</td>
@@ -416,6 +418,56 @@
         .replace(/"/g,'&quot;')
         .replace(/'/g,'&#039;');
     }
+
+    // ---- timestamp helpers (fix for missing date/time) ----
+    function pickTs(r){
+      return r.ts ??
+             r.time ??
+             r.timestamp ??
+             r.createdAt ??
+             r.created_at ??
+             r.when ??
+             r.date ??
+             r.dt ??
+             r.loggedAt ??
+             r.logged_at ??
+             r.at ??
+             '';
+    }
+
+    function formatTs(v){
+      if(v == null || v === '') return '';
+      // numbers: seconds or ms
+      if(typeof v === 'number'){
+        const ms = v < 1e12 ? v * 1000 : v;
+        ensureDate(ms);
+        return new Date(ms).toLocaleString();
+      }
+      const s = String(v).trim();
+      if(!s) return '';
+
+      // numeric string: seconds or ms
+      if(/^\d+$/.test(s)){
+        const n = Number(s);
+        const ms = n < 1e12 ? n * 1000 : n;
+        ensureDate(ms);
+        return new Date(ms).toLocaleString();
+      }
+
+      // ISO-ish string
+      const d = new Date(s);
+      if(!isNaN(d.getTime())) return d.toLocaleString();
+
+      // last resort: show raw
+      return s;
+    }
+
+    function ensureDate(ms){
+      // just a sanity check hook, left here for quick debugging if needed
+      // (no-op in normal operation)
+      return ms;
+    }
+    // ------------------------------------------------------
 
     async function applyAdjust(partNumber,currentQty,deltaStr){
       if(!isAdmin) return;
