@@ -52,10 +52,19 @@
     .btn-red{background:#c30000;color:#fff}
     .btn-gray{background:#c5c5c5;color:#000}
 
+    /* detail view */
+    .detail-wrap{padding:16px}
+    .detail-topbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+    .detail-grid{display:grid;grid-template-columns:160px 1fr;gap:8px 14px;font-size:14px}
+    .detail-hr{margin:16px 0;border:none;border-top:1px solid #e5e9ef}
+    .detail-title{font-size:13px;color:#444}
+    .detail-subtle{margin-top:8px;color:#888;font-size:12px}
+
     @media (max-width:900px){
       .inventory-shell{max-width:100%;margin:0;border-radius:0;box-shadow:none}
       .table-head,.list-body .row{grid-template-columns:140px 1fr 90px 60px 240px}
       .notes-cell{grid-column:1 / -1;margin-top:4px}
+      .detail-grid{grid-template-columns:120px 1fr}
     }
   </style>
 </head>
@@ -79,8 +88,8 @@
 
   <div class="inventory-shell">
     <div class="inventory-header">
-      <h2>Inventory — Snapshot</h2>
-      <div class="filter-row">
+      <h2 id="pageTitle">Inventory — Snapshot</h2>
+      <div id="filterRow" class="filter-row">
         <input id="filterBox" type="text" placeholder="part number, print name, or location" />
         <label class="cb"><input id="cbNonZero" type="checkbox"><span>only non-zero</span></label>
         <label class="cb"><input id="cbOnlyZero" type="checkbox"><span>only 0-qty</span></label>
@@ -90,7 +99,7 @@
       </div>
     </div>
 
-    <div class="table-head">
+    <div id="tableHead" class="table-head">
       <div>Part Number</div><div>Print Name</div><div>Location</div><div>Qty</div><div>Adjust</div><div>Notes</div>
     </div>
     <div id="listBody" class="list-body"></div>
@@ -127,6 +136,15 @@
       return String(u?.role || '').toLowerCase() === 'admin';
     }
 
+    // --- ROUTE PARSER (THIS WAS MISSING) ---
+    function getPartFromInvRoute(){
+      const path = window.location.pathname || '';
+      // expected: /inv/40602.2083.000
+      if (!path.startsWith('/inv/')) return null;
+      const part = decodeURIComponent(path.replace('/inv/','').trim());
+      return part || null;
+    }
+
     const currentUser = getUser();
     if (!currentUser || !getUsername(currentUser)) window.location.href = '/index.html';
 
@@ -148,6 +166,10 @@
     const cbNonZero = document.getElementById('cbNonZero');
     const cbOnlyZero = document.getElementById('cbOnlyZero');
     const editModalBackdrop = document.getElementById('editModalBackdrop');
+
+    const pageTitle = document.getElementById('pageTitle');
+    const filterRow = document.getElementById('filterRow');
+    const tableHead = document.getElementById('tableHead');
 
     let ALL_ROWS = [];
     let modalMode = 'edit';
@@ -198,6 +220,14 @@
 
       merged.sort((a,b)=>(a.partNumber||'').localeCompare(b.partNumber||''));
       ALL_ROWS = merged;
+
+      // if we're on /inv/:partNumber, show detail view instead of snapshot list
+      const routePart = getPartFromInvRoute();
+      if(routePart){
+        openDetail(routePart);
+        return;
+      }
+
       renderList();
     }
 
@@ -205,6 +235,11 @@
       const filter = filterBox.value.trim().toLowerCase();
       const onlyNZ = cbNonZero.checked;
       const onlyZ = cbOnlyZero.checked;
+
+      // ensure list UI is visible
+      pageTitle.textContent = 'Inventory — Snapshot';
+      if(filterRow) filterRow.style.display = 'flex';
+      if(tableHead) tableHead.style.display = 'grid';
 
       listBody.innerHTML=''; let shown=0;
       ALL_ROWS.forEach(row=>{
@@ -246,9 +281,88 @@
       countLabel.textContent = shown+' items';
     }
 
+    // --- DETAIL VIEW ---
+    function openDetail(partNumber){
+      const row = ALL_ROWS.find(r => r.partNumber === partNumber) || {
+        partNumber,
+        printName: '',
+        location: '',
+        qty: 0,
+        notes: ''
+      };
+
+      pageTitle.textContent = `Inventory — ${partNumber}`;
+      if(filterRow) filterRow.style.display = 'none';
+      if(tableHead) tableHead.style.display = 'none';
+      if(countLabel) countLabel.textContent = '';
+
+      const qtyVal = (row.qty != null) ? row.qty : 0;
+
+      // detail HTML
+      listBody.innerHTML = `
+        <div class="detail-wrap">
+          <div class="detail-topbar">
+            <button class="toolbar-btn" id="backBtn">← Back</button>
+            ${isAdmin ? `<button class="toolbar-btn red" id="editDetailBtn">Edit</button>` : ``}
+          </div>
+
+          <div class="detail-grid">
+            <div><b>Description</b></div><div>${escapeHtml(row.printName || '')}</div>
+            <div><b>Location</b></div><div>${escapeHtml(row.location || '')}</div>
+            <div><b>Qty</b></div><div>${escapeHtml(String(qtyVal))}</div>
+            <div><b>Notes</b></div><div style="white-space:pre-wrap;">${escapeHtml(row.notes || '')}</div>
+          </div>
+
+          <hr class="detail-hr" />
+
+          <div class="detail-title">
+            <b>Adjust Inventory</b>
+          </div>
+
+          <div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+            <input id="detailDelta" class="qty-input" type="text" placeholder="+/-" ${isAdmin ? '' : 'disabled'} />
+            <button id="detailApplyBtn" class="apply-btn" ${isAdmin ? '' : 'disabled'}>Apply</button>
+            ${!isAdmin ? `<span class="muted">Admin only</span>` : ``}
+          </div>
+
+          <hr class="detail-hr" />
+
+          <div class="detail-title">
+            <b>Inventory Movement</b>
+            <div class="detail-subtle">(next step: hook this to your movement/history endpoint)</div>
+          </div>
+        </div>
+      `;
+
+      document.getElementById('backBtn')?.addEventListener('click', ()=>{
+        window.location.href = '/inventory';
+      });
+
+      if(isAdmin){
+        document.getElementById('editDetailBtn')?.addEventListener('click', ()=>{
+          openEdit(row);
+        });
+
+        document.getElementById('detailApplyBtn')?.addEventListener('click', ()=>{
+          const deltaStr = document.getElementById('detailDelta')?.value || '';
+          applyAdjust(row.partNumber, qtyVal, deltaStr);
+        });
+      }
+    }
+
+    function escapeHtml(str){
+      return String(str ?? '')
+        .replace(/&/g,'&amp;')
+        .replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;')
+        .replace(/'/g,'&#039;');
+    }
+
     async function applyAdjust(partNumber,currentQty,deltaStr){
       if(!isAdmin) return;
-      const delta = Number(deltaStr); if(isNaN(delta)){alert('enter a number');return;}
+      const delta = Number(deltaStr);
+      if(isNaN(delta)){alert('enter a number');return;}
       const newQty=(Number(currentQty)||0)+delta;
 
       const uname = getUsername(currentUser);
@@ -259,9 +373,17 @@
       });
       const data=await res.json();
       if(!res.ok){alert(data.error||'failed to adjust');return;}
+
       const row=ALL_ROWS.find(r=>r.partNumber===partNumber);
       if(row) row.qty=newQty;
-      renderList();
+
+      // if we're on a detail route, refresh the detail view so qty updates
+      const routePart = getPartFromInvRoute();
+      if(routePart){
+        openDetail(routePart);
+      } else {
+        renderList();
+      }
     }
 
     function openEdit(row,isNew=false){
