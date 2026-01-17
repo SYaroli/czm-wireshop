@@ -62,21 +62,22 @@
   </style>
 </head>
 <body>
-<div class="brand-bar">
-  <div class="brand-inner">
-    <a class="brand-logo" href="/dashboard.html">
-      <img src="/czm-logo.png" alt="CZM">
-      <h1 class="brand-title">CZM • Admin</h1>
-    </a>
-    <div class="brand-actions">
-      <a class="navbtn" href="/dashboard.html">Dashboard</a>
-      <a class="navbtn" href="/assignments.html">Build Next</a>
-      <a class="navbtn" href="/inventory">Inventory</a>
-      <a class="navbtn active" href="/admin.html">Admin</a>
-      <button id="logoutBtn" class="navbtn">Logout</button>
+
+  <div class="brand-bar">
+    <div class="brand-inner">
+      <a class="brand-logo" href="/dashboard.html">
+        <img src="/czm-logo.png" alt="CZM">
+        <h1 class="brand-title">CZM • Admin</h1>
+      </a>
+
+      <div class="brand-actions">
+        <a class="btn secondary" href="/assignments.html">Assignments (Build Next)</a>
+        <a class="btn secondary" href="/inventory">Inventory</a>
+        <a class="btn primary active" href="/admin.html">Admin</a>
+        <button id="logoutBtn" class="btn secondary" type="button">Logout</button>
+      </div>
     </div>
   </div>
-</div>
 
   <main class="page">
     <div class="card" style="margin-top:14px;">
@@ -101,7 +102,7 @@
           </select>
         </label>
 
-        <button id="btnAddUser" class="btn primary">Add User</button>
+        <button id="btnAddUser" class="btn primary" type="button">Add User</button>
       </div>
 
       <div class="table-wrap">
@@ -132,7 +133,6 @@
     // localStorage.setItem('API_BASE','https://czm-us-wireshop-backend.onrender.com')
     // Default matches the rest of the site (script.js)
     const API_BASE = (localStorage.getItem("API_BASE") || "https://wireshop-backend.onrender.com").replace(/\/+$/, "");
-
     const API_USERS = API_BASE + '/api/users';
 
     // ===== Session helpers =====
@@ -166,9 +166,8 @@
     }
 
     // ===== UI helpers =====
-    const msgEl = () => document.getElementById('uMsg');
     function setMsg(text, kind){
-      const el = msgEl();
+      const el = document.getElementById('uMsg');
       el.className = 'msg ' + (kind || 'muted');
       el.textContent = text || '';
     }
@@ -191,8 +190,7 @@
     }
 
     // ===== Logout =====
-    document.getElementById('logoutNav').addEventListener('click', (e) => {
-      e.preventDefault();
+    document.getElementById('logoutBtn')?.addEventListener('click', () => {
       // Clear both current + legacy keys
       localStorage.removeItem('user');
       localStorage.removeItem('username');
@@ -252,6 +250,13 @@
     }
 
     // ===== Rendering =====
+    function escapeHtml(s){
+      return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+    function escapeAttr(s){
+      return escapeHtml(s).replace(/`/g,'');
+    }
+
     function renderUsers(users){
       const tbody = document.getElementById('usersTableBody');
       if(!Array.isArray(users) || users.length === 0){
@@ -283,10 +288,10 @@
               <input class="pinInp" type="text" inputmode="numeric" placeholder="(leave blank)" maxlength="10" />
             </td>
             <td>
-              <button class="btn-mini save">Save</button>
+              <button class="btn-mini save" type="button">Save</button>
             </td>
             <td>
-              <button class="btn-mini del">Delete</button>
+              <button class="btn-mini del" type="button">Delete</button>
             </td>
           </tr>
         `;
@@ -385,16 +390,9 @@
       });
     }
 
-    function escapeHtml(s){
-      return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-    }
-    function escapeAttr(s){
-      return escapeHtml(s).replace(/`/g,'');
-    }
-
     // boot
     requireAdmin();
-    document.getElementById('btnAddUser').addEventListener('click', addUser);
+    document.getElementById('btnAddUser')?.addEventListener('click', addUser);
     wireTableClicks();
     loadUsers();
   </script>
