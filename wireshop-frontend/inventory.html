@@ -136,10 +136,8 @@
       return String(u?.role || '').toLowerCase() === 'admin';
     }
 
-    // --- ROUTE PARSER (THIS WAS MISSING) ---
     function getPartFromInvRoute(){
       const path = window.location.pathname || '';
-      // expected: /inv/40602.2083.000
       if (!path.startsWith('/inv/')) return null;
       const part = decodeURIComponent(path.replace('/inv/','').trim());
       return part || null;
@@ -221,7 +219,6 @@
       merged.sort((a,b)=>(a.partNumber||'').localeCompare(b.partNumber||''));
       ALL_ROWS = merged;
 
-      // if we're on /inv/:partNumber, show detail view instead of snapshot list
       const routePart = getPartFromInvRoute();
       if(routePart){
         openDetail(routePart);
@@ -236,7 +233,6 @@
       const onlyNZ = cbNonZero.checked;
       const onlyZ = cbOnlyZero.checked;
 
-      // ensure list UI is visible
       pageTitle.textContent = 'Inventory — Snapshot';
       if(filterRow) filterRow.style.display = 'flex';
       if(tableHead) tableHead.style.display = 'grid';
@@ -281,7 +277,6 @@
       countLabel.textContent = shown+' items';
     }
 
-    // --- DETAIL VIEW ---
     function openDetail(partNumber){
       const row = ALL_ROWS.find(r => r.partNumber === partNumber) || {
         partNumber,
@@ -298,7 +293,6 @@
 
       const qtyVal = (row.qty != null) ? row.qty : 0;
 
-      // detail HTML
       listBody.innerHTML = `
         <div class="detail-wrap">
           <div class="detail-topbar">
@@ -309,15 +303,13 @@
           <div class="detail-grid">
             <div><b>Description</b></div><div>${escapeHtml(row.printName || '')}</div>
             <div><b>Location</b></div><div>${escapeHtml(row.location || '')}</div>
-            <div><b>Qty</b></div><div>${escapeHtml(String(qtyVal))}</div>
+            <div><b>Qty</b></div><div id="detailQty">${escapeHtml(String(qtyVal))}</div>
             <div><b>Notes</b></div><div style="white-space:pre-wrap;">${escapeHtml(row.notes || '')}</div>
           </div>
 
           <hr class="detail-hr" />
 
-          <div class="detail-title">
-            <b>Adjust Inventory</b>
-          </div>
+          <div class="detail-title"><b>Adjust Inventory</b></div>
 
           <div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
             <input id="detailDelta" class="qty-input" type="text" placeholder="+/-" ${isAdmin ? '' : 'disabled'} />
@@ -329,8 +321,10 @@
 
           <div class="detail-title">
             <b>Inventory Movement</b>
-            <div class="detail-subtle">(next step: hook this to your movement/history endpoint)</div>
+            <div class="detail-subtle">Latest changes for this part:</div>
           </div>
+
+          <div id="movementBox" style="margin-top:10px;"></div>
         </div>
       `;
 
@@ -347,6 +341,70 @@
           const deltaStr = document.getElementById('detailDelta')?.value || '';
           applyAdjust(row.partNumber, qtyVal, deltaStr);
         });
+      }
+
+      // load movement table
+      loadMovement(partNumber);
+    }
+
+    async function loadMovement(partNumber){
+      const box = document.getElementById('movementBox');
+      if(!box) return;
+
+      box.innerHTML = `<div class="detail-subtle">Loading…</div>`;
+
+      try{
+        const uname = getUsername(currentUser);
+        const res = await fetch(`${API_BASE}/inventory/${encodeURIComponent(partNumber)}/log`, {
+          headers: { 'x-user': uname }
+        });
+        const data = await res.json();
+
+        if(!res.ok){
+          box.innerHTML = `<div class="detail-subtle">${escapeHtml(data?.error || 'Failed to load movement')}</div>`;
+          return;
+        }
+
+        if(!Array.isArray(data) || data.length === 0){
+          box.innerHTML = `<div class="detail-subtle">No movement yet.</div>`;
+          return;
+        }
+
+        box.innerHTML = `
+          <div style="overflow:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:12px;">
+              <thead>
+                <tr style="text-align:left;border-bottom:1px solid #e5e9ef;">
+                  <th style="padding:6px 4px;">Time</th>
+                  <th style="padding:6px 4px;">User</th>
+                  <th style="padding:6px 4px;">Delta</th>
+                  <th style="padding:6px 4px;">New Qty</th>
+                  <th style="padding:6px 4px;">Note</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${data.map(r=>{
+                  const ts = r.ts || r.createdAt || r.created_at || r.time || '';
+                  const user = r.user || r.username || r.by || '';
+                  const delta = (r.delta ?? r.change ?? r.qtyChange ?? r.qty_change ?? '');
+                  const newQty = (r.newQty ?? r.new_qty ?? r.qty ?? '');
+                  const note = r.note || r.notes || r.reason || '';
+                  return `
+                    <tr style="border-bottom:1px solid #f0f2f6;">
+                      <td style="padding:6px 4px;white-space:nowrap;">${escapeHtml(String(ts))}</td>
+                      <td style="padding:6px 4px;">${escapeHtml(String(user))}</td>
+                      <td style="padding:6px 4px;">${escapeHtml(String(delta))}</td>
+                      <td style="padding:6px 4px;">${escapeHtml(String(newQty))}</td>
+                      <td style="padding:6px 4px;white-space:pre-wrap;">${escapeHtml(String(note))}</td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
+      }catch(e){
+        box.innerHTML = `<div class="detail-subtle">Failed to load movement.</div>`;
       }
     }
 
@@ -377,7 +435,6 @@
       const row=ALL_ROWS.find(r=>r.partNumber===partNumber);
       if(row) row.qty=newQty;
 
-      // if we're on a detail route, refresh the detail view so qty updates
       const routePart = getPartFromInvRoute();
       if(routePart){
         openDetail(routePart);
