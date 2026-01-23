@@ -11,23 +11,18 @@
     .table-wrap { overflow:auto; }
     table { width:100%; border-collapse:collapse; font-size:13px; }
     th, td { white-space:nowrap; text-align:left; }
-    th { background:#111; color:#fff; padding:6px 8px; }
-    td { padding:6px 8px; }
+    th { background:#111; color:#fff; padding:6px 6px; }
+    td { padding:6px 6px; }
     th.username-col, td.username-col { width:120px; padding-left:6px; padding-right:6px; }
     th.role-col, td.role-col { width:100px; padding-left:6px; padding-right:6px; }
+    th.newpin-col, td.newpin-col { width:60px; padding:6px 4px; text-align:center; }
+    th.action-col, td.action-col { padding:6px 4px; white-space:nowrap; }
+    .btn-mini { margin:0 2px; padding:5px 8px; font-size:11px; }
     tr:nth-child(even) { background:#f8f8f8; }
     .muted { color:#666; font-size:11px; }
     .msg { margin-top:6px; font-size:12px; }
     .msg.ok { color:#137333; }
     .msg.err { color:#b00020; }
-    .btn-mini {
-      padding:5px 9px;
-      border-radius:8px;
-      font-weight:800;
-      font-size:11px;
-      border:0;
-      cursor:pointer;
-    }
     .btn-mini.save { background:#111; color:#fff; }
     .btn-mini.del { background:#c80000; color:#fff; }
 
@@ -50,7 +45,6 @@
     .brand-actions .btn.primary { background:#c80000; color:#fff; }
     .brand-actions .btn.active { outline:2px solid rgba(255,255,255,.35); }
 
-    /* Compact layout */
     .card { padding:12px; margin:10px 0; }
     h2 { margin:0 0 8px; font-size:1.4rem; }
     label { gap:3px; }
@@ -118,9 +112,9 @@
               <th class="username-col">Username</th>
               <th class="role-col">Role</th>
               <th>Active</th>
-              <th>New PIN</th>
-              <th>Save</th>
-              <th>Delete</th>
+              <th class="newpin-col">New PIN</th>
+              <th class="action-col">Save</th>
+              <th class="action-col">Delete</th>
             </tr>
           </thead>
           <tbody id="usersTableBody">
@@ -317,13 +311,13 @@
                 <span class="muted">${active?'yes':'no'}</span>
               </label>
             </td>
-            <td>
-              <input class="pinInp" type="text" inputmode="numeric" placeholder="(leave blank)" maxlength="10" />
+            <td class="newpin-col">
+              <input class="pinInp" type="text" inputmode="numeric" placeholder="—" maxlength="10" />
             </td>
-            <td>
+            <td class="action-col">
               <button class="btn-mini save" type="button">Save</button>
             </td>
-            <td>
+            <td class="action-col">
               <button class="btn-mini del" type="button">Delete</button>
             </td>
           </tr>
