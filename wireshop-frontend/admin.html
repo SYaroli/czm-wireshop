@@ -192,6 +192,10 @@
       return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     }
 
+    function escapeAttr(s){
+      return escapeHtml(s).replace(/`/g, '\\`');
+    }
+
     function escapeJs(s){
       return String(s).replace(/'/g, "\\'").replace(/\n/g, '\\n').replace(/\r/g, '\\r');
     }
