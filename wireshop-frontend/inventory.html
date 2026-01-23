@@ -278,40 +278,40 @@
         const qtyDiv = document.createElement('div'); qtyDiv.textContent = row.qty!=null?row.qty:0; qtyDiv.style.fontSize='12px';
 
         const adjustDiv = document.createElement('div'); adjustDiv.className='adjust-controls';
-        if (isAdmin){
-          const minusBtn = document.createElement('button');
-          minusBtn.className = 'quick-btn minus';
-          minusBtn.textContent = '-1';
-          minusBtn.onclick = ()=>applyAdjust(row.partNumber,row.qty,'-1', minusBtn);
 
-          const plusBtn = document.createElement('button');
-          plusBtn.className = 'quick-btn plus';
-          plusBtn.textContent = '+1';
-          plusBtn.onclick = ()=>applyAdjust(row.partNumber,row.qty,'1', plusBtn);
+        const minusBtn = document.createElement('button');
+        minusBtn.className = 'quick-btn minus';
+        minusBtn.textContent = '-1';
+        minusBtn.onclick = ()=>applyAdjust(row.partNumber,row.qty,'-1', minusBtn);
 
-          const adjustInput = document.createElement('input');
-          adjustInput.type='text';
-          adjustInput.className='qty-input';
-          adjustInput.placeholder='+/-';
+        const plusBtn = document.createElement('button');
+        plusBtn.className = 'quick-btn plus';
+        plusBtn.textContent = '+1';
+        plusBtn.onclick = ()=>applyAdjust(row.partNumber,row.qty,'1', plusBtn);
 
-          const applyBtn = document.createElement('button');
-          applyBtn.className='apply-btn';
-          applyBtn.textContent='Apply';
-          applyBtn.onclick = ()=>applyAdjust(row.partNumber,row.qty,adjustInput.value, applyBtn);
+        const adjustInput = document.createElement('input');
+        adjustInput.type='text';
+        adjustInput.className='qty-input';
+        adjustInput.placeholder='+/-';
 
-          adjustInput.addEventListener('keydown', (e)=>{
-            if(e.key === 'Enter'){
-              e.preventDefault();
-              applyBtn.click();
-            }
-          });
+        const applyBtn = document.createElement('button');
+        applyBtn.className='apply-btn';
+        applyBtn.textContent='Apply';
+        applyBtn.onclick = ()=>applyAdjust(row.partNumber,row.qty,adjustInput.value, applyBtn);
 
+        adjustInput.addEventListener('keydown', (e)=>{
+          if(e.key === 'Enter'){
+            e.preventDefault();
+            applyBtn.click();
+          }
+        });
+
+        adjustDiv.append(minusBtn, plusBtn, adjustInput, applyBtn);
+
+        if (isAdmin) {
           const editBtn = document.createElement('button'); editBtn.className='edit-btn'; editBtn.textContent='Edit';
           editBtn.onclick = ()=>openEdit(row);
-
-          adjustDiv.append(minusBtn, plusBtn, adjustInput, applyBtn, editBtn);
-        } else {
-          adjustDiv.innerHTML = '<span class="muted">—</span>';
+          adjustDiv.append(editBtn);
         }
 
         const notesDiv = document.createElement('div'); notesDiv.className='notes-cell'; notesDiv.textContent=row.notes||'';
@@ -357,12 +357,11 @@
           <div class="detail-title"><b>Adjust Inventory</b></div>
 
           <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-            <button id="quickMinus" class="quick-btn minus" ${isAdmin ? '' : 'disabled'}>-1</button>
-            <button id="quickPlus" class="quick-btn plus" ${isAdmin ? '' : 'disabled'}>+1</button>
+            <button id="quickMinus" class="quick-btn minus">-1</button>
+            <button id="quickPlus" class="quick-btn plus">+1</button>
 
-            <input id="detailDelta" class="qty-input" type="text" placeholder="+/-" ${isAdmin ? '' : 'disabled'} />
-            <button id="detailApplyBtn" class="apply-btn" ${isAdmin ? '' : 'disabled'}>Apply</button>
-            ${!isAdmin ? `<span class="muted">Admin only</span>` : ``}
+            <input id="detailDelta" class="qty-input" type="text" placeholder="+/-" />
+            <button id="detailApplyBtn" class="apply-btn">Apply</button>
           </div>
 
           <hr class="detail-hr" />
@@ -384,30 +383,30 @@
         document.getElementById('editDetailBtn')?.addEventListener('click', ()=>{
           openEdit(row);
         });
-
-        const applyBtn = document.getElementById('detailApplyBtn');
-        const deltaInput = document.getElementById('detailDelta');
-
-        document.getElementById('quickMinus')?.addEventListener('click', ()=>{
-          applyAdjust(row.partNumber, qtyVal, '-1', document.getElementById('quickMinus'));
-        });
-
-        document.getElementById('quickPlus')?.addEventListener('click', ()=>{
-          applyAdjust(row.partNumber, qtyVal, '1', document.getElementById('quickPlus'));
-        });
-
-        applyBtn?.addEventListener('click', ()=>{
-          const deltaStr = deltaInput?.value || '';
-          applyAdjust(row.partNumber, qtyVal, deltaStr, applyBtn);
-        });
-
-        deltaInput?.addEventListener('keydown', (e)=>{
-          if(e.key === 'Enter'){
-            e.preventDefault();
-            applyBtn?.click();
-          }
-        });
       }
+
+      const applyBtn = document.getElementById('detailApplyBtn');
+      const deltaInput = document.getElementById('detailDelta');
+
+      document.getElementById('quickMinus')?.addEventListener('click', ()=>{
+        applyAdjust(row.partNumber, qtyVal, '-1', document.getElementById('quickMinus'));
+      });
+
+      document.getElementById('quickPlus')?.addEventListener('click', ()=>{
+        applyAdjust(row.partNumber, qtyVal, '1', document.getElementById('quickPlus'));
+      });
+
+      applyBtn?.addEventListener('click', ()=>{
+        const deltaStr = deltaInput?.value || '';
+        applyAdjust(row.partNumber, qtyVal, deltaStr, applyBtn);
+      });
+
+      deltaInput?.addEventListener('keydown', (e)=>{
+        if(e.key === 'Enter'){
+          e.preventDefault();
+          applyBtn?.click();
+        }
+      });
 
       loadMovement(partNumber);
     }
@@ -583,8 +582,6 @@
     }
 
     async function applyAdjust(partNumber,currentQty,deltaStr, btnEl){
-      if(!isAdmin) return;
-
       if(APPLY_BUSY) return;
       APPLY_BUSY = true;
 
