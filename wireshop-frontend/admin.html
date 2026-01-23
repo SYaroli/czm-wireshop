@@ -49,7 +49,7 @@
     .add-row { gap:6px; margin-bottom:6px; flex-wrap:wrap; }
     .add-row label { flex:1 1 130px; min-width:130px; }
 
-    /* navbtn style */
+    /* Restore matching navbtn style from inventory */
     .brand-bar{background:#0f1114;border-bottom:4px solid #c30000}
     .brand-actions .navbtn{display:inline-block;background:#1a1c20;color:#bbb;padding:6px 12px;border-radius:10px;text-decoration:none;border:1px solid #3a3f44;font-weight:600;font-size:.9rem;margin-left:8px}
     .brand-actions .navbtn.active{background:#b30000;color:#fff;border-color:#ff4d4d}
@@ -57,7 +57,7 @@
   </style>
 </head>
 <body>
-  <!-- (HTML unchanged) -->
+
   <div class="brand-bar">
     <div class="brand-inner">
       <a class="brand-logo" href="/dashboard.html">
@@ -82,9 +82,46 @@
     </div>
 
     <div class="card" id="usersCard">
-      <!-- users card unchanged -->
       <h2>Users</h2>
-      <!-- ... rest of users card ... -->
+
+      <div class="add-row" style="display:flex;">
+        <label>
+          <span class="muted">Username</span>
+          <input id="uName" type="text" placeholder="firstname.lastname" />
+        </label>
+        <label>
+          <span class="muted">PIN</span>
+          <input id="uPin" type="text" inputmode="numeric" placeholder="1234" maxlength="10" />
+        </label>
+        <label>
+          <span class="muted">Role</span>
+          <select id="uRole">
+            <option value="tech" selected>tech</option>
+            <option value="admin">admin</option>
+          </select>
+        </label>
+        <button id="btnAddUser" class="navbtn red">Add User</button>  <!-- Adjusted to navbtn style, added red for match -->
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th class="username-col">Username</th>
+              <th class="role-col">Role</th>
+              <th class="active-col">Active</th>
+              <th class="newpin-col">New PIN</th>
+              <th class="action-col">Save</th>
+              <th class="action-col">Delete</th>
+            </tr>
+          </thead>
+          <tbody id="usersTableBody">
+            <tr><td colspan="6" style="opacity:.7; text-align:center; padding:8px;">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div id="uMsg" class="msg muted"></div>
     </div>
   </main>
 
@@ -93,7 +130,228 @@
     const API_USERS = API_BASE + '/api/users';
     const API_INVENTORY = API_BASE + '/api/inventory-all';
 
-    // ... (all your existing functions unchanged: getSession, requireAdmin, setMsg, authHeaders, normalizeRole, logout, api*User functions, escapeHtml, escapeAttr, renderUsers, loadUsers, addUser, wireTableClicks) ...
+    function getSession(){
+      try{ return JSON.parse(localStorage.getItem('user') || '{}'); } catch{ return {}; }
+    }
+
+    function requireAdmin(){
+      const s = getSession();
+      if(!s.username){
+        window.location.replace('index.html');
+        return false;
+      }
+      if(s.role !== 'admin'){
+        window.location.replace('assignments.html');
+        return false;
+      }
+      return true;
+    }
+
+    function setMsg(id, msg, cls){
+      const el = document.getElementById(id);
+      if(el){
+        el.textContent = msg;
+        el.className = `msg ${cls || ''}`;
+      }
+    }
+
+    function authHeaders(){
+      return { 'Content-Type': 'application/json', 'x-user': getSession().username };
+    }
+
+    function normalizeRole(r){
+      return String(r || '').toLowerCase().trim() === 'admin' ? 'admin' : 'tech';
+    }
+
+    function logout(){
+      localStorage.removeItem('user');
+      window.location.replace('index.html');
+    }
+
+    document.getElementById('logoutBtn')?.addEventListener('click', logout);
+
+    async function apiGetUsers(){
+      const res = await fetch(API_USERS, { headers: authHeaders() });
+      if(!res.ok) throw new Error(await res.text().catch(()=>res.statusText));
+      return res.json();
+    }
+
+    async function apiAddUser(body){
+      const res = await fetch(API_USERS, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify(body)
+      });
+      if(!res.ok) throw new Error(await res.text().catch(()=>res.statusText));
+      return res.json();
+    }
+
+    async function apiUpdateUserById(id, body){
+      const res = await fetch(API_USERS + '/' + id, {
+        method: 'PATCH',
+        headers: authHeaders(),
+        body: JSON.stringify(body)
+      });
+      if(!res.ok) throw new Error(await res.text().catch(()=>res.statusText));
+      return res.json();
+    }
+
+    async function apiDeleteUser(username){
+      const res = await fetch(API_USERS + '/' + encodeURIComponent(username), {
+        method: 'DELETE',
+        headers: authHeaders()
+      });
+      if(!res.ok) throw new Error(await res.text().catch(()=>res.statusText));
+      return res.json();
+    }
+
+    function escapeHtml(s){
+      return String(s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+    }
+
+    function escapeAttr(s){
+      return escapeHtml(s).replace(/[\n\r\t]/g, ' ');
+    }
+
+    function renderUsers(users){
+      const tbody = document.getElementById('usersTableBody');
+      if(!tbody) return;
+
+      if(!Array.isArray(users) || users.length === 0){
+        tbody.innerHTML = '<tr><td colspan="6" style="opacity:.7; text-align:center;">No users found</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = users.map(u => {
+        const id = u.id;
+        const uname = u.username || '';
+        const role = normalizeRole(u.role);
+        const active = (u.active === false || Number(u.active) === 0) ? false : true;
+
+        return `
+          <tr data-id="${escapeAttr(id)}" data-username="${escapeAttr(uname)}">
+            <td class="username-col">${escapeHtml(uname)}</td>
+            <td class="role-col">
+              <select class="roleSel">
+                <option value="tech" ${role==='tech'?'selected':''}>tech</option>
+                <option value="admin" ${role==='admin'?'selected':''}>admin</option>
+              </select>
+            </td>
+            <td class="active-col">
+              <label style="display:flex;align-items:center;justify-content:center;gap:4px;">
+                <input class="activeChk" type="checkbox" ${active?'checked':''} />
+                <span class="muted">${active?'yes':'no'}</span>
+              </label>
+            </td>
+            <td class="newpin-col">
+              <input class="pinInp" type="text" inputmode="numeric" placeholder="—" maxlength="10" />
+            </td>
+            <td class="action-col">
+              <button class="btn-mini save" type="button">Save</button>
+            </td>
+            <td class="action-col">
+              <button class="btn-mini del" type="button">Delete</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    async function loadUsers(){
+      const tbody = document.getElementById('usersTableBody');
+      if (!tbody) return;
+
+      try{
+        setMsg('uMsg', 'Loading users...', 'muted');
+        const users = await apiGetUsers();
+        renderUsers(users);
+        setMsg('uMsg', '', '');
+      }catch(err){
+        console.error('Load users error:', err);
+        tbody.innerHTML = '<tr><td colspan="6" style="opacity:.7; text-align:center; color:red;">Failed to load users: ' + err.message + '</td></tr>';
+        setMsg('uMsg', 'Error: ' + err.message, 'err');
+      }
+    }
+
+    async function addUser(){
+      const name = (document.getElementById('uName').value || '').trim();
+      const pin = (document.getElementById('uPin').value || '').trim();
+      const role = normalizeRole(document.getElementById('uRole').value);
+
+      if(!name){
+        setMsg('uMsg', 'Username required', 'err');
+        return;
+      }
+      if(!pin){
+        setMsg('uMsg', 'PIN required', 'err');
+        return;
+      }
+
+      try{
+        setMsg('uMsg', 'Adding user…', 'muted');
+        await apiAddUser({ username: name, pin, role });
+        document.getElementById('uName').value = '';
+        document.getElementById('uPin').value = '';
+        document.getElementById('uRole').value = 'tech';
+        setMsg('uMsg', 'User added.', 'ok');
+        await loadUsers();
+      }catch(err){
+        console.error(err);
+        setMsg('uMsg', String(err.message || err), 'err');
+      }
+    }
+
+    function wireTableClicks(){
+      const tbody = document.getElementById('usersTableBody');
+
+      tbody.addEventListener('click', async (e) => {
+        const tr = e.target.closest('tr[data-id]');
+        if(!tr) return;
+
+        const id = tr.getAttribute('data-id');
+        const username = tr.getAttribute('data-username');
+
+        if(e.target.classList.contains('save')){
+          const roleSel = tr.querySelector('.roleSel');
+          const activeChk = tr.querySelector('.activeChk');
+          const pinInp = tr.querySelector('.pinInp');
+
+          const payload = {
+            role: normalizeRole(roleSel && roleSel.value),
+            active: !!(activeChk && activeChk.checked)
+          };
+
+          const newPin = (pinInp && pinInp.value || '').trim();
+          if(newPin) payload.pin = newPin;
+
+          try{
+            setMsg('uMsg', 'Saving…', 'muted');
+            await apiUpdateUserById(id, payload);
+            if(pinInp) pinInp.value = '';
+            setMsg('uMsg', 'Saved.', 'ok');
+            await loadUsers();
+          }catch(err){
+            console.error(err);
+            setMsg('uMsg', String(err.message || err), 'err');
+          }
+          return;
+        }
+
+        if(e.target.classList.contains('del')){
+          const ok = window.confirm('Delete user "' + username + '"?');
+          if(!ok) return;
+          try{
+            setMsg('uMsg', 'Deleting…', 'muted');
+            await apiDeleteUser(username);
+            setMsg('uMsg', 'Deleted.', 'ok');
+            await loadUsers();
+          }catch(err){
+            console.error(err);
+            setMsg('uMsg', String(err.message || err), 'err');
+          }
+        }
+      });
+    }
 
     async function loadLowStock(){
       const card = document.getElementById('lowStockCard');
@@ -187,8 +445,6 @@
         }
       }
     });
-
-    // ... rest of your script unchanged ...
 
     if (requireAdmin()) {
       document.getElementById('btnAddUser')?.addEventListener('click', addUser);
