@@ -196,14 +196,15 @@
           list.innerHTML = '<div class="muted">No low stock items.</div>';
           return;
         }
-
-        list.innerHTML = low.map(i => `
-          <div class="alert-item">
-            <strong>${escapeHtml(i.partNumber)}</strong> — 
-            ${escapeHtml(i.description || 'No desc')} (${escapeHtml(i.location || '—')})<br>
-            Current: <span class="low-qty">${i.qty}</span> (min: ${i.minQty})
-          </div>
-        `).join('');
+      list.innerHTML = low.map(i => `
+  <div class="alert-item">
+    <a class="part-link" href="/inv/${encodeURIComponent(i.partNumber)}" target="_blank">
+      <strong>${escapeHtml(i.partNumber)}</strong>
+    </a> — 
+    ${escapeHtml(i.description || 'No desc')} (${escapeHtml(i.location || '—')})<br>
+    Current: <span class="low-qty">${i.qty}</span> (min: ${i.minQty})
+  </div>
+`).join('');
       } catch (err) {
         console.error('Low stock error:', err);
         list.innerHTML = `<div class="msg err">Failed: ${err.message}</div>`;
