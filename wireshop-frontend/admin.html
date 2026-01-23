@@ -10,8 +10,11 @@
     .navbtn.active { outline:2px solid rgba(255,255,255,.25); }
     .table-wrap { overflow:auto; }
     table { width:100%; border-collapse:collapse; font-size:13px; }
-    th, td { padding:6px 10px; white-space:nowrap; text-align:left; }
-    th { background:#111; color:#fff; }
+    th, td { white-space:nowrap; text-align:left; }
+    th { background:#111; color:#fff; padding:6px 8px; }
+    td { padding:6px 8px; }
+    th.username-col, td.username-col { width:120px; padding-left:6px; padding-right:6px; }
+    th.role-col, td.role-col { width:100px; padding-left:6px; padding-right:6px; }
     tr:nth-child(even) { background:#f8f8f8; }
     .muted { color:#666; font-size:11px; }
     .msg { margin-top:6px; font-size:12px; }
@@ -112,8 +115,8 @@
         <table>
           <thead>
             <tr>
-              <th>Username</th>
-              <th>Role</th>
+              <th class="username-col">Username</th>
+              <th class="role-col">Role</th>
               <th>Active</th>
               <th>New PIN</th>
               <th>Save</th>
@@ -301,8 +304,8 @@
 
         return `
           <tr data-id="${escapeAttr(id)}" data-username="${escapeAttr(uname)}">
-            <td>${escapeHtml(uname)}</td>
-            <td>
+            <td class="username-col">${escapeHtml(uname)}</td>
+            <td class="role-col">
               <select class="roleSel">
                 <option value="tech" ${role==='tech'?'selected':''}>tech</option>
                 <option value="admin" ${role==='admin'?'selected':''}>admin</option>
