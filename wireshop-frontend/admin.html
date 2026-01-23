@@ -40,28 +40,16 @@
     .msg { margin-top:4px; font-size:11px; }
     .add-row { gap:6px; margin-bottom:6px; flex-wrap:wrap; }
     .add-row label { flex:1 1 130px; min-width:130px; }
-
-    .modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,.35); display:none; align-items:center; justify-content:center; z-index:50; }
-    .modal { background:#122032; color:#fff; padding:16px; width:420px; border-radius:8px; box-shadow:0 8px 20px rgba(0,0,0,.4); }
-    .modal h3 { margin:0 0 10px; font-size:18px; }
-    .modal label { display:block; font-size:12px; margin-top:8px; margin-bottom:4px; }
-    .modal input, .modal textarea { width:100%; border:none; border-radius:6px; height:34px; padding:6px 8px; outline:none; font-size:14px; color:#000; }
-    .modal textarea { height:90px; resize:vertical; }
-    .modal-actions { margin-top:14px; display:flex; gap:10px; justify-content:flex-end; }
-    .btn-small { border:none; border-radius:6px; padding:6px 14px; cursor:pointer; }
-    .btn-red { background:#c30000; color:#fff; }
-    .btn-gray { background:#c5c5c5; color:#000; }
   </style>
 </head>
 <body>
 
   <div class="brand-bar">
     <div class="brand-inner">
-      <a class="brand-logo" href="/dashboard.html">
-        <img src="/czm-logo.png" alt="CZM">
+      <a class="brand-logo" href="dashboard.html">
+        <img src="czm-logo.png" alt="CZM">
         <h1 class="brand-title">CZM • Admin</h1>
       </a>
-
       <div class="brand-actions">
         <a class="navbtn" href="dashboard.html">Dashboard</a>
         <a class="navbtn active" href="admin.html">Admin</a>
@@ -79,22 +67,15 @@
     <div class="card" id="usersCard">
       <h2>Users</h2>
       <div class="add-row" style="display:flex; margin-bottom:12px;">
-        <label>
-          Username
-          <input id="uName" type="text" placeholder="firstname.lastname" />
-        </label>
-        <label>
-          PIN
-          <input id="uPin" type="text" inputmode="numeric" maxlength="10" placeholder="1234" />
-        </label>
-        <label>
-          Role
+        <label>Username <input id="uName" type="text" placeholder="firstname.lastname" /></label>
+        <label>PIN <input id="uPin" type="text" inputmode="numeric" maxlength="10" placeholder="1234" /></label>
+        <label>Role 
           <select id="uRole">
             <option value="tech">tech</option>
             <option value="admin">admin</option>
           </select>
         </label>
-        <button id="btnAddUser" class="btn-red">Add User</button>
+        <button id="btnAddUser" class="btn-mini" style="background:#b30000;color:#fff;">Add User</button>
       </div>
       <div id="uMsg" class="msg"></div>
 
@@ -116,73 +97,45 @@
     </div>
   </main>
 
-  <div class="modal-backdrop" id="addModalBackdrop">
-    <div class="modal">
-      <h3>Add Assignment to Queue</h3>
-      <label>Part Number</label>
-      <input id="mPartNumber" type="text" readonly />
-      <label>Description</label>
-      <input id="mDescription" type="text" readonly />
-      <label>Expected Minutes</label>
-      <input id="mMinutes" type="number" min="1" placeholder="e.g. 30" />
-      <label>Notes</label>
-      <textarea id="mNotes" placeholder="Optional notes..."></textarea>
-      <div class="modal-actions">
-        <button class="btn-gray" onclick="document.getElementById('addModalBackdrop').style.display='none'">Cancel</button>
-        <button class="btn-red" id="submitAssignment">Add to Queue</button>
-      </div>
-    </div>
-  </div>
-
   <script>
-    const API_BASE = 'https://wireshop-backend.onrender.com/api';
+    const API_BASE = '/api';  // change to 'https://wireshop-backend.onrender.com/api' if needed
 
-    function escapeHtml(str) {
-      if (!str) return '';
-      return str.replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[m]);
+    function escapeHtml(input) {
+      if (input == null) return '';
+      const str = String(input);
+      return str.replace(/[&<>"']/g, m => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[m]);
     }
 
     function getSession() {
-      try {
-        return JSON.parse(localStorage.getItem('user') || '{}');
-      } catch {
-        return {};
-      }
+      try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; }
     }
 
     function authHeaders() {
-      const user = getSession();
-      return {
-        'x-user': user.username || ''
-      };
+      return { 'x-user': getSession().username || '' };
     }
 
-    function setMsg(id, text, cls = '') {
+    function setMsg(id, text, cls='') {
       const el = document.getElementById(id);
-      if (el) {
-        el.textContent = text;
-        el.className = 'msg ' + cls;
-      }
+      if (el) el.innerHTML = text, el.className = 'msg ' + cls;
     }
 
     function requireAdmin() {
-      const user = getSession();
-      return String(user.role || '').toLowerCase() === 'admin';
+      return getSession().role?.toLowerCase() === 'admin';
     }
 
     async function apiGetUsers() {
       const res = await fetch(API_BASE + '/users', { headers: authHeaders() });
-      if (!res.ok) throw new Error('Failed to fetch users');
+      if (!res.ok) throw new Error(`Users fetch failed: ${res.status}`);
       return await res.json();
     }
 
-    async function apiAddUser(payload) {
+    async function apiAddUser({username, pin, role}) {
       const res = await fetch(API_BASE + '/users', {
         method: 'POST',
         headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify({username, pin, role})
       });
-      if (!res.ok) throw new Error('Failed to add user');
+      if (!res.ok) throw new Error('Add user failed');
     }
 
     async function apiUpdateUserById(id, payload) {
@@ -191,7 +144,7 @@
         headers: { ...authHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-      if (!res.ok) throw new Error('Failed to update user');
+      if (!res.ok) throw new Error('Update failed');
     }
 
     async function apiDeleteUser(username) {
@@ -199,211 +152,159 @@
         method: 'DELETE',
         headers: authHeaders()
       });
-      if (!res.ok) throw new Error('Failed to delete user');
+      if (!res.ok) throw new Error('Delete failed');
     }
 
-    function normalizeRole(role) {
-      return String(role).toLowerCase() === 'admin' ? 'admin' : 'tech';
+    function normalizeRole(r) {
+      return (r || 'tech').toLowerCase() === 'admin' ? 'admin' : 'tech';
     }
 
     function renderUsers(users) {
       const tbody = document.getElementById('usersTableBody');
-      tbody.innerHTML = users.map(u => `
-        <tr data-id="${escapeHtml(u.id || '')}" data-username="${escapeHtml(u.username)}">
-          <td class="username-col">${escapeHtml(u.username)}</td>
-          <td class="role-col">
-            <select class="roleSel">
-              <option value="tech" ${normalizeRole(u.role) === 'tech' ? 'selected' : ''}>tech</option>
-              <option value="admin" ${normalizeRole(u.role) === 'admin' ? 'selected' : ''}>admin</option>
-            </select>
-          </td>
-          <td class="active-col">
-            <input type="checkbox" class="activeChk" ${u.active ? 'checked' : ''} />
-          </td>
-          <td class="newpin-col">
-            <input type="text" class="pinInp" placeholder="--" />
-          </td>
-          <td class="action-col"><button class="save btn-mini" style="background:#b30000; color:#fff;">Save</button></td>
-          <td class="action-col"><button class="del btn-mini" style="background:#b30000; color:#fff;">Delete</button></td>
-        </tr>
-      `).join('');
-    }
-
-    async function loadLowStock(){
-      const card = document.getElementById('lowStockCard');
-      const list = document.getElementById('lowStockList');
-      if (!card || !list) return;
-
-      list.innerHTML = 'Loading...';
-      card.style.display = 'block';
-
-      try {
-        const res = await fetch(API_BASE + '/inventory-all', { headers: authHeaders() });
-        if (!res.ok) throw new Error(`Inventory fetch failed: ${res.status}`);
-        const items = await res.json();
-
-        const low = items.filter(i => 
-          typeof i.qty === 'number' && 
-          typeof i.minQty === 'number' && 
-          i.minQty > 0 && 
-          i.qty <= i.minQty
-        );
-
-        if (low.length === 0) {
-          list.innerHTML = '<div class="muted">No low stock items.</div>';
-          return;
-        }
-
-        const isAdmin = requireAdmin();
-
-        list.innerHTML = low.map(i => {
-          const part = JSON.stringify(i.partNumber || '');
-          const desc = JSON.stringify(i.description || '');
-          const onclickAttr = `openAddModal(${part}, ${desc})`.replace(/"/g, '&quot;');
-
-          return `
-            <div class="alert-item">
-              <div>
-                <strong>${escapeHtml(i.partNumber)}</strong> — 
-                ${escapeHtml(i.description || 'No desc')} (${escapeHtml(i.location || '—')})<br>
-                Current: <span class="low-qty">${i.qty}</span> (min: ${i.minQty})
-              </div>
-              ${isAdmin ? `<button class="add-queue-btn" onclick="${onclickAttr}">Add to Queue</button>` : ''}
-            </div>
-          `;
-        }).join('');
-      } catch (err) {
-        console.error('Low stock error:', err);
-        list.innerHTML = `<div class="msg err">Failed: ${err.message}</div>`;
+      if (!Array.isArray(users)) {
+        tbody.innerHTML = '<tr><td colspan="6">Bad users data: ' + escapeHtml(JSON.stringify(users)) + '</td></tr>';
+        return;
       }
-    }
-
-    function openAddModal(partNumber, description) {
-      document.getElementById('mPartNumber').value = partNumber;
-      document.getElementById('mDescription').value = description;
-      document.getElementById('mMinutes').value = '';
-      document.getElementById('mNotes').value = '';
-      document.getElementById('addModalBackdrop').style.display = 'flex';
-    }
-
-    document.getElementById('submitAssignment').addEventListener('click', async () => {
-      const minutes = Number(document.getElementById('mMinutes').value) || 0;
-      const notes = document.getElementById('mNotes').value.trim();
-      const partNumber = document.getElementById('mPartNumber').value;
-      const description = document.getElementById('mDescription').value;
-
-      if (minutes < 1) return setMsg('uMsg', 'Expected minutes required', 'err');
-
-      try {
-        const payload = { partNumber, printName: description, expectedMinutes: minutes, notes };
-        const res = await fetch(API_BASE + '/assignments', {
-          method: 'POST',
-          headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-        if (!res.ok) throw new Error('Failed to add to queue');
-        document.getElementById('addModalBackdrop').style.display = 'none';
-        loadLowStock(); // Refresh low stock
-      } catch (err) {
-        console.error(err);
-        setMsg('uMsg', err.message, 'err');
+      if (users.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6">No users found</td></tr>';
+        return;
       }
-    });
+      tbody.innerHTML = users.map(u => {
+        const username = escapeHtml(u.username || '—');
+        return `
+          <tr data-id="${escapeHtml(u.id || u.username || '')}" data-username="${username}">
+            <td class="username-col">${username}</td>
+            <td class="role-col">
+              <select class="roleSel">
+                <option value="tech" ${normalizeRole(u.role) === 'tech' ? 'selected' : ''}>tech</option>
+                <option value="admin" ${normalizeRole(u.role) === 'admin' ? 'selected' : ''}>admin</option>
+              </select>
+            </td>
+            <td class="active-col"><input type="checkbox" class="activeChk" ${u.active ? 'checked' : ''}></td>
+            <td class="newpin-col"><input type="text" class="pinInp" placeholder="—" /></td>
+            <td class="action-col"><button class="save btn-mini" style="background:#b30000;color:#fff;">Save</button></td>
+            <td class="action-col"><button class="del btn-mini" style="background:#b30000;color:#fff;">Delete</button></td>
+          </tr>
+        `;
+      }).join('');
+    }
 
-    async function loadUsers(){
+    async function loadUsers() {
       const tbody = document.getElementById('usersTableBody');
       if (!tbody) return;
-
-      try{
-        setMsg('uMsg', 'Loading users...', 'muted');
+      try {
+        setMsg('uMsg', 'Loading...', 'muted');
         const users = await apiGetUsers();
         renderUsers(users);
         setMsg('uMsg', '', '');
-      }catch(err){
-        console.error('Load users error:', err);
-        tbody.innerHTML = '<tr><td colspan="6" style="opacity:.7; text-align:center; color:red;">Failed to load users: ' + err.message + '</td></tr>';
+      } catch (err) {
+        console.error(err);
+        tbody.innerHTML = '<tr><td colspan="6" style="color:red;">Failed to load users: ' + escapeHtml(err.message) + '</td></tr>';
         setMsg('uMsg', 'Error: ' + err.message, 'err');
       }
     }
 
-    async function addUser(){
-      const name = (document.getElementById('uName').value || '').trim();
-      const pin = (document.getElementById('uPin').value || '').trim();
-      const role = normalizeRole(document.getElementById('uRole').value);
+    async function addUser() {
+      const name = document.getElementById('uName')?.value?.trim();
+      const pin = document.getElementById('uPin')?.value?.trim();
+      const role = normalizeRole(document.getElementById('uRole')?.value);
 
-      if(!name){
-        setMsg('uMsg', 'Username required', 'err');
+      if (!name || !pin) {
+        setMsg('uMsg', 'Username and PIN required', 'err');
         return;
       }
-      if(!pin){
-        setMsg('uMsg', 'PIN required', 'err');
-        return;
-      }
-
-      try{
-        setMsg('uMsg', 'Adding user…', 'muted');
-        await apiAddUser({ username: name, pin, role });
+      try {
+        setMsg('uMsg', 'Adding...', 'muted');
+        await apiAddUser({username: name, pin, role});
         document.getElementById('uName').value = '';
         document.getElementById('uPin').value = '';
-        document.getElementById('uRole').value = 'tech';
-        setMsg('uMsg', 'User added.', 'ok');
-        await loadUsers();
-      }catch(err){
-        console.error(err);
-        setMsg('uMsg', String(err.message || err), 'err');
+        setMsg('uMsg', 'User added', 'ok');
+        loadUsers();
+      } catch (err) {
+        setMsg('uMsg', err.message, 'err');
       }
     }
 
-    function wireTableClicks(){
-      const tbody = document.getElementById('usersTableBody');
-
-      tbody.addEventListener('click', async (e) => {
+    function wireTableClicks() {
+      document.getElementById('usersTableBody')?.addEventListener('click', async e => {
         const tr = e.target.closest('tr[data-id]');
-        if(!tr) return;
+        if (!tr) return;
+        const id = tr.dataset.id;
+        const username = tr.dataset.username;
 
-        const id = tr.getAttribute('data-id');
-        const username = tr.getAttribute('data-username');
+        if (e.target.classList.contains('save')) {
+          const role = tr.querySelector('.roleSel')?.value;
+          const active = tr.querySelector('.activeChk')?.checked;
+          const newPin = tr.querySelector('.pinInp')?.value?.trim();
 
-        if(e.target.classList.contains('save')){
-          const roleSel = tr.querySelector('.roleSel');
-          const activeChk = tr.querySelector('.activeChk');
-          const pinInp = tr.querySelector('.pinInp');
+          const payload = { role: normalizeRole(role), active };
+          if (newPin) payload.pin = newPin;
 
-          const payload = {
-            role: normalizeRole(roleSel && roleSel.value),
-            active: !!(activeChk && activeChk.checked)
-          };
-
-          const newPin = (pinInp && pinInp.value || '').trim();
-          if(newPin) payload.pin = newPin;
-
-          try{
-            setMsg('uMsg', 'Saving…', 'muted');
+          try {
+            setMsg('uMsg', 'Saving...', 'muted');
             await apiUpdateUserById(id, payload);
-            if(pinInp) pinInp.value = '';
-            setMsg('uMsg', 'Saved.', 'ok');
-            await loadUsers();
-          }catch(err){
-            console.error(err);
-            setMsg('uMsg', String(err.message || err), 'err');
+            tr.querySelector('.pinInp').value = '';
+            setMsg('uMsg', 'Saved', 'ok');
+            loadUsers();
+          } catch (err) {
+            setMsg('uMsg', err.message, 'err');
           }
-          return;
         }
 
-        if(e.target.classList.contains('del')){
-          const ok = window.confirm('Delete user "' + username + '"?');
-          if(!ok) return;
-          try{
-            setMsg('uMsg', 'Deleting…', 'muted');
+        if (e.target.classList.contains('del')) {
+          if (!confirm(`Delete ${username}?`)) return;
+          try {
+            setMsg('uMsg', 'Deleting...', 'muted');
             await apiDeleteUser(username);
-            setMsg('uMsg', 'Deleted.', 'ok');
-            await loadUsers();
-          }catch(err){
-            console.error(err);
-            setMsg('uMsg', String(err.message || err), 'err');
+            setMsg('uMsg', 'Deleted', 'ok');
+            loadUsers();
+          } catch (err) {
+            setMsg('uMsg', err.message, 'err');
           }
         }
       });
+    }
+
+    async function loadLowStock() {
+      const card = document.getElementById('lowStockCard');
+      const list = document.getElementById('lowStockList');
+      if (!card || !list) return;
+      list.innerHTML = 'Loading...';
+      card.style.display = 'block';
+
+      try {
+        const res = await fetch(API_BASE + '/inventory', { headers: authHeaders() });
+        if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
+        const items = await res.json();
+
+        const low = items.filter(i => i.minQty > 0 && i.qty <= i.minQty);
+        if (low.length === 0) {
+          list.innerHTML = '<div class="muted">No low stock</div>';
+          return;
+        }
+
+        list.innerHTML = low.map(i => {
+          const part = JSON.stringify(i.partNumber || '');
+          const desc = JSON.stringify(i.description || '');
+          const onclick = `openAddModal(${part}, ${desc})`.replace(/"/g, '&quot;');
+          return `
+            <div class="alert-item">
+              <div>
+                <strong>${escapeHtml(i.partNumber)}</strong> — ${escapeHtml(i.description || '—')} (${escapeHtml(i.location || '—')})<br>
+                Current: ${i.qty} (min: ${i.minQty})
+              </div>
+              <button class="add-queue-btn" onclick="${onclick}">Add to Queue</button>
+            </div>
+          `;
+        }).join('');
+      } catch (err) {
+        console.error(err);
+        list.innerHTML = `<div style="color:red;">Failed: ${escapeHtml(err.message)}</div>`;
+      }
+    }
+
+    function openAddModal(part, desc) {
+      alert(`Add to queue:\nPart: ${part}\nDesc: ${desc}\n\n(This is placeholder - add real modal logic here)`);
     }
 
     if (requireAdmin()) {
@@ -411,8 +312,6 @@
       wireTableClicks();
       loadUsers();
       loadLowStock();
-    } else {
-      location.href = 'dashboard.html'; // Redirect non-admins
     }
   </script>
 </body>
