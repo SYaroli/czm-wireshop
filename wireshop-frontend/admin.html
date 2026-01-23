@@ -14,8 +14,9 @@
     .card { background:#fff; border-radius:6px; box-shadow:0 1px 4px rgba(0,0,0,0.08); padding:10px; margin:10px 0; }
 
     #lowStockCard { max-width:75%; margin:10px auto; }
-    .alert-item { font-size:12px; padding:5px 0; border-bottom:1px solid #eee; }
+    .alert-item { font-size:12px; padding:5px 0; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center; }
     .alert-item:last-child { border-bottom:none; }
+    .add-queue-btn { padding:4px 8px; font-size:10px; background:#b30000; color:#fff; border:none; border-radius:4px; cursor:pointer; }
 
     #usersCard { max-width:75%; margin:10px auto; }
     .table-wrap { overflow:auto; }
@@ -38,11 +39,17 @@
     .add-row { gap:6px; margin-bottom:6px; flex-wrap:wrap; }
     .add-row label { flex:1 1 130px; min-width:130px; }
 
-    /* Restore matching navbtn style from inventory */
-    .brand-bar{background:#0f1114;border-bottom:4px solid #c30000}
-    .brand-actions .navbtn{display:inline-block;background:#1a1c20;color:#bbb;padding:6px 12px;border-radius:10px;text-decoration:none;border:1px solid #3a3f44;font-weight:600;font-size:.9rem;margin-left:8px}
-    .brand-actions .navbtn.active{background:#b30000;color:#fff;border-color:#ff4d4d}
-    .brand-actions .navbtn:hover{background:#24272b;color:#fff}
+    /* Modal style from assignments */
+    .modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,.35); display:none; align-items:center; justify-content:center; z-index:50; }
+    .modal { background:#122032; color:#fff; padding:16px; width:420px; border-radius:8px; box-shadow:0 8px 20px rgba(0,0,0,.4); }
+    .modal h3 { margin:0 0 10px; font-size:18px; }
+    .modal label { display:block; font-size:12px; margin-top:8px; margin-bottom:4px; }
+    .modal input, .modal textarea { width:100%; border:none; border-radius:6px; height:34px; padding:6px 8px; outline:none; font-size:14px; color:#000; }
+    .modal textarea { height:90px; resize:vertical; }
+    .modal-actions { margin-top:14px; display:flex; gap:10px; justify-content:flex-end; }
+    .btn-small { border:none; border-radius:6px; padding:6px 14px; cursor:pointer; }
+    .btn-red { background:#c30000; color:#fff; }
+    .btn-gray { background:#c5c5c5; color:#000; }
   </style>
 </head>
 <body>
@@ -89,7 +96,7 @@
             <option value="admin">admin</option>
           </select>
         </label>
-        <button id="btnAddUser" class="navbtn red">Add User</button>  <!-- Adjusted to navbtn style, added red for match -->
+        <button id="btnAddUser" class="navbtn">Add User</button>
       </div>
 
       <div class="table-wrap">
@@ -114,10 +121,25 @@
     </div>
   </main>
 
+  <div id="addModalBackdrop" class="modal-backdrop">
+    <div class="modal">
+      <h3>Add to Queue</h3>
+      <label for="mPart">Part Number</label><input id="mPart" readonly />
+      <label for="mDesc">Description</label><input id="mDesc" readonly />
+      <label for="mQty">Quantity</label><input id="mQty" type="number" min="1" />
+      <label for="mNotes">Notes</label><textarea id="mNotes"></textarea>
+      <div class="modal-actions">
+        <button id="saveAddBtn" class="btn-small btn-red">Add</button>
+        <button id="cancelAddBtn" class="btn-small btn-gray">Cancel</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     const API_BASE = (localStorage.getItem("API_BASE") || "https://wireshop-backend.onrender.com").replace(/\/+$/, "");
     const API_USERS = API_BASE + '/api/users';
     const API_INVENTORY = API_BASE + '/api/inventory-all';
+    const API_ASSIGNMENTS = API_BASE + '/api/assignments';
 
     function getSession(){
       let u = null;
@@ -197,11 +219,16 @@
           return;
         }
 
+        const isAdmin = getSession().role === 'admin';
+
         list.innerHTML = low.map(i => `
           <div class="alert-item">
-            <strong>${escapeHtml(i.partNumber)}</strong> — 
-            ${escapeHtml(i.description || 'No desc')} (${escapeHtml(i.location || '—')})<br>
-            Current: <span class="low-qty">${i.qty}</span> (min: ${i.minQty})
+            <div>
+              <strong>${escapeHtml(i.partNumber)}</strong> — 
+              ${escapeHtml(i.description || 'No desc')} (${escapeHtml(i.location || '—')})<br>
+              Current: <span class="low-qty">${i.qty}</span> (min: ${i.minQty})
+            </div>
+            ${isAdmin ? `<button class="add-queue-btn" onclick="openAddModal('${escapeJs(i.partNumber)}', '${escapeJs(i.description || '')}')">Add to Queue</button>` : ''}
           </div>
         `).join('');
       } catch (err) {
@@ -209,6 +236,41 @@
         list.innerHTML = `<div class="msg err">Failed: ${err.message}</div>`;
       }
     }
+
+    function openAddModal(partNumber, description){
+      document.getElementById('mPart').value = partNumber;
+      document.getElementById('mDesc').value = description;
+      document.getElementById('mQty').value = 1;
+      document.getElementById('mNotes').value = '';
+      document.getElementById('addModalBackdrop').style.display = 'flex';
+    }
+
+    async function saveAddModal(){
+      const partNumber = document.getElementById('mPart').value.trim();
+      const qty = Number(document.getElementById('mQty').value) || 1;
+      const notes = document.getElementById('mNotes').value.trim();
+      if (!partNumber || qty < 1) {
+        alert('Part number and quantity required');
+        return;
+      }
+
+      const payload = { partNumber, qty, notes };
+      try {
+        const res = await fetch(API_ASSIGNMENTS, {
+          method: 'POST',
+          headers: authHeaders(),
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) throw new Error('Failed to add to queue');
+        alert('Added to queue!');
+        document.getElementById('addModalBackdrop').style.display = 'none';
+      } catch (err) {
+        alert('Error: ' + err.message);
+      }
+    }
+
+    document.getElementById('saveAddBtn')?.addEventListener('click', saveAddModal);
+    document.getElementById('cancelAddBtn')?.addEventListener('click', () => document.getElementById('addModalBackdrop').style.display = 'none');
 
     async function apiGetUsers(){
       const res = await fetch(API_USERS, { headers: authHeaders() });
@@ -261,8 +323,8 @@
       return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     }
 
-    function escapeAttr(s){
-      return escapeHtml(s).replace(/`/g,'');
+    function escapeJs(s){
+      return String(s).replace(/'/g, "\\'").replace(/\n/g, '\\n').replace(/\r/g, '\\r');
     }
 
     function renderUsers(users){
