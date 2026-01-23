@@ -10,14 +10,15 @@
     .navbtn.active { outline:2px solid rgba(255,255,255,.25); }
     .table-wrap { overflow:auto; }
     table { width:100%; border-collapse:collapse; font-size:13px; }
-    th, td { white-space:nowrap; text-align:left; }
+    th, td { white-space:nowrap; text-align:left; vertical-align:middle; }
     th { background:#111; color:#fff; padding:6px 6px; }
     td { padding:6px 6px; }
     th.username-col, td.username-col { width:120px; padding-left:6px; padding-right:6px; }
     th.role-col, td.role-col { width:100px; padding-left:6px; padding-right:6px; }
     th.newpin-col, td.newpin-col { width:60px; padding:6px 4px; text-align:center; }
-    th.action-col, td.action-col { padding:6px 4px; white-space:nowrap; }
-    .btn-mini { margin:0 2px; padding:5px 8px; font-size:11px; }
+    th.active-col, td.active-col { width:80px; text-align:center; padding:6px 4px; }
+    th.action-col, td.action-col { width:70px; text-align:center; padding:6px 4px; }
+    .btn-mini { margin:0; padding:5px 10px; font-size:11px; border-radius:6px; }
     tr:nth-child(even) { background:#f8f8f8; }
     .muted { color:#666; font-size:11px; }
     .msg { margin-top:6px; font-size:12px; }
@@ -111,7 +112,7 @@
             <tr>
               <th class="username-col">Username</th>
               <th class="role-col">Role</th>
-              <th>Active</th>
+              <th class="active-col">Active</th>
               <th class="newpin-col">New PIN</th>
               <th class="action-col">Save</th>
               <th class="action-col">Delete</th>
@@ -305,8 +306,8 @@
                 <option value="admin" ${role==='admin'?'selected':''}>admin</option>
               </select>
             </td>
-            <td>
-              <label style="display:flex;align-items:center;gap:6px;">
+            <td class="active-col">
+              <label style="display:flex;align-items:center;justify-content:center;gap:4px;">
                 <input class="activeChk" type="checkbox" ${active?'checked':''} />
                 <span class="muted">${active?'yes':'no'}</span>
               </label>
