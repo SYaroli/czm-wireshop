@@ -130,6 +130,7 @@
       <label for="mDesc">Description</label><input id="mDesc" />
       <label for="mLoc">Location</label><input id="mLoc" />
       <label for="mQty">Qty</label><input id="mQty" type="number" />
+      <label for="mMinQty">Min Qty</label><input id="mMinQty" type="number" />
       <label for="mNotes">Notes</label><textarea id="mNotes"></textarea>
       <div class="modal-actions">
         <button id="saveBtn" class="btn-small btn-red">Save</button>
@@ -211,6 +212,7 @@
             printName: db.description ?? c.printName ?? '',
             location: db.location ?? (c.location||''),
             qty: typeof db.qty === 'number' ? db.qty : 0,
+            minQty: typeof db.minQty === 'number' ? db.minQty : 0,
             notes: db.notes ?? (c.notes||'')
           });
         } else {
@@ -219,6 +221,7 @@
             printName: c.printName||'',
             location: c.location||'',
             qty: 0,
+            minQty: 0,
             notes: c.notes||''
           });
         }
@@ -231,6 +234,7 @@
             printName: db.description ?? '',
             location: db.location ?? '',
             qty: typeof db.qty === 'number' ? db.qty : 0,
+            minQty: typeof db.minQty === 'number' ? db.minQty : 0,
             notes: db.notes ?? ''
           });
         }
@@ -328,6 +332,7 @@
         printName: '',
         location: '',
         qty: 0,
+        minQty: 0,
         notes: ''
       };
 
@@ -349,6 +354,7 @@
             <div><b>Description</b></div><div>${escapeHtml(row.printName || '')}</div>
             <div><b>Location</b></div><div>${escapeHtml(row.location || '')}</div>
             <div><b>Qty</b></div><div id="detailQty">${escapeHtml(String(qtyVal))}</div>
+            <div><b>Min Qty</b></div><div>${escapeHtml(String(row.minQty || 0))}</div>
             <div><b>Notes</b></div><div style="white-space:pre-wrap;">${escapeHtml(row.notes || '')}</div>
           </div>
 
@@ -635,7 +641,7 @@
     function openEdit(row,isNew=false){
       if(!isAdmin) return;
       modalMode = isNew?'add':'edit';
-      const editingPart = row ? {...row} : {partNumber:'',printName:'',location:'',qty:0,notes:''};
+      const editingPart = row ? {...row} : {partNumber:'',printName:'',location:'',qty:0,minQty:0,notes:''};
 
       document.getElementById('modalTitle').textContent = isNew?'Add Part':'Edit Part';
       document.getElementById('mPart').readOnly = !isNew;
@@ -643,6 +649,7 @@
       document.getElementById('mDesc').value = editingPart.printName||'';
       document.getElementById('mLoc').value = editingPart.location||'';
       document.getElementById('mQty').value = editingPart.qty!=null?editingPart.qty:0;
+      document.getElementById('mMinQty').value = editingPart.minQty!=null?editingPart.minQty:0;
       document.getElementById('mNotes').value = editingPart.notes||'';
       editModalBackdrop.style.display='flex';
       document.getElementById('deleteBtn').style.display = isNew?'none':'inline-block';
@@ -654,10 +661,11 @@
       const desc=document.getElementById('mDesc').value;
       const loc=document.getElementById('mLoc').value;
       const qty=Number(document.getElementById('mQty').value||0);
+      const minQty=Number(document.getElementById('mMinQty').value||0);
       const notes=document.getElementById('mNotes').value;
       if(!part){alert('part number required');return;}
 
-      const payload={partNumber:part,description:desc,location:loc,qty,minQty:0,notes};
+      const payload={partNumber:part,description:desc,location:loc,qty,minQty,notes};
       const uname = getUsername(currentUser);
       const hdrs={'Content-Type':'application/json','x-user': uname};
 
@@ -688,9 +696,9 @@
     }
 
     document.getElementById('exportBtn').addEventListener('click',()=>{
-      let csv='partNumber,description,location,qty,notes\n';
+      let csv='partNumber,description,location,qty,minQty,notes\n';
       ALL_ROWS.forEach(r=>{
-        csv+=`"${r.partNumber}","${(r.printName||'').replace(/"/g,'""')}","${(r.location||'').replace(/"/g,'""')}",${r.qty||0},"${(r.notes||'').replace(/"/g,'""')}"\n`;
+        csv+=`"${r.partNumber}","${(r.printName||'').replace(/"/g,'""')}","${(r.location||'').replace(/"/g,'""')}",${r.qty||0},${r.minQty||0},"${(r.notes||'').replace(/"/g,'""')}"\n`;
       });
       const blob=new Blob([csv],{type:'text/csv'});
       const url=URL.createObjectURL(blob);
