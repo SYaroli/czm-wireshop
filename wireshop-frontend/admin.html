@@ -6,65 +6,56 @@
   <title>CZM • Admin</title>
   <link rel="stylesheet" href="style.css" />
   <style>
-    /* Admin page is just Users now */
-    .navbtn{ border:0; cursor:pointer; }
-    .navbtn.active{ outline:2px solid rgba(255,255,255,.25); }
-    .table-wrap{ overflow:auto; }
-    table{ width:100%; border-collapse:collapse; }
-    th, td{ white-space:nowrap; padding:8px 12px; text-align:left; }
-    th{ background:#111; color:#fff; }
-    tr:nth-child(even){ background:#f8f8f8; }
-    .muted{ color:#666; font-size:12px; }
-    .msg{ margin-top:8px; font-size:13px; }
-    .msg.ok{ color:#137333; }
-    .msg.err{ color:#b00020; }
-    .btn-mini{
-      padding:6px 10px;
-      border-radius:10px;
+    .navbtn { border:0; cursor:pointer; }
+    .navbtn.active { outline:2px solid rgba(255,255,255,.25); }
+    .table-wrap { overflow:auto; }
+    table { width:100%; border-collapse:collapse; font-size:13px; }
+    th, td { padding:6px 10px; white-space:nowrap; text-align:left; }
+    th { background:#111; color:#fff; }
+    tr:nth-child(even) { background:#f8f8f8; }
+    .muted { color:#666; font-size:11px; }
+    .msg { margin-top:6px; font-size:12px; }
+    .msg.ok { color:#137333; }
+    .msg.err { color:#b00020; }
+    .btn-mini {
+      padding:5px 9px;
+      border-radius:8px;
       font-weight:800;
-      font-size:12px;
+      font-size:11px;
       border:0;
       cursor:pointer;
     }
-    .btn-mini.save{ background:#111; color:#fff; }
-    .btn-mini.del{ background:#c80000; color:#fff; }
-    .alert-card{ background:#fff3cd; border:1px solid #ffeeba; padding:16px; border-radius:6px; margin:16px 0; }
-    .alert-item{ padding:8px 0; border-bottom:1px solid #eee; }
-    .alert-item:last-child{ border-bottom:0; }
-    .low-qty{ color:#c80000; font-weight:bold; }
+    .btn-mini.save { background:#111; color:#fff; }
+    .btn-mini.del { background:#c80000; color:#fff; }
 
-    /* Make the top nav buttons match the rest of the site */
-    .brand-actions{
+    .brand-actions {
       display:flex;
-      gap:10px;
+      gap:8px;
       align-items:center;
       flex-wrap:wrap;
     }
-    .brand-actions .btn{
-      text-decoration:none;
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      padding:8px 14px;
-      border-radius:12px;
+    .brand-actions .btn {
+      padding:7px 12px;
+      border-radius:10px;
       font-weight:800;
-      font-size:13px;
+      font-size:12px;
       line-height:1;
       border:0;
       cursor:pointer;
-      user-select:none;
     }
-    .brand-actions .btn.secondary{
-      background:#222;
-      color:#fff;
-    }
-    .brand-actions .btn.primary{
-      background:#c80000;
-      color:#fff;
-    }
-    .brand-actions .btn.active{
-      outline:2px solid rgba(255,255,255,.35);
-    }
+    .brand-actions .btn.secondary { background:#222; color:#fff; }
+    .brand-actions .btn.primary { background:#c80000; color:#fff; }
+    .brand-actions .btn.active { outline:2px solid rgba(255,255,255,.35); }
+
+    /* Compact layout */
+    .card { padding:12px; margin:10px 0; }
+    h2 { margin:0 0 8px; font-size:1.4rem; }
+    label { gap:3px; }
+    input, select { height:28px; font-size:13px; padding:0 8px; border:1px solid #ccc; border-radius:4px; }
+    .alert-card { background:#fff3cd; border:1px solid #ffeeba; padding:12px; margin:10px 0; border-radius:6px; }
+    .alert-item { padding:6px 0; border-bottom:1px solid #eee; font-size:13px; }
+    .alert-item:last-child { border-bottom:0; }
+    .low-qty { color:#c80000; font-weight:bold; }
   </style>
 </head>
 <body>
@@ -86,27 +77,27 @@
   </div>
 
   <main class="page">
-    <div class="card" id="lowStockCard" style="margin-top:14px; display:none;">
-      <h2 style="margin:0 0 10px 0;">Low Stock Alerts</h2>
+    <div class="card" id="lowStockCard" style="display:none;">
+      <h2>Low Stock Alerts</h2>
       <div id="lowStockList"></div>
       <div id="lowMsg" class="msg muted"></div>
     </div>
 
-    <div class="card" style="margin-top:14px;">
-      <h2 style="margin:0 0 10px 0;">Users</h2>
+    <div class="card">
+      <h2>Users</h2>
 
-      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px;">
-        <label style="display:flex;flex-direction:column;gap:4px;">
+      <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end; margin-bottom:8px;">
+        <label style="display:flex; flex-direction:column; gap:3px;">
           <span class="muted">Username</span>
           <input id="uName" type="text" placeholder="firstname.lastname" />
         </label>
 
-        <label style="display:flex;flex-direction:column;gap:4px;">
+        <label style="display:flex; flex-direction:column; gap:3px;">
           <span class="muted">PIN</span>
           <input id="uPin" type="text" inputmode="numeric" placeholder="1234" maxlength="10" />
         </label>
 
-        <label style="display:flex;flex-direction:column;gap:4px;">
+        <label style="display:flex; flex-direction:column; gap:3px;">
           <span class="muted">Role</span>
           <select id="uRole">
             <option value="tech" selected>tech</option>
@@ -121,12 +112,12 @@
         <table>
           <thead>
             <tr>
-              <th style="text-align:left;">Username</th>
-              <th style="text-align:left;">Role</th>
-              <th style="text-align:left;">Active</th>
-              <th style="text-align:left;">New PIN</th>
-              <th style="text-align:left;">Save</th>
-              <th style="text-align:left;">Delete</th>
+              <th>Username</th>
+              <th>Role</th>
+              <th>Active</th>
+              <th>New PIN</th>
+              <th>Save</th>
+              <th>Delete</th>
             </tr>
           </thead>
           <tbody id="usersTableBody">
@@ -239,7 +230,7 @@
       }
     }
 
-    // ===== Users API ===== (unchanged from your original)
+    // ===== Users API =====
     async function apiGetUsers(){
       const res = await fetch(API_USERS, { headers: authHeaders() });
       if(!res.ok){
@@ -287,7 +278,7 @@
       return res.json().catch(()=> ({}));
     }
 
-    // ===== Rendering Users ===== (unchanged)
+    // ===== Rendering Users =====
     function escapeHtml(s){
       return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     }
@@ -318,7 +309,7 @@
               </select>
             </td>
             <td>
-              <label style="display:flex;align-items:center;gap:8px;">
+              <label style="display:flex;align-items:center;gap:6px;">
                 <input class="activeChk" type="checkbox" ${active?'checked':''} />
                 <span class="muted">${active?'yes':'no'}</span>
               </label>
@@ -437,7 +428,7 @@
     document.getElementById('btnAddUser')?.addEventListener('click', addUser);
     wireTableClicks();
     loadUsers();
-    loadLowStock();  // <-- new: load alerts on page load
+    loadLowStock();
   </script>
 </body>
 </html>
