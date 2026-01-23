@@ -127,7 +127,7 @@
       <h3>Add to Queue</h3>
       <label for="mPart">Part Number</label><input id="mPart" readonly />
       <label for="mDesc">Description</label><input id="mDesc" readonly />
-      <label for="mQty">Quantity</label><input id="mQty" type="number" min="1" value="1" />
+      <label for="mQty">Qty</label><input id="mQty" type="number" min="1" value="1" />
       <label for="mNotes">Notes</label><textarea id="mNotes"></textarea>
       <div class="modal-actions">
         <button id="saveAddBtn" class="btn-small btn-red">Add</button>
@@ -190,10 +190,6 @@
 
     function escapeHtml(s){
       return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-    }
-
-    function escapeAttr(s){
-      return escapeHtml(s).replace(/`/g, '\\`');
     }
 
     function escapeJs(s){
@@ -263,7 +259,7 @@
       const qty = Number(document.getElementById('mQty').value) || 1;
       const notes = document.getElementById('mNotes').value.trim();
       if (!partNumber || qty < 1) {
-        alert('Part number and quantity required');
+        alert('Part number and qty required');
         return;
       }
 
@@ -276,12 +272,12 @@
         });
         if (!res.ok) {
           const errData = await res.json().catch(() => ({}));
-          throw new Error(errData.error || `Failed to add to queue (${res.status})`);
+          throw new Error(errData.error || `Failed (${res.status})`);
         }
         alert('Added to queue!');
         document.getElementById('addModalBackdrop').style.display = 'none';
       } catch (err) {
-        alert('Error: ' + err.message);
+        alert('Error adding to queue: ' + err.message);
       }
     }
 
