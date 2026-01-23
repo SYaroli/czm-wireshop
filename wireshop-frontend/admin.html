@@ -13,13 +13,11 @@
     main { max-width:1100px; margin:0 auto; padding:8px; }
     .card { background:#fff; border-radius:6px; box-shadow:0 1px 4px rgba(0,0,0,0.08); padding:10px; margin:10px 0; }
 
-    /* Low stock – narrower */
-    #lowStockCard { max-width:75%; margin-left:auto; margin-right:auto; }
+    #lowStockCard { max-width:75%; margin:10px auto; }
     .alert-item { font-size:12px; padding:5px 0; border-bottom:1px solid #eee; }
     .alert-item:last-child { border-bottom:none; }
 
-    /* Users card – same width, tighter table */
-    #usersCard { max-width:75%; margin-left:auto; margin-right:auto; }
+    #usersCard { max-width:75%; margin:10px auto; }
     .table-wrap { overflow:auto; }
     table { width:100%; border-collapse:collapse; font-size:12px; }
     th, td { padding:5px 6px; text-align:left; vertical-align:middle; white-space:nowrap; border-right:1px solid #eee; }
@@ -27,7 +25,6 @@
     th { background:#111; color:#fff; font-weight:600; }
     tr:nth-child(even) { background:#fafafa; }
 
-    /* Tighter columns – no excess space */
     th.username-col, td.username-col { width:110px; padding-left:5px; }
     th.role-col,   td.role-col   { width:80px;  padding:5px 4px; }
     th.active-col, td.active-col { width:60px;  text-align:center; padding:5px 3px; }
@@ -400,14 +397,6 @@
           }
         }
       });
-    }
-
-    function escapeHtml(s){
-      return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-    }
-
-    function escapeAttr(s){
-      return escapeHtml(s).replace(/`/g,'');
     }
 
     if (requireAdmin()) {
