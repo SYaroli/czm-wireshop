@@ -116,7 +116,6 @@
     </div>
   </main>
 
-  <!-- Modal for adding to queue (you may already have this in script.js or elsewhere; if not, add it) -->
   <div class="modal-backdrop" id="addModalBackdrop">
     <div class="modal">
       <h3>Add Assignment to Queue</h3>
@@ -136,7 +135,8 @@
   </div>
 
   <script>
-    // Helper functions
+    const API_BASE = 'https://wireshop-backend.onrender.com/api';
+
     function escapeHtml(str) {
       if (!str) return '';
       return str.replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[m]);
@@ -170,8 +170,66 @@
       return String(user.role || '').toLowerCase() === 'admin';
     }
 
-    // Low Stock loading - FIXED VERSION
-    async function loadLowStock() {
+    async function apiGetUsers() {
+      const res = await fetch(API_BASE + '/users', { headers: authHeaders() });
+      if (!res.ok) throw new Error('Failed to fetch users');
+      return await res.json();
+    }
+
+    async function apiAddUser(payload) {
+      const res = await fetch(API_BASE + '/users', {
+        method: 'POST',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) throw new Error('Failed to add user');
+    }
+
+    async function apiUpdateUserById(id, payload) {
+      const res = await fetch(API_BASE + '/users/' + id, {
+        method: 'PATCH',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) throw new Error('Failed to update user');
+    }
+
+    async function apiDeleteUser(username) {
+      const res = await fetch(API_BASE + '/users/' + encodeURIComponent(username), {
+        method: 'DELETE',
+        headers: authHeaders()
+      });
+      if (!res.ok) throw new Error('Failed to delete user');
+    }
+
+    function normalizeRole(role) {
+      return String(role).toLowerCase() === 'admin' ? 'admin' : 'tech';
+    }
+
+    function renderUsers(users) {
+      const tbody = document.getElementById('usersTableBody');
+      tbody.innerHTML = users.map(u => `
+        <tr data-id="${escapeHtml(u.id || '')}" data-username="${escapeHtml(u.username)}">
+          <td class="username-col">${escapeHtml(u.username)}</td>
+          <td class="role-col">
+            <select class="roleSel">
+              <option value="tech" ${normalizeRole(u.role) === 'tech' ? 'selected' : ''}>tech</option>
+              <option value="admin" ${normalizeRole(u.role) === 'admin' ? 'selected' : ''}>admin</option>
+            </select>
+          </td>
+          <td class="active-col">
+            <input type="checkbox" class="activeChk" ${u.active ? 'checked' : ''} />
+          </td>
+          <td class="newpin-col">
+            <input type="text" class="pinInp" placeholder="--" />
+          </td>
+          <td class="action-col"><button class="save btn-mini" style="background:#b30000; color:#fff;">Save</button></td>
+          <td class="action-col"><button class="del btn-mini" style="background:#b30000; color:#fff;">Delete</button></td>
+        </tr>
+      `).join('');
+    }
+
+    async function loadLowStock(){
       const card = document.getElementById('lowStockCard');
       const list = document.getElementById('lowStockList');
       if (!card || !list) return;
@@ -180,7 +238,7 @@
       card.style.display = 'block';
 
       try {
-        const res = await fetch('/api/inventory', { headers: authHeaders() });
+        const res = await fetch(API_BASE + '/inventory-all', { headers: authHeaders() });
         if (!res.ok) throw new Error(`Inventory fetch failed: ${res.status}`);
         const items = await res.json();
 
@@ -220,62 +278,45 @@
       }
     }
 
-    // Placeholder for modal open - customize if you already have this logic elsewhere
     function openAddModal(partNumber, description) {
-      const backdrop = document.getElementById('addModalBackdrop');
-      if (!backdrop) {
-        console.warn('Modal backdrop not found');
-        return;
-      }
-
       document.getElementById('mPartNumber').value = partNumber;
       document.getElementById('mDescription').value = description;
       document.getElementById('mMinutes').value = '';
       document.getElementById('mNotes').value = '';
-
-      backdrop.style.display = 'flex';
-
-      // Submit handler (move to real API call if needed)
-      const submitBtn = document.getElementById('submitAssignment');
-      const oldHandler = submitBtn.onclick;
-      submitBtn.onclick = async () => {
-        const minutes = Number(document.getElementById('mMinutes').value) || 0;
-        const notes = document.getElementById('mNotes').value.trim();
-
-        if (minutes < 1) {
-          alert('Enter expected minutes (at least 1)');
-          return;
-        }
-
-        try {
-          const payload = {
-            partNumber,
-            printName: description,
-            expectedMinutes: minutes,
-            notes
-          };
-          const res = await fetch('/api/assignments', {
-            method: 'POST',
-            headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-          });
-          if (!res.ok) throw new Error('Failed to add assignment');
-          alert('Added to queue!');
-          backdrop.style.display = 'none';
-        } catch (err) {
-          alert('Error: ' + err.message);
-        }
-      };
+      document.getElementById('addModalBackdrop').style.display = 'flex';
     }
 
-    // Users section remains unchanged
+    document.getElementById('submitAssignment').addEventListener('click', async () => {
+      const minutes = Number(document.getElementById('mMinutes').value) || 0;
+      const notes = document.getElementById('mNotes').value.trim();
+      const partNumber = document.getElementById('mPartNumber').value;
+      const description = document.getElementById('mDescription').value;
+
+      if (minutes < 1) return setMsg('uMsg', 'Expected minutes required', 'err');
+
+      try {
+        const payload = { partNumber, printName: description, expectedMinutes: minutes, notes };
+        const res = await fetch(API_BASE + '/assignments', {
+          method: 'POST',
+          headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) throw new Error('Failed to add to queue');
+        document.getElementById('addModalBackdrop').style.display = 'none';
+        loadLowStock(); // Refresh low stock
+      } catch (err) {
+        console.error(err);
+        setMsg('uMsg', err.message, 'err');
+      }
+    });
+
     async function loadUsers(){
       const tbody = document.getElementById('usersTableBody');
       if (!tbody) return;
 
       try{
         setMsg('uMsg', 'Loading users...', 'muted');
-        const users = await apiGetUsers(); // assuming this function exists in script.js or elsewhere
+        const users = await apiGetUsers();
         renderUsers(users);
         setMsg('uMsg', '', '');
       }catch(err){
@@ -288,7 +329,7 @@
     async function addUser(){
       const name = (document.getElementById('uName').value || '').trim();
       const pin = (document.getElementById('uPin').value || '').trim();
-      const role = document.getElementById('uRole').value;
+      const role = normalizeRole(document.getElementById('uRole').value);
 
       if(!name){
         setMsg('uMsg', 'Username required', 'err');
@@ -301,7 +342,7 @@
 
       try{
         setMsg('uMsg', 'Adding user…', 'muted');
-        await apiAddUser({ username: name, pin, role }); // assuming this exists
+        await apiAddUser({ username: name, pin, role });
         document.getElementById('uName').value = '';
         document.getElementById('uPin').value = '';
         document.getElementById('uRole').value = 'tech';
@@ -329,11 +370,11 @@
           const pinInp = tr.querySelector('.pinInp');
 
           const payload = {
-            role: roleSel?.value,
-            active: !!activeChk?.checked
+            role: normalizeRole(roleSel && roleSel.value),
+            active: !!(activeChk && activeChk.checked)
           };
 
-          const newPin = pinInp?.value.trim();
+          const newPin = (pinInp && pinInp.value || '').trim();
           if(newPin) payload.pin = newPin;
 
           try{
@@ -365,12 +406,13 @@
       });
     }
 
-    // Start everything if admin
     if (requireAdmin()) {
       document.getElementById('btnAddUser')?.addEventListener('click', addUser);
       wireTableClicks();
       loadUsers();
       loadLowStock();
+    } else {
+      location.href = 'dashboard.html'; // Redirect non-admins
     }
   </script>
 </body>
