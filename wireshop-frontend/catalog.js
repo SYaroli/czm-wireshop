@@ -95,7 +95,6 @@ window.catalog = [
   { "printName": "HEADMAST HARNESS", "partNumber": "40602.4860.000", "saNumber": "N/A", "expectedHours": 8, "notes": null, "location": "116D" },
   { "printName": "SP25 LM SW", "partNumber": "40602.4870.000", "saNumber": "N/A", "expectedHours": 6, "notes": "SERVICE ONLY", "location": "SERVICE" },
   { "printName": "BOTTOM LM SW HARNESS", "partNumber": "40602.4880.000", "saNumber": "N/A", "expectedHours": 1, "notes": "TWO ARE REQUIRED.", "location": "116D" },
-  { "printName": "M12 90 CABLE 5M PIGTAIL", "partNumber": "40602.4920.000", "saNumber": "N/A", "expectedHours": null, "notes": "VENDOR CABLE", "location": "113A" },
   { "printName": "M12 LIMIT SWITCH 24\"", "partNumber": "40602.4921.000", "saNumber": "N/A", "expectedHours": 1, "notes": null, "location": "116D" },
   { "printName": "M12 LIMIT SWITCH 80\"\"", "partNumber": "40602.4922.000", "saNumber": "N/A", "expectedHours": 1, "notes": null, "location": "116D" },
   { "printName": "M12 LIMIT SWITCH 6\"\"", "partNumber": "40602.4923.000", "saNumber": "N/A", "expectedHours": 1, "notes": null, "location": "116D" },
@@ -177,5 +176,6 @@ window.catalog = [
   { "printName": "BAUMER ENCODER HARNESS", "partNumber": "40602.6790.000", "saNumber": "N/A", "expectedHours": 3, "notes": null, "location": "116B" },
   { "printName": "TK90 OUTPUT EXPANDER HARNESS", "partNumber": "40602.6830.000", "saNumber": "N/A", "expectedHours": 4, "notes": null, "location": "116B" }
 ];
+
 
 
