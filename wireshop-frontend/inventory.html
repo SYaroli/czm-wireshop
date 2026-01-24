@@ -29,30 +29,46 @@
     .toolbar-btn.red{background:#c30000;color:#fff;border-color:#a00000}
     #countLabel{font-size:12px;margin-left:auto;white-space:nowrap}
 
-    /* give notes more room + keep layout stable */
+    /* Header: keep 5 columns, then show Notes label on its own line */
     .table-head{
       background:#0a0b0d;color:#fff;
       display:grid;
-     grid-template-columns:150px 220px 90px 55px 220px minmax(380px, 1fr);
-      gap:0;padding:8px 16px;font-size:12px;font-weight:600;margin-top:12px
+      grid-template-columns:150px 220px 100px 60px 320px;
+      gap:0;
+      padding:8px 16px;
+      font-size:12px;
+      font-weight:600;
+      margin-top:12px;
+      row-gap:6px;
+    }
+    .th-notes{
+      grid-column:1 / -1;
+      opacity:.9;
+      font-weight:600;
     }
 
+    /* Rows: main line is 5 columns, Notes becomes full-width line underneath */
     .list-body .row{
       display:grid;
-     grid-template-columns:150px 220px 90px 55px 220px minmax(380px, 1fr);
-      gap:0;padding:10px 16px;border-bottom:1px solid #eef2f6;background:#fff;align-items:flex-start
+      grid-template-columns:150px 220px 100px 60px 320px;
+      gap:0;
+      row-gap:6px;
+      padding:10px 16px;
+      border-bottom:1px solid #eef2f6;
+      background:#fff;
+      align-items:center;
     }
     .list-body .row:nth-child(odd){background:#fafbfc}
 
-    /* FIX: allow notes to wrap and be readable */
-   .notes-cell{
-  font-size:12px;
-  color:#333;
-  white-space:normal;
-  overflow-wrap:anywhere;
-  line-height:1.25;
-}
-
+    .notes-cell{
+      grid-column:1 / -1;
+      font-size:12px;
+      color:#333;
+      white-space:normal !important;
+      overflow-wrap:anywhere;
+      line-height:1.25;
+      padding-top:2px;
+    }
 
     .adjust-controls{display:flex;align-items:center;gap:8px;flex-wrap:nowrap}
     .qty-input{width:70px;border:1px solid #d0d3d8;border-radius:20px;height:30px;padding:0 8px;text-align:center}
@@ -92,10 +108,6 @@
     .detail-hr{margin:16px 0;border:none;border-top:1px solid #e5e9ef}
     .detail-title{font-size:13px;color:#444}
     .detail-subtle{margin-top:8px;color:#888;font-size:12px}
-
-    .log-actions{display:flex;gap:6px;align-items:center}
-    .log-btn{border:1px solid #cfd4da;background:#eee;border-radius:6px;padding:4px 8px;font-size:12px;cursor:pointer}
-    .log-btn.red{background:#c30000;color:#fff;border-color:#a00000}
 
     @media (max-width:900px){
       .inventory-shell{max-width:100%;margin:0;border-radius:0;box-shadow:none}
@@ -137,7 +149,8 @@
     </div>
 
     <div id="tableHead" class="table-head">
-      <div>Part Number</div><div>Print Name</div><div>Location</div><div>Qty</div><div>Adjust</div><div>Notes</div>
+      <div>Part Number</div><div>Print Name</div><div>Location</div><div>Qty</div><div>Adjust</div>
+      <div class="th-notes">Notes</div>
     </div>
     <div id="listBody" class="list-body"></div>
   </div>
@@ -209,7 +222,6 @@
 
     let ALL_ROWS = [];
     let modalMode = 'edit';
-
     let APPLY_BUSY = false;
 
     async function loadData(){
@@ -294,13 +306,23 @@
         const partA = document.createElement('a');
         partA.href = '/inv/'+encodeURIComponent(row.partNumber);
         partA.textContent = row.partNumber;
-        partA.style.color='#003574'; partA.style.fontSize='12px';
+        partA.style.color='#003574';
+        partA.style.fontSize='12px';
 
-        const nameDiv = document.createElement('div'); nameDiv.textContent=row.printName||''; nameDiv.style.fontSize='12px';
-        const locDiv = document.createElement('div'); locDiv.textContent=row.location||''; locDiv.style.fontSize='12px';
-        const qtyDiv = document.createElement('div'); qtyDiv.textContent = row.qty!=null?row.qty:0; qtyDiv.style.fontSize='12px';
+        const nameDiv = document.createElement('div');
+        nameDiv.textContent=row.printName||'';
+        nameDiv.style.fontSize='12px';
 
-        const adjustDiv = document.createElement('div'); adjustDiv.className='adjust-controls';
+        const locDiv = document.createElement('div');
+        locDiv.textContent=row.location||'';
+        locDiv.style.fontSize='12px';
+
+        const qtyDiv = document.createElement('div');
+        qtyDiv.textContent = row.qty!=null?row.qty:0;
+        qtyDiv.style.fontSize='12px';
+
+        const adjustDiv = document.createElement('div');
+        adjustDiv.className='adjust-controls';
 
         const minusBtn = document.createElement('button');
         minusBtn.className = 'quick-btn minus';
@@ -332,16 +354,22 @@
         adjustDiv.append(minusBtn, plusBtn, adjustInput, applyBtn);
 
         if (isAdmin) {
-          const editBtn = document.createElement('button'); editBtn.className='edit-btn'; editBtn.textContent='Edit';
+          const editBtn = document.createElement('button');
+          editBtn.className='edit-btn';
+          editBtn.textContent='Edit';
           editBtn.onclick = ()=>openEdit(row);
           adjustDiv.append(editBtn);
         }
 
-        const notesDiv = document.createElement('div'); notesDiv.className='notes-cell'; notesDiv.textContent=row.notes||'';
+        const notesDiv = document.createElement('div');
+        notesDiv.className='notes-cell';
+        notesDiv.textContent=row.notes||'';
 
         div.append(partA,nameDiv,locDiv,qtyDiv,adjustDiv,notesDiv);
-        listBody.appendChild(div); shown++;
+        listBody.appendChild(div);
+        shown++;
       });
+
       countLabel.textContent = shown+' items';
     }
 
