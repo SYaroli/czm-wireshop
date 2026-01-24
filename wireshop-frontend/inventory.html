@@ -29,46 +29,11 @@
     .toolbar-btn.red{background:#c30000;color:#fff;border-color:#a00000}
     #countLabel{font-size:12px;margin-left:auto;white-space:nowrap}
 
-    /* Header: keep 5 columns, then show Notes label on its own line */
-    .table-head{
-      background:#0a0b0d;color:#fff;
-      display:grid;
-      grid-template-columns:150px 220px 100px 60px 320px;
-      gap:0;
-      padding:8px 16px;
-      font-size:12px;
-      font-weight:600;
-      margin-top:12px;
-      row-gap:6px;
-    }
-    .th-notes{
-      grid-column:1 / -1;
-      opacity:.9;
-      font-weight:600;
-    }
+    .table-head{background:#0a0b0d;color:#fff;display:grid;grid-template-columns:150px 220px 100px 60px 280px 1fr;gap:0;padding:8px 16px;font-size:12px;font-weight:600;margin-top:12px}
 
-    /* Rows: main line is 5 columns, Notes becomes full-width line underneath */
-    .list-body .row{
-      display:grid;
-      grid-template-columns:150px 220px 100px 60px 320px;
-      gap:0;
-      row-gap:6px;
-      padding:10px 16px;
-      border-bottom:1px solid #eef2f6;
-      background:#fff;
-      align-items:center;
-    }
+    .list-body .row{display:grid;grid-template-columns:150px 220px 100px 60px 280px 1fr;gap:0;padding:10px 16px;border-bottom:1px solid #eef2f6;background:#fff;align-items:center}
     .list-body .row:nth-child(odd){background:#fafbfc}
-
-    .notes-cell{
-      grid-column:1 / -1;
-      font-size:12px;
-      color:#333;
-      white-space:normal !important;
-      overflow-wrap:anywhere;
-      line-height:1.25;
-      padding-top:2px;
-    }
+    .notes-cell{font-size:12px;color:#333;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
     .adjust-controls{display:flex;align-items:center;gap:8px;flex-wrap:nowrap}
     .qty-input{width:70px;border:1px solid #d0d3d8;border-radius:20px;height:30px;padding:0 8px;text-align:center}
@@ -109,6 +74,10 @@
     .detail-title{font-size:13px;color:#444}
     .detail-subtle{margin-top:8px;color:#888;font-size:12px}
 
+    .log-actions{display:flex;gap:6px;align-items:center}
+    .log-btn{border:1px solid #cfd4da;background:#eee;border-radius:6px;padding:4px 8px;font-size:12px;cursor:pointer}
+    .log-btn.red{background:#c30000;color:#fff;border-color:#a00000}
+
     @media (max-width:900px){
       .inventory-shell{max-width:100%;margin:0;border-radius:0;box-shadow:none}
       .table-head,.list-body .row{grid-template-columns:140px 1fr 90px 60px 240px}
@@ -126,8 +95,8 @@
       </a>
       <div class="brand-actions">
         <a class="navbtn" href="/dashboard.html">Dashboard</a>
-        <a class="navbtn" href="/assignments.html">Assignments</a>
-        <a class="navbtn active" href="/inventory.html">Inventory</a>
+        <a class="navbtn" href="/assignments.html">Build Next</a>
+        <a class="navbtn active" href="/inventory">Inventory</a>
         <a class="navbtn" href="/archive.html">Archive</a>
         <a id="adminNavBtn" class="navbtn" href="/admin.html">Admin</a>
         <button id="logoutBtn" class="navbtn">Logout</button>
@@ -149,8 +118,7 @@
     </div>
 
     <div id="tableHead" class="table-head">
-      <div>Part Number</div><div>Print Name</div><div>Location</div><div>Qty</div><div>Adjust</div>
-      <div class="th-notes">Notes</div>
+      <div>Part Number</div><div>Print Name</div><div>Location</div><div>Qty</div><div>Adjust</div><div>Notes</div>
     </div>
     <div id="listBody" class="list-body"></div>
   </div>
@@ -222,6 +190,7 @@
 
     let ALL_ROWS = [];
     let modalMode = 'edit';
+
     let APPLY_BUSY = false;
 
     async function loadData(){
@@ -306,23 +275,13 @@
         const partA = document.createElement('a');
         partA.href = '/inv/'+encodeURIComponent(row.partNumber);
         partA.textContent = row.partNumber;
-        partA.style.color='#003574';
-        partA.style.fontSize='12px';
+        partA.style.color='#003574'; partA.style.fontSize='12px';
 
-        const nameDiv = document.createElement('div');
-        nameDiv.textContent=row.printName||'';
-        nameDiv.style.fontSize='12px';
+        const nameDiv = document.createElement('div'); nameDiv.textContent=row.printName||''; nameDiv.style.fontSize='12px';
+        const locDiv = document.createElement('div'); locDiv.textContent=row.location||''; locDiv.style.fontSize='12px';
+        const qtyDiv = document.createElement('div'); qtyDiv.textContent = row.qty!=null?row.qty:0; qtyDiv.style.fontSize='12px';
 
-        const locDiv = document.createElement('div');
-        locDiv.textContent=row.location||'';
-        locDiv.style.fontSize='12px';
-
-        const qtyDiv = document.createElement('div');
-        qtyDiv.textContent = row.qty!=null?row.qty:0;
-        qtyDiv.style.fontSize='12px';
-
-        const adjustDiv = document.createElement('div');
-        adjustDiv.className='adjust-controls';
+        const adjustDiv = document.createElement('div'); adjustDiv.className='adjust-controls';
 
         const minusBtn = document.createElement('button');
         minusBtn.className = 'quick-btn minus';
@@ -354,22 +313,16 @@
         adjustDiv.append(minusBtn, plusBtn, adjustInput, applyBtn);
 
         if (isAdmin) {
-          const editBtn = document.createElement('button');
-          editBtn.className='edit-btn';
-          editBtn.textContent='Edit';
+          const editBtn = document.createElement('button'); editBtn.className='edit-btn'; editBtn.textContent='Edit';
           editBtn.onclick = ()=>openEdit(row);
           adjustDiv.append(editBtn);
         }
 
-        const notesDiv = document.createElement('div');
-        notesDiv.className='notes-cell';
-        notesDiv.textContent=row.notes||'';
+        const notesDiv = document.createElement('div'); notesDiv.className='notes-cell'; notesDiv.textContent=row.notes||'';
 
         div.append(partA,nameDiv,locDiv,qtyDiv,adjustDiv,notesDiv);
-        listBody.appendChild(div);
-        shown++;
+        listBody.appendChild(div); shown++;
       });
-
       countLabel.textContent = shown+' items';
     }
 
@@ -429,7 +382,7 @@
       `;
 
       document.getElementById('backBtn')?.addEventListener('click', ()=>{
-        window.location.href = '/inventory.html';
+        window.location.href = '/inventory';
       });
 
       if(isAdmin){
@@ -497,10 +450,12 @@
                   <th style="padding:6px 4px;">Delta</th>
                   <th style="padding:6px 4px;">New Qty</th>
                   <th style="padding:6px 4px;">Note</th>
+                  ${isAdmin ? `<th style="padding:6px 4px;">Admin</th>` : ``}
                 </tr>
               </thead>
               <tbody>
                 ${data.map(r=>{
+                  const id = r.id ?? '';
                   const tsRaw = pickTs(r);
                   const ts = formatTs(tsRaw);
 
@@ -516,6 +471,14 @@
                       <td style="padding:6px 4px;">${escapeHtml(String(delta))}</td>
                       <td style="padding:6px 4px;">${escapeHtml(String(newQty))}</td>
                       <td style="padding:6px 4px;white-space:pre-wrap;">${escapeHtml(String(note))}</td>
+                      ${isAdmin ? `
+                        <td style="padding:6px 4px;">
+                          <div class="log-actions">
+                            <button class="log-btn" onclick="editLogNote(${Number(id) || 0}, '${escapeJs(String(note))}')">Edit</button>
+                            <button class="log-btn red" onclick="deleteLogRow(${Number(id) || 0}, '${escapeJs(String(partNumber))}')">Delete</button>
+                          </div>
+                        </td>
+                      ` : ``}
                     </tr>
                   `;
                 }).join('')}
@@ -528,6 +491,49 @@
       }
     }
 
+    async function deleteLogRow(id, partNumber){
+      if(!isAdmin) return;
+      if(!id) return alert('Missing log id (backend needs update)');
+      if(!confirm('Delete this movement entry?')) return;
+
+      try{
+        const uname = getUsername(currentUser);
+        const res = await fetch(`${API_BASE}/inventory-log/${id}`, {
+          method: 'DELETE',
+          headers: { 'x-user': uname }
+        });
+        const data = await res.json();
+        if(!res.ok) return alert(data?.error || 'Delete failed');
+        loadMovement(partNumber);
+      }catch(e){
+        alert('Delete failed');
+      }
+    }
+
+    async function editLogNote(id, currentNote){
+      if(!isAdmin) return;
+      if(!id) return alert('Missing log id (backend needs update)');
+
+      const newNote = prompt('Edit note:', currentNote ?? '');
+      if(newNote === null) return;
+
+      const partNumber = getPartFromInvRoute();
+
+      try{
+        const uname = getUsername(currentUser);
+        const res = await fetch(`${API_BASE}/inventory-log/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type':'application/json', 'x-user': uname },
+          body: JSON.stringify({ note: newNote })
+        });
+        const data = await res.json();
+        if(!res.ok) return alert(data?.error || 'Update failed');
+        if(partNumber) loadMovement(partNumber);
+      }catch(e){
+        alert('Update failed');
+      }
+    }
+
     function escapeHtml(str){
       return String(str ?? '')
         .replace(/&/g,'&amp;')
@@ -535,6 +541,15 @@
         .replace(/>/g,'&gt;')
         .replace(/"/g,'&quot;')
         .replace(/'/g,'&#039;');
+    }
+
+    function escapeJs(str){
+      return String(str ?? '')
+        .replace(/\\/g, '\\\\')
+        .replace(/'/g, "\\'")
+        .replace(/"/g, '\\"')
+        .replace(/\n/g, '\\n')
+        .replace(/\r/g, '\\r');
     }
 
     function pickTs(r){
