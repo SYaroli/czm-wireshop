@@ -29,11 +29,38 @@
     .toolbar-btn.red{background:#c30000;color:#fff;border-color:#a00000}
     #countLabel{font-size:12px;margin-left:auto;white-space:nowrap}
 
-    .table-head{background:#0a0b0d;color:#fff;display:grid;grid-template-columns:150px 220px 100px 60px 280px 1fr;gap:0;padding:8px 16px;font-size:12px;font-weight:600;margin-top:12px}
+   .table-head{
+  background:#0a0b0d;
+  color:#fff;
+  display:grid;
+  grid-template-columns:150px 220px 100px 60px 320px minmax(260px, 1fr);
+  gap:0;
+  padding:8px 16px;
+  font-size:12px;
+  font-weight:600;
+  margin-top:12px;
+}
 
-    .list-body .row{display:grid;grid-template-columns:150px 220px 100px 60px 280px 1fr;gap:0;padding:10px 16px;border-bottom:1px solid #eef2f6;background:#fff;align-items:center}
+.list-body .row{
+  display:grid;
+  grid-template-columns:150px 220px 100px 60px 320px minmax(260px, 1fr);
+  gap:0;
+  padding:10px 16px;
+  border-bottom:1px solid #eef2f6;
+  background:#fff;
+  align-items:center;
+}
+
     .list-body .row:nth-child(odd){background:#fafbfc}
-    .notes-cell{font-size:12px;color:#333;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .notes-cell{
+  font-size:12px;
+  color:#333;
+  white-space:normal;
+  overflow-wrap:anywhere;
+  line-height:1.25;
+  padding-left:12px; /* gives it breathing room from the Adjust column */
+}
+
 
     .adjust-controls{display:flex;align-items:center;gap:8px;flex-wrap:nowrap}
     .qty-input{width:70px;border:1px solid #d0d3d8;border-radius:20px;height:30px;padding:0 8px;text-align:center}
