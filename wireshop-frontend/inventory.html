@@ -96,7 +96,7 @@
       <div class="brand-actions">
         <a class="navbtn" href="/dashboard.html">Dashboard</a>
         <a class="navbtn" href="/assignments.html">Assignments</a>
-        <a class="navbtn active" href="/inventory">Inventory</a>
+        <a class="navbtn active" href="/inventory.html">Inventory</a>
         <a class="navbtn" href="/archive.html">Archive</a>
         <a id="adminNavBtn" class="navbtn" href="/admin.html">Admin</a>
         <button id="logoutBtn" class="navbtn">Logout</button>
@@ -382,7 +382,7 @@
       `;
 
       document.getElementById('backBtn')?.addEventListener('click', ()=>{
-        window.location.href = '/inventory';
+        window.location.href = '/inventory.html';
       });
 
       if(isAdmin){
@@ -450,12 +450,10 @@
                   <th style="padding:6px 4px;">Delta</th>
                   <th style="padding:6px 4px;">New Qty</th>
                   <th style="padding:6px 4px;">Note</th>
-                  ${isAdmin ? `<th style="padding:6px 4px;">Admin</th>` : ``}
                 </tr>
               </thead>
               <tbody>
                 ${data.map(r=>{
-                  const id = r.id ?? '';
                   const tsRaw = pickTs(r);
                   const ts = formatTs(tsRaw);
 
@@ -471,14 +469,6 @@
                       <td style="padding:6px 4px;">${escapeHtml(String(delta))}</td>
                       <td style="padding:6px 4px;">${escapeHtml(String(newQty))}</td>
                       <td style="padding:6px 4px;white-space:pre-wrap;">${escapeHtml(String(note))}</td>
-                      ${isAdmin ? `
-                        <td style="padding:6px 4px;">
-                          <div class="log-actions">
-                            <button class="log-btn" onclick="editLogNote(${Number(id) || 0}, '${escapeJs(String(note))}')">Edit</button>
-                            <button class="log-btn red" onclick="deleteLogRow(${Number(id) || 0}, '${escapeJs(String(partNumber))}')">Delete</button>
-                          </div>
-                        </td>
-                      ` : ``}
                     </tr>
                   `;
                 }).join('')}
@@ -491,49 +481,6 @@
       }
     }
 
-    async function deleteLogRow(id, partNumber){
-      if(!isAdmin) return;
-      if(!id) return alert('Missing log id (backend needs update)');
-      if(!confirm('Delete this movement entry?')) return;
-
-      try{
-        const uname = getUsername(currentUser);
-        const res = await fetch(`${API_BASE}/inventory-log/${id}`, {
-          method: 'DELETE',
-          headers: { 'x-user': uname }
-        });
-        const data = await res.json();
-        if(!res.ok) return alert(data?.error || 'Delete failed');
-        loadMovement(partNumber);
-      }catch(e){
-        alert('Delete failed');
-      }
-    }
-
-    async function editLogNote(id, currentNote){
-      if(!isAdmin) return;
-      if(!id) return alert('Missing log id (backend needs update)');
-
-      const newNote = prompt('Edit note:', currentNote ?? '');
-      if(newNote === null) return;
-
-      const partNumber = getPartFromInvRoute();
-
-      try{
-        const uname = getUsername(currentUser);
-        const res = await fetch(`${API_BASE}/inventory-log/${id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type':'application/json', 'x-user': uname },
-          body: JSON.stringify({ note: newNote })
-        });
-        const data = await res.json();
-        if(!res.ok) return alert(data?.error || 'Update failed');
-        if(partNumber) loadMovement(partNumber);
-      }catch(e){
-        alert('Update failed');
-      }
-    }
-
     function escapeHtml(str){
       return String(str ?? '')
         .replace(/&/g,'&amp;')
@@ -541,15 +488,6 @@
         .replace(/>/g,'&gt;')
         .replace(/"/g,'&quot;')
         .replace(/'/g,'&#039;');
-    }
-
-    function escapeJs(str){
-      return String(str ?? '')
-        .replace(/\\/g, '\\\\')
-        .replace(/'/g, "\\'")
-        .replace(/"/g, '\\"')
-        .replace(/\n/g, '\\n')
-        .replace(/\r/g, '\\r');
     }
 
     function pickTs(r){
