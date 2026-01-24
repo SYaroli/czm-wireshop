@@ -3,6 +3,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const API_ROOT = 'https://wireshop-backend.onrender.com';
   const API_JOBS = `${API_ROOT}/api/jobs`;
 
+  // --- FORCE /inventory to the real file /inventory.html ---
+  (function redirectInventoryRoute(){
+    const p = (location.pathname || '').toLowerCase();
+    if (p === '/inventory') {
+      location.replace('/inventory.html');
+    }
+  })();
+
   // If someone lands on the old dashboard page, shove them to Build Next.
   (function redirectDashboard(){
     const p = (location.pathname || '').toLowerCase();
@@ -28,6 +36,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (href.includes('dashboard') || href.includes('archive')) a.remove();
       });
 
+      // Ensure Inventory link points to inventory.html (NOT /inventory)
+      const invLink = [...bar.querySelectorAll('a')].find(a => {
+        const href = String(a.getAttribute('href') || '').toLowerCase();
+        return href === '/inventory' || href.endsWith('/inventory');
+      });
+      if (invLink) invLink.setAttribute('href', '/inventory.html');
+
       // Ensure Admin link exists but only visible for admins
       let adminLink = [...bar.querySelectorAll('a')].find(a => (a.getAttribute('href') || '').toLowerCase().includes('admin'));
       if (!adminLink) {
@@ -38,8 +53,6 @@ document.addEventListener('DOMContentLoaded', () => {
         bar.insertBefore(adminLink, bar.querySelector('#logoutBtn') || bar.lastElementChild);
       }
       adminLink.style.display = isAdmin ? '' : 'none';
-
-      // If there is a Logout anchor, leave it. If there is a logout button, keep it.
     });
   })();
 
@@ -208,9 +221,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const endInteraction = ()=> { const inside=tBody.contains(document.activeElement); if (!inside) isInteracting = false; };
     tBody.addEventListener('focusin', beginInteraction);
     tBody.addEventListener('focusout', () => setTimeout(endInteraction, 0));
-
-    // Remove the old "click anywhere" row selector.
-    // Now only clicks on the part number control selection.
 
     let lastSig = '';
     function makeSignature(rows){
