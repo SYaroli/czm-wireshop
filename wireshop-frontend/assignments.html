@@ -324,10 +324,26 @@
       const state = String(r._timerState || (r.startedAt ? (Number(r.isPaused||0)===1?'paused':'running') : 'not_started'));
       const elapsed = Number(r._elapsedSeconds || 0);
 
+      // NEW: show why it was paused (system break/shift/off-hours)
+      const pausedBySystem = Number(r.pausedBySystem||0) === 1;
+      const pausedReason = String(r.pausedReason||'').toLowerCase();
+
       const stateLabel =
-        state === 'paused' ? '<span class="priority p1">Paused</span>' :
-        state === 'running' ? '<span class="priority p1">Running</span>' :
-        '<span class="muted">Not started</span>';
+        state === 'paused'
+          ? (pausedBySystem && pausedReason === 'break'
+              ? '<span class="priority p1">Paused (Break)</span>'
+              : (pausedBySystem && pausedReason === 'shift_end'
+                  ? '<span class="priority p1">Paused (Shift End)</span>'
+                  : (pausedBySystem && pausedReason === 'off_hours'
+                      ? '<span class="priority p1">Paused (Off Hours)</span>'
+                      : '<span class="priority p1">Paused</span>'
+                    )
+                )
+            )
+          : (state === 'running'
+              ? '<span class="priority p1">Running</span>'
+              : '<span class="muted">Not started</span>'
+            );
 
       const canManage = isAdmin || String((r.claimedBy||'')).toLowerCase() === String(user.username||'').toLowerCase();
 
@@ -377,8 +393,7 @@
     let timerTickInterval = null;
 
     function syncTimerTick(){
-      // restart 1s tick whenever we redraw the claimed table
-      if (timerTickInterval) return; // already running
+      if (timerTickInterval) return;
       timerTickInterval = setInterval(() => {
         if (document.hidden) return;
         const nowMs = Date.now();
@@ -386,7 +401,7 @@
           const base = Number(el.dataset.base || 0);
           const state = String(el.dataset.state || '');
           const rendered = Number(el.dataset.rendered || nowMs);
-          if (state !== 'running') return; // paused/not_started stays fixed
+          if (state !== 'running') return;
           const add = Math.max(0, Math.floor((nowMs - rendered) / 1000));
           el.textContent = fmtSecs(base + add);
         });
@@ -401,14 +416,12 @@
         .sort((a,b) => b.ts - a.ts)
         .slice(0, DONE_LIMIT);
 
-      // remember for export
       lastDone = done;
 
       queuedBody.innerHTML = queued.map(rowQueued).join('');
       claimedBody.innerHTML = claimed.map(rowClaimed).join('');
       doneBody.innerHTML = done.map(rowDoneEvt).join('');
 
-      // keep on-screen timers moving without spamming the backend
       syncTimerTick();
     }
 
@@ -470,9 +483,7 @@
           const inc = Number(res?.addToInventory?.qty || 0);
 
           if (pn && inc > 0){
-            // Inventory update should NEVER block a successful completion.
             try {
-              // get current inventory, then write new absolute qty via /qty
               let currentQty = 0;
               try {
                 const invList = await api('/api/inventory-all');
@@ -489,7 +500,6 @@
                 body:{ qty: newQty }
               });
             } catch (err) {
-              // Common case: part isn't in inventory table yet (404). Log it and keep going.
               console.warn('Inventory update failed (non-blocking):', err?.message || err);
             }
           }
