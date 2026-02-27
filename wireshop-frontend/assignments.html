@@ -494,8 +494,10 @@
     function fmtIso(tsMs){
       try { return new Date(tsMs).toISOString(); } catch { return ''; }
     }
+
+    // ✅ UPDATED: add elapsedSeconds + formatted elapsed
     function buildDoneCsvRows(doneEvents){
-      const header = ['Part Number','Print Name','Qty','By','Completed'];
+      const header = ['Part Number','Print Name','Qty','By','Completed','Elapsed Seconds','Elapsed (H:MM:SS)'];
       const rows = [header];
       for (const e of (doneEvents||[])){
         const c = byPN.get(String(e.partNumber)) || {};
@@ -503,10 +505,13 @@
         const qty  = Number(e.qty || 0);
         const who  = e.user || e.claimedBy || '';
         const when = fmtIso(e.ts);
-        rows.push([e.partNumber, name, qty, who, when]);
+
+        const elapsedSec = Number(e.elapsedSeconds || 0);
+        rows.push([e.partNumber, name, qty, who, when, elapsedSec, fmtSecs(elapsedSec)]);
       }
       return rows;
     }
+
     document.getElementById('exportDoneBtn')?.addEventListener('click', ()=>{
       if (!isAdmin) return;
       const rows = buildDoneCsvRows(lastDone);
