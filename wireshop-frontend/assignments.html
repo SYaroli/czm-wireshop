@@ -86,7 +86,8 @@
     <div class="card" id="addCard" style="display:none;">
       <h2 class="kicker">Add to Queue (Admin)</h2>
       <div class="toolbar">
-        <input id="pnInput" class="minw" placeholder="Part Number (select below)">
+        <input id="pnInput" class="minw" placeholder="Part Number (select below)" list="pnDatalist">
+        <datalist id="pnDatalist"></datalist>
         <input id="qAdd" type="number" min="1" step="1" value="1" class="tight" style="max-width:120px">
         <select id="prioritySel" class="tight" style="max-width:180px">
           <option value="0">Normal</option>
@@ -253,14 +254,26 @@
 
       byPN = new Map(list.map(x => [x.partNumber, x]));
 
+      // PN first, then description
       const options = list.map(c => {
         const pn = c.partNumber;
         const name = c.printName;
-        return `<option value="${pn}">${esc(name ? name + ' — ' + pn : pn)}</option>`;
+        return `<option value="${pn}">${esc(pn + (name ? ' — ' + name : ''))}</option>`;
       }).join('');
 
       const sel = document.getElementById('pnSelect');
       sel.innerHTML = `<option value="">-- Select Part --</option>` + options;
+
+      // datalist (type-ahead in Part Number input)
+      const dl = document.getElementById('pnDatalist');
+      if (dl) {
+        dl.innerHTML = list.map(c => {
+          const pn = c.partNumber;
+          const name = c.printName;
+          // value is what fills the input; label shows PN first (more scannable)
+          return `<option value="${pn}">${esc(pn + (name ? ' — ' + name : ''))}</option>`;
+        }).join('');
+      }
 
       sel.addEventListener('change', () => {
         const pn = sel.value || '';
@@ -270,6 +283,16 @@
 
     // add form
     const pnInput = document.getElementById('pnInput');
+    // type-ahead: if they type a PN, keep dropdown in sync
+    pnInput.addEventListener('input', () => {
+      const raw = String(pnInput.value || '').trim();
+      const sel = document.getElementById('pnSelect');
+      if (!sel) return;
+      if (byPN.has(raw)) {
+        sel.value = raw;
+      }
+    });
+
     const qAdd = document.getElementById('qAdd');
     const prioritySel = document.getElementById('prioritySel');
     document.getElementById('addBtn')?.addEventListener('click', async ()=>{
@@ -324,7 +347,7 @@
       const state = String(r._timerState || (r.startedAt ? (Number(r.isPaused||0)===1?'paused':'running') : 'not_started'));
       const elapsed = Number(r._elapsedSeconds || 0);
 
-      // NEW: show why it was paused (system break/shift/off-hours)
+      // show why it was paused (system break/shift/off-hours)
       const pausedBySystem = Number(r.pausedBySystem||0) === 1;
       const pausedReason = String(r.pausedReason||'').toLowerCase();
 
