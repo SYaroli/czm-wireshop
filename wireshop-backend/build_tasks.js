@@ -74,12 +74,14 @@ module.exports = function attachBuildTasks(app, opts = {}) {
       await run(
         `UPDATE build_tasks
             SET isPaused=1,
-                pausedAt=?
+                pausedAt=?,
+                pausedBySystem=0,
+                pausedReason=NULL
           WHERE id IN (${ids.map(()=>'?').join(',')})`,
         [t, ...ids]
       );
 
-      // log pause events so we can audit later (actor is whoever triggered the auto-pause)
+      // log pause events (actor is whoever triggered the pause)
       await Promise.all(ids.map(id =>
         run(
           `INSERT INTO build_task_events (taskId, type, qty, user, ts)
@@ -127,23 +129,27 @@ module.exports = function attachBuildTasks(app, opts = {}) {
         pausedAt           INTEGER,              -- when last paused (if paused)
         totalPausedSeconds INTEGER NOT NULL DEFAULT 0,
         isPaused           INTEGER NOT NULL DEFAULT 0, -- 0 running, 1 paused
+        pausedBySystem     INTEGER NOT NULL DEFAULT 0, -- 1 if SYSTEM paused it
+        pausedReason       TEXT,                 -- break | shift_end | off_hours
         completedAt  INTEGER,
         priority     INTEGER NOT NULL DEFAULT 0  -- 0 normal, 1 high, 2 urgent
       )
     `);
+
     // best-effort add for existing DBs
     db.run(`ALTER TABLE build_tasks ADD COLUMN priority INTEGER NOT NULL DEFAULT 0`, ()=>{});
-    // best-effort add timing columns for existing DBs
     db.run(`ALTER TABLE build_tasks ADD COLUMN startedAt INTEGER`, ()=>{});
     db.run(`ALTER TABLE build_tasks ADD COLUMN pausedAt INTEGER`, ()=>{});
     db.run(`ALTER TABLE build_tasks ADD COLUMN totalPausedSeconds INTEGER NOT NULL DEFAULT 0`, ()=>{});
     db.run(`ALTER TABLE build_tasks ADD COLUMN isPaused INTEGER NOT NULL DEFAULT 0`, ()=>{});
+    db.run(`ALTER TABLE build_tasks ADD COLUMN pausedBySystem INTEGER NOT NULL DEFAULT 0`, ()=>{});
+    db.run(`ALTER TABLE build_tasks ADD COLUMN pausedReason TEXT`, ()=>{});
 
     db.run(`
       CREATE TABLE IF NOT EXISTS build_task_events (
         id       INTEGER PRIMARY KEY AUTOINCREMENT,
         taskId   INTEGER NOT NULL,
-        type     TEXT    NOT NULL,              -- claim | unclaim | complete | cancel | create | pause | resume | start | auto_pause
+        type     TEXT    NOT NULL,              -- claim | unclaim | complete | cancel | create | pause | resume | start | auto_pause | auto_resume
         qty      INTEGER NOT NULL DEFAULT 0,    -- for completes and partial-claims
         user     TEXT    NOT NULL,
         ts       INTEGER NOT NULL,
@@ -151,6 +157,7 @@ module.exports = function attachBuildTasks(app, opts = {}) {
         FOREIGN KEY(taskId) REFERENCES build_tasks(id)
       )
     `);
+
     // best-effort add reason for existing DBs
     db.run(`ALTER TABLE build_task_events ADD COLUMN reason TEXT`, ()=>{});
   });
@@ -276,7 +283,9 @@ module.exports = function attachBuildTasks(app, opts = {}) {
                  startedAt = COALESCE(startedAt, ?),
                  pausedAt = NULL,
                  isPaused = 0,
-                 totalPausedSeconds = COALESCE(totalPausedSeconds, 0)
+                 totalPausedSeconds = COALESCE(totalPausedSeconds, 0),
+                 pausedBySystem = 0,
+                 pausedReason = NULL
            WHERE id=? AND status='queued'`,
           [user, t, t, id]
         );
@@ -303,8 +312,8 @@ module.exports = function attachBuildTasks(app, opts = {}) {
 
         // 2) create a new claimed task with the claimed qty
         const ins = await run(
-          `INSERT INTO build_tasks (partNumber, qty, status, createdBy, createdAt, claimedBy, claimedAt, startedAt, pausedAt, totalPausedSeconds, isPaused, priority)
-           VALUES (?, ?, 'claimed', ?, ?, ?, ?, ?, NULL, 0, 0, ?)`,
+          `INSERT INTO build_tasks (partNumber, qty, status, createdBy, createdAt, claimedBy, claimedAt, startedAt, pausedAt, totalPausedSeconds, isPaused, pausedBySystem, pausedReason, priority)
+           VALUES (?, ?, 'claimed', ?, ?, ?, ?, ?, NULL, 0, 0, 0, NULL, ?)`,
           [task.partNumber, claimQty, task.createdBy, task.createdAt, user, t, t, task.priority|0]
         );
 
@@ -337,7 +346,9 @@ module.exports = function attachBuildTasks(app, opts = {}) {
     try {
       const r = await run(
         `UPDATE build_tasks
-           SET status='queued', claimedBy=NULL, claimedAt=NULL
+           SET status='queued',
+               claimedBy=NULL, claimedAt=NULL,
+               pausedBySystem=0, pausedReason=NULL
          WHERE id=? AND status='claimed'`,
         [id]
       );
@@ -373,7 +384,9 @@ module.exports = function attachBuildTasks(app, opts = {}) {
               SET startedAt = COALESCE(startedAt, ?),
                   pausedAt = NULL,
                   isPaused = 0,
-                  totalPausedSeconds = COALESCE(totalPausedSeconds, 0)
+                  totalPausedSeconds = COALESCE(totalPausedSeconds, 0),
+                  pausedBySystem = 0,
+                  pausedReason = NULL
             WHERE id=?`,
           [t, id]
         );
@@ -413,7 +426,9 @@ module.exports = function attachBuildTasks(app, opts = {}) {
               SET startedAt = COALESCE(startedAt, ?),
                   isPaused = 1,
                   pausedAt = COALESCE(pausedAt, ?),
-                  totalPausedSeconds = COALESCE(totalPausedSeconds, 0)
+                  totalPausedSeconds = COALESCE(totalPausedSeconds, 0),
+                  pausedBySystem = 0,
+                  pausedReason = NULL
             WHERE id=?`,
           [t, t, id]
         );
@@ -451,7 +466,9 @@ module.exports = function attachBuildTasks(app, opts = {}) {
               SET startedAt = COALESCE(startedAt, ?),
                   isPaused = 0,
                   pausedAt = NULL,
-                  totalPausedSeconds = COALESCE(totalPausedSeconds, 0) + ?
+                  totalPausedSeconds = COALESCE(totalPausedSeconds, 0) + ?,
+                  pausedBySystem = 0,
+                  pausedReason = NULL
             WHERE id=?`,
           [t, add, id]
         );
@@ -494,11 +511,12 @@ module.exports = function attachBuildTasks(app, opts = {}) {
           `UPDATE build_tasks
               SET totalPausedSeconds = COALESCE(totalPausedSeconds, 0) + ?,
                   pausedAt = NULL,
-                  isPaused = 0
+                  isPaused = 0,
+                  pausedBySystem = 0,
+                  pausedReason = NULL
             WHERE id=?`,
           [add, id]
         );
-        // refresh local copy
         task.totalPausedSeconds = Number(task.totalPausedSeconds || 0) + add;
         task.pausedAt = null;
         task.isPaused = 0;
@@ -512,13 +530,13 @@ module.exports = function attachBuildTasks(app, opts = {}) {
 
       if (qty === task.qty) {
         await run(
-          `UPDATE build_tasks SET status='done', qty=0, completedAt=? WHERE id=? AND status='claimed'`,
+          `UPDATE build_tasks SET status='done', qty=0, completedAt=?, pausedBySystem=0, pausedReason=NULL WHERE id=? AND status='claimed'`,
           [t, id]
         );
       } else {
         const remaining = task.qty - qty;
         await run(
-          `UPDATE build_tasks SET qty=?, claimedBy=?, claimedAt=? WHERE id=? AND status='claimed'`,
+          `UPDATE build_tasks SET qty=?, claimedBy=?, claimedAt=?, pausedBySystem=0, pausedReason=NULL WHERE id=? AND status='claimed'`,
           [remaining, task.claimedBy || user, task.claimedAt || t, id]
         );
       }
@@ -544,7 +562,7 @@ module.exports = function attachBuildTasks(app, opts = {}) {
 
     try {
       const r = await run(
-        `UPDATE build_tasks SET status='canceled' WHERE id=? AND status!='done'`,
+        `UPDATE build_tasks SET status='canceled', pausedBySystem=0, pausedReason=NULL WHERE id=? AND status!='done'`,
         [id]
       );
       if (r.changes === 0) return res.status(409).json({ error:'already-done-or-missing', current: await get(`SELECT * FROM build_tasks WHERE id=?`, [id]) });
@@ -591,21 +609,31 @@ module.exports = function attachBuildTasks(app, opts = {}) {
     } catch (e) { res.status(500).json({ error:'db', detail:String(e.message||e) }); }
   });
 
-  // ----- Auto-pause scheduler (breaks, off-hours, shift end) -----
+  // ----- Auto-pause + auto-resume scheduler -----
   // Breaks:
   //  - 10:30–10:45 (all days)
   //  - 12:00–12:30 (all days)
   //  - 14:30–14:45 Mon–Thu
   //  - 14:00–14:15 Fri
+  // Auto-resume at EXACT end times:
+  //  - 10:45
+  //  - 12:30
+  //  - 14:45 Mon–Thu
+  //  - 14:15 Fri
+  //
   // Shift:
   //  - Start 07:00
   //  - End 17:00 Mon–Thu
   //  - End 15:30 Fri
   //
-  // Behavior:
+  // Auto-pause behavior:
   //  - Every minute, if current local time is in a break window OR outside shift hours,
-  //    auto-pause any running task (status='claimed' and isPaused=0), and log an event type='auto_pause'
-  //    with reason: break | shift_end | off_hours
+  //    auto-pause any RUNNING task (status='claimed' and isPaused=0), and log event type='auto_pause'
+  //    with reason: break | shift_end | off_hours.
+  //
+  // Auto-resume behavior:
+  //  - At the exact break-end minute, auto-resume only tasks that the SYSTEM auto-paused for reason='break'.
+  //  - Resume only ONE per tech: newest paused task per claimedBy (MAX pausedAt).
   const TZ = process.env.SHOP_TZ || 'America/New_York';
   const SHIFT_START = '07:00';
 
@@ -662,6 +690,14 @@ module.exports = function attachBuildTasks(app, opts = {}) {
     return { yes: false, reason: '' };
   }
 
+  function shouldAutoResume(hm, weekday) {
+    if (hm === '10:45') return { yes: true, reason: 'break_end' };
+    if (hm === '12:30') return { yes: true, reason: 'break_end' };
+    if (weekday === 'Fri' && hm === '14:15') return { yes: true, reason: 'break_end' };
+    if (['Mon','Tue','Wed','Thu'].includes(weekday) && hm === '14:45') return { yes: true, reason: 'break_end' };
+    return { yes: false, reason: '' };
+  }
+
   async function autoPauseAllRunning(reason) {
     const t = now();
     return tx(async () => {
@@ -679,10 +715,12 @@ module.exports = function attachBuildTasks(app, opts = {}) {
       await run(
         `UPDATE build_tasks
             SET isPaused=1,
-                pausedAt=?
+                pausedAt=?,
+                pausedBySystem=1,
+                pausedReason=?
           WHERE id IN (${ids.map(()=>'?').join(',')})
             AND (isPaused IS NULL OR isPaused=0)`,
-        [t, ...ids]
+        [t, reason || '', ...ids]
       );
 
       await Promise.all(ids.map(id =>
@@ -697,21 +735,104 @@ module.exports = function attachBuildTasks(app, opts = {}) {
     });
   }
 
-  let _autoPauseRunning = false;
+  async function autoResumeSystemPausedBreaks() {
+    const t = now();
+
+    // Pick ONE paused-by-system BREAK task per tech: newest pausedAt per claimedBy
+    const candidates = await all(
+      `SELECT bt.id, bt.claimedBy, bt.pausedAt
+         FROM build_tasks bt
+         JOIN (
+              SELECT claimedBy, MAX(pausedAt) AS maxPausedAt
+                FROM build_tasks
+               WHERE status='claimed'
+                 AND isPaused=1
+                 AND pausedBySystem=1
+                 AND pausedReason='break'
+                 AND pausedAt IS NOT NULL
+               GROUP BY claimedBy
+         ) x
+           ON x.claimedBy = bt.claimedBy AND x.maxPausedAt = bt.pausedAt
+        WHERE bt.status='claimed'
+          AND bt.isPaused=1
+          AND bt.pausedBySystem=1
+          AND bt.pausedReason='break'`
+    );
+
+    if (!candidates.length) return 0;
+
+    return tx(async () => {
+      let resumed = 0;
+
+      for (const row of candidates) {
+        const id = row.id;
+        const pausedAt = Number(row.pausedAt || 0);
+        const add = pausedAt ? Math.max(0, Math.floor((t - pausedAt) / 1000)) : 0;
+
+        // resume: add paused time, clear paused flags
+        const r = await run(
+          `UPDATE build_tasks
+              SET isPaused=0,
+                  pausedAt=NULL,
+                  totalPausedSeconds = COALESCE(totalPausedSeconds, 0) + ?,
+                  pausedBySystem=0,
+                  pausedReason=NULL
+            WHERE id=?
+              AND status='claimed'
+              AND isPaused=1
+              AND pausedBySystem=1
+              AND pausedReason='break'`,
+          [add, id]
+        );
+
+        if ((r.changes|0) > 0) {
+          resumed++;
+          await run(
+            `INSERT INTO build_task_events (taskId, type, qty, user, ts, reason)
+             VALUES (?, 'auto_resume', 0, 'SYSTEM', ?, 'break_end')`,
+            [id, t]
+          );
+        }
+      }
+
+      return resumed;
+    });
+  }
+
+  // Prevent double-fire within the same minute if interval drifts or overlaps
+  let _autoSchedRunning = false;
+  let _lastKey = ''; // e.g. "pause|Fri|14:00" or "resume|Fri|14:15"
   setInterval(async () => {
-    if (_autoPauseRunning) return;
-    _autoPauseRunning = true;
+    if (_autoSchedRunning) return;
+    _autoSchedRunning = true;
+
     try {
       const { weekday, hm } = localParts();
+
+      // auto-pause (breaks/off-hours) - safe even if called repeatedly; filter isPaused=0
       const chk = shouldAutoPause(hm, weekday);
       if (chk.yes) {
-        await autoPauseAllRunning(chk.reason);
+        const key = `pause|${weekday}|${hm}|${chk.reason}`;
+        if (_lastKey !== key) {
+          await autoPauseAllRunning(chk.reason);
+          _lastKey = key;
+        }
+      } else {
+        // auto-resume only on exact break-end minute
+        const rs = shouldAutoResume(hm, weekday);
+        if (rs.yes) {
+          const key = `resume|${weekday}|${hm}`;
+          if (_lastKey !== key) {
+            await autoResumeSystemPausedBreaks();
+            _lastKey = key;
+          }
+        }
       }
+
     } catch (e) {
-      // Scheduler must never crash the process.
-      console.warn('autoPause scheduler error:', e?.message || e);
+      console.warn('auto scheduler error:', e?.message || e);
     } finally {
-      _autoPauseRunning = false;
+      _autoSchedRunning = false;
     }
   }, 60 * 1000);
 
