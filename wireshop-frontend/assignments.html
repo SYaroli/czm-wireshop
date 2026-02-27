@@ -49,6 +49,18 @@
       border-color:#b30000;
     }
     #exportDoneBtn:hover{ background:#d20000; }
+
+    /* Fix Admin "Add to Queue" layout (prevent scrunched qty/priority/add) */
+    #addCard .toolbar{flex-wrap:nowrap;align-items:center}
+    #pnInput{flex:1 1 420px;min-width:260px}
+    #qAdd{flex:0 0 90px;max-width:90px}
+    #prioritySel{flex:0 0 140px;max-width:140px}
+    #addBtn{flex:0 0 90px;max-width:90px}
+    @media (max-width: 900px){
+      #addCard .toolbar{flex-wrap:wrap}
+      #pnInput{flex:1 1 100%}
+      #qAdd,#prioritySel,#addBtn{flex:1 1 30%}
+    }
   </style>
 </head>
 <body>
@@ -331,7 +343,7 @@
         <td>${esc(name)}</td>
         <td class="qty">${r.qty|0}</td>
         <td>${who}</td>
-        <td class="nowrap">${stateLabel}<br><span class="mono">${fmtSecs(elapsed)}</span></td>
+        <td class="nowrap">${stateLabel}<br><span class="mono timerVal" data-base="${elapsed}" data-state="${state}" data-rendered="${Date.now()}">${fmtSecs(elapsed)}</span></td>
         <td class="right wide">
           <input type="number" class="qtyDone" min="1" step="1" placeholder="qty">
           ${timerBtns}
@@ -361,6 +373,26 @@
     async function loadClaimed(){ return api('/api/build-tasks?status=claimed'); }
     async function loadDoneEvents(){ return api('/api/build-task-events?type=complete'); }
 
+    // ---- LIVE TIMER (UI only) ----
+    let timerTickInterval = null;
+
+    function syncTimerTick(){
+      // restart 1s tick whenever we redraw the claimed table
+      if (timerTickInterval) return; // already running
+      timerTickInterval = setInterval(() => {
+        if (document.hidden) return;
+        const nowMs = Date.now();
+        document.querySelectorAll('.timerVal').forEach(el => {
+          const base = Number(el.dataset.base || 0);
+          const state = String(el.dataset.state || '');
+          const rendered = Number(el.dataset.rendered || nowMs);
+          if (state !== 'running') return; // paused/not_started stays fixed
+          const add = Math.max(0, Math.floor((nowMs - rendered) / 1000));
+          el.textContent = fmtSecs(base + add);
+        });
+      }, 1000);
+    }
+
     async function refreshAll(){
       const [queued, claimed, evts] = await Promise.all([ loadQueued(), loadClaimed(), loadDoneEvents() ]);
 
@@ -375,6 +407,9 @@
       queuedBody.innerHTML = queued.map(rowQueued).join('');
       claimedBody.innerHTML = claimed.map(rowClaimed).join('');
       doneBody.innerHTML = done.map(rowDoneEvt).join('');
+
+      // keep on-screen timers moving without spamming the backend
+      syncTimerTick();
     }
 
     // ---- ACTIONS ----
@@ -435,22 +470,28 @@
           const inc = Number(res?.addToInventory?.qty || 0);
 
           if (pn && inc > 0){
-            // get current inventory, then write new absolute qty via /qty
-            let currentQty = 0;
+            // Inventory update should NEVER block a successful completion.
             try {
-              const invList = await api('/api/inventory-all');
-              const item = (invList || []).find(i => i.partNumber === pn);
-              currentQty = Number(item?.qty || 0);
+              // get current inventory, then write new absolute qty via /qty
+              let currentQty = 0;
+              try {
+                const invList = await api('/api/inventory-all');
+                const item = (invList || []).find(i => i.partNumber === pn);
+                currentQty = Number(item?.qty || 0);
+              } catch (err) {
+                console.warn('Failed to read current inventory qty, assuming 0', err);
+              }
+
+              const newQty = currentQty + inc;
+
+              await api(`/api/inventory/${encodeURIComponent(pn)}/qty`, {
+                method:'POST',
+                body:{ qty: newQty }
+              });
             } catch (err) {
-              console.warn('Failed to read current inventory qty, assuming 0', err);
+              // Common case: part isn't in inventory table yet (404). Log it and keep going.
+              console.warn('Inventory update failed (non-blocking):', err?.message || err);
             }
-
-            const newQty = currentQty + inc;
-
-            await api(`/api/inventory/${encodeURIComponent(pn)}/qty`, {
-              method:'POST',
-              body:{ qty: newQty }
-            });
           }
 
           await refreshAll();
@@ -494,8 +535,6 @@
     function fmtIso(tsMs){
       try { return new Date(tsMs).toISOString(); } catch { return ''; }
     }
-
-    // ✅ UPDATED: add elapsedSeconds + formatted elapsed
     function buildDoneCsvRows(doneEvents){
       const header = ['Part Number','Print Name','Qty','By','Completed','Elapsed Seconds','Elapsed (H:MM:SS)'];
       const rows = [header];
@@ -511,7 +550,6 @@
       }
       return rows;
     }
-
     document.getElementById('exportDoneBtn')?.addEventListener('click', ()=>{
       if (!isAdmin) return;
       const rows = buildDoneCsvRows(lastDone);
@@ -526,7 +564,7 @@
       await whoami();
       await loadPartList();
       await refreshAll().catch(()=>alert('Failed to load build queue'));
-      setInterval(()=>{ if(!document.hidden) refreshAll().catch(()=>{}); }, 15000);
+      setInterval(()=>{ if(!document.hidden) refreshAll().catch(()=>{}); }, 5000);
     })();
   </script>
 </body>
