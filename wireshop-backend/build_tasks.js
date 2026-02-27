@@ -50,7 +50,7 @@ module.exports = function attachBuildTasks(app, opts = {}) {
 
   function canControlTask(req, task) {
     if (!task) return false;
-    if (isAdmin(req)) return true;
+    if (isAdmin(req)) return true; // ADMIN full control
     const u = username(req);
     return !!u && String(task.claimedBy || '').toLowerCase() === u.toLowerCase();
   }
@@ -79,7 +79,6 @@ module.exports = function attachBuildTasks(app, opts = {}) {
         [t, ...ids]
       );
 
-      // log pause events so we can audit later (actor is whoever triggered the auto-pause)
       await Promise.all(ids.map(id =>
         run(
           `INSERT INTO build_task_events (taskId, type, qty, user, ts)
@@ -123,17 +122,17 @@ module.exports = function attachBuildTasks(app, opts = {}) {
         claimedBy    TEXT,
         claimedAt    INTEGER,
         -- timing
-        startedAt          INTEGER,              -- first time the timer started
-        pausedAt           INTEGER,              -- when last paused (if paused)
+        startedAt          INTEGER,
+        pausedAt           INTEGER,
         totalPausedSeconds INTEGER NOT NULL DEFAULT 0,
-        isPaused           INTEGER NOT NULL DEFAULT 0, -- 0 running, 1 paused
+        isPaused           INTEGER NOT NULL DEFAULT 0,
         completedAt  INTEGER,
-        priority     INTEGER NOT NULL DEFAULT 0  -- 0 normal, 1 high, 2 urgent
+        priority     INTEGER NOT NULL DEFAULT 0
       )
     `);
-    // best-effort add for existing DBs
+
+    // Best-effort adds for existing DBs
     db.run(`ALTER TABLE build_tasks ADD COLUMN priority INTEGER NOT NULL DEFAULT 0`, ()=>{});
-    // best-effort add timing columns for existing DBs
     db.run(`ALTER TABLE build_tasks ADD COLUMN startedAt INTEGER`, ()=>{});
     db.run(`ALTER TABLE build_tasks ADD COLUMN pausedAt INTEGER`, ()=>{});
     db.run(`ALTER TABLE build_tasks ADD COLUMN totalPausedSeconds INTEGER NOT NULL DEFAULT 0`, ()=>{});
@@ -144,12 +143,14 @@ module.exports = function attachBuildTasks(app, opts = {}) {
         id       INTEGER PRIMARY KEY AUTOINCREMENT,
         taskId   INTEGER NOT NULL,
         type     TEXT    NOT NULL,              -- claim | unclaim | complete | cancel | create | pause | resume | start
-        qty      INTEGER NOT NULL DEFAULT 0,    -- for completes and partial-claims
+        qty      INTEGER NOT NULL DEFAULT 0,
         user     TEXT    NOT NULL,
         ts       INTEGER NOT NULL,
+        elapsedSeconds INTEGER,                 -- ONLY set for complete events
         FOREIGN KEY(taskId) REFERENCES build_tasks(id)
       )
     `);
+    db.run(`ALTER TABLE build_task_events ADD COLUMN elapsedSeconds INTEGER`, ()=>{});
   });
 
   // ----- Who am I -----
@@ -186,7 +187,6 @@ module.exports = function attachBuildTasks(app, opts = {}) {
   });
 
   // ----- List -----
-  // GET /api/build-tasks?status=queued|claimed|done&since=<epochMs>
   router.get('/api/build-tasks', async (req, res) => {
     const status = String(req.query.status || '').trim().toLowerCase();
     const since = Number(req.query.since || 0);
@@ -228,22 +228,11 @@ module.exports = function attachBuildTasks(app, opts = {}) {
         });
       }
 
-      if (status === 'done') {
-        await Promise.all(rows.map(async r => {
-          const ev = await get(
-            `SELECT qty FROM build_task_events WHERE taskId=? AND type='complete' ORDER BY ts DESC LIMIT 1`,
-            [r.id]
-          );
-          if (ev && Number.isInteger(ev.qty)) r._lastQtyDone = ev.qty;
-        }));
-      }
-
       res.json(rows);
     } catch (e) { res.status(500).json({ error:'db', detail:String(e.message||e) }); }
   });
 
   // ----- Claim (supports partial-claim) -----
-  // PATCH /api/build-tasks/:id/claim   body: { qty? }
   router.patch('/api/build-tasks/:id/claim', async (req, res) => {
     const user = requireUser(req, res); if (!user) return;
     const id = Number(req.params.id || 0);
@@ -259,13 +248,11 @@ module.exports = function attachBuildTasks(app, opts = {}) {
       const available = task.qty|0;
       if (!Number.isInteger(available) || available <= 0) return res.status(409).json({ error:'empty' });
 
-      // claimQty defaults to all if not provided or invalid
       let claimQty = Number.isInteger(reqQty) && reqQty > 0 ? reqQty : available;
       if (claimQty > available) return res.status(400).json({ error:'qty exceeds available', available });
 
       const t = now();
 
-      // full-claim: keep same row
       if (claimQty === available) {
         await run(
           `UPDATE build_tasks
@@ -283,29 +270,22 @@ module.exports = function attachBuildTasks(app, opts = {}) {
           [id, claimQty, user, t]
         );
 
-        // enforce: only one running timer per tech
         await autoPauseOtherRunningTasks(user, user, id);
-
-        const claimed = await get(`SELECT * FROM build_tasks WHERE id=?`, [id]);
-        return res.json(claimed);
+        return res.json(await get(`SELECT * FROM build_tasks WHERE id=?`, [id]));
       }
 
-      // partial-claim: split inside a transaction
       const result = await tx(async () => {
-        // 1) reduce original queued qty
         await run(
           `UPDATE build_tasks SET qty=? WHERE id=? AND status='queued'`,
           [available - claimQty, id]
         );
 
-        // 2) create a new claimed task with the claimed qty
         const ins = await run(
           `INSERT INTO build_tasks (partNumber, qty, status, createdBy, createdAt, claimedBy, claimedAt, startedAt, pausedAt, totalPausedSeconds, isPaused, priority)
            VALUES (?, ?, 'claimed', ?, ?, ?, ?, ?, NULL, 0, 0, ?)`,
           [task.partNumber, claimQty, task.createdBy, task.createdAt, user, t, t, task.priority|0]
         );
 
-        // 3) event for the claimed slice
         await run(
           `INSERT INTO build_task_events (taskId, type, qty, user, ts)
            VALUES (?, 'claim', ?, ?, ?)`,
@@ -315,11 +295,8 @@ module.exports = function attachBuildTasks(app, opts = {}) {
         return ins.lastID;
       });
 
-      // enforce: only one running timer per tech
       await autoPauseOtherRunningTasks(user, user, result);
-
-      const claimed = await get(`SELECT * FROM build_tasks WHERE id=?`, [result]);
-      res.json(claimed);
+      res.json(await get(`SELECT * FROM build_tasks WHERE id=?`, [result]));
     } catch (e) { res.status(500).json({ error:'db', detail:String(e.message||e) }); }
   });
 
@@ -349,8 +326,7 @@ module.exports = function attachBuildTasks(app, opts = {}) {
     } catch (e) { res.status(500).json({ error:'db', detail:String(e.message||e) }); }
   });
 
-  // ----- Start timer (CLAIMER or ADMIN) -----
-  // PATCH /api/build-tasks/:id/start
+  // ----- Start timer -----
   router.patch('/api/build-tasks/:id/start', async (req, res) => {
     const actor = requireUser(req, res); if (!actor) return;
     const id = Number(req.params.id || 0);
@@ -374,7 +350,6 @@ module.exports = function attachBuildTasks(app, opts = {}) {
             WHERE id=?`,
           [t, id]
         );
-
         await run(
           `INSERT INTO build_task_events (taskId, type, qty, user, ts)
            VALUES (?, 'start', 0, ?, ?)`,
@@ -382,14 +357,12 @@ module.exports = function attachBuildTasks(app, opts = {}) {
         );
       });
 
-      // enforce: only one running timer per tech
       await autoPauseOtherRunningTasks(actor, task.claimedBy, id);
-
       res.json(await get(`SELECT * FROM build_tasks WHERE id=?`, [id]));
     } catch (e) { res.status(500).json({ error:'db', detail:String(e.message||e) }); }
   });
 
-  // ----- Pause timer (CLAIMER or ADMIN) -----
+  // ----- Pause timer -----
   router.patch('/api/build-tasks/:id/pause', async (req, res) => {
     const actor = requireUser(req, res); if (!actor) return;
     const id = Number(req.params.id || 0);
@@ -404,7 +377,6 @@ module.exports = function attachBuildTasks(app, opts = {}) {
       const t = now();
 
       await tx(async () => {
-        // if it was never started, start it first (so we don't lose time)
         await run(
           `UPDATE build_tasks
               SET startedAt = COALESCE(startedAt, ?),
@@ -426,7 +398,7 @@ module.exports = function attachBuildTasks(app, opts = {}) {
     } catch (e) { res.status(500).json({ error:'db', detail:String(e.message||e) }); }
   });
 
-  // ----- Resume timer (CLAIMER or ADMIN) -----
+  // ----- Resume timer -----
   router.patch('/api/build-tasks/:id/resume', async (req, res) => {
     const actor = requireUser(req, res); if (!actor) return;
     const id = Number(req.params.id || 0);
@@ -460,14 +432,12 @@ module.exports = function attachBuildTasks(app, opts = {}) {
         );
       });
 
-      // enforce: only one running timer per tech
       await autoPauseOtherRunningTasks(actor, task.claimedBy, id);
-
       res.json(await get(`SELECT * FROM build_tasks WHERE id=?`, [id]));
     } catch (e) { res.status(500).json({ error:'db', detail:String(e.message||e) }); }
   });
 
-  // ----- Complete (partial allowed) -----
+  // ----- Complete (stores elapsedSeconds on the complete event) -----
   router.patch('/api/build-tasks/:id/complete', async (req, res) => {
     const user = requireUser(req, res); if (!user) return;
     const id = Number(req.params.id || 0);
@@ -476,14 +446,15 @@ module.exports = function attachBuildTasks(app, opts = {}) {
     if (!Number.isInteger(qty) || qty <= 0) return res.status(400).json({ error:'qty must be positive integer' });
 
     try {
-      const task = await get(`SELECT * FROM build_tasks WHERE id=?`, [id]);
+      let task = await get(`SELECT * FROM build_tasks WHERE id=?`, [id]);
       if (!task) return res.status(404).json({ error:'not found' });
       if (task.status !== 'claimed') return res.status(409).json({ error:'not-claimed', current:task });
+      if (!canControlTask(req, task)) return res.status(403).json({ error:'forbidden' });
       if (qty > task.qty) return res.status(400).json({ error:'qty exceeds remaining', remaining: task.qty });
 
       const t = now();
 
-      // normalize timer: if paused, accrue paused time up to now and clear pausedAt
+      // Normalize paused -> accrue paused time up to now, clear pausedAt/isPaused
       if (Number(task.isPaused || 0) === 1) {
         const pAt = Number(task.pausedAt || 0);
         const add = pAt ? Math.max(0, Math.floor((t - pAt) / 1000)) : 0;
@@ -495,18 +466,20 @@ module.exports = function attachBuildTasks(app, opts = {}) {
             WHERE id=?`,
           [add, id]
         );
-        // refresh local copy
-        task.totalPausedSeconds = Number(task.totalPausedSeconds || 0) + add;
-        task.pausedAt = null;
-        task.isPaused = 0;
       }
 
-      // if the task was never started, backfill startedAt from claimedAt (or now)
+      // Backfill startedAt if missing
+      task = await get(`SELECT * FROM build_tasks WHERE id=?`, [id]);
       if (!task.startedAt) {
-        await run(`UPDATE build_tasks SET startedAt=? WHERE id=?`, [task.claimedAt || t, id]);
-        task.startedAt = task.claimedAt || t;
+        const start = task.claimedAt || t;
+        await run(`UPDATE build_tasks SET startedAt=? WHERE id=?`, [start, id]);
+        task.startedAt = start;
       }
 
+      // Compute elapsed work seconds at completion moment
+      const elapsedSeconds = computeElapsedSeconds(task, t);
+
+      // Apply completion
       if (qty === task.qty) {
         await run(
           `UPDATE build_tasks SET status='done', qty=0, completedAt=? WHERE id=? AND status='claimed'`,
@@ -515,19 +488,25 @@ module.exports = function attachBuildTasks(app, opts = {}) {
       } else {
         const remaining = task.qty - qty;
         await run(
-          `UPDATE build_tasks SET qty=?, claimedBy=?, claimedAt=? WHERE id=? AND status='claimed'`,
-          [remaining, task.claimedBy || user, task.claimedAt || t, id]
+          `UPDATE build_tasks SET qty=? WHERE id=? AND status='claimed'`,
+          [remaining, id]
         );
       }
 
+      // Store event INCLUDING elapsedSeconds
       await run(
-        `INSERT INTO build_task_events (taskId, type, qty, user, ts)
-         VALUES (?, 'complete', ?, ?, ?)`,
-        [id, qty, user, t]
+        `INSERT INTO build_task_events (taskId, type, qty, user, ts, elapsedSeconds)
+         VALUES (?, 'complete', ?, ?, ?, ?)`,
+        [id, qty, user, t, elapsedSeconds]
       );
 
       const updated = await get(`SELECT * FROM build_tasks WHERE id=?`, [id]);
-      res.json({ task: updated, completedQty: qty, addToInventory: { partNumber: task.partNumber, qty } });
+      res.json({
+        task: updated,
+        completedQty: qty,
+        elapsedSeconds,
+        addToInventory: { partNumber: task.partNumber, qty }
+      });
     } catch (e) { res.status(500).json({ error:'db', detail:String(e.message||e) }); }
   });
 
@@ -556,13 +535,13 @@ module.exports = function attachBuildTasks(app, opts = {}) {
     } catch (e) { res.status(500).json({ error:'db', detail:String(e.message||e) }); }
   });
 
-  // ----- Events feed -----
+  // ----- Events feed (now includes elapsedSeconds) -----
   router.get('/api/build-task-events', async (req, res) => {
     const type = String(req.query.type || '').trim().toLowerCase() || 'complete';
     const since = Number(req.query.since || 0);
     try {
       let sql = `
-        SELECT e.id, e.taskId, e.type, e.qty, e.user, e.ts,
+        SELECT e.id, e.taskId, e.type, e.qty, e.user, e.ts, e.elapsedSeconds,
                t.partNumber, t.claimedBy
           FROM build_task_events e
           JOIN build_tasks t ON t.id = e.taskId
