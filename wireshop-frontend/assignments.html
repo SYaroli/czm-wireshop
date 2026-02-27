@@ -56,57 +56,47 @@
     <div class="brand-inner">
       <a class="brand-logo" href="/dashboard.html">
         <img src="/czm-logo.png" alt="CZM">
-        <h1 class="brand-title">CZM • Build Next</h1>
+        <h1 class="brand-title">Wire Shop</h1>
       </a>
+
       <div class="brand-actions">
         <a class="navbtn" href="/dashboard.html">Dashboard</a>
-        <a class="navbtn active" href="/assignments.html">Assignment</a>
-        <a class="navbtn" href="/inventory.html">Inventory</a>
-        <a class="navbtn" href="/archive.html">Archive</a>
+        <a class="navbtn active" href="/assignments.html">Build Next</a>
+        <a class="navbtn" href="/inventory-list.html">Inventory</a>
         <a class="navbtn" href="/admin.html">Admin</a>
-        <button id="logoutBtn" class="navbtn">Logout</button>
+        <a class="navbtn" id="logoutBtn" href="javascript:void(0)">Logout</a>
       </div>
     </div>
   </div>
 
-  <main class="page">
-
-    <!-- ADMIN: Add to build queue -->
-    <div class="card" id="addCard" style="display:none">
-      <h2 class="kicker">Add to build queue</h2>
+  <div class="page">
+    <!-- ADD (admin) -->
+    <div class="card" id="addCard" style="display:none;">
+      <h2 class="kicker">Add to Queue (Admin)</h2>
       <div class="toolbar">
-        <div>
-          <label for="part">Part</label>
-          <input id="part" list="partsList" placeholder="Start typing a part number or print name">
-          <datalist id="partsList"></datalist>
-        </div>
-        <div class="minw">
-          <label for="qAdd">Qty</label>
-          <input id="qAdd" type="number" min="1" step="1" value="1">
-        </div>
-        <div class="minw">
-          <label for="prioritySel">Priority</label>
-          <select id="prioritySel">
-            <option value="0">Normal</option>
-            <option value="1">High</option>
-            <option value="2">Urgent</option>
-          </select>
-        </div>
-        <div class="tight" style="display:flex;align-items:end">
-          <button id="btnAdd" class="pill primary">Add</button>
-        </div>
+        <input id="pnInput" class="minw" placeholder="Part Number (select below)">
+        <input id="qAdd" type="number" min="1" step="1" value="1" class="tight" style="max-width:120px">
+        <select id="prioritySel" class="tight" style="max-width:180px">
+          <option value="0">Normal</option>
+          <option value="1">High</option>
+          <option value="2">Urgent</option>
+        </select>
+        <button class="pill primary tight" id="addBtn">Add</button>
       </div>
-      <p class="note">Admins can add items to the queue. Techs will claim them and complete in batches; inventory increases on completion.</p>
+      <div style="margin-top:10px">
+        <select id="pnSelect" style="width:100%; padding:10px; border-radius:10px; border:1px solid #d3d8e1"></select>
+        <p class="note">Select a part from the list to fill the Part Number field.</p>
+      </div>
     </div>
 
-    <!-- Queue -->
+    <!-- QUEUE -->
     <div class="card sized">
       <h2 class="kicker">Queue</h2>
       <table class="sticky-head compact" id="tblQueued">
         <thead>
           <tr>
             <th>Part</th>
-            <th>Print Name</th>
+            <th class="wide">Print Name</th>
             <th class="nowrap">Qty</th>
             <th>Created</th>
             <th class="nowrap wide">Actions</th>
@@ -126,7 +116,8 @@
             <th>Print Name</th>
             <th class="nowrap">Remaining</th>
             <th>Claimed By</th>
-            <th class="nowrap wide">Complete</th>
+            <th class="nowrap">Timer</th>
+            <th class="nowrap wide">Actions</th>
           </tr>
         </thead>
         <tbody id="claimedBody"></tbody>
@@ -136,29 +127,28 @@
 
     <!-- Done (recent completions) -->
     <div class="card sized">
-      <div style="display:flex;align-items:center;justify-content:space-between">
-        <h2 class="kicker" style="margin:0">Done</h2>
-        <div id="doneActions" class="actions-row" style="display:none">
-          <button id="exportDoneBtn" class="pill small" title="Export visible Done to CSV">Export CSV</button>
-          <button id="clearDoneBtn" class="pill cancel small" title="Clear recent completions">Clear</button>
+      <div class="actions-row" style="margin-bottom:8px;">
+        <h2 class="kicker" style="margin:0; flex:1;">Done (Recent)</h2>
+        <div id="doneActions" style="display:none;">
+          <button class="pill small cancel" id="clearDoneBtn">Clear</button>
+          <button class="pill small" id="exportDoneBtn">Export CSV</button>
         </div>
       </div>
-      <table class="sticky-head compact" id="tblDone" style="margin-top:8px">
+
+      <table class="sticky-head compact" id="tblDone">
         <thead>
           <tr>
             <th>Part</th>
             <th>Print Name</th>
             <th class="nowrap">Qty</th>
-            <th class="nowrap">By</th>
+            <th>By</th>
             <th class="nowrap">Completed</th>
           </tr>
         </thead>
         <tbody id="doneBody"></tbody>
       </table>
-      <p class="note">Showing the 200 most recent completions.</p>
     </div>
-
-  </main>
+  </div>
 
   <script src="/catalog.js"></script>
   <script>
@@ -182,79 +172,100 @@
       }catch(_){}
     }
 
-    // catalog + inventory helpers (NEW)
-let byPN = new Map();
-
-async function loadPartList() {
-  const cat = Array.isArray(window.catalog) ? window.catalog : [];
-  let inv = [];
-  try {
-    inv = await api('/api/inventory-all');
-  } catch (e) {
-    console.warn('Failed to load inventory-all', e);
-  }
-
-  const map = new Map();
-
-  // From catalog.js
-  cat.forEach(c => {
-    const pn = String(c.partNumber || '').trim();
-    if (!pn) return;
-    map.set(pn, {
-      partNumber: pn,
-      printName: (c.printName || '').trim()
-    });
-  });
-
-  // Include DB-only parts
-  inv.forEach(r => {
-    const pn = String(r.partNumber || '').trim();
-    if (!pn || map.has(pn)) return;
-    map.set(pn, {
-      partNumber: pn,
-      printName: (r.description || '').trim()
-    });
-  });
-
-  const list = Array.from(map.values())
-    .sort((a, b) => a.partNumber.localeCompare(b.partNumber));
-
-  byPN = new Map(list.map(x => [x.partNumber, x]));
-
-  const options = list.map(c => {
-    const pn = c.partNumber;
-    const name = c.printName;
-    return `<option value="${pn}">${name ? name + ' — ' + pn : pn}</option>`;
-  }).join('');
-
-  document.getElementById('partsList').innerHTML = options;
-}
-    function esc(s){ return String(s??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;'); }
+    // basic helpers
+    function esc(s){ return String(s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
     function ts(ms){ if(!ms) return ''; return new Date(ms).toLocaleString(); }
-
+    function fmtSecs(s){
+      s = Math.max(0, Number(s||0)|0);
+      const h = Math.floor(s/3600);
+      const m = Math.floor((s%3600)/60);
+      const ss = s%60;
+      const pad = n => String(n).padStart(2,'0');
+      if (h>0) return `${h}:${pad(m)}:${pad(ss)}`;
+      return `${m}:${pad(ss)}`;
+    }
     async function api(path, opts={}){
-      const res = await fetch(API_ROOT + path, {
+      const headers = Object.assign(
+        { 'Content-Type':'application/json', 'x-user': user.username, 'x-role': user.role||'' },
+        opts.headers||{}
+      );
+      const res = await fetch(API_ROOT+path, {
         method: opts.method || 'GET',
-        headers: {
-          'Content-Type':'application/json',
-          'x-user': user.username,
-          'x-role': String(user.role || '')
-        },
+        headers,
         body: opts.body ? JSON.stringify(opts.body) : undefined
       });
-      if (!res.ok) throw new Error('HTTP '+res.status);
+      if (!res.ok){
+        let msg = res.statusText;
+        try{ const j = await res.json(); msg = j.error || msg; }catch(_){}
+        throw new Error(msg);
+      }
       return res.json();
     }
 
-    // ---- ADD (admin) ----
-    const pnInput = document.getElementById('part');
+    // catalog + inventory helpers
+    let byPN = new Map();
+
+    async function loadPartList() {
+      const cat = Array.isArray(window.catalog) ? window.catalog : [];
+      let inv = [];
+      try {
+        inv = await api('/api/inventory-all');
+      } catch (e) {
+        console.warn('Failed to load inventory-all', e);
+      }
+
+      const map = new Map();
+
+      // From catalog.js
+      cat.forEach(c => {
+        const pn = String(c.partNumber || '').trim();
+        if (!pn) return;
+        map.set(pn, {
+          partNumber: pn,
+          printName: (c.printName || '').trim()
+        });
+      });
+
+      // Include DB-only parts
+      inv.forEach(r => {
+        const pn = String(r.partNumber || '').trim();
+        if (!pn || map.has(pn)) return;
+        map.set(pn, {
+          partNumber: pn,
+          printName: (r.description || '').trim()
+        });
+      });
+
+      const list = Array.from(map.values())
+        .sort((a, b) => a.partNumber.localeCompare(b.partNumber));
+
+      byPN = new Map(list.map(x => [x.partNumber, x]));
+
+      const options = list.map(c => {
+        const pn = c.partNumber;
+        const name = c.printName;
+        return `<option value="${pn}">${esc(name ? name + ' — ' + pn : pn)}</option>`;
+      }).join('');
+
+      const sel = document.getElementById('pnSelect');
+      sel.innerHTML = `<option value="">-- Select Part --</option>` + options;
+
+      sel.addEventListener('change', () => {
+        const pn = sel.value || '';
+        document.getElementById('pnInput').value = pn;
+      });
+    }
+
+    // add form
+    const pnInput = document.getElementById('pnInput');
     const qAdd = document.getElementById('qAdd');
     const prioritySel = document.getElementById('prioritySel');
-    document.getElementById('btnAdd')?.addEventListener('click', async ()=>{
-      const pn = (pnInput.value||'').trim();
+    document.getElementById('addBtn')?.addEventListener('click', async ()=>{
+      if (!isAdmin) return;
+      const pn = String(pnInput.value||'').trim();
       const qty = Number(qAdd.value||0);
       const pri = Number(prioritySel.value||0) | 0;
-      if (!pn) return alert('Pick a part');
+      if (!pn) return alert('Part Number required');
       if (!Number.isInteger(qty) || qty <= 0) return alert('Qty must be a positive integer');
       try{
         await api('/api/build-tasks', { method:'POST', body:{ partNumber: pn, qty, priority: pri } });
@@ -297,13 +308,33 @@ async function loadPartList() {
       const c = byPN.get(String(r.partNumber)) || {};
       const name = c.printName || '';
       const who = esc(r.claimedBy||'');
+
+      const state = String(r._timerState || (r.startedAt ? (Number(r.isPaused||0)===1?'paused':'running') : 'not_started'));
+      const elapsed = Number(r._elapsedSeconds || 0);
+
+      const stateLabel =
+        state === 'paused' ? '<span class="priority p1">Paused</span>' :
+        state === 'running' ? '<span class="priority p1">Running</span>' :
+        '<span class="muted">Not started</span>';
+
+      const canManage = isAdmin || String((r.claimedBy||'')).toLowerCase() === String(user.username||'').toLowerCase();
+
+      const timerBtns = (() => {
+        if (!canManage) return '';
+        if (!r.startedAt) return `<button class="pill small primary" data-starttimer="${r.id}">Start</button>`;
+        if (state === 'paused') return `<button class="pill small primary" data-resume="${r.id}">Resume</button>`;
+        return `<button class="pill small primary" data-pause="${r.id}">Pause</button>`;
+      })();
+
       return `<tr data-id="${r.id}">
         <td>${linkPN(r.partNumber)} ${prBadge(r.priority|0)}</td>
         <td>${esc(name)}</td>
         <td class="qty">${r.qty|0}</td>
         <td>${who}</td>
+        <td class="nowrap">${stateLabel}<br><span class="mono">${fmtSecs(elapsed)}</span></td>
         <td class="right wide">
           <input type="number" class="qtyDone" min="1" step="1" placeholder="qty">
+          ${timerBtns}
           <button class="pill small primary" data-complete="${r.id}">Complete</button>
           ${isAdmin ? `<button class="pill small primary" data-unclaim="${r.id}">Unclaim</button>` : ''}
         </td>
@@ -352,6 +383,9 @@ async function loadPartList() {
       const cancelId = e.target?.dataset?.cancel;
       const unclaimId = e.target?.dataset?.unclaim;
       const completeId = e.target?.dataset?.complete;
+      const pauseId = e.target?.dataset?.pause;
+      const resumeId = e.target?.dataset?.resume;
+      const startTimerId = e.target?.dataset?.starttimer;
 
       try {
         if (claimId){
@@ -373,7 +407,20 @@ async function loadPartList() {
           await api(`/api/build-tasks/${unclaimId}/unclaim`, { method:'PATCH' });
           await refreshAll(); return;
         }
-               if (completeId){
+        if (startTimerId){
+          await api(`/api/build-tasks/${startTimerId}/start`, { method:'PATCH' });
+          await refreshAll(); return;
+        }
+        if (pauseId){
+          await api(`/api/build-tasks/${pauseId}/pause`, { method:'PATCH' });
+          await refreshAll(); return;
+        }
+        if (resumeId){
+          await api(`/api/build-tasks/${resumeId}/resume`, { method:'PATCH' });
+          await refreshAll(); return;
+        }
+
+        if (completeId){
           const tr = e.target.closest('tr');
           const qtyBox = tr?.querySelector('.qtyDone');
           const qty = Number(qtyBox?.value||0);
@@ -388,7 +435,7 @@ async function loadPartList() {
           const inc = Number(res?.addToInventory?.qty || 0);
 
           if (pn && inc > 0){
-            // get current inventory, then write new absolute qty via /qty (matches inventory-list.html + backend)
+            // get current inventory, then write new absolute qty via /qty
             let currentQty = 0;
             try {
               const invList = await api('/api/inventory-all');
@@ -406,7 +453,7 @@ async function loadPartList() {
             });
           }
 
-          await refreshAll(); 
+          await refreshAll();
           return;
         }
 
@@ -470,14 +517,12 @@ async function loadPartList() {
     });
 
     // init
-   // init
-(async function init(){
-  await whoami();
-  await loadPartList();                    // ← add this line
-  await refreshAll().catch(()=>alert('Failed to load build queue'));
-  setInterval(()=>{ if(!document.hidden) refreshAll().catch(()=>{}); }, 15000);
-})();
-
+    (async function init(){
+      await whoami();
+      await loadPartList();
+      await refreshAll().catch(()=>alert('Failed to load build queue'));
+      setInterval(()=>{ if(!document.hidden) refreshAll().catch(()=>{}); }, 15000);
+    })();
   </script>
 </body>
 </html>
