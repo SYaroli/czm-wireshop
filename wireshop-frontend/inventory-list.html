@@ -162,8 +162,16 @@
       return currentUser.username;
     }
 
+    function headersJson(){
+      return { 'Content-Type':'application/json', 'x-user': userHeader() };
+    }
+    function headersUser(){
+      return { 'x-user': userHeader() };
+    }
+
     async function loadData(){
-      const invRes = await fetch(API_BASE+'/inventory-all', { headers:{'x-user': userHeader()} });
+      const invRes = await fetch(API_BASE+'/inventory-all', { headers: headersUser() });
+      if(!invRes.ok) throw new Error('inventory-all failed');
       const invData = await invRes.json();
       DB_ROWS = {}; invData.forEach(r => DB_ROWS[r.partNumber]=r);
 
@@ -284,14 +292,16 @@
       return String(s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
     }
 
+    // Uses backend: POST /api/inventory/:partNumber/qty  (absolute set)
     async function applyAdjust(partNumber, newQty){
       if(!isAdmin) return;
       const qty = Number(newQty);
       if(!Number.isFinite(qty)) return alert('Enter a number.');
-      const res = await fetch(API_BASE+'/inventory/adjust', {
+
+      const res = await fetch(API_BASE + '/inventory/' + encodeURIComponent(partNumber) + '/qty', {
         method:'POST',
-        headers:{'Content-Type':'application/json','x-user': userHeader()},
-        body: JSON.stringify({ partNumber, qty })
+        headers: headersJson(),
+        body: JSON.stringify({ qty, note: 'manual adjust (inventory-list)' })
       });
       if(!res.ok) return alert('Adjust failed');
       await loadData();
@@ -328,8 +338,11 @@
       editModalBackdrop.style.display='flex';
     }
 
+    // Add uses: POST /api/inventory  (admin only)
+    // Edit uses: PUT /api/inventory/:partNumber (admin only)
     async function saveModal(){
       if(!isAdmin) return;
+
       const partNumber = document.getElementById('mPart').value.trim();
       const description = document.getElementById('mDesc').value.trim();
       const location = document.getElementById('mLoc').value.trim();
@@ -338,31 +351,44 @@
 
       if(!partNumber) return alert('Part number required.');
 
-      const url = modalMode === 'add' ? API_BASE+'/inventory/add' : API_BASE+'/inventory/edit';
-      const payload = { partNumber, description, location, qty, notes };
+      let url = '';
+      let method = '';
+      let payload = null;
+
+      if (modalMode === 'add') {
+        url = API_BASE + '/inventory';
+        method = 'POST';
+        payload = { partNumber, description, location, qty, notes };
+      } else {
+        url = API_BASE + '/inventory/' + encodeURIComponent(partNumber);
+        method = 'PUT';
+        payload = { description, location, qty, notes };
+      }
 
       const res = await fetch(url, {
-        method:'POST',
-        headers:{'Content-Type':'application/json','x-user': userHeader()},
+        method,
+        headers: headersJson(),
         body: JSON.stringify(payload)
       });
       if(!res.ok) return alert('Save failed');
+
       closeModal();
       await loadData();
     }
 
+    // Delete uses: DELETE /api/inventory/:partNumber (admin only)
     async function deleteModal(){
       if(!isAdmin) return;
       const partNumber = document.getElementById('mPart').value.trim();
       if(!partNumber) return;
       if(!confirm(`Delete ${partNumber}?`)) return;
 
-      const res = await fetch(API_BASE+'/inventory/delete', {
-        method:'POST',
-        headers:{'Content-Type':'application/json','x-user': userHeader()},
-        body: JSON.stringify({ partNumber })
+      const res = await fetch(API_BASE + '/inventory/' + encodeURIComponent(partNumber), {
+        method:'DELETE',
+        headers: headersUser()
       });
       if(!res.ok) return alert('Delete failed');
+
       closeModal();
       await loadData();
     }
@@ -371,15 +397,51 @@
       editModalBackdrop.style.display='none';
     }
 
-    async function exportCsv(){
-      const res = await fetch(API_BASE+'/inventory/export', { headers:{'x-user': userHeader()} });
-      if(!res.ok) return alert('Export endpoint not available');
-      const blob = await res.blob();
-      const a=document.createElement('a');
-      a.href=URL.createObjectURL(blob);
-      a.download='inventory.csv';
+    // Client-side export (no backend endpoint needed)
+    function exportCsv(){
+      const filter = filterBox.value.trim().toLowerCase();
+      const onlyNZ = cbNonZero.checked;
+      const onlyZ = cbOnlyZero.checked;
+
+      const rows = [];
+      rows.push(['Part Number','Print Name','Location','Qty','Notes']);
+
+      for (const r of ALL_ROWS){
+        const hay = `${r.partNumber} ${r.printName} ${r.location} ${r.notes||''}`.toLowerCase();
+        if(filter && !hay.includes(filter)) continue;
+
+        const qty = Number(r.qty||0);
+        if(onlyNZ && qty===0) continue;
+        if(onlyZ && qty!==0) continue;
+
+        rows.push([
+          r.partNumber || '',
+          r.printName || '',
+          r.location || '',
+          String(qty),
+          r.notes || ''
+        ]);
+      }
+
+      const csv = rows.map(cols => cols.map(toCsv).join(',')).join('\n');
+      const blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement('a');
+      a.href = url;
+      const d = new Date();
+      const pad = n => String(n).padStart(2,'0');
+      const stamp = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}`;
+      a.download = `inventory_${stamp}.csv`;
+      document.body.appendChild(a);
       a.click();
-      URL.revokeObjectURL(a.href);
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    function toCsv(v){
+      const s = String(v ?? '');
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g,'""')}"` : s;
     }
 
     // events
