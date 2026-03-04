@@ -105,6 +105,16 @@
     .log-btn{border:1px solid #cfd4da;background:#eee;border-radius:6px;padding:4px 8px;font-size:12px;cursor:pointer}
     .log-btn.red{background:#c30000;color:#fff;border-color:#a00000}
 
+    /* QR block (part detail) */
+    .qr-card{margin-top:12px;border:1px solid #e5e9ef;border-radius:10px;padding:12px;background:#fafbfc;max-width:520px}
+    .qr-row{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+    .qr-canvas-wrap{background:#fff;border:1px solid #e5e9ef;border-radius:10px;padding:10px;display:flex;align-items:center;justify-content:center}
+    .qr-meta{min-width:220px}
+    .qr-part{font-weight:800;font-size:14px;letter-spacing:.2px}
+    .qr-name{margin-top:4px;font-size:13px;color:#333}
+    .qr-link{margin-top:6px;font-size:12px;color:#666;overflow-wrap:anywhere}
+    .qr-actions{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap}
+
     @media (max-width:900px){
       .inventory-shell{max-width:100%;margin:0;border-radius:0;box-shadow:none}
       .table-head,.list-body .row{grid-template-columns:140px 1fr 90px 60px 240px}
@@ -168,6 +178,7 @@
   </div>
 
   <script src="/catalog.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
   <script>
     const API_BASE = 'https://wireshop-backend.onrender.com/api';
 
@@ -397,6 +408,25 @@
             <button id="detailApplyBtn" class="apply-btn">Apply</button>
           </div>
 
+          <div class="qr-card" id="qrCard">
+            <div class="detail-title"><b>QR Label</b></div>
+            <div class="detail-subtle">Scan → opens this exact part page.</div>
+            <div class="qr-row" style="margin-top:10px;">
+              <div class="qr-canvas-wrap">
+                <canvas id="qrCanvas" width="260" height="260"></canvas>
+              </div>
+              <div class="qr-meta">
+                <div class="qr-part" id="qrPartText"></div>
+                <div class="qr-name" id="qrNameText"></div>
+                <div class="qr-link" id="qrLinkText"></div>
+                <div class="qr-actions">
+                  <button id="downloadQrBtn" class="toolbar-btn">Download PNG</button>
+                  <button id="printQrBtn" class="toolbar-btn">Print</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <hr class="detail-hr" />
 
           <div class="detail-title">
@@ -441,7 +471,97 @@
         }
       });
 
+      // QR
+      renderPartQr(row.partNumber, row.printName || '');
+
       loadMovement(partNumber);
+    }
+
+    function renderPartQr(partNumber, printName){
+      const partEl = document.getElementById('qrPartText');
+      const nameEl = document.getElementById('qrNameText');
+      const linkEl = document.getElementById('qrLinkText');
+      const canvas = document.getElementById('qrCanvas');
+      const dlBtn = document.getElementById('downloadQrBtn');
+      const prBtn = document.getElementById('printQrBtn');
+
+      if(partEl) partEl.textContent = partNumber;
+      if(nameEl) nameEl.textContent = printName;
+
+      const targetUrl = `${window.location.origin}/inv/${encodeURIComponent(partNumber)}`;
+      if(linkEl) linkEl.textContent = targetUrl;
+
+      // QRCode lib loaded via CDN below
+      if(window.QRCode && canvas){
+        try{
+          QRCode.toCanvas(canvas, targetUrl, { width: 260, margin: 1 }, (err)=>{
+            if(err) console.error(err);
+          });
+        }catch(e){
+          console.error(e);
+        }
+      }
+
+      if(dlBtn){
+        dlBtn.onclick = async ()=>{
+          const tmp = document.createElement('canvas');
+          try{
+            if(window.QRCode){
+              await new Promise((resolve, reject)=>{
+                QRCode.toCanvas(tmp, targetUrl, { width: 600, margin: 1 }, (err)=> err ? reject(err) : resolve());
+              });
+              const a = document.createElement('a');
+              a.download = `${partNumber}.png`;
+              a.href = tmp.toDataURL('image/png');
+              a.click();
+            }
+          }catch(e){
+            console.error(e);
+            alert('Failed to generate QR');
+          }
+        };
+      }
+
+      if(prBtn){
+        prBtn.onclick = async ()=>{
+          const tmp = document.createElement('canvas');
+          try{
+            if(window.QRCode){
+              await new Promise((resolve, reject)=>{
+                QRCode.toCanvas(tmp, targetUrl, { width: 600, margin: 1 }, (err)=> err ? reject(err) : resolve());
+              });
+              const img = tmp.toDataURL('image/png');
+              const w = window.open('', '_blank');
+              if(!w) return;
+              w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Print QR</title>
+                <meta name="viewport" content="width=device-width,initial-scale=1">
+                <style>
+                  body{font-family:Arial,Helvetica,sans-serif;margin:24px}
+                  .label{display:flex;gap:18px;align-items:center}
+                  .meta{max-width:520px}
+                  .part{font-size:20px;font-weight:800;margin:0}
+                  .name{font-size:16px;margin:6px 0 0 0}
+                  .url{font-size:12px;color:#555;margin:8px 0 0 0;word-break:break-all}
+                  img{width:240px;height:240px}
+                </style></head><body>
+                <div class="label">
+                  <img src="${img}" alt="QR">
+                  <div class="meta">
+                    <p class="part">${escapeHtml(partNumber)}</p>
+                    <p class="name">${escapeHtml(printName)}</p>
+                    <p class="url">${escapeHtml(targetUrl)}</p>
+                  </div>
+                </div>
+                <script>window.onload=()=>window.print();</script>
+                </body></html>`);
+              w.document.close();
+            }
+          }catch(e){
+            console.error(e);
+            alert('Failed to generate QR');
+          }
+        };
+      }
     }
 
     async function loadMovement(partNumber){
