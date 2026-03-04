@@ -584,7 +584,8 @@ module.exports = function attachBuildTasks(app, opts = {}) {
     try {
       let sql = `
         SELECT e.id, e.taskId, e.type, e.qty, e.user, e.ts, e.reason,
-               t.partNumber, t.claimedBy
+               t.partNumber, t.claimedBy,
+               t.claimedAt, t.startedAt, t.pausedAt, t.totalPausedSeconds, t.isPaused
           FROM build_task_events e
           JOIN build_tasks t ON t.id = e.taskId
          WHERE e.type = ?`;
@@ -594,7 +595,27 @@ module.exports = function attachBuildTasks(app, opts = {}) {
         params.push(since);
       }
       sql += ` ORDER BY e.ts DESC`;
-      res.json(await all(sql, params));
+
+      const rows = await all(sql, params);
+
+      // Key fix: give the export what it needs (elapsed time at the moment of completion)
+      if (type === 'complete') {
+        rows.forEach(r => {
+          // prefer startedAt; fallback to claimedAt; else 0
+          const startedAt = Number(r.startedAt || r.claimedAt || 0);
+          r.elapsedSeconds = computeElapsedSeconds(
+            {
+              startedAt,
+              totalPausedSeconds: Number(r.totalPausedSeconds || 0),
+              isPaused: Number(r.isPaused || 0),
+              pausedAt: Number(r.pausedAt || 0)
+            },
+            Number(r.ts || now())
+          );
+        });
+      }
+
+      res.json(rows);
     } catch (e) { res.status(500).json({ error:'db', detail:String(e.message||e) }); }
   });
 
