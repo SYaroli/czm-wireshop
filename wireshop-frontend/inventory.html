@@ -482,7 +482,7 @@
         if(nameEl) nameEl.textContent = String(printName || '');
         if(urlEl) urlEl.textContent = invUrl;
 
-        // smaller QR so it matches the S200X650VA1Y vibe
+        // smaller on-page QR preview (leave as-is)
         QRCode.toCanvas(canvas, invUrl, { width: 120, margin: 1 }, (err)=>{
           if(err) console.error('QR error', err);
         });
@@ -505,9 +505,9 @@
               ctx.fillStyle = '#ffffff';
               ctx.fillRect(0, 0, LABEL_W, LABEL_H);
 
-              // Build a QR at a size that leaves room for 2 text lines
+              // Bigger QR to reduce dead white space
               const qrTemp = document.createElement('canvas');
-              const QR_SIZE = 140;
+              const QR_SIZE = 170;               // was 140
               qrTemp.width = QR_SIZE;
               qrTemp.height = QR_SIZE;
 
@@ -518,9 +518,9 @@
                 });
               });
 
-              // center QR horizontally
+              // center QR horizontally, tighter to top
               const qrX = Math.round((LABEL_W - QR_SIZE) / 2);
-              const qrY = 6;
+              const qrY = 2;                     // was 6
               ctx.drawImage(qrTemp, qrX, qrY, QR_SIZE, QR_SIZE);
 
               // text
@@ -530,15 +530,15 @@
               ctx.textAlign = 'center';
               ctx.fillStyle = '#000000';
 
-              // Part number
-              ctx.font = 'bold 22px Arial';
-              ctx.fillText(partText, LABEL_W / 2, 160);
+              // Part number (slightly bigger, placed lower to use space)
+              ctx.font = 'bold 24px Arial';      // was 22px
+              ctx.fillText(partText, LABEL_W / 2, 176); // was 160
 
-              // Description (truncate to keep it single-line clean)
-              ctx.font = 'normal 18px Arial';
+              // Description (slightly bigger, near bottom edge)
+              ctx.font = 'normal 19px Arial';    // was 18px
               const maxChars = 30;
               const safeName = nameText.length > maxChars ? (nameText.slice(0, maxChars - 1) + '…') : nameText;
-              ctx.fillText(safeName, LABEL_W / 2, 185);
+              ctx.fillText(safeName, LABEL_W / 2, 192); // was 185
 
               const a = document.createElement('a');
               a.download = `${String(partNumber || 'label')}.png`;
