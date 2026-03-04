@@ -29,38 +29,37 @@
     .toolbar-btn.red{background:#c30000;color:#fff;border-color:#a00000}
     #countLabel{font-size:12px;margin-left:auto;white-space:nowrap}
 
-   .table-head{
-  background:#0a0b0d;
-  color:#fff;
-  display:grid;
-  grid-template-columns:150px 220px 100px 60px 320px minmax(260px, 1fr);
-  gap:0;
-  padding:8px 16px;
-  font-size:12px;
-  font-weight:600;
-  margin-top:12px;
-}
+    .table-head{
+      background:#0a0b0d;
+      color:#fff;
+      display:grid;
+      grid-template-columns:150px 220px 100px 60px 320px minmax(260px, 1fr);
+      gap:0;
+      padding:8px 16px;
+      font-size:12px;
+      font-weight:600;
+      margin-top:12px;
+    }
 
-.list-body .row{
-  display:grid;
-  grid-template-columns:150px 220px 100px 60px 320px minmax(260px, 1fr);
-  gap:0;
-  padding:10px 16px;
-  border-bottom:1px solid #eef2f6;
-  background:#fff;
-  align-items:center;
-}
+    .list-body .row{
+      display:grid;
+      grid-template-columns:150px 220px 100px 60px 320px minmax(260px, 1fr);
+      gap:0;
+      padding:10px 16px;
+      border-bottom:1px solid #eef2f6;
+      background:#fff;
+      align-items:center;
+    }
 
     .list-body .row:nth-child(odd){background:#fafbfc}
     .notes-cell{
-  font-size:12px;
-  color:#333;
-  white-space:normal;
-  overflow-wrap:anywhere;
-  line-height:1.25;
-  padding-left:12px; /* gives it breathing room from the Adjust column */
-}
-
+      font-size:12px;
+      color:#333;
+      white-space:normal;
+      overflow-wrap:anywhere;
+      line-height:1.25;
+      padding-left:12px; /* gives it breathing room from the Adjust column */
+    }
 
     .adjust-controls{display:flex;align-items:center;gap:8px;flex-wrap:nowrap}
     .qty-input{width:70px;border:1px solid #d0d3d8;border-radius:20px;height:30px;padding:0 8px;text-align:center}
@@ -94,7 +93,6 @@
     .btn-gray{background:#c5c5c5;color:#000}
 
     /* detail view */
-
     .detail-wrap{padding:16px; position:relative;}
     .detail-qr-float{
       position:absolute; top:12px; right:12px;
@@ -394,12 +392,12 @@
             <canvas id="qrCanvas" width="160" height="160"></canvas>
             <div class="qr-part" id="qrPartText"></div>
             <div class="qr-name" id="qrNameText"></div>
-            <div class="qr-btn"><button id="qrDownloadBtn" class="toolbar-btn">Download PNG</button></div>
+            <div class="qr-btn"><button id="qrDownloadBtn" class="toolbar-btn red">Download PNG</button></div>
             <div class="qr-link">Scan: <span id="qrUrlText"></span></div>
           </div>
 
           <div class="detail-topbar">
-            <button class="toolbar-btn" id="backBtn">← Back</button>
+            <button class="toolbar-btn red" id="backBtn">← Back</button>
             ${isAdmin ? `<button class="toolbar-btn red" id="editDetailBtn">Edit</button>` : ``}
           </div>
 
@@ -412,7 +410,7 @@
           </div>
 
           <hr class="detail-hr" />
-<div class="detail-title"><b>Adjust Inventory</b></div
+          <div class="detail-title"><b>Adjust Inventory</b></div>
 
           <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
             <button id="quickMinus" class="quick-btn minus">-1</button>
@@ -469,7 +467,6 @@
       generatePartQr(row.partNumber, row.printName || '');
       loadMovement(partNumber);
     }
-
 
     function generatePartQr(partNumber, printName){
       try{
@@ -593,8 +590,7 @@
         });
         const data = await res.json();
         if(!res.ok) return alert(data?.error || 'Delete failed');
-        generatePartQr(row.partNumber, row.printName || '');
-      loadMovement(partNumber);
+        loadMovement(partNumber);
       }catch(e){
         alert('Delete failed');
       }
