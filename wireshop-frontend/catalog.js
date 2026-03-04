@@ -170,11 +170,10 @@ window.catalog = [
   { "printName": "LOWER MAST HARNESS", "partNumber": "40602.6640.000", "saNumber": "N/A", "expectedHours": null, "notes": "V3", "location": "NEED BIN" },
   { "printName": "BASE FORWARD", "partNumber": "40602.6660.000", "saNumber": "N/A", "expectedHours": null, "notes": "V3", "location": "NEED BIN" },
   { "printName": "BASE/ROTARY", "partNumber": "40602.6670.000", "saNumber": "N/A", "expectedHours": null, "notes": "V3", "location": "NEED BIN" },
-  { "printName": "MAST HARNESS", "partNumber": "40602.6730.000", "saNumber": "N/A", "expectedHours": null, "notes": "V3", "location": "NEED BIN" },
-  { "printName": "HEADMAST HARNESS", "partNumber": "40602.6750.000", "saNumber": "N/A", "expectedHours": null, "notes": "V3", "location": "NEED BIN" },
   { "printName": "ROTOARY HARNESS", "partNumber": "40602.6700.000", "saNumber": "N/A", "expectedHours": null, "notes": "V3", "location": "NEED BIN" },
   { "printName": "TK90 OUTPUT EXPANDER HARNESS", "partNumber": "40602.6830.000", "saNumber": "N/A", "expectedHours": 4, "notes": null, "location": "116B" }
 ];
+
 
 
 
