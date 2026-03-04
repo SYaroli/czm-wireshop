@@ -598,10 +598,9 @@ module.exports = function attachBuildTasks(app, opts = {}) {
 
       const rows = await all(sql, params);
 
-      // Key fix: give the export what it needs (elapsed time at the moment of completion)
+      // give the export what it needs (elapsed time at the moment of completion)
       if (type === 'complete') {
         rows.forEach(r => {
-          // prefer startedAt; fallback to claimedAt; else 0
           const startedAt = Number(r.startedAt || r.claimedAt || 0);
           r.elapsedSeconds = computeElapsedSeconds(
             {
@@ -631,30 +630,20 @@ module.exports = function attachBuildTasks(app, opts = {}) {
   });
 
   // ----- Auto-pause + auto-resume scheduler -----
-  // Breaks:
-  //  - 10:30–10:45 (all days)
-  //  - 12:00–12:30 (all days)
-  //  - 14:30–14:45 Mon–Thu
-  //  - 14:00–14:15 Fri
-  // Auto-resume at EXACT end times:
-  //  - 10:45
-  //  - 12:30
-  //  - 14:45 Mon–Thu
-  //  - 14:15 Fri
   //
-  // Shift:
-  //  - Start 07:00
-  //  - End 17:00 Mon–Thu
-  //  - End 15:30 Fri
+  // SHIFT HOURS (shop local time):
+  //   Mon–Thu: 07:00–17:00
+  //   Fri:     07:00–15:30
+  //   Sat:     07:00–12:00   (so Saturday work DOESN'T get stuck in off_hours auto-pause)
+  //   Sun:     closed
   //
-  // Auto-pause behavior:
-  //  - Every minute, if current local time is in a break window OR outside shift hours,
-  //    auto-pause any RUNNING task (status='claimed' and isPaused=0), and log event type='auto_pause'
-  //    with reason: break | shift_end | off_hours.
+  // BREAKS (auto pause any active timers):
+  //   10:00–10:15
+  //   12:00–12:30
+  //   14:30–14:45
   //
-  // Auto-resume behavior:
-  //  - At the exact break-end minute, auto-resume only tasks that the SYSTEM auto-paused for reason='break'.
-  //  - Resume only ONE per tech: newest paused task per claimedBy (MAX pausedAt).
+  // Auto-resume ONLY at the exact break-end minute, and only for tasks the SYSTEM paused for reason='break'.
+  //
   const TZ = process.env.SHOP_TZ || 'America/New_York';
   const SHIFT_START = '07:00';
 
@@ -689,34 +678,36 @@ module.exports = function attachBuildTasks(app, opts = {}) {
   function shiftEndForWeekday(weekday) {
     if (weekday === 'Fri') return '15:30';
     if (['Mon','Tue','Wed','Thu'].includes(weekday)) return '17:00';
-    return '00:00'; // weekends closed
+    if (weekday === 'Sat') return '12:00'; // IMPORTANT: allow Saturday work
+    return '00:00'; // Sun closed
   }
 
   function shouldAutoPause(hm, weekday) {
-    // Breaks
-    if (inWindow(hm, '10:30', '10:45')) return { yes: true, reason: 'break' };
-    if (inWindow(hm, '12:00', '12:30')) return { yes: true, reason: 'break' };
-    if (weekday === 'Fri') {
-      if (inWindow(hm, '14:00', '14:15')) return { yes: true, reason: 'break' };
-    } else if (['Mon','Tue','Wed','Thu'].includes(weekday)) {
-      if (inWindow(hm, '14:30', '14:45')) return { yes: true, reason: 'break' };
-    }
+    // Break windows (apply any day the shift is "open")
+    // We still check shift hours below so it doesn't pause people before 07:00 etc.
+    const inBreak =
+      inWindow(hm, '10:00', '10:15') ||
+      inWindow(hm, '12:00', '12:30') ||
+      inWindow(hm, '14:30', '14:45');
 
     // Off-hours / shift end
     const end = shiftEndForWeekday(weekday);
-    if (!end || end === '00:00') return { yes: true, reason: 'off_hours' }; // weekends
+    if (!end || end === '00:00') return { yes: true, reason: 'off_hours' }; // Sun (closed)
     if (toMinutes(hm) < toMinutes(SHIFT_START)) return { yes: true, reason: 'off_hours' };
     if (toMinutes(hm) >= toMinutes(end)) return { yes: true, reason: 'shift_end' };
+
+    // If we're inside shift hours, pause only if in a break window
+    if (inBreak) return { yes: true, reason: 'break' };
 
     return { yes: false, reason: '' };
   }
 
-  function shouldAutoResume(hm, weekday) {
-    if (hm === '10:45') return { yes: true, reason: 'break_end' };
-    if (hm === '12:30') return { yes: true, reason: 'break_end' };
-    if (weekday === 'Fri' && hm === '14:15') return { yes: true, reason: 'break_end' };
-    if (['Mon','Tue','Wed','Thu'].includes(weekday) && hm === '14:45') return { yes: true, reason: 'break_end' };
-    return { yes: false, reason: '' };
+  function shouldAutoResume(hm) {
+    // Resume at exact end minutes
+    if (hm === '10:15') return true;
+    if (hm === '12:30') return true;
+    if (hm === '14:45') return true;
+    return false;
   }
 
   async function autoPauseAllRunning(reason) {
@@ -790,7 +781,6 @@ module.exports = function attachBuildTasks(app, opts = {}) {
         const pausedAt = Number(row.pausedAt || 0);
         const add = pausedAt ? Math.max(0, Math.floor((t - pausedAt) / 1000)) : 0;
 
-        // resume: add paused time, clear paused flags
         const r = await run(
           `UPDATE build_tasks
               SET isPaused=0,
@@ -822,7 +812,7 @@ module.exports = function attachBuildTasks(app, opts = {}) {
 
   // Prevent double-fire within the same minute if interval drifts or overlaps
   let _autoSchedRunning = false;
-  let _lastKey = ''; // e.g. "pause|Fri|14:00" or "resume|Fri|14:15"
+  let _lastKey = ''; // e.g. "pause|Fri|14:30|break" or "resume|Fri|14:45"
   setInterval(async () => {
     if (_autoSchedRunning) return;
     _autoSchedRunning = true;
@@ -830,7 +820,6 @@ module.exports = function attachBuildTasks(app, opts = {}) {
     try {
       const { weekday, hm } = localParts();
 
-      // auto-pause (breaks/off-hours) - safe even if called repeatedly; filter isPaused=0
       const chk = shouldAutoPause(hm, weekday);
       if (chk.yes) {
         const key = `pause|${weekday}|${hm}|${chk.reason}`;
@@ -839,9 +828,7 @@ module.exports = function attachBuildTasks(app, opts = {}) {
           _lastKey = key;
         }
       } else {
-        // auto-resume only on exact break-end minute
-        const rs = shouldAutoResume(hm, weekday);
-        if (rs.yes) {
+        if (shouldAutoResume(hm)) {
           const key = `resume|${weekday}|${hm}`;
           if (_lastKey !== key) {
             await autoResumeSystemPausedBreaks();
