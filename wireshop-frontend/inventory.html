@@ -1,807 +1,307 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>CZM • Inventory</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <link rel="stylesheet" href="/style.css" />
-  <style>
-    .brand-bar{background:#0f1114;border-bottom:4px solid #c30000}
-    .brand-inner{max-width:1200px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;padding:8px 12px}
-    .brand-logo{display:flex;align-items:center;gap:10px;color:#fff;text-decoration:none}
-    .brand-logo img{height:22px;opacity:.95}
-    .brand-title{font-size:16px;margin:0;color:#fff}
-    .brand-actions .navbtn{display:inline-block;background:#1a1c20;color:#bbb;padding:6px 12px;border-radius:10px;text-decoration:none;border:1px solid #3a3f44;font-weight:600;font-size:.9rem;margin-left:8px}
-    .brand-actions .navbtn.active{background:#b30000;color:#fff;border-color:#ff4d4d}
-    .brand-actions .navbtn:hover{background:#24272b;color:#fff}
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CZM Inventory</title>
 
-    body{background:#eef0f3;margin:0}
+<link rel="stylesheet" href="/style.css">
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 
-    .inventory-shell{max-width:1200px;margin:24px auto;background:#fff;border-radius:6px;box-shadow:0 2px 4px rgba(0,0,0,.08);padding:0 0 12px}
-    .inventory-header{padding:14px 16px 6px}
-    .inventory-header h2{margin:0 0 6px;font-size:16px;font-weight:600}
-
-    .filter-row{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
-    .filter-row input[type="text"]{flex:1;min-width:260px;height:32px;border:1px solid #cfd4da;border-radius:6px;padding:0 10px}
-    .cb{display:flex;align-items:center;gap:8px;height:32px;padding:0 10px;border:1px solid #cfd4da;border-radius:6px;background:#f7f8fa;user-select:none}
-    .cb input{margin:0;width:16px;height:16px}
-    .toolbar-btn{background:#eee;border:1px solid #cfd4da;border-radius:6px;height:32px;padding:0 12px;font-size:13px;cursor:pointer}
-    .toolbar-btn.red{background:#c30000;color:#fff;border-color:#a00000}
-    #countLabel{font-size:12px;margin-left:auto;white-space:nowrap}
-
-    .table-head{
-      background:#0a0b0d;
-      color:#fff;
-      display:grid;
-      grid-template-columns:150px 220px 100px 60px 320px minmax(260px, 1fr);
-      gap:0;
-      padding:8px 16px;
-      font-size:12px;
-      font-weight:600;
-      margin-top:12px;
-    }
-
-    .list-body .row{
-      display:grid;
-      grid-template-columns:150px 220px 100px 60px 320px minmax(260px, 1fr);
-      gap:0;
-      padding:10px 16px;
-      border-bottom:1px solid #eef2f6;
-      background:#fff;
-      align-items:center;
-    }
-
-    .list-body .row:nth-child(odd){background:#fafbfc}
-    .notes-cell{
-      font-size:12px;
-      color:#333;
-      white-space:normal;
-      overflow-wrap:anywhere;
-      line-height:1.25;
-      padding-left:12px; /* gives it breathing room from the Adjust column */
-    }
-
-    .adjust-controls{display:flex;align-items:center;gap:8px;flex-wrap:nowrap}
-    .qty-input{width:70px;border:1px solid #d0d3d8;border-radius:20px;height:30px;padding:0 8px;text-align:center}
-    .apply-btn{background:#b70000;color:#fff;border:none;border-radius:6px;height:32px;min-width:64px;padding:0 10px;cursor:pointer}
-    .edit-btn{background:#3a3a3a;color:#fff;border:none;border-radius:6px;height:32px;min-width:64px;padding:0 10px;cursor:pointer}
-    .muted{color:#9aa3ad;font-size:12px}
-
-    .quick-btn{
-      border:1px solid #cfd4da;
-      background:#eee;
-      border-radius:6px;
-      height:32px;
-      min-width:44px;
-      padding:0 10px;
-      font-weight:700;
-      cursor:pointer;
-    }
-    .quick-btn.minus{background:#2f2f2f;color:#fff;border-color:#1f1f1f}
-    .quick-btn.plus{background:#0f6a00;color:#fff;border-color:#0b4d00}
-    .quick-btn:disabled{opacity:.6;cursor:not-allowed}
-
-    .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:center;justify-content:center;z-index:50}
-    .modal{background:#122032;color:#fff;padding:16px;width:420px;border-radius:8px;box-shadow:0 8px 20px rgba(0,0,0,.4)}
-    .modal h3{margin:0 0 10px;font-size:18px}
-    .modal label{display:block;font-size:12px;margin-top:8px;margin-bottom:4px}
-    .modal input,.modal textarea{width:100%;border:none;border-radius:6px;height:34px;padding:6px 8px;outline:none;font-size:14px;color:#000}
-    .modal textarea{height:90px;resize:vertical}
-    .modal-actions{margin-top:14px;display:flex;gap:10px;justify-content:flex-end}
-    .btn-small{border:none;border-radius:6px;padding:6px 14px;cursor:pointer}
-    .btn-red{background:#c30000;color:#fff}
-    .btn-gray{background:#c5c5c5;color:#000}
-
-    /* detail view */
-    .detail-wrap{padding:16px; position:relative;}
-    .detail-qr-float{
-      position:absolute; top:12px; right:12px;
-      width:190px; text-align:center;
-      border:1px solid #e5e9ef; border-radius:10px; background:#fff;
-      padding:10px;
-    }
-    .detail-qr-float canvas{display:block; margin:0 auto; border:1px solid #e5e9ef; border-radius:8px; background:#fff;}
-    .detail-qr-float .qr-part{margin-top:8px;font-weight:800;font-size:13px;word-break:break-all}
-    .detail-qr-float .qr-name{margin-top:2px;font-size:12px;color:#333}
-    .detail-qr-float .qr-link{margin-top:6px;font-size:10px;color:#777;word-break:break-all}
-    .detail-qr-float .qr-btn{margin-top:8px}
-    @media (max-width:900px){
-      .detail-qr-float{position:static; width:auto; margin-top:12px;}
-    }
-
-    .detail-topbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
-    .detail-grid{display:grid;grid-template-columns:160px 1fr;gap:8px 14px;font-size:14px}
-    .detail-hr{margin:16px 0;border:none;border-top:1px solid #e5e9ef}
-    .detail-title{font-size:13px;color:#444}
-    .detail-subtle{margin-top:8px;color:#888;font-size:12px}
-
-    .log-actions{display:flex;gap:6px;align-items:center}
-    .log-btn{border:1px solid #cfd4da;background:#eee;border-radius:6px;padding:4px 8px;font-size:12px;cursor:pointer}
-    .log-btn.red{background:#c30000;color:#fff;border-color:#a00000}
-
-    @media (max-width:900px){
-      .inventory-shell{max-width:100%;margin:0;border-radius:0;box-shadow:none}
-      .table-head,.list-body .row{grid-template-columns:140px 1fr 90px 60px 240px}
-      .notes-cell{grid-column:1 / -1;margin-top:4px}
-      .detail-grid{grid-template-columns:120px 1fr}
-    }
-  </style>
+<style>
+.qr-box{
+  text-align:center;
+  padding:10px;
+  border:1px solid #ddd;
+  border-radius:6px;
+  width:220px;
+}
+.qr-part{
+  font-weight:bold;
+  margin-top:6px;
+}
+.qr-name{
+  font-size:12px;
+}
+</style>
 </head>
+
 <body>
-  <div class="brand-bar">
-    <div class="brand-inner">
-      <a class="brand-logo" href="/dashboard.html">
-        <img src="/czm-logo.png" alt="CZM">
-        <h1 class="brand-title">CZM • Inventory</h1>
-      </a>
-      <div class="brand-actions">
-        <a class="navbtn" href="/dashboard.html">Dashboard</a>
-        <a class="navbtn" href="/assignments.html">Build Next</a>
-        <a class="navbtn active" href="/inventory">Inventory</a>
-        <a class="navbtn" href="/archive.html">Archive</a>
-        <a id="adminNavBtn" class="navbtn" href="/admin.html">Admin</a>
-        <button id="logoutBtn" class="navbtn">Logout</button>
-      </div>
-    </div>
-  </div>
-
-  <div class="inventory-shell">
-    <div class="inventory-header">
-      <h2 id="pageTitle">Inventory — Snapshot</h2>
-      <div id="filterRow" class="filter-row">
-        <input id="filterBox" type="text" placeholder="part number, print name, or location" />
-        <label class="cb"><input id="cbNonZero" type="checkbox"><span>only non-zero</span></label>
-        <label class="cb"><input id="cbOnlyZero" type="checkbox"><span>only 0-qty</span></label>
-        <button id="exportBtn" class="toolbar-btn">Export</button>
-        <button id="addBtn" class="toolbar-btn red">Add part</button>
-        <span id="countLabel">0 items</span>
-      </div>
-    </div>
-
-    <div id="tableHead" class="table-head">
-      <div>Part Number</div><div>Print Name</div><div>Location</div><div>Qty</div><div>Adjust</div><div>Notes</div>
-    </div>
-    <div id="listBody" class="list-body"></div>
-  </div>
-
-  <div id="editModalBackdrop" class="modal-backdrop">
-    <div class="modal">
-      <h3 id="modalTitle">Edit Part</h3>
-      <label for="mPart">Part Number</label><input id="mPart" readonly />
-      <label for="mDesc">Description</label><input id="mDesc" />
-      <label for="mLoc">Location</label><input id="mLoc" />
-      <label for="mQty">Qty</label><input id="mQty" type="number" />
-      <label for="mMinQty">Min Qty</label><input id="mMinQty" type="number" />
-      <label for="mNotes">Notes</label><textarea id="mNotes"></textarea>
-      <div class="modal-actions">
-        <button id="saveBtn" class="btn-small btn-red">Save</button>
-        <button id="cancelBtn" class="btn-small btn-gray">Cancel</button>
-        <button id="deleteBtn" class="btn-small btn-gray" style="margin-left:auto;">Delete</button>
-      </div>
-    </div>
-  </div>
-
-  <script src="/catalog.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
-  <script>
-    const API_BASE = 'https://wireshop-backend.onrender.com/api';
-
-    function getUser(){
-      try { return JSON.parse(localStorage.getItem('user') || 'null'); }
-      catch { return null; }
-    }
-    function getUsername(u){
-      return String(u?.username || u?.name || u?.user || '').trim();
-    }
-    function isAdminUser(u){
-      return String(u?.role || '').toLowerCase() === 'admin';
-    }
-
-    function getPartFromInvRoute(){
-      const path = window.location.pathname || '';
-      if (!path.startsWith('/inv/')) return null;
-      const part = decodeURIComponent(path.replace('/inv/','').trim());
-      return part || null;
-    }
-
-    const currentUser = getUser();
-    if (!currentUser || !getUsername(currentUser)) window.location.href = '/index.html';
-
-    const adminNavBtn = document.getElementById('adminNavBtn');
-    const addBtn = document.getElementById('addBtn');
-    const isAdmin = isAdminUser(currentUser);
-
-    if (!isAdmin && adminNavBtn) adminNavBtn.style.display = 'none';
-    if (addBtn) addBtn.style.display = isAdmin ? 'inline-block' : 'none';
-
-    document.getElementById('logoutBtn')?.addEventListener('click', ()=>{
-      localStorage.removeItem('user');
-      location.href = '/index.html';
-    });
-
-    const listBody = document.getElementById('listBody');
-    const filterBox = document.getElementById('filterBox');
-    const countLabel = document.getElementById('countLabel');
-    const cbNonZero = document.getElementById('cbNonZero');
-    const cbOnlyZero = document.getElementById('cbOnlyZero');
-    const editModalBackdrop = document.getElementById('editModalBackdrop');
-
-    const pageTitle = document.getElementById('pageTitle');
-    const filterRow = document.getElementById('filterRow');
-    const tableHead = document.getElementById('tableHead');
-
-    let ALL_ROWS = [];
-    let modalMode = 'edit';
-
-    let APPLY_BUSY = false;
-
-    async function loadData(){
-      const uname = getUsername(currentUser);
-      const invRes = await fetch(API_BASE + '/inventory-all', { headers: { 'x-user': uname } });
-      const invData = await invRes.json();
-
-      const DB_ROWS = {};
-      (invData || []).forEach(r => DB_ROWS[r.partNumber] = r);
-
-      const cat = Array.isArray(window.catalog) ? window.catalog : [];
-      const merged = [];
-
-      cat.forEach(c=>{
-        const db = DB_ROWS[c.partNumber];
-        if(db){
-          merged.push({
-            partNumber: db.partNumber,
-            printName: db.description ?? c.printName ?? '',
-            location: db.location ?? (c.location||''),
-            qty: typeof db.qty === 'number' ? db.qty : 0,
-            minQty: typeof db.minQty === 'number' ? db.minQty : 0,
-            notes: db.notes ?? (c.notes||'')
-          });
-        } else {
-          merged.push({
-            partNumber: c.partNumber,
-            printName: c.printName||'',
-            location: c.location||'',
-            qty: 0,
-            minQty: 0,
-            notes: c.notes||''
-          });
-        }
-      });
-
-      (invData || []).forEach(db=>{
-        if(!cat.find(c=>c.partNumber===db.partNumber)){
-          merged.push({
-            partNumber: db.partNumber,
-            printName: db.description ?? '',
-            location: db.location ?? '',
-            qty: typeof db.qty === 'number' ? db.qty : 0,
-            minQty: typeof db.minQty === 'number' ? db.minQty : 0,
-            notes: db.notes ?? ''
-          });
-        }
-      });
-
-      merged.sort((a,b)=>(a.partNumber||'').localeCompare(b.partNumber||''));
-      ALL_ROWS = merged;
-
-      const routePart = getPartFromInvRoute();
-      if(routePart){
-        openDetail(routePart);
-        return;
-      }
-
-      renderList();
-    }
-
-    function renderList(){
-      const filter = filterBox.value.trim().toLowerCase();
-      const onlyNZ = cbNonZero.checked;
-      const onlyZ = cbOnlyZero.checked;
-
-      pageTitle.textContent = 'Inventory — Snapshot';
-      if(filterRow) filterRow.style.display = 'flex';
-      if(tableHead) tableHead.style.display = 'grid';
-
-      listBody.innerHTML=''; let shown=0;
-      ALL_ROWS.forEach(row=>{
-        if(filter){
-          const hay = (row.partNumber+' '+(row.printName||'')+' '+(row.location||'')).toLowerCase();
-          if(!hay.includes(filter)) return;
-        }
-        if(onlyNZ && (!row.qty || row.qty===0)) return;
-        if(onlyZ && (row.qty && row.qty!==0)) return;
-
-        const div = document.createElement('div'); div.className='row';
-
-        const partA = document.createElement('a');
-        partA.href = '/inv/'+encodeURIComponent(row.partNumber);
-        partA.textContent = row.partNumber;
-        partA.style.color='#003574'; partA.style.fontSize='12px';
-
-        const nameDiv = document.createElement('div'); nameDiv.textContent=row.printName||''; nameDiv.style.fontSize='12px';
-        const locDiv = document.createElement('div'); locDiv.textContent=row.location||''; locDiv.style.fontSize='12px';
-        const qtyDiv = document.createElement('div'); qtyDiv.textContent = row.qty!=null?row.qty:0; qtyDiv.style.fontSize='12px';
-
-        const adjustDiv = document.createElement('div'); adjustDiv.className='adjust-controls';
-
-        const minusBtn = document.createElement('button');
-        minusBtn.className = 'quick-btn minus';
-        minusBtn.textContent = '-1';
-        minusBtn.onclick = ()=>applyAdjust(row.partNumber,row.qty,'-1', minusBtn);
-
-        const plusBtn = document.createElement('button');
-        plusBtn.className = 'quick-btn plus';
-        plusBtn.textContent = '+1';
-        plusBtn.onclick = ()=>applyAdjust(row.partNumber,row.qty,'1', plusBtn);
-
-        const adjustInput = document.createElement('input');
-        adjustInput.type='text';
-        adjustInput.className='qty-input';
-        adjustInput.placeholder='+/-';
-
-        const applyBtn = document.createElement('button');
-        applyBtn.className='apply-btn';
-        applyBtn.textContent='Apply';
-        applyBtn.onclick = ()=>applyAdjust(row.partNumber,row.qty,adjustInput.value, applyBtn);
-
-        adjustInput.addEventListener('keydown', (e)=>{
-          if(e.key === 'Enter'){
-            e.preventDefault();
-            applyBtn.click();
-          }
-        });
-
-        adjustDiv.append(minusBtn, plusBtn, adjustInput, applyBtn);
-
-        if (isAdmin) {
-          const editBtn = document.createElement('button'); editBtn.className='edit-btn'; editBtn.textContent='Edit';
-          editBtn.onclick = ()=>openEdit(row);
-          adjustDiv.append(editBtn);
-        }
-
-        const notesDiv = document.createElement('div'); notesDiv.className='notes-cell'; notesDiv.textContent=row.notes||'';
-
-        div.append(partA,nameDiv,locDiv,qtyDiv,adjustDiv,notesDiv);
-        listBody.appendChild(div); shown++;
-      });
-      countLabel.textContent = shown+' items';
-    }
-
-    function openDetail(partNumber){
-      const row = ALL_ROWS.find(r => r.partNumber === partNumber) || {
-        partNumber,
-        printName: '',
-        location: '',
-        qty: 0,
-        minQty: 0,
-        notes: ''
-      };
-
-      pageTitle.textContent = `Inventory — ${partNumber}`;
-      if(filterRow) filterRow.style.display = 'none';
-      if(tableHead) tableHead.style.display = 'none';
-      if(countLabel) countLabel.textContent = '';
-
-      const qtyVal = (row.qty != null) ? row.qty : 0;
-
-      listBody.innerHTML = `
-        <div class="detail-wrap">
-          <div class="detail-qr-float" id="qrFloat">
-            <div style="font-weight:700;font-size:12px;margin-bottom:6px;">QR Label</div>
-            <canvas id="qrCanvas" width="160" height="160"></canvas>
-            <div class="qr-part" id="qrPartText"></div>
-            <div class="qr-name" id="qrNameText"></div>
-            <div class="qr-btn"><button id="qrDownloadBtn" class="toolbar-btn red">Download PNG</button></div>
-            <div class="qr-link">Scan: <span id="qrUrlText"></span></div>
-          </div>
-
-          <div class="detail-topbar">
-            <button class="toolbar-btn red" id="backBtn">← Back</button>
-            ${isAdmin ? `<button class="toolbar-btn red" id="editDetailBtn">Edit</button>` : ``}
-          </div>
-
-          <div class="detail-grid">
-            <div><b>Description</b></div><div>${escapeHtml(row.printName || '')}</div>
-            <div><b>Location</b></div><div>${escapeHtml(row.location || '')}</div>
-            <div><b>Qty</b></div><div id="detailQty">${escapeHtml(String(qtyVal))}</div>
-            <div><b>Min Qty</b></div><div>${escapeHtml(String(row.minQty || 0))}</div>
-            <div><b>Notes</b></div><div style="white-space:pre-wrap;">${escapeHtml(row.notes || '')}</div>
-          </div>
-
-          <hr class="detail-hr" />
-          <div class="detail-title"><b>Adjust Inventory</b></div>
-
-          <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-            <button id="quickMinus" class="quick-btn minus">-1</button>
-            <button id="quickPlus" class="quick-btn plus">+1</button>
-
-            <input id="detailDelta" class="qty-input" type="text" placeholder="+/-" />
-            <button id="detailApplyBtn" class="apply-btn">Apply</button>
-          </div>
-
-          <hr class="detail-hr" />
-
-          <div class="detail-title">
-            <b>Inventory Movement</b>
-            <div class="detail-subtle">Latest changes for this part:</div>
-          </div>
-
-          <div id="movementBox" style="margin-top:10px;"></div>
-        </div>
-      `;
-
-      document.getElementById('backBtn')?.addEventListener('click', ()=>{
-        window.location.href = '/inventory';
-      });
-
-      if(isAdmin){
-        document.getElementById('editDetailBtn')?.addEventListener('click', ()=>{
-          openEdit(row);
-        });
-      }
-
-      const applyBtn = document.getElementById('detailApplyBtn');
-      const deltaInput = document.getElementById('detailDelta');
-
-      document.getElementById('quickMinus')?.addEventListener('click', ()=>{
-        applyAdjust(row.partNumber, qtyVal, '-1', document.getElementById('quickMinus'));
-      });
-
-      document.getElementById('quickPlus')?.addEventListener('click', ()=>{
-        applyAdjust(row.partNumber, qtyVal, '1', document.getElementById('quickPlus'));
-      });
-
-      applyBtn?.addEventListener('click', ()=>{
-        const deltaStr = deltaInput?.value || '';
-        applyAdjust(row.partNumber, qtyVal, deltaStr, applyBtn);
-      });
-
-      deltaInput?.addEventListener('keydown', (e)=>{
-        if(e.key === 'Enter'){
-          e.preventDefault();
-          applyBtn?.click();
-        }
-      });
-
-      generatePartQr(row.partNumber, row.printName || '');
-      loadMovement(partNumber);
-    }
-
-    function generatePartQr(partNumber, printName){
-      try{
-        const canvas = document.getElementById('qrCanvas');
-        const partEl = document.getElementById('qrPartText');
-        const nameEl = document.getElementById('qrNameText');
-        const urlEl = document.getElementById('qrUrlText');
-        const dlBtn = document.getElementById('qrDownloadBtn');
-        if(!canvas || typeof QRCode === 'undefined') return;
-
-        const invUrl = `${window.location.origin}/inv/${encodeURIComponent(partNumber)}`;
-        if(partEl) partEl.textContent = String(partNumber || '');
-        if(nameEl) nameEl.textContent = String(printName || '');
-        if(urlEl) urlEl.textContent = invUrl;
-
-        QRCode.toCanvas(canvas, invUrl, { width: 160, margin: 1 }, (err)=>{
-          if(err) console.error('QR error', err);
-        });
-
-        if(dlBtn){
-          dlBtn.onclick = ()=>{
-            try{
-              const a = document.createElement('a');
-              a.download = `${String(partNumber || 'qr')}.png`;
-              a.href = canvas.toDataURL('image/png');
-              a.click();
-            }catch(e){
-              alert('Failed to download QR');
-            }
-          };
-        }
-      }catch(e){
-        console.error('Failed to generate QR', e);
-      }
-    }
-
-    async function loadMovement(partNumber){
-      const box = document.getElementById('movementBox');
-      if(!box) return;
-
-      box.innerHTML = `<div class="detail-subtle">Loading…</div>`;
-
-      try{
-        const uname = getUsername(currentUser);
-        const res = await fetch(`${API_BASE}/inventory/${encodeURIComponent(partNumber)}/log`, {
-          headers: { 'x-user': uname }
-        });
-        const data = await res.json();
-
-        if(!res.ok){
-          box.innerHTML = `<div class="detail-subtle">${escapeHtml(data?.error || 'Failed to load movement')}</div>`;
-          return;
-        }
-
-        if(!Array.isArray(data) || data.length === 0){
-          box.innerHTML = `<div class="detail-subtle">No movement yet.</div>`;
-          return;
-        }
-
-        box.innerHTML = `
-          <div style="overflow:auto;">
-            <table style="width:100%;border-collapse:collapse;font-size:12px;">
-              <thead>
-                <tr style="text-align:left;border-bottom:1px solid #e5e9ef;">
-                  <th style="padding:6px 4px;">Time</th>
-                  <th style="padding:6px 4px;">User</th>
-                  <th style="padding:6px 4px;">Delta</th>
-                  <th style="padding:6px 4px;">New Qty</th>
-                  <th style="padding:6px 4px;">Note</th>
-                  ${isAdmin ? `<th style="padding:6px 4px;">Admin</th>` : ``}
-                </tr>
-              </thead>
-              <tbody>
-                ${data.map(r=>{
-                  const id = r.id ?? '';
-                  const tsRaw = pickTs(r);
-                  const ts = formatTs(tsRaw);
-
-                  const user = r.user || r.username || r.by || r.actor || r.who || '';
-                  const delta = (r.delta ?? r.change ?? r.qtyChange ?? r.qty_change ?? r.diff ?? '');
-                  const newQty = (r.newQty ?? r.new_qty ?? r.qty ?? r.after ?? r.qty_after ?? '');
-                  const note = r.note || r.notes || r.reason || r.msg || '';
-
-                  return `
-                    <tr style="border-bottom:1px solid #f0f2f6;">
-                      <td style="padding:6px 4px;white-space:nowrap;">${escapeHtml(String(ts))}</td>
-                      <td style="padding:6px 4px;">${escapeHtml(String(user))}</td>
-                      <td style="padding:6px 4px;">${escapeHtml(String(delta))}</td>
-                      <td style="padding:6px 4px;">${escapeHtml(String(newQty))}</td>
-                      <td style="padding:6px 4px;white-space:pre-wrap;">${escapeHtml(String(note))}</td>
-                      ${isAdmin ? `
-                        <td style="padding:6px 4px;">
-                          <div class="log-actions">
-                            <button class="log-btn" onclick="editLogNote(${Number(id) || 0}, '${escapeJs(String(note))}')">Edit</button>
-                            <button class="log-btn red" onclick="deleteLogRow(${Number(id) || 0}, '${escapeJs(String(partNumber))}')">Delete</button>
-                          </div>
-                        </td>
-                      ` : ``}
-                    </tr>
-                  `;
-                }).join('')}
-              </tbody>
-            </table>
-          </div>
-        `;
-      }catch(e){
-        box.innerHTML = `<div class="detail-subtle">Failed to load movement.</div>`;
-      }
-    }
-
-    async function deleteLogRow(id, partNumber){
-      if(!isAdmin) return;
-      if(!id) return alert('Missing log id (backend needs update)');
-      if(!confirm('Delete this movement entry?')) return;
-
-      try{
-        const uname = getUsername(currentUser);
-        const res = await fetch(`${API_BASE}/inventory-log/${id}`, {
-          method: 'DELETE',
-          headers: { 'x-user': uname }
-        });
-        const data = await res.json();
-        if(!res.ok) return alert(data?.error || 'Delete failed');
-        loadMovement(partNumber);
-      }catch(e){
-        alert('Delete failed');
-      }
-    }
-
-    async function editLogNote(id, currentNote){
-      if(!isAdmin) return;
-      if(!id) return alert('Missing log id (backend needs update)');
-
-      const newNote = prompt('Edit note:', currentNote ?? '');
-      if(newNote === null) return;
-
-      const partNumber = getPartFromInvRoute();
-
-      try{
-        const uname = getUsername(currentUser);
-        const res = await fetch(`${API_BASE}/inventory-log/${id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type':'application/json', 'x-user': uname },
-          body: JSON.stringify({ note: newNote })
-        });
-        const data = await res.json();
-        if(!res.ok) return alert(data?.error || 'Update failed');
-        if(partNumber) loadMovement(partNumber);
-      }catch(e){
-        alert('Update failed');
-      }
-    }
-
-    function escapeHtml(str){
-      return String(str ?? '')
-        .replace(/&/g,'&amp;')
-        .replace(/</g,'&lt;')
-        .replace(/>/g,'&gt;')
-        .replace(/"/g,'&quot;')
-        .replace(/'/g,'&#039;');
-    }
-
-    function escapeJs(str){
-      return String(str ?? '')
-        .replace(/\\/g, '\\\\')
-        .replace(/'/g, "\\'")
-        .replace(/"/g, '\\"')
-        .replace(/\n/g, '\\n')
-        .replace(/\r/g, '\\r');
-    }
-
-    function pickTs(r){
-      return r.ts ??
-             r.time ??
-             r.timestamp ??
-             r.createdAt ??
-             r.created_at ??
-             r.when ??
-             r.date ??
-             r.dt ??
-             r.loggedAt ??
-             r.logged_at ??
-             r.at ??
-             '';
-    }
-
-    function formatTs(v){
-      if(v == null || v === '') return '';
-      if(typeof v === 'number'){
-        const ms = v < 1e12 ? v * 1000 : v;
-        return new Date(ms).toLocaleString();
-      }
-      const s = String(v).trim();
-      if(!s) return '';
-
-      if(/^\d+$/.test(s)){
-        const n = Number(s);
-        const ms = n < 1e12 ? n * 1000 : n;
-        return new Date(ms).toLocaleString();
-      }
-
-      const d = new Date(s);
-      if(!isNaN(d.getTime())) return d.toLocaleString();
-      return s;
-    }
-
-    async function applyAdjust(partNumber,currentQty,deltaStr, btnEl){
-      if(APPLY_BUSY) return;
-      APPLY_BUSY = true;
-
-      const oldText = btnEl ? btnEl.textContent : '';
-      if(btnEl){
-        btnEl.disabled = true;
-        btnEl.textContent = '...';
-        btnEl.style.opacity = '0.7';
-      }
-
-      try{
-        const delta = Number(deltaStr);
-        if(isNaN(delta)){
-          alert('enter a number');
-          return;
-        }
-
-        const newQty = (Number(currentQty)||0) + delta;
-
-        const uname = getUsername(currentUser);
-        const res = await fetch(API_BASE+'/inventory/'+encodeURIComponent(partNumber)+'/qty',{
-          method:'POST',
-          headers:{'Content-Type':'application/json','x-user': uname},
-          body:JSON.stringify({qty:newQty})
-        });
-        const data = await res.json();
-        if(!res.ok){
-          alert(data.error||'failed to adjust');
-          return;
-        }
-
-        const row=ALL_ROWS.find(r=>r.partNumber===partNumber);
-        if(row) row.qty=newQty;
-
-        const routePart = getPartFromInvRoute();
-        if(routePart){
-          openDetail(routePart);
-        } else {
-          renderList();
-        }
-      } finally {
-        APPLY_BUSY = false;
-        if(btnEl){
-          btnEl.disabled = false;
-          btnEl.textContent = oldText || 'Apply';
-          btnEl.style.opacity = '1';
-        }
-      }
-    }
-
-    function openEdit(row,isNew=false){
-      if(!isAdmin) return;
-      modalMode = isNew?'add':'edit';
-      const editingPart = row ? {...row} : {partNumber:'',printName:'',location:'',qty:0,minQty:0,notes:''};
-
-      document.getElementById('modalTitle').textContent = isNew?'Add Part':'Edit Part';
-      document.getElementById('mPart').readOnly = !isNew;
-      document.getElementById('mPart').value = editingPart.partNumber||'';
-      document.getElementById('mDesc').value = editingPart.printName||'';
-      document.getElementById('mLoc').value = editingPart.location||'';
-      document.getElementById('mQty').value = editingPart.qty!=null?editingPart.qty:0;
-      document.getElementById('mMinQty').value = editingPart.minQty!=null?editingPart.minQty:0;
-      document.getElementById('mNotes').value = editingPart.notes||'';
-      editModalBackdrop.style.display='flex';
-      document.getElementById('deleteBtn').style.display = isNew?'none':'inline-block';
-    }
-
-    async function saveModal(){
-      if(!isAdmin) return;
-      const part=document.getElementById('mPart').value.trim();
-      const desc=document.getElementById('mDesc').value;
-      const loc=document.getElementById('mLoc').value;
-      const qty=Number(document.getElementById('mQty').value||0);
-      const minQty=Number(document.getElementById('mMinQty').value||0);
-      const notes=document.getElementById('mNotes').value;
-      if(!part){alert('part number required');return;}
-
-      const payload={partNumber:part,description:desc,location:loc,qty,minQty,notes};
-      const uname = getUsername(currentUser);
-      const hdrs={'Content-Type':'application/json','x-user': uname};
-
-      if(modalMode==='add'){
-        const res=await fetch(API_BASE+'/inventory',{method:'POST',headers:hdrs,body:JSON.stringify(payload)});
-        const data=await res.json(); if(!res.ok){alert(data.error||'failed to add');return;}
-      }else{
-        const res=await fetch(API_BASE+'/inventory/'+encodeURIComponent(part),{method:'PUT',headers:hdrs,body:JSON.stringify(payload)});
-        const data=await res.json(); if(!res.ok){alert(data.error||'failed to save');return;}
-      }
-      editModalBackdrop.style.display='none';
-      await loadData();
-    }
-
-    async function deleteModal(){
-      if(!isAdmin) return;
-      const part=document.getElementById('mPart').value.trim(); if(!part) return;
-      if(!confirm('Delete '+part+'?')) return;
-
-      const uname = getUsername(currentUser);
-      const res=await fetch(API_BASE+'/inventory/'+encodeURIComponent(part),{
-        method:'DELETE',
-        headers:{'x-user': uname}
-      });
-      const data=await res.json(); if(!res.ok){alert(data.error||'failed to delete');return;}
-      editModalBackdrop.style.display='none';
-      await loadData();
-    }
-
-    document.getElementById('exportBtn').addEventListener('click',()=>{
-      let csv='partNumber,description,location,qty,minQty,notes\n';
-      ALL_ROWS.forEach(r=>{
-        csv+=`"${r.partNumber}","${(r.printName||'').replace(/"/g,'""')}","${(r.location||'').replace(/"/g,'""')}",${r.qty||0},${r.minQty||0},"${(r.notes||'').replace(/"/g,'""')}"\n`;
-      });
-      const blob=new Blob([csv],{type:'text/csv'});
-      const url=URL.createObjectURL(blob);
-      const a=document.createElement('a'); a.href=url; a.download='inventory.csv'; a.click();
-      URL.revokeObjectURL(url);
-    });
-
-    document.getElementById('addBtn').addEventListener('click',()=>openEdit(null,true));
-    document.getElementById('cancelBtn').addEventListener('click',()=>editModalBackdrop.style.display='none');
-    document.getElementById('saveBtn').addEventListener('click',saveModal);
-    document.getElementById('deleteBtn').addEventListener('click',deleteModal);
-
-    filterBox.addEventListener('input',renderList);
-    cbNonZero.addEventListener('change',renderList);
-    cbOnlyZero.addEventListener('change',renderList);
-
-    loadData();
-  </script>
+
+<header>
+<h2 id="title">Inventory</h2>
+</header>
+
+<main>
+
+<div>
+
+<div>
+<strong>Description:</strong>
+<span id="desc"></span>
+</div>
+
+<div>
+<strong>Location:</strong>
+<span id="loc"></span>
+</div>
+
+<div>
+<strong>Qty:</strong>
+<span id="qty"></span>
+</div>
+
+<div>
+<strong>Min Qty:</strong>
+<span id="minQty"></span>
+</div>
+
+<div>
+<strong>Notes:</strong>
+<span id="notes"></span>
+</div>
+
+</div>
+
+<br>
+
+<div class="qr-box">
+<div>QR Label</div>
+<canvas id="qrCanvas" width="180" height="180"></canvas>
+
+<div id="qrPartText" class="qr-part"></div>
+<div id="qrNameText" class="qr-name"></div>
+
+<br>
+
+<button id="qrDownloadBtn">Download PNG</button>
+
+<div style="font-size:10px;margin-top:6px;">
+<span id="qrUrlText"></span>
+</div>
+
+</div>
+
+<br><br>
+
+<div>
+<h3>Adjust Inventory</h3>
+
+<button id="btnMinus">-1</button>
+<button id="btnPlus">+1</button>
+
+<input id="qtyDelta" type="number">
+
+<button id="btnApply">Apply</button>
+</div>
+
+<br>
+
+<div>
+<h3>Inventory Movement</h3>
+<div id="movementBox">Loading...</div>
+</div>
+
+</main>
+
+<script>
+
+const API_BASE = ""
+
+let currentPart = ""
+let currentRow = null
+
+function getPartFromRoute(){
+const p = window.location.pathname.split("/")
+return p[2] || ""
+}
+
+function getUser(){
+return localStorage.getItem("username") || ""
+}
+
+function escapeHtml(str){
+return String(str||"")
+.replace(/&/g,"&amp;")
+.replace(/</g,"&lt;")
+.replace(/>/g,"&gt;")
+}
+
+currentPart = getPartFromRoute()
+
+if(currentPart){
+loadPart(currentPart)
+loadMovement(currentPart)
+}
+
+async function loadPart(part){
+
+const res = await fetch(`${API_BASE}/inventory/${encodeURIComponent(part)}`,{
+headers:{ "x-user":getUser() }
+})
+
+const data = await res.json()
+
+currentRow = data
+
+document.getElementById("title").innerText = "Inventory — "+data.partNumber
+document.getElementById("desc").innerText = data.printName || ""
+document.getElementById("loc").innerText = data.location || ""
+document.getElementById("qty").innerText = data.qty || ""
+document.getElementById("minQty").innerText = data.minQty || ""
+document.getElementById("notes").innerText = data.notes || ""
+
+generatePartQr(data.partNumber,data.printName)
+
+}
+
+async function loadMovement(part){
+
+const res = await fetch(`${API_BASE}/inventory/${encodeURIComponent(part)}/log`,{
+headers:{ "x-user":getUser() }
+})
+
+const rows = await res.json()
+
+if(!rows.length){
+document.getElementById("movementBox").innerText="No movement yet"
+return
+}
+
+let html="<table border=1 cellpadding=4><tr><th>Time</th><th>User</th><th>Delta</th><th>New Qty</th></tr>"
+
+rows.forEach(r=>{
+
+const t=new Date(r.ts||Date.now()).toLocaleString()
+
+html+=`
+<tr>
+<td>${escapeHtml(t)}</td>
+<td>${escapeHtml(r.user)}</td>
+<td>${escapeHtml(r.delta)}</td>
+<td>${escapeHtml(r.newQty)}</td>
+</tr>
+`
+
+})
+
+html+="</table>"
+
+document.getElementById("movementBox").innerHTML=html
+
+}
+
+document.getElementById("btnMinus").onclick=()=>{
+let v=Number(document.getElementById("qtyDelta").value||0)
+document.getElementById("qtyDelta").value=v-1
+}
+
+document.getElementById("btnPlus").onclick=()=>{
+let v=Number(document.getElementById("qtyDelta").value||0)
+document.getElementById("qtyDelta").value=v+1
+}
+
+document.getElementById("btnApply").onclick=applyAdjust
+
+async function applyAdjust(){
+
+const delta=Number(document.getElementById("qtyDelta").value)
+
+if(!delta) return alert("Enter amount")
+
+const res=await fetch(`${API_BASE}/inventory/${encodeURIComponent(currentPart)}/adjust`,{
+
+method:"POST",
+
+headers:{
+"Content-Type":"application/json",
+"x-user":getUser()
+},
+
+body:JSON.stringify({delta})
+
+})
+
+await res.json()
+
+document.getElementById("qtyDelta").value=""
+
+loadPart(currentPart)
+loadMovement(currentPart)
+
+}
+
+function generatePartQr(partNumber,printName){
+
+const canvas=document.getElementById("qrCanvas")
+
+const invUrl=`${window.location.origin}/inv/${encodeURIComponent(partNumber)}`
+
+document.getElementById("qrPartText").innerText=partNumber
+document.getElementById("qrNameText").innerText=printName
+document.getElementById("qrUrlText").innerText=invUrl
+
+QRCode.toCanvas(canvas,invUrl,{width:160})
+
+document.getElementById("qrDownloadBtn").onclick=async()=>{
+
+const DPI=300
+
+const width=2*DPI
+const height=6.5*DPI
+
+const labelCanvas=document.createElement("canvas")
+
+labelCanvas.width=width
+labelCanvas.height=height
+
+const ctx=labelCanvas.getContext("2d")
+
+ctx.fillStyle="white"
+ctx.fillRect(0,0,width,height)
+
+const qrSize=width*0.82
+
+const qrX=(width-qrSize)/2
+const qrY=80
+
+const temp=document.createElement("canvas")
+
+await QRCode.toCanvas(temp,invUrl,{width:qrSize})
+
+ctx.drawImage(temp,qrX,qrY)
+
+ctx.fillStyle="black"
+ctx.textAlign="center"
+
+ctx.font="bold 60px Arial"
+
+ctx.fillText(partNumber,width/2,qrY+qrSize+90)
+
+ctx.font="40px Arial"
+
+const words=(printName||"").split(" ")
+
+const line1=words.slice(0,3).join(" ")
+const line2=words.slice(3).join(" ")
+
+ctx.fillText(line1,width/2,qrY+qrSize+150)
+
+ctx.fillText(line2,width/2,qrY+qrSize+210)
+
+const a=document.createElement("a")
+
+a.download=partNumber+".png"
+
+a.href=labelCanvas.toDataURL("image/png")
+
+a.click()
+
+}
+
+}
+
+</script>
+
 </body>
 </html>
