@@ -94,7 +94,23 @@
     .btn-gray{background:#c5c5c5;color:#000}
 
     /* detail view */
-    .detail-wrap{padding:16px}
+
+    .detail-wrap{padding:16px; position:relative;}
+    .detail-qr-float{
+      position:absolute; top:12px; right:12px;
+      width:190px; text-align:center;
+      border:1px solid #e5e9ef; border-radius:10px; background:#fff;
+      padding:10px;
+    }
+    .detail-qr-float canvas{display:block; margin:0 auto; border:1px solid #e5e9ef; border-radius:8px; background:#fff;}
+    .detail-qr-float .qr-part{margin-top:8px;font-weight:800;font-size:13px;word-break:break-all}
+    .detail-qr-float .qr-name{margin-top:2px;font-size:12px;color:#333}
+    .detail-qr-float .qr-link{margin-top:6px;font-size:10px;color:#777;word-break:break-all}
+    .detail-qr-float .qr-btn{margin-top:8px}
+    @media (max-width:900px){
+      .detail-qr-float{position:static; width:auto; margin-top:12px;}
+    }
+
     .detail-topbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
     .detail-grid{display:grid;grid-template-columns:160px 1fr;gap:8px 14px;font-size:14px}
     .detail-hr{margin:16px 0;border:none;border-top:1px solid #e5e9ef}
@@ -373,6 +389,15 @@
 
       listBody.innerHTML = `
         <div class="detail-wrap">
+          <div class="detail-qr-float" id="qrFloat">
+            <div style="font-weight:700;font-size:12px;margin-bottom:6px;">QR Label</div>
+            <canvas id="qrCanvas" width="160" height="160"></canvas>
+            <div class="qr-part" id="qrPartText"></div>
+            <div class="qr-name" id="qrNameText"></div>
+            <div class="qr-btn"><button id="qrDownloadBtn" class="toolbar-btn">Download PNG</button></div>
+            <div class="qr-link">Scan: <span id="qrUrlText"></span></div>
+          </div>
+
           <div class="detail-topbar">
             <button class="toolbar-btn" id="backBtn">← Back</button>
             ${isAdmin ? `<button class="toolbar-btn red" id="editDetailBtn">Edit</button>` : ``}
@@ -387,25 +412,7 @@
           </div>
 
           <hr class="detail-hr" />
-
-          <div class="detail-title"><b>QR Label</b></div>
-          <div style="margin-top:10px;display:flex;gap:18px;align-items:center;flex-wrap:wrap;">
-            <div style="text-align:center;">
-              <canvas id="qrCanvas" width="240" height="240" style="border:1px solid #e5e9ef;border-radius:8px;background:#fff;"></canvas>
-              <div style="margin-top:10px;font-weight:800;" id="qrPartText"></div>
-              <div style="margin-top:4px;" id="qrNameText"></div>
-              <div style="margin-top:10px;">
-                <button id="qrDownloadBtn" class="toolbar-btn">Download PNG</button>
-              </div>
-            </div>
-            <div class="detail-subtle" style="max-width:520px;">
-              Scan opens: <span id="qrUrlText"></span>
-            </div>
-          </div>
-
-          <hr class="detail-hr" />
-
-          <div class="detail-title"><b>Adjust Inventory</b></div
+<div class="detail-title"><b>Adjust Inventory</b></div
 
           <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
             <button id="quickMinus" class="quick-btn minus">-1</button>
@@ -478,7 +485,7 @@
         if(nameEl) nameEl.textContent = String(printName || '');
         if(urlEl) urlEl.textContent = invUrl;
 
-        QRCode.toCanvas(canvas, invUrl, { width: 240, margin: 1 }, (err)=>{
+        QRCode.toCanvas(canvas, invUrl, { width: 160, margin: 1 }, (err)=>{
           if(err) console.error('QR error', err);
         });
 
