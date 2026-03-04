@@ -634,7 +634,7 @@ module.exports = function attachBuildTasks(app, opts = {}) {
   // SHIFT HOURS (shop local time):
   //   Mon–Thu: 07:00–17:00
   //   Fri:     07:00–15:30
-  //   Sat:     07:00–12:00   (so Saturday work DOESN'T get stuck in off_hours auto-pause)
+  //   Sat:     07:00–12:00   (Saturday runs freely; no breaks/lunch auto-pauses)
   //   Sun:     closed
   //
   // BREAKS (auto pause any active timers):
@@ -683,8 +683,15 @@ module.exports = function attachBuildTasks(app, opts = {}) {
   }
 
   function shouldAutoPause(hm, weekday) {
-    // Break windows (apply any day the shift is "open")
-    // We still check shift hours below so it doesn't pause people before 07:00 etc.
+
+    // Saturday rule: allow work freely until 12:00, then shift_end pause (no breaks/lunch on Sat)
+    if (weekday === 'Sat') {
+      if (toMinutes(hm) < toMinutes(SHIFT_START)) return { yes: true, reason: 'off_hours' };
+      if (toMinutes(hm) >= toMinutes('12:00')) return { yes: true, reason: 'shift_end' };
+      return { yes: false, reason: '' };
+    }
+
+    // Normal break windows (Mon–Fri only)
     const inBreak =
       inWindow(hm, '10:00', '10:15') ||
       inWindow(hm, '12:00', '12:30') ||
@@ -692,7 +699,7 @@ module.exports = function attachBuildTasks(app, opts = {}) {
 
     // Off-hours / shift end
     const end = shiftEndForWeekday(weekday);
-    if (!end || end === '00:00') return { yes: true, reason: 'off_hours' }; // Sun (closed)
+    if (!end || end === '00:00') return { yes: true, reason: 'off_hours' }; // Sunday (closed)
     if (toMinutes(hm) < toMinutes(SHIFT_START)) return { yes: true, reason: 'off_hours' };
     if (toMinutes(hm) >= toMinutes(end)) return { yes: true, reason: 'shift_end' };
 
