@@ -186,6 +186,19 @@
   <script>
     const API_BASE = 'https://wireshop-backend.onrender.com/api';
 
+    // Mobile QR redirect: old labels point to /inv/<part>. On phones, bounce to /scan/<part>.
+    (function(){
+      const path = window.location.pathname || "";
+      if(path.startsWith("/inv/")){
+        const part = decodeURIComponent(path.replace("/inv/","").trim());
+        const isPhone = (window.innerWidth < 900) || /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+        if(isPhone && part){
+          window.location.replace("/scan/" + encodeURIComponent(part));
+        }
+      }
+    })();
+
+
     function getUser(){
       try { return JSON.parse(localStorage.getItem('user') || 'null'); }
       catch { return null; }
