@@ -93,6 +93,7 @@
     .btn-gray{background:#c5c5c5;color:#000}
 
     .detail-wrap{padding:16px; position:relative;}
+    #mobileTopBar{display:none}
     .detail-qr-float{
       position:absolute; top:12px; right:12px;
       width:175px; text-align:center;
@@ -140,11 +141,7 @@
     #adjustSticky{background:#fff}
     @media (max-width:900px){
       .brand-inner{gap:10px}
-      .brand-actions{display:flex;align-items:center;gap:8px}      body.menu-open .brand-actions{
-        flex-wrap:wrap;
-        justify-content:flex-end;
-      }
-      /* make page less padded */
+      .brand-actions{display:flex;align-items:center;gap:8px}/* make page less padded */
       .detail-wrap{padding:12px}
       .detail-topbar{gap:8px}
 
@@ -957,6 +954,8 @@
 
         const row=ALL_ROWS.find(r=>r.partNumber===partNumber);
         if(row) row.qty=newQty;
+
+        showToast(`Saved: ${partNumber} → ${newQty}`);
 
         const routePart = getPartFromInvRoute();
         if(routePart){
