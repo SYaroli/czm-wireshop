@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>CZM • Scan</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <link rel="stylesheet" href="/style.css" />
+  <style>
+    :root { --red:#c30000; --bg:#0f1114; --card:#ffffff; --muted:#6b7280; }
+    body{ margin:0; background:#eef0f3; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+    .topbar{
+      position:sticky; top:0; z-index:10;
+      background:var(--bg); color:#fff;
+      border-bottom:4px solid var(--red);
+      padding:10px 12px;
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+    }
+    .topbar .title{ font-weight:800; letter-spacing:.2px; font-size:16px; }
+    .topbar .btn{
+      border:1px solid #3a3f44; background:#1a1c20; color:#fff;
+      padding:8px 10px; border-radius:12px; font-weight:700; font-size:13px;
+    }
+    .wrap{ max-width:560px; margin:12px auto; padding:0 12px 18px; }
+    .card{
+      background:var(--card); border-radius:14px; box-shadow:0 2px 8px rgba(0,0,0,.08);
+      padding:14px;
+    }
+    .part{ font-weight:900; font-size:20px; margin:0; }
+    .desc{ margin:4px 0 0; font-size:15px; font-weight:700; color:#111; }
+    .meta{ margin-top:10px; display:grid; grid-template-columns: 1fr; gap:8px; }
+    .metaRow{ display:flex; justify-content:space-between; gap:10px; align-items:center; }
+    .label{ color:var(--muted); font-size:12px; font-weight:700; }
+    .value{ font-size:14px; font-weight:800; color:#111; text-align:right; word-break:break-word; }
+
+    .qtyBox{
+      margin-top:12px;
+      background:#0a0b0d; color:#fff; border-radius:14px; padding:12px;
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
+    }
+    .qtyBox .qtyLabel{ font-size:12px; color:#cbd5e1; font-weight:800; letter-spacing:.2px; }
+    .qtyBox .qtyNum{ font-size:34px; font-weight:900; line-height:1; }
+
+    .grid{
+      margin-top:12px;
+      display:grid; grid-template-columns: 1fr 1fr; gap:10px;
+    }
+    .qbtn{
+      height:56px;
+      border:none; border-radius:14px;
+      font-size:18px; font-weight:900;
+      cursor:pointer;
+    }
+    .qbtn.neg{ background:#2f2f2f; color:#fff; }
+    .qbtn.pos{ background:#0f6a00; color:#fff; }
+    .qbtn:disabled{ opacity:.6; cursor:not-allowed; }
+
+    .custom{
+      margin-top:12px;
+      display:flex; gap:10px; align-items:center;
+    }
+    .custom input{
+      flex:1;
+      height:52px;
+      border:1px solid #cfd4da;
+      border-radius:14px;
+      padding:0 14px;
+      font-size:18px;
+      font-weight:800;
+      text-align:center;
+      background:#fff;
+    }
+    .apply{
+      height:52px;
+      min-width:120px;
+      border:none;
+      border-radius:14px;
+      background:var(--red);
+      color:#fff;
+      font-size:16px;
+      font-weight:900;
+      cursor:pointer;
+    }
+    .apply:disabled{ opacity:.6; cursor:not-allowed; }
+
+    .note{
+      margin-top:10px;
+      display:flex;
+      gap:10px;
+      align-items:center;
+    }
+    .note input{
+      flex:1;
+      height:44px;
+      border:1px solid #cfd4da;
+      border-radius:14px;
+      padding:0 12px;
+      font-size:14px;
+      font-weight:700;
+      background:#fff;
+    }
+    .hint{ margin-top:10px; color:#6b7280; font-size:12px; }
+    .err{ margin-top:10px; background:#fff0f0; border:1px solid #ffb4b4; color:#7a0000; padding:10px 12px; border-radius:12px; font-weight:800; display:none; }
+    .ok{ margin-top:10px; background:#f0fff3; border:1px solid #9be3a5; color:#0b4d00; padding:10px 12px; border-radius:12px; font-weight:800; display:none; }
+
+    .footer{
+      margin-top:12px;
+      display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap;
+    }
+    .smallbtn{
+      border:1px solid #cfd4da; background:#eee; color:#111;
+      padding:10px 12px; border-radius:12px; font-weight:900; cursor:pointer; font-size:13px;
+    }
+    .logout{ border-color:#3a3f44; background:#1a1c20; color:#fff; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="title">CZM • Scan</div>
+    <button id="refreshBtn" class="btn">Refresh</button>
+  </div>
+
+  <div class="wrap">
+    <div class="card">
+      <p id="partText" class="part">Loading…</p>
+      <p id="descText" class="desc"></p>
+
+      <div class="meta">
+        <div class="metaRow"><div class="label">Location</div><div id="locText" class="value"></div></div>
+        <div class="metaRow"><div class="label">Min Qty</div><div id="minText" class="value"></div></div>
+      </div>
+
+      <div class="qtyBox">
+        <div>
+          <div class="qtyLabel">CURRENT QTY</div>
+          <div id="qtyText" class="qtyNum">—</div>
+        </div>
+        <div style="text-align:right;">
+          <div class="qtyLabel">LAST UPDATE</div>
+          <div id="updText" style="font-weight:900;">—</div>
+        </div>
+      </div>
+
+      <div class="grid">
+        <button id="btnMinus1" class="qbtn neg">-1</button>
+        <button id="btnPlus1" class="qbtn pos">+1</button>
+        <button id="btnMinus5" class="qbtn neg">-5</button>
+        <button id="btnPlus5" class="qbtn pos">+5</button>
+      </div>
+
+      <div class="custom">
+        <input id="deltaInput" type="number" inputmode="numeric" placeholder="Enter + or - amount" />
+        <button id="applyBtn" class="apply">Apply</button>
+      </div>
+
+      <div class="note">
+        <input id="noteInput" type="text" placeholder="Optional note (ex: used 3, moved bin)" />
+      </div>
+
+      <div id="okBox" class="ok">Saved.</div>
+      <div id="errBox" class="err"></div>
+
+      <div class="footer">
+        <button id="openFullBtn" class="smallbtn">Open full inventory page</button>
+        <button id="logoutBtn" class="smallbtn logout">Logout</button>
+      </div>
+
+      <div class="hint">Tip: scan the QR → adjust qty → done. No table, no scrolling.</div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = 'https://wireshop-backend.onrender.com/api';
+
+    function getUser(){
+      try { return JSON.parse(localStorage.getItem('user') || 'null'); }
+      catch { return null; }
+    }
+    function getUsername(u){
+      return String(u?.username || u?.name || u?.user || '').trim();
+    }
+
+    function getPartFromScanRoute(){
+      const path = window.location.pathname || '';
+      if (!path.startsWith('/scan/')) return null;
+      const part = decodeURIComponent(path.replace('/scan/','').trim());
+      return part || null;
+    }
+
+    function formatTs(v){
+      if(v == null || v === '') return '—';
+      const n = (typeof v === 'string' && /^\d+$/.test(v)) ? Number(v) : v;
+      if(typeof n === 'number'){
+        const ms = n < 1e12 ? n * 1000 : n;
+        return new Date(ms).toLocaleString();
+      }
+      const d = new Date(String(v));
+      return isNaN(d.getTime()) ? String(v) : d.toLocaleString();
+    }
+
+    const user = getUser();
+    const uname = getUsername(user);
+    if(!uname) window.location.href = '/index.html';
+
+    const partNumber = getPartFromScanRoute();
+    if(!partNumber){
+      document.getElementById('partText').textContent = 'Bad QR (missing part number)';
+    }
+
+    const elPart = document.getElementById('partText');
+    const elDesc = document.getElementById('descText');
+    const elLoc = document.getElementById('locText');
+    const elMin = document.getElementById('minText');
+    const elQty = document.getElementById('qtyText');
+    const elUpd = document.getElementById('updText');
+    const okBox = document.getElementById('okBox');
+    const errBox = document.getElementById('errBox');
+
+    const deltaInput = document.getElementById('deltaInput');
+    const noteInput = document.getElementById('noteInput');
+
+    let currentQty = 0;
+    let busy = false;
+
+    function setBusy(v){
+      busy = v;
+      const ids = ['btnMinus1','btnPlus1','btnMinus5','btnPlus5','applyBtn','refreshBtn'];
+      ids.forEach(id => {
+        const b = document.getElementById(id);
+        if(b) b.disabled = v;
+      });
+    }
+
+    function showOk(msg){
+      okBox.textContent = msg || 'Saved.';
+      okBox.style.display = 'block';
+      setTimeout(()=> okBox.style.display='none', 1200);
+    }
+
+    function showErr(msg){
+      errBox.textContent = msg || 'Error';
+      errBox.style.display = 'block';
+    }
+    function clearErr(){ errBox.style.display = 'none'; }
+
+    async function loadPart(){
+      if(!partNumber) return;
+      clearErr();
+      setBusy(true);
+      try{
+        const res = await fetch(`${API_BASE}/inventory/${encodeURIComponent(partNumber)}`, {
+          headers: { 'x-user': uname }
+        });
+        const data = await res.json();
+        if(!res.ok) throw new Error(data?.error || 'Failed to load part');
+
+        elPart.textContent = data.partNumber || partNumber;
+        elDesc.textContent = data.description || '';
+        elLoc.textContent = data.location || '—';
+        elMin.textContent = (data.minQty ?? 0);
+        currentQty = Number(data.qty ?? 0);
+        elQty.textContent = String(currentQty);
+        elUpd.textContent = data.updatedAt ? formatTs(data.updatedAt) : '—';
+      }catch(e){
+        showErr(e.message || 'Failed to load part');
+      }finally{
+        setBusy(false);
+      }
+    }
+
+    async function setQty(newQty){
+      if(busy) return;
+      clearErr();
+      setBusy(true);
+      try{
+        const note = String(noteInput.value || '').trim();
+        const res = await fetch(`${API_BASE}/inventory/${encodeURIComponent(partNumber)}/qty`, {
+          method: 'POST',
+          headers: { 'Content-Type':'application/json', 'x-user': uname },
+          body: JSON.stringify({ qty: newQty, note })
+        });
+        const data = await res.json();
+        if(!res.ok) throw new Error(data?.error || 'Save failed');
+
+        currentQty = newQty;
+        elQty.textContent = String(currentQty);
+        elUpd.textContent = formatTs(Date.now());
+        showOk('Saved.');
+        deltaInput.value = '';
+      }catch(e){
+        showErr(e.message || 'Save failed');
+      }finally{
+        setBusy(false);
+      }
+    }
+
+    function adjustBy(delta){
+      const d = Number(delta);
+      if(isNaN(d)) return;
+      const newQty = (Number(currentQty) || 0) + d;
+      setQty(newQty);
+    }
+
+    document.getElementById('btnMinus1').onclick = ()=>adjustBy(-1);
+    document.getElementById('btnPlus1').onclick  = ()=>adjustBy(1);
+    document.getElementById('btnMinus5').onclick = ()=>adjustBy(-5);
+    document.getElementById('btnPlus5').onclick  = ()=>adjustBy(5);
+
+    document.getElementById('applyBtn').onclick = ()=>{
+      const v = Number(deltaInput.value);
+      if(isNaN(v) || !deltaInput.value){
+        showErr('Enter a number (example: -3 or 12).');
+        return;
+      }
+      adjustBy(v);
+    };
+
+    deltaInput.addEventListener('keydown', (e)=>{
+      if(e.key === 'Enter'){
+        e.preventDefault();
+        document.getElementById('applyBtn').click();
+      }
+    });
+
+    document.getElementById('refreshBtn').onclick = loadPart;
+
+    document.getElementById('openFullBtn').onclick = ()=>{
+      window.location.href = `/inv/${encodeURIComponent(partNumber)}`;
+    };
+
+    document.getElementById('logoutBtn').onclick = ()=>{
+      localStorage.removeItem('user');
+      window.location.href = '/index.html';
+    };
+
+    loadPart();
+  </script>
+</body>
+</html>
