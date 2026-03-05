@@ -58,7 +58,7 @@
       white-space:normal;
       overflow-wrap:anywhere;
       line-height:1.25;
-      padding-left:12px;
+      padding-left:12px; /* gives it breathing room from the Adjust column */
     }
 
     .adjust-controls{display:flex;align-items:center;gap:8px;flex-wrap:nowrap}
@@ -92,6 +92,7 @@
     .btn-red{background:#c30000;color:#fff}
     .btn-gray{background:#c5c5c5;color:#000}
 
+    /* detail view */
     .detail-wrap{padding:16px; position:relative;}
     .detail-qr-float{
       position:absolute; top:12px; right:12px;
@@ -476,21 +477,23 @@
         const dlBtn = document.getElementById('qrDownloadBtn');
         if(!canvas || typeof QRCode === 'undefined') return;
 
-        const invUrl = `${window.location.origin}/inv/${encodeURIComponent(partNumber)}`;
+        const invUrl = `${window.location.origin}/scan/${encodeURIComponent(partNumber)}`;
         if(partEl) partEl.textContent = String(partNumber || '');
         if(nameEl) nameEl.textContent = String(printName || '');
         if(urlEl) urlEl.textContent = invUrl;
 
+        // smaller QR so it matches the S200X650VA1Y vibe
         QRCode.toCanvas(canvas, invUrl, { width: 120, margin: 1 }, (err)=>{
           if(err) console.error('QR error', err);
         });
 
+        // Download a label-sized PNG that includes QR + part # + description
         if(dlBtn){
           dlBtn.onclick = async ()=>{
             try{
-              // Keep height at true label height (0.65" @ 300dpi = 195px)
-              // Make the PNG narrower to remove left/right dead space when you paste into Easy-Mark.
-              const LABEL_W = 420;
+              // Panduit S200X650VA1Y is ~2.00" x 0.65"
+              // Export at 300 DPI: 2.00*300=600px, 0.65*300=195px
+              const LABEL_W = 600;
               const LABEL_H = 195;
 
               const exportCanvas = document.createElement('canvas');
@@ -498,11 +501,13 @@
               exportCanvas.height = LABEL_H;
               const ctx = exportCanvas.getContext('2d');
 
+              // white background
               ctx.fillStyle = '#ffffff';
               ctx.fillRect(0, 0, LABEL_W, LABEL_H);
 
+              // Build a QR at a size that leaves room for 2 text lines
               const qrTemp = document.createElement('canvas');
-              const QR_SIZE = 140;               // fits 0.65" label height while leaving room for 2 text lines
+              const QR_SIZE = 140;
               qrTemp.width = QR_SIZE;
               qrTemp.height = QR_SIZE;
 
@@ -513,25 +518,27 @@
                 });
               });
 
+              // center QR horizontally
               const qrX = Math.round((LABEL_W - QR_SIZE) / 2);
               const qrY = 6;
               ctx.drawImage(qrTemp, qrX, qrY, QR_SIZE, QR_SIZE);
 
+              // text
               const partText = String(partNumber || '');
               const nameText = String(printName || '');
 
               ctx.textAlign = 'center';
               ctx.fillStyle = '#000000';
 
-              ctx.font = 'bold 24px Arial';
-              const partY = qrY + QR_SIZE + 24;
-              ctx.fillText(partText, LABEL_W / 2, partY);
+              // Part number
+              ctx.font = 'bold 22px Arial';
+              ctx.fillText(partText, LABEL_W / 2, 160);
 
+              // Description (truncate to keep it single-line clean)
               ctx.font = 'normal 18px Arial';
               const maxChars = 30;
               const safeName = nameText.length > maxChars ? (nameText.slice(0, maxChars - 1) + '…') : nameText;
-              const descY = partY + 18;
-              ctx.fillText(safeName, LABEL_W / 2, descY);
+              ctx.fillText(safeName, LABEL_W / 2, 185);
 
               const a = document.createElement('a');
               a.download = `${String(partNumber || 'label')}.png`;
