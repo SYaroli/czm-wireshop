@@ -126,7 +126,6 @@
     }
   
     /* ===== Mobile tech UX upgrades (mobile-only) ===== */
-    .mobile-menu-btn{display:none}
     .mobile-only{display:none}
 
     /* Detail: hide admin-heavy stuff and make adjust sticky on phones */
@@ -141,23 +140,10 @@
     #adjustSticky{background:#fff}
     @media (max-width:900px){
       .brand-inner{gap:10px}
-      .brand-actions{display:flex;align-items:center;gap:8px}
-      .brand-actions .navbtn{display:none}
-      .brand-actions .mobile-menu-btn{display:inline-block}
-      body.menu-open .brand-actions .navbtn{display:inline-block}
-      body.menu-open .brand-actions .navbtn:not(.mobile-menu-btn){margin-left:0}
-      body.menu-open .brand-actions .navbtn:not(.mobile-menu-btn){width:auto}
-
-      body.menu-open .brand-actions{
+      .brand-actions{display:flex;align-items:center;gap:8px}      body.menu-open .brand-actions{
         flex-wrap:wrap;
         justify-content:flex-end;
       }
-      body.menu-open .brand-actions .navbtn{
-        display:inline-block;
-      }
-
-      body.menu-open .brand-actions .mobile-menu-btn{background:#b30000;color:#fff;border-color:#ff4d4d}
-
       /* make page less padded */
       .detail-wrap{padding:12px}
       .detail-topbar{gap:8px}
@@ -216,7 +202,6 @@
         <h1 class="brand-title">CZM • Inventory</h1>
       </a>
       <div class="brand-actions">
-        <button id="mobileMenuBtn" class="navbtn mobile-menu-btn" type="button">☰ Menu</button>
         <a class="navbtn" href="/dashboard.html">Dashboard</a>
         <a class="navbtn" href="/assignments.html">Build Next</a>
         <a class="navbtn active" href="/inventory">Inventory</a>
@@ -808,6 +793,18 @@
         .replace(/\r/g, '\\r');
     }
 
+
+    // Simple toast confirmation (mobile + desktop)
+    let __toastTimer = null;
+    function showToast(msg){
+      const t = document.getElementById('toast');
+      if(!t) return;
+      t.textContent = msg || '';
+      t.style.display = 'block';
+      clearTimeout(__toastTimer);
+      __toastTimer = setTimeout(()=>{ t.style.display = 'none'; }, 2200);
+    }
+
     function pickTs(r){
       return r.ts ??
              r.time ??
@@ -973,5 +970,25 @@
 
     loadData();
   </script>
+
+  <!-- Toast confirmation -->
+  <div id="toast" style="
+    position:fixed;
+    left:50%;
+    transform:translateX(-50%);
+    bottom:16px;
+    z-index:9999;
+    background:#0a0b0d;
+    color:#fff;
+    border:1px solid #2b3038;
+    border-radius:14px;
+    padding:10px 14px;
+    font-weight:800;
+    font-size:14px;
+    box-shadow:0 10px 24px rgba(0,0,0,.35);
+    display:none;
+    max-width:92vw;
+    text-align:center;
+  "></div>
 </body>
 </html>
