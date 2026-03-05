@@ -92,10 +92,10 @@
     .btn-red{background:#c30000;color:#fff}
     .btn-gray{background:#c5c5c5;color:#000}
 
-    .detail-wrap{padding:16px; position:relative;}
+    .detail-wrap{padding:20px 24px; position:relative; padding-right:240px;}
     #mobileTopBar{display:none}
     .detail-qr-float{
-      position:absolute; top:12px; right:12px;
+      position:absolute; top:16px; right:24px;
       width:175px; text-align:center;
       border:1px solid #e5e9ef; border-radius:10px; background:#fff;
       padding:8px;
@@ -106,6 +106,7 @@
     .detail-qr-float .qr-link{margin-top:6px;font-size:10px;color:#777;word-break:break-all}
     .detail-qr-float .qr-btn{margin-top:8px}
     @media (max-width:900px){
+      .detail-wrap{padding:12px; padding-right:12px;}
       .detail-qr-float{position:static; width:auto; margin-top:12px;}
     }
 
@@ -142,7 +143,7 @@
     @media (max-width:900px){
       .brand-inner{gap:10px}
       .brand-actions{display:flex;align-items:center;gap:8px}/* make page less padded */
-      .detail-wrap{padding:12px}
+      .detail-wrap{padding:12px; padding-right:12px}
       .detail-topbar{gap:8px}
 
       /* show mobile toggles */
