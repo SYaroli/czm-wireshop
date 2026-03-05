@@ -124,6 +124,68 @@
       .notes-cell{grid-column:1 / -1;margin-top:4px}
       .detail-grid{grid-template-columns:120px 1fr}
     }
+  
+    /* ===== Mobile tech UX upgrades (mobile-only) ===== */
+    .mobile-menu-btn{display:none}
+    .mobile-only{display:none}
+
+    /* Detail: hide admin-heavy stuff and make adjust sticky on phones */
+    #movementBox.hidden{display:none}
+    .detail-qr-float.collapsed canvas,
+    .detail-qr-float.collapsed .qr-part,
+    .detail-qr-float.collapsed .qr-name,
+    .detail-qr-float.collapsed .qr-btn,
+    .detail-qr-float.collapsed .qr-link{display:none}
+    .detail-qr-float.collapsed{padding:10px;text-align:left}
+
+    #adjustSticky{background:#fff}
+    @media (max-width:900px){
+      .brand-inner{gap:10px}
+      .brand-actions{display:flex;align-items:center;gap:8px}
+      .brand-actions .navbtn{display:none}
+      .brand-actions .mobile-menu-btn{display:inline-block}
+      body.menu-open .brand-actions .navbtn{display:inline-block}
+      body.menu-open .brand-actions .mobile-menu-btn{background:#b30000;color:#fff;border-color:#ff4d4d}
+
+      /* make page less padded */
+      .detail-wrap{padding:12px}
+      .detail-topbar{gap:8px}
+
+      /* show mobile toggles */
+      .mobile-only{display:inline-flex}
+
+      /* sticky adjust bar */
+      #adjustSticky{
+        position:sticky;
+        bottom:0;
+        left:0;
+        right:0;
+        padding:10px 0 12px;
+        border-top:1px solid #e5e9ef;
+        margin-top:10px;
+        z-index:20;
+      }
+
+      /* bigger buttons/inputs for fat fingers */
+      .quick-btn{height:52px;min-width:90px;border-radius:14px;font-size:18px}
+      .qty-input{height:52px;width:110px;border-radius:26px;font-size:18px}
+      .apply-btn{height:52px;min-width:110px;border-radius:14px;font-size:16px}
+      .edit-btn{height:52px;min-width:90px;border-radius:14px}
+
+      /* QR card: make it a compact header, tap toggle */
+      .detail-qr-float{border-radius:14px}
+      .detail-qr-float .qr-header-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+      .detail-qr-float .qr-toggle-btn{height:40px;border-radius:12px}
+
+      /* Movement toggle button */
+      .mov-toggle-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+      .mov-toggle-row .toolbar-btn{height:40px;border-radius:12px}
+
+      /* reduce huge movement table padding */
+      #movementBox table{font-size:11px}
+      #movementBox th,#movementBox td{padding:6px 3px !important}
+    }
+
   </style>
 </head>
 <body>
@@ -134,6 +196,7 @@
         <h1 class="brand-title">CZM • Inventory</h1>
       </a>
       <div class="brand-actions">
+        <button id="mobileMenuBtn" class="navbtn mobile-menu-btn" type="button">☰ Menu</button>
         <a class="navbtn" href="/dashboard.html">Dashboard</a>
         <a class="navbtn" href="/assignments.html">Build Next</a>
         <a class="navbtn active" href="/inventory">Inventory</a>
@@ -387,7 +450,7 @@
       listBody.innerHTML = `
         <div class="detail-wrap">
           <div class="detail-qr-float" id="qrFloat">
-            <div style="font-weight:700;font-size:12px;margin-bottom:6px;">QR Label</div>
+            <div class="qr-header-row"><div style="font-weight:700;font-size:12px;">QR Label</div><button id="toggleQrBtn" class="toolbar-btn qr-toggle-btn mobile-only" type="button">Show</button></div>
             <canvas id="qrCanvas" width="120" height="120"></canvas>
             <div class="qr-part" id="qrPartText"></div>
             <div class="qr-name" id="qrNameText"></div>
@@ -407,11 +470,13 @@
             <div><b>Min Qty</b></div><div>${escapeHtml(String(row.minQty || 0))}</div>
             <div><b>Notes</b></div><div style="white-space:pre-wrap;">${escapeHtml(row.notes || '')}</div>
           </div>
+          </div>
 
           <hr class="detail-hr" />
-          <div class="detail-title"><b>Adjust Inventory</b></div>
+          <div class="detail-title" id="adjustAnchor"><b>Adjust Inventory</b></div>
 
-          <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <div id="adjustSticky">
+            <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
             <button id="quickMinus" class="quick-btn minus">-1</button>
             <button id="quickPlus" class="quick-btn plus">+1</button>
 
@@ -421,9 +486,12 @@
 
           <hr class="detail-hr" />
 
-          <div class="detail-title">
-            <b>Inventory Movement</b>
-            <div class="detail-subtle">Latest changes for this part:</div>
+          <div class="detail-title mov-toggle-row">
+            <div>
+              <b>Inventory Movement</b>
+              <div class="detail-subtle">Latest changes for this part:</div>
+            </div>
+            <button id="toggleMoveBtn" class="toolbar-btn mobile-only" type="button">Show</button>
           </div>
 
           <div id="movementBox" style="margin-top:10px;"></div>
@@ -465,6 +533,43 @@
 
       generatePartQr(row.partNumber, row.printName || '');
       loadMovement(partNumber);
+
+      // Mobile tech UX: collapse QR + Movement and auto-scroll to Adjust Inventory on phones
+      (function(){
+        const isPhone = (window.innerWidth < 900) || /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+        if(!isPhone) return;
+
+        // Collapse QR card
+        const qrFloat = document.getElementById('qrFloat');
+        const qrBtn = document.getElementById('toggleQrBtn');
+        if(qrFloat && qrBtn){
+          qrFloat.classList.add('collapsed');
+          qrBtn.textContent = 'Show';
+          qrBtn.addEventListener('click', ()=>{
+            const collapsed = qrFloat.classList.toggle('collapsed');
+            qrBtn.textContent = collapsed ? 'Show' : 'Hide';
+          });
+        }
+
+        // Collapse Movement table
+        const moveBox = document.getElementById('movementBox');
+        const moveBtn = document.getElementById('toggleMoveBtn');
+        if(moveBox && moveBtn){
+          moveBox.classList.add('hidden');
+          moveBtn.textContent = 'Show';
+          moveBtn.addEventListener('click', ()=>{
+            const hidden = moveBox.classList.toggle('hidden');
+            moveBtn.textContent = hidden ? 'Show' : 'Hide';
+          });
+        }
+
+        // Auto-scroll to Adjust Inventory controls
+        setTimeout(()=>{
+          const anchor = document.getElementById('adjustAnchor') || document.getElementById('adjustSticky');
+          anchor?.scrollIntoView({behavior:'instant', block:'start'});
+        }, 50);
+      })();
+
     }
 
     function generatePartQr(partNumber, printName){
