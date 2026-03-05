@@ -145,6 +145,17 @@
       .brand-actions .navbtn{display:none}
       .brand-actions .mobile-menu-btn{display:inline-block}
       body.menu-open .brand-actions .navbtn{display:inline-block}
+      body.menu-open .brand-actions .navbtn:not(.mobile-menu-btn){margin-left:0}
+      body.menu-open .brand-actions .navbtn:not(.mobile-menu-btn){width:auto}
+
+      body.menu-open .brand-actions{
+        flex-wrap:wrap;
+        justify-content:flex-end;
+      }
+      body.menu-open .brand-actions .navbtn{
+        display:inline-block;
+      }
+
       body.menu-open .brand-actions .mobile-menu-btn{background:#b30000;color:#fff;border-color:#ff4d4d}
 
       /* make page less padded */
@@ -167,19 +178,28 @@
       }
 
       /* bigger buttons/inputs for fat fingers */
-      .quick-btn{height:52px;min-width:90px;border-radius:14px;font-size:18px}
+      .quick-btn{height:52px;min-width:110px;border-radius:14px;font-size:18px}
       .qty-input{height:52px;width:110px;border-radius:26px;font-size:18px}
-      .apply-btn{height:52px;min-width:110px;border-radius:14px;font-size:16px}
+      .apply-btn{height:52px;min-width:140px;border-radius:14px;font-size:16px}
       .edit-btn{height:52px;min-width:90px;border-radius:14px}
 
       /* QR card: make it a compact header, tap toggle */
-      .detail-qr-float{border-radius:14px}
+      .detail-qr-float{display:none}
       .detail-qr-float .qr-header-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
       .detail-qr-float .qr-toggle-btn{height:40px;border-radius:12px}
 
       /* Movement toggle button */
       .mov-toggle-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
       .mov-toggle-row .toolbar-btn{height:40px;border-radius:12px}
+
+      
+      /* Center the value column on phone */
+      .detail-grid > div:nth-child(2n){text-align:center}
+      /* Standardize top buttons */
+      .toolbar-btn{height:48px;border-radius:14px;font-size:15px;padding:0 14px}
+      .detail-topbar .toolbar-btn{min-width:120px}
+      /* Center adjust controls row */
+      #adjustSticky > div{justify-content:center}
 
       /* reduce huge movement table padding */
       #movementBox table{font-size:11px}
