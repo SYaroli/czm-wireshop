@@ -187,6 +187,34 @@
       /* Center adjust controls row */
       #adjustSticky > div{justify-content:center}
 
+      
+      /* Hide global header on phone for /inv/<part> detail view */
+      body.inv-detail .brand-bar{display:none}
+      body.inv-detail .inventory-shell{margin-top:0}
+      /* Mobile top bar with centered Back */
+      #mobileTopBar{display:none}
+      body.inv-detail #mobileTopBar{
+        display:flex;
+        position:sticky;
+        top:0;
+        z-index:30;
+        background:#0a0b0d;
+        border-bottom:3px solid #c30000;
+        padding:10px 12px;
+        align-items:center;
+        justify-content:center;
+      }
+      body.inv-detail #mobileTopBar .toolbar-btn{
+        height:44px;
+        border-radius:14px;
+        font-size:15px;
+        min-width:140px;
+      }
+      /* Hide old topbar buttons on mobile; back is now in top bar */
+      body.inv-detail .detail-topbar{display:none}
+      /* Center the "Adjust Inventory" heading */
+      body.inv-detail #adjustAnchor{ text-align:center }
+
       /* reduce huge movement table padding */
       #movementBox table{font-size:11px}
       #movementBox th,#movementBox td{padding:6px 3px !important}
@@ -362,6 +390,7 @@
     }
 
     function renderList(){
+      document.body.classList.remove('inv-detail');
       const filter = filterBox.value.trim().toLowerCase();
       const onlyNZ = cbNonZero.checked;
       const onlyZ = cbOnlyZero.checked;
@@ -395,12 +424,12 @@
         const minusBtn = document.createElement('button');
         minusBtn.className = 'quick-btn minus';
         minusBtn.textContent = '-1';
-        minusBtn.onclick = ()=>applyAdjust(row.partNumber,row.qty,'-1', minusBtn);
+        minusBtn.onclick = ()=>applyAdjustWithConfirm(row.partNumber,row.qty,'-1', minusBtn);
 
         const plusBtn = document.createElement('button');
         plusBtn.className = 'quick-btn plus';
         plusBtn.textContent = '+1';
-        plusBtn.onclick = ()=>applyAdjust(row.partNumber,row.qty,'1', plusBtn);
+        plusBtn.onclick = ()=>applyAdjustWithConfirm(row.partNumber,row.qty,'1', plusBtn);
 
         const adjustInput = document.createElement('input');
         adjustInput.type='text';
@@ -410,7 +439,7 @@
         const applyBtn = document.createElement('button');
         applyBtn.className='apply-btn';
         applyBtn.textContent='Apply';
-        applyBtn.onclick = ()=>applyAdjust(row.partNumber,row.qty,adjustInput.value, applyBtn);
+        applyBtn.onclick = ()=>applyAdjustWithConfirm(row.partNumber,row.qty,adjustInput.value, applyBtn);
 
         adjustInput.addEventListener('keydown', (e)=>{
           if(e.key === 'Enter'){
@@ -436,6 +465,7 @@
     }
 
     function openDetail(partNumber){
+      document.body.classList.add('inv-detail');
       const row = ALL_ROWS.find(r => r.partNumber === partNumber) || {
         partNumber,
         printName: '',
@@ -454,6 +484,7 @@
 
       listBody.innerHTML = `
         <div class="detail-wrap">
+          <div id="mobileTopBar"><button class="toolbar-btn red" id="mobileBackBtn">← Back</button></div>
           <div class="detail-qr-float" id="qrFloat">
             <div class="qr-header-row"><div style="font-weight:700;font-size:12px;">QR Label</div><button id="toggleQrBtn" class="toolbar-btn qr-toggle-btn mobile-only" type="button">Show</button></div>
             <canvas id="qrCanvas" width="120" height="120"></canvas>
@@ -503,6 +534,8 @@
         </div>
       `;
 
+      document.getElementById('mobileBackBtn')?.addEventListener('click', ()=>{ window.location.href = '/inventory'; });
+
       document.getElementById('backBtn')?.addEventListener('click', ()=>{
         window.location.href = '/inventory';
       });
@@ -517,16 +550,16 @@
       const deltaInput = document.getElementById('detailDelta');
 
       document.getElementById('quickMinus')?.addEventListener('click', ()=>{
-        applyAdjust(row.partNumber, qtyVal, '-1', document.getElementById('quickMinus'));
+        applyAdjustWithConfirm(row.partNumber, qtyVal, '-1', document.getElementById('quickMinus'));
       });
 
       document.getElementById('quickPlus')?.addEventListener('click', ()=>{
-        applyAdjust(row.partNumber, qtyVal, '1', document.getElementById('quickPlus'));
+        applyAdjustWithConfirm(row.partNumber, qtyVal, '1', document.getElementById('quickPlus'));
       });
 
       applyBtn?.addEventListener('click', ()=>{
         const deltaStr = deltaInput?.value || '';
-        applyAdjust(row.partNumber, qtyVal, deltaStr, applyBtn);
+        applyAdjustWithConfirm(row.partNumber, qtyVal, deltaStr, applyBtn);
       });
 
       deltaInput?.addEventListener('keydown', (e)=>{
@@ -840,7 +873,56 @@
       return s;
     }
 
-    async function applyAdjust(partNumber,currentQty,deltaStr, btnEl){
+    // Confirmation modal for qty changes (tech safety)
+    let __pendingAdjust = null;
+    function showConfirm(partNumber, currentQty, delta, btnEl){
+      const b = document.getElementById('confirmBackdrop');
+      const t = document.getElementById('confirmText');
+      const ok = document.getElementById('confirmOk');
+      const cancel = document.getElementById('confirmCancel');
+      if(!b || !t || !ok || !cancel) return false;
+
+      const newQty = (Number(currentQty)||0) + delta;
+      const sign = delta >= 0 ? '+' : '';
+      t.textContent = `Part ${partNumber}: ${sign}${delta} → new qty ${newQty}. Confirm?`;
+
+      __pendingAdjust = { partNumber, currentQty, deltaStr: String(delta), btnEl, newQty };
+
+      b.style.display = 'flex';
+      cancel.focus();
+
+      const close = ()=>{ b.style.display='none'; };
+
+      cancel.onclick = ()=>{ __pendingAdjust=null; close(); };
+      b.onclick = (e)=>{ if(e.target === b){ __pendingAdjust=null; close(); } };
+
+      ok.onclick = async ()=>{
+        const p = __pendingAdjust;
+        __pendingAdjust = null;
+        close();
+        if(!p) return;
+        await applyAdjustInternal(p.partNumber, p.currentQty, p.deltaStr, p.btnEl);
+      };
+
+      return true;
+    }
+
+    async function applyAdjustWithConfirm(partNumber,currentQty,deltaStr, btnEl){
+      const delta = Number(deltaStr);
+      if(Number.isNaN(delta)){
+        alert('enter a number');
+        return;
+      }
+      // Always confirm before applying
+      const shown = showConfirm(partNumber, currentQty, delta, btnEl);
+      if(!shown){
+        // fallback: if modal missing, just apply
+        await applyAdjustInternal(partNumber, currentQty, String(delta), btnEl);
+      }
+    }
+
+    async function applyAdjustInternal(partNumber,currentQty,deltaStr, btnEl){
+
       if(APPLY_BUSY) return;
       APPLY_BUSY = true;
 
@@ -990,5 +1072,18 @@
     max-width:92vw;
     text-align:center;
   "></div>
+
+  <!-- Confirm change modal -->
+  <div id="confirmBackdrop" style="position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:10000;">
+    <div id="confirmModal" style="background:#fff;color:#111;border-radius:16px;max-width:92vw;width:420px;box-shadow:0 12px 28px rgba(0,0,0,.35);padding:16px;border:1px solid #e5e9ef;">
+      <div style="font-weight:900;font-size:16px;margin-bottom:8px;">Confirm inventory change</div>
+      <div id="confirmText" style="font-size:14px;line-height:1.25;margin-bottom:12px;"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;">
+        <button id="confirmCancel" class="toolbar-btn" type="button" style="background:#eee;border:1px solid #cfd4da;">Cancel</button>
+        <button id="confirmOk" class="toolbar-btn red" type="button" style="min-width:120px;">Confirm</button>
+      </div>
+    </div>
+  </div>
+
 </body>
 </html>
