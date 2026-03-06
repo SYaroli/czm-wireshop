@@ -31,13 +31,6 @@
     .priority{display:inline-block;border:1px solid #ccc;border-radius:8px;padding:2px 8px;font-weight:800;font-size:.85rem}
     .p1{background:#fff3cd;border-color:#ffe08a}
     .p2{background:#ffd5d5;border-color:#ff9b9b}
-    .progress-split{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
-    .progress-pane{min-width:0}
-    .progress-pane h3{margin:0 0 10px;font-size:1rem;font-weight:900}
-    .progress-pane table{margin-bottom:8px}
-    .empty-state{padding:14px 12px;border:1px dashed #d3d8e1;border-radius:10px;background:#fafafa;color:#666;font-weight:700;text-align:center}
-    .section-note{margin:10px 0 0}
-    @media (max-width: 900px){ .progress-split{grid-template-columns:1fr} }
 
     /* Done header actions layout */
     .actions-row{
@@ -68,6 +61,11 @@
       #pnInput{flex:1 1 100%}
       #qAdd,#prioritySel,#addBtn{flex:1 1 30%}
     }
+
+    .progress-section{margin-bottom:20px}
+    .progress-section:last-of-type{margin-bottom:12px}
+    .subkicker{font-size:1rem;font-weight:900;margin:0 0 8px}
+    .progress-table{width:100%}
   </style>
 </head>
 <body>
@@ -129,44 +127,42 @@
     <!-- In Progress -->
     <div class="card sized">
       <h2 class="kicker">In Progress</h2>
-      <div class="progress-split">
-        <div class="progress-pane">
-          <h3>Active</h3>
-          <table class="sticky-head compact" id="tblClaimedActive">
-            <thead>
-              <tr>
-                <th>Part</th>
-                <th>Print Name</th>
-                <th class="nowrap">Remaining</th>
-                <th>Claimed By</th>
-                <th class="nowrap">Timer</th>
-                <th class="nowrap wide">Actions</th>
-              </tr>
-            </thead>
-            <tbody id="claimedActiveBody"></tbody>
-          </table>
-          <div class="empty-state" id="claimedActiveEmpty" style="display:none;">No active builds running.</div>
-        </div>
 
-        <div class="progress-pane">
-          <h3>Paused</h3>
-          <table class="sticky-head compact" id="tblClaimedPaused">
-            <thead>
-              <tr>
-                <th>Part</th>
-                <th>Print Name</th>
-                <th class="nowrap">Remaining</th>
-                <th>Claimed By</th>
-                <th class="nowrap">Timer</th>
-                <th class="nowrap wide">Actions</th>
-              </tr>
-            </thead>
-            <tbody id="claimedPausedBody"></tbody>
-          </table>
-          <div class="empty-state" id="claimedPausedEmpty" style="display:none;">No paused builds.</div>
-        </div>
+      <div class="progress-section">
+        <h3 class="subkicker">Active</h3>
+        <table class="sticky-head compact progress-table" id="tblClaimedActive">
+          <thead>
+            <tr>
+              <th>Part</th>
+              <th>Print Name</th>
+              <th class="nowrap">Remaining</th>
+              <th>Claimed By</th>
+              <th class="nowrap">Timer</th>
+              <th class="nowrap wide">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="claimedActiveBody"></tbody>
+        </table>
       </div>
-      <p class="note section-note">Partial completes allowed. Completing adds to inventory automatically.</p>
+
+      <div class="progress-section">
+        <h3 class="subkicker">Paused</h3>
+        <table class="sticky-head compact progress-table" id="tblClaimedPaused">
+          <thead>
+            <tr>
+              <th>Part</th>
+              <th>Print Name</th>
+              <th class="nowrap">Remaining</th>
+              <th>Claimed By</th>
+              <th class="nowrap">Timer</th>
+              <th class="nowrap wide">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="claimedPausedBody"></tbody>
+        </table>
+      </div>
+
+      <p class="note">Partial completes allowed. Completing adds to inventory automatically.</p>
     </div>
 
     <!-- Done (recent completions) -->
@@ -473,18 +469,19 @@
 
       lastDone = done;
 
-      const activeClaimed = (claimed || []).filter(r => String(r._timerState || (r.startedAt ? (Number(r.isPaused||0)===1?'paused':'running') : 'not_started')) === 'running');
-      const pausedClaimed = (claimed || []).filter(r => String(r._timerState || (r.startedAt ? (Number(r.isPaused||0)===1?'paused':'running') : 'not_started')) !== 'running');
+      const activeClaimed = claimed.filter(r => {
+        const state = String(r._timerState || (r.startedAt ? (Number(r.isPaused||0)===1?'paused':'running') : 'not_started'));
+        return state === 'running';
+      });
+      const pausedClaimed = claimed.filter(r => {
+        const state = String(r._timerState || (r.startedAt ? (Number(r.isPaused||0)===1?'paused':'running') : 'not_started'));
+        return state !== 'running';
+      });
 
       queuedBody.innerHTML = queued.map(rowQueued).join('');
-      claimedActiveBody.innerHTML = activeClaimed.map(rowClaimed).join('');
-      claimedPausedBody.innerHTML = pausedClaimed.map(rowClaimed).join('');
+      claimedActiveBody.innerHTML = activeClaimed.length ? activeClaimed.map(rowClaimed).join('') : '<tr><td colspan="6" class="muted">No active timers.</td></tr>';
+      claimedPausedBody.innerHTML = pausedClaimed.length ? pausedClaimed.map(rowClaimed).join('') : '<tr><td colspan="6" class="muted">No paused work.</td></tr>';
       doneBody.innerHTML = done.map(rowDoneEvt).join('');
-
-      document.getElementById('claimedActiveEmpty').style.display = activeClaimed.length ? 'none' : '';
-      document.getElementById('tblClaimedActive').style.display = activeClaimed.length ? '' : 'none';
-      document.getElementById('claimedPausedEmpty').style.display = pausedClaimed.length ? 'none' : '';
-      document.getElementById('tblClaimedPaused').style.display = pausedClaimed.length ? '' : 'none';
 
       syncTimerTick();
     }
