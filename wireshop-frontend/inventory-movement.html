@@ -111,95 +111,100 @@
 
   <script>
     const API_BASE = (localStorage.getItem("API_BASE") || "https://wireshop-backend.onrender.com").replace(/\/+$/, "");
-    const MOVEMENT_API = API_BASE + '/api/inventory-log';
-    const INVENTORY_API = API_BASE + '/api/inventory-all';
+    const MOVEMENT_API = API_BASE + "/api/inventory-log";
+    const INVENTORY_API = API_BASE + "/api/inventory-all";
     let rawRows = [];
     let inventoryMap = new Map();
 
-    function getSession(){
-      try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; }
+    function getSession() {
+      try { return JSON.parse(localStorage.getItem("user") || "{}"); } catch { return {}; }
     }
 
-    function requireAdmin(){
+    function requireAdmin() {
       const s = getSession();
-      if(!s.username){
-        window.location.replace('index.html');
+      if (!s.username) {
+        window.location.replace("index.html");
         return false;
       }
-      if(s.role !== 'admin'){
-        window.location.replace('assignments.html');
+      if (s.role !== "admin") {
+        window.location.replace("assignments.html");
         return false;
       }
       return true;
     }
 
-    function authHeaders(){
-      return { 'Content-Type': 'application/json', 'x-user': getSession().username };
+    function authHeaders() {
+      return { "Content-Type": "application/json", "x-user": getSession().username };
     }
 
-    function logout(){
-      localStorage.removeItem('user');
-      window.location.replace('index.html');
+    function logout() {
+      localStorage.removeItem("user");
+      window.location.replace("index.html");
     }
 
-    function escapeHtml(s){
-      return String(s || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;', "'":'&#39;'}[m]));
+    function escapeHtml(s) {
+      return String(s || "").replace(/[&<>"']/g, m => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+      }[m]));
     }
 
-    function formatTs(ts){
-      if(!ts) return '—';
+    function formatTs(ts) {
+      if (!ts) return "—";
       const d = new Date(Number(ts));
-      if(Number.isNaN(d.getTime())) return String(ts);
+      if (Number.isNaN(d.getTime())) return String(ts);
       return d.toLocaleString();
     }
 
-    function classify(delta){
+    function classify(delta) {
       const n = Number(delta || 0);
-      if(n > 0) return 'in';
-      if(n < 0) return 'out';
-      return 'same';
+      if (n > 0) return "in";
+      if (n < 0) return "out";
+      return "same";
     }
 
-    function directionChip(delta){
+    function directionChip(delta) {
       const dir = classify(delta);
-      if(dir === 'in') return '<span class="chip in">In</span>';
-      if(dir === 'out') return '<span class="chip out">Out</span>';
+      if (dir === "in") return '<span class="chip in">In</span>';
+      if (dir === "out") return '<span class="chip out">Out</span>';
       return '<span class="chip same">No Change</span>';
     }
 
-    function deltaHtml(delta){
+    function deltaHtml(delta) {
       const n = Number(delta || 0);
-      const label = n > 0 ? ('+' + n) : String(n);
-      if(n > 0) return `<span class="delta-pos">${label}</span>`;
-      if(n < 0) return `<span class="delta-neg">${label}</span>`;
+      const label = n > 0 ? ("+" + n) : String(n);
+      if (n > 0) return `<span class="delta-pos">${label}</span>`;
+      if (n < 0) return `<span class="delta-neg">${label}</span>`;
       return escapeHtml(label);
     }
 
-    function csvEscape(v){
-      const s = String(v ?? '');
-      return /[",
-]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+    function csvEscape(v) {
+      const s = String(v ?? "");
+      return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
     }
 
-    function renderRows(){
-      const tbody = document.getElementById('movementBody');
-      const search = (document.getElementById('searchBox').value || '').trim().toLowerCase();
-      const dir = document.getElementById('dirFilter').value;
+    function renderRows() {
+      const tbody = document.getElementById("movementBody");
+      const search = (document.getElementById("searchBox").value || "").trim().toLowerCase();
+      const dir = document.getElementById("dirFilter").value;
 
       let rows = rawRows.map(r => {
-        const inv = inventoryMap.get(String(r.partNumber || '').toLowerCase()) || {};
+        const inv = inventoryMap.get(String(r.partNumber || "").toLowerCase()) || {};
         return {
           ...r,
-          description: inv.description || '',
-          location: inv.location || ''
+          description: inv.description || "",
+          location: inv.location || ""
         };
       });
 
-      if(dir !== 'all'){
+      if (dir !== "all") {
         rows = rows.filter(r => classify(r.delta) === dir);
       }
 
-      if(search){
+      if (search) {
         rows = rows.filter(r => {
           const hay = [
             r.partNumber,
@@ -210,20 +215,21 @@
             r.before,
             r.after,
             r.delta
-          ].join(' ').toLowerCase();
+          ].join(" ").toLowerCase();
           return hay.includes(search);
         });
       }
 
       const totalIn = rows.reduce((sum, r) => sum + Math.max(0, Number(r.delta || 0)), 0);
       const totalOut = rows.reduce((sum, r) => sum + Math.abs(Math.min(0, Number(r.delta || 0))), 0);
-      document.getElementById('stats').innerHTML = `
+
+      document.getElementById("stats").innerHTML = `
         <span><b>${rows.length}</b> rows shown</span>
         <span><b>${totalIn}</b> in</span>
         <span><b>${totalOut}</b> out</span>
       `;
 
-      if(!rows.length){
+      if (!rows.length) {
         tbody.innerHTML = '<tr><td colspan="9" class="empty">No movement found for that filter.</td></tr>';
         return;
       }
@@ -232,44 +238,45 @@
         <tr>
           <td>${escapeHtml(formatTs(r.when || r.ts))}</td>
           <td>${escapeHtml(r.partNumber)}</td>
-          <td>${escapeHtml(r.description || '—')}</td>
-          <td>${escapeHtml(r.user || '—')}</td>
+          <td>${escapeHtml(r.description || "—")}</td>
+          <td>${escapeHtml(r.user || "—")}</td>
           <td>${directionChip(r.delta)}</td>
           <td>${deltaHtml(r.delta)}</td>
           <td>${escapeHtml(r.before)}</td>
           <td>${escapeHtml(r.after)}</td>
-          <td class="note">${escapeHtml(r.note || '')}</td>
+          <td class="note">${escapeHtml(r.note || "")}</td>
         </tr>
-      `).join('');
+      `).join("");
     }
 
-    async function loadInventoryMap(){
-      try{
+    async function loadInventoryMap() {
+      try {
         const res = await fetch(INVENTORY_API, { headers: authHeaders() });
-        if(!res.ok) return;
+        if (!res.ok) return;
         const items = await res.json();
-        inventoryMap = new Map((items || []).map(item => [String(item.partNumber || '').toLowerCase(), item]));
-      }catch(err){
-        console.warn('Inventory map load failed', err);
+        inventoryMap = new Map((items || []).map(item => [String(item.partNumber || "").toLowerCase(), item]));
+      } catch (err) {
+        console.warn("Inventory map load failed", err);
       }
     }
 
-    async function loadMovement(){
-      const tbody = document.getElementById('movementBody');
+    async function loadMovement() {
+      const tbody = document.getElementById("movementBody");
       tbody.innerHTML = '<tr><td colspan="9" class="empty">Loading…</td></tr>';
 
-      try{
-        const limit = Number(document.getElementById('limitSel').value || 500);
+      try {
+        const limit = Number(document.getElementById("limitSel").value || 500);
+
         await Promise.all([
           loadInventoryMap(),
-          (async ()=>{
-            const logRes = await fetch(MOVEMENT_API + '?limit=' + encodeURIComponent(limit), { headers: authHeaders() });
-            if(!logRes.ok){
-              let msg = 'Failed to load movement';
-              try{
+          (async () => {
+            const logRes = await fetch(MOVEMENT_API + "?limit=" + encodeURIComponent(limit), { headers: authHeaders() });
+            if (!logRes.ok) {
+              let msg = "Failed to load movement";
+              try {
                 const data = await logRes.json();
                 msg = data?.error || msg;
-              }catch{}
+              } catch {}
               throw new Error(msg);
             }
             rawRows = await logRes.json();
@@ -277,36 +284,37 @@
         ]);
 
         renderRows();
-      }catch(err){
+      } catch (err) {
         console.error(err);
-        tbody.innerHTML = '<tr><td colspan="9" class="error">' + escapeHtml(err.message || 'Failed to load movement.') + '</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" class="error">' + escapeHtml(err.message || "Failed to load movement.") + "</td></tr>";
       }
     }
 
-    function exportCsv(){
-      const search = (document.getElementById('searchBox').value || '').trim().toLowerCase();
-      const dir = document.getElementById('dirFilter').value;
+    function exportCsv() {
+      const search = (document.getElementById("searchBox").value || "").trim().toLowerCase();
+      const dir = document.getElementById("dirFilter").value;
+
       const rows = rawRows.map(r => {
-        const inv = inventoryMap.get(String(r.partNumber || '').toLowerCase()) || {};
+        const inv = inventoryMap.get(String(r.partNumber || "").toLowerCase()) || {};
         return {
           time: formatTs(r.when || r.ts),
-          partNumber: r.partNumber || '',
-          description: inv.description || '',
-          user: r.user || '',
+          partNumber: r.partNumber || "",
+          description: inv.description || "",
+          user: r.user || "",
           direction: classify(r.delta),
           delta: Number(r.delta || 0),
           before: Number(r.before || 0),
           after: Number(r.after || 0),
-          note: r.note || ''
+          note: r.note || ""
         };
       }).filter(r => {
-        if(dir !== 'all' && r.direction !== dir) return false;
-        if(!search) return true;
-        return [r.partNumber, r.description, r.user, r.note, r.delta, r.before, r.after].join(' ').toLowerCase().includes(search);
+        if (dir !== "all" && r.direction !== dir) return false;
+        if (!search) return true;
+        return [r.partNumber, r.description, r.user, r.note, r.delta, r.before, r.after].join(" ").toLowerCase().includes(search);
       });
 
       const lines = [
-        ['Time','Part Number','Description','User','Direction','Delta','Before','After','Note'].join(',')
+        ["Time", "Part Number", "Description", "User", "Direction", "Delta", "Before", "After", "Note"].join(",")
       ];
 
       rows.forEach(r => {
@@ -320,28 +328,28 @@
           csvEscape(r.before),
           csvEscape(r.after),
           csvEscape(r.note)
-        ].join(','));
+        ].join(","));
       });
 
-      const blob = new Blob([lines.join('\n')], { type:'text/csv;charset=utf-8;' });
+      const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
-      a.download = 'inventory-movement.csv';
+      a.download = "inventory-movement.csv";
       document.body.appendChild(a);
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
     }
 
-    document.getElementById('logoutBtn').addEventListener('click', logout);
-    document.getElementById('refreshBtn').addEventListener('click', loadMovement);
-    document.getElementById('exportBtn').addEventListener('click', exportCsv);
-    document.getElementById('searchBox').addEventListener('input', renderRows);
-    document.getElementById('dirFilter').addEventListener('change', renderRows);
-    document.getElementById('limitSel').addEventListener('change', loadMovement);
+    document.getElementById("logoutBtn").addEventListener("click", logout);
+    document.getElementById("refreshBtn").addEventListener("click", loadMovement);
+    document.getElementById("exportBtn").addEventListener("click", exportCsv);
+    document.getElementById("searchBox").addEventListener("input", renderRows);
+    document.getElementById("dirFilter").addEventListener("change", renderRows);
+    document.getElementById("limitSel").addEventListener("change", loadMovement);
 
-    if(requireAdmin()){
+    if (requireAdmin()) {
       loadMovement();
     }
   </script>
