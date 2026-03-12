@@ -29,6 +29,9 @@
     }
 
     #usersCard { max-width:75%; margin:10px auto; }
+    #movementCard { max-width:75%; margin:10px auto; }
+    .quick-link { display:inline-block; background:#b30000; color:#fff; text-decoration:none; padding:8px 12px; border-radius:8px; font-weight:700; }
+    .quick-link:hover { background:#d20000; }
     .table-wrap { overflow:auto; }
     table { width:100%; border-collapse:collapse; font-size:12px; }
     th, td { padding:5px 6px; text-align:left; vertical-align:middle; white-space:nowrap; border-right:1px solid #eee; }
@@ -79,6 +82,12 @@
       <h2>Low Stock Alerts</h2>
       <div id="lowStockList"></div>
       <div id="lowMsg" class="msg muted"></div>
+    </div>
+
+    <div class="card" id="movementCard">
+      <h2>Inventory Movement</h2>
+      <p class="muted" style="margin:4px 0 10px;">See every inventory add, remove, and adjustment in one place.</p>
+      <a class="quick-link" href="/inventory-movement.html">Open Movement Log</a>
     </div>
 
     <div class="card" id="usersCard">
