@@ -15,6 +15,7 @@ const jobsRouter = require("./routes/jobs");
 const archiveRouter = require("./routes/archive");
 const assignmentsRouter = require("./routes/assignments");
 const inventoryRoutes = require("./routes/inventory");
+const catalogSyncRouter = require("./routes/catalog-sync");
 const archive = require("./archiveStore");
 const db = require("./db"); // ensures DB/tables are created
 
@@ -38,7 +39,6 @@ function isAllowedOrigin(origin) {
   if (!origin) return true; // non-browser (curl/postman)
   if (ALLOWED_ORIGINS.has(origin)) return true;
 
-  // tolerate subdomains like https://czm-us-wireshop.com and https://www.czm-us-wireshop.com
   try {
     const host = new URL(origin).hostname;
     return host === "czm-us-wireshop.com" || host.endsWith(".czm-us-wireshop.com");
@@ -47,7 +47,7 @@ function isAllowedOrigin(origin) {
   }
 }
 
-// Safety middleware: ALWAYS answer preflight with the right headers (even if a route is missing)
+// Safety middleware: ALWAYS answer preflight with the right headers
 app.use((req, res, next) => {
   const origin = req.headers.origin;
   if (isAllowedOrigin(origin)) {
@@ -68,7 +68,7 @@ app.use((req, res, next) => {
 const corsConfig = {
   origin: function (origin, callback) {
     if (!origin) return callback(null, true);
-    if (isAllowedOrigin(origin)) return callback(null, origin); // echo exact origin
+    if (isAllowedOrigin(origin)) return callback(null, origin);
     return callback(new Error("Not allowed by CORS"));
   },
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
@@ -89,7 +89,7 @@ const corsConfig = {
 app.use(cors(corsConfig));
 app.options("*", cors(corsConfig));
 
-app.use(express.json({ limit: "1mb" }));
+app.use(express.json({ limit: "5mb" }));
 app.use(express.urlencoded({ extended: true }));
 
 // ----- mount routers -----
@@ -99,6 +99,7 @@ app.use("/api/jobs", jobsRouter);
 app.use("/api/archive", archiveRouter);
 app.use("/api/assignments", assignmentsRouter);
 app.use("/api", inventoryRoutes);
+app.use("/api", catalogSyncRouter);
 
 // NEW: Build Next endpoints (/api/build-tasks/*)
 attachBuildTasks(app);
@@ -219,8 +220,8 @@ function looksLikeFinish(src = {}, url = "") {
   if (
     u.includes("/finish") ||
     (u.endsWith("/log") && (src.action || "").toLowerCase() === "finish")
-  )
-    return true;
+  ) return true;
+
   const lower = (k) => String(src[k] ?? "").toLowerCase();
   const hay = [lower("action"), lower("status"), lower("event"), lower("op"), lower("type")].join("|");
   return /finish|finished|complete|completed|done|end|stop/.test(hay);
@@ -240,74 +241,125 @@ const toISO = (v) => {
   return Number.isNaN(d.getTime()) ? null : d.toISOString();
 };
 
-function fetchSqliteArchiveForUser(username, cb) {
-  if (!username) return cb(null, null);
-  const sql = `SELECT * FROM jobs_archive WHERE username = ? ORDER BY id DESC LIMIT 1`;
-  db.get(sql, [username], (err, row) => cb(err, row || null));
+async function archiveFromPayload(req, payload) {
+  if (!archiveReady || !looksLikeFinish(payload, req.originalUrl || req.url)) return;
+
+  const username =
+    pick(payload, ["username", "user", "technician", "claimedBy", "claimed_by"]) ||
+    getClientUser(req);
+
+  if (username) rememberClientUser(req, username);
+
+  const partNumber = pick(payload, ["partNumber", "part_number"]);
+  const startedAt =
+    toISO(pick(payload, ["startedAt", "started_at", "startTime", "start_time"])) ||
+    (username && lastStartByUser.get(username)?.startedAt) ||
+    null;
+
+  const finishedAt =
+    toISO(pick(payload, ["finishedAt", "finished_at", "endTime", "end_time"])) ||
+    new Date().toISOString();
+
+  const expectedMinutes = toInt(
+    pick(payload, ["expectedMinutes", "expected_minutes", "expected", "expectedMin"])
+  );
+
+  const totalActiveSec = toInt(
+    pick(payload, ["totalActiveSec", "total_active_sec", "totalSec", "totalSeconds"])
+  );
+
+  const notes = pick(payload, ["notes", "note", "reason"]) || null;
+
+  const jobJson =
+    parseJSON(
+      pick(payload, ["job", "job_json", "task", "build", "payload"])
+    ) ||
+    payload;
+
+  try {
+    await archive.appendArchivedJob({
+      technician: username || null,
+      part_number: partNumber || null,
+      started_at: startedAt,
+      finished_at: finishedAt,
+      expected_minutes: expectedMinutes,
+      total_active_sec: totalActiveSec,
+      notes,
+      job_json: jobJson || null,
+    });
+  } catch (e) {
+    console.error("[AUTO-ARCHIVE] append failed:", e.message);
+  }
 }
 
-app.use("/api/jobs", (req, res, next) => {
-  res.on("finish", async () => {
-    if (!archiveReady) return;
-    if (res.statusCode >= 400) return;
+// ---------- Track starts/finishes heuristically ----------
+app.use((req, _res, next) => {
+  const body = req.body || {};
+  const username =
+    pick(body, ["username", "user", "technician", "claimedBy", "claimed_by"]) || null;
+  if (username) rememberClientUser(req, username);
 
-    const src = { ...(req.body || {}), ...(req.query || {}) };
-    const url = req.originalUrl || req.url;
-    if (!looksLikeFinish(src, url)) return;
+  const url = (req.originalUrl || req.url || "").toLowerCase();
+  const isStart =
+    url.includes("/start") ||
+    /start|started|resume|resumed|claim|claimed/.test(
+      [body.action, body.status, body.event, body.op, body.type].join("|").toLowerCase()
+    );
 
-    let username =
-      pick(src, ["technician", "tech", "username", "user", "name"]) || getClientUser(req);
-    let part =
-      pick(src, [
-        "part_number",
-        "partNumber",
-        "part",
-        "partNo",
-        "print",
-        "print_number",
-        "printNumber",
-      ]) ||
-      (username && lastStartByUser.get(username)?.part_number) ||
-      null;
-
-    fetchSqliteArchiveForUser(username, async (_err, sRow) => {
-      const started_at =
-        toISO(pick(src, ["started_at", "startedAt", "start_time", "startTime"])) ||
-        (username && lastStartByUser.get(username)?.started_at) ||
-        null;
-      const finished_at =
-        toISO(pick(src, ["finished_at", "finishedAt", "finish_time", "finishTime"])) ||
-        new Date().toISOString();
-      const expected_minutes =
-        toInt(pick(src, ["expected_minutes", "expected", "expectedMin", "expectedMinutes"])) ??
-        (username && lastStartByUser.get(username)?.expected_minutes) ??
-        null;
-
-      const payload = {
-        part_number: part || sRow?.partNumber || null,
-        technician: username || sRow?.username || null,
-        location: pick(src, ["location", "station", "workstation"]) || null,
-        status: "archived",
-        expected_minutes,
-        total_active_sec:
-          toInt(pick(src, ["total_active_sec", "totalSeconds", "total", "elapsed", "timeActiveSec"])) ??
-          null,
-        started_at,
-        finished_at,
-        notes: pick(src, ["notes", "note"]) || null,
-        job_json: JSON.stringify(src || {}),
-      };
-
-      try {
-        await archive.insertArchivedJob(payload);
-      } catch (e) {
-        if (TRACE) console.error("[ARCHIVE] insert failed:", e.message);
-      }
-    });
-  });
+  if (isStart && username) {
+    lastStartByUser.set(username, { startedAt: new Date().toISOString() });
+    if (TRACE) console.log("[TRACE] remembered start for", username);
+  }
 
   next();
 });
 
-const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`WireShop backend listening on ${PORT}`));
+// ---------- Mirror finish-like responses into archive ----------
+app.use((req, res, next) => {
+  const origJson = res.json.bind(res);
+  res.json = function patchedJson(payload) {
+    try {
+      archiveFromPayload(req, req.body || {});
+      if (payload && typeof payload === "object") archiveFromPayload(req, payload);
+    } catch (e) {
+      console.error("[AUTO-ARCHIVE] middleware error:", e.message);
+    }
+    return origJson(payload);
+  };
+  next();
+});
+
+// ---------- Health ----------
+app.get("/health", async (_req, res) => {
+  try {
+    await db.get("SELECT 1 AS ok");
+    res.json({ ok: true, archiveReady });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message, archiveReady });
+  }
+});
+
+// ---------- Serve frontend ----------
+const FRONTEND_DIR = path.join(__dirname, "..", "wireshop-frontend");
+app.use(express.static(FRONTEND_DIR));
+
+app.get("/", (_req, res) => {
+  res.sendFile(path.join(FRONTEND_DIR, "index.html"));
+});
+
+// ---------- 404 ----------
+app.use((req, res) => {
+  res.status(404).json({ error: "Not found", path: req.originalUrl || req.url });
+});
+
+// ---------- Error handler ----------
+app.use((err, _req, res, _next) => {
+  console.error("[SERVER ERROR]", err);
+  res.status(500).json({ error: err.message || "Server error" });
+});
+
+// ---------- Start ----------
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`WireShop backend listening on :${PORT}`);
+});
