@@ -221,6 +221,32 @@ router.get('/inventory/:partNumber/log', requireUser, (req,res)=>{
   );
 });
 
+
+// admin-only: consolidated inventory movement feed
+router.get('/inventory-log', requireAdmin, (req,res)=>{
+  const limitRaw = Number(req.query.limit || 500);
+  const limit = Number.isFinite(limitRaw) ? Math.max(1, Math.min(2000, Math.trunc(limitRaw))) : 500;
+
+  db.all(
+    `SELECT id,
+            partNumber,
+            ts       AS "when",
+            user,
+            delta,
+            qtyBefore AS "before",
+            qtyAfter  AS "after",
+            note
+       FROM inventory_log
+      ORDER BY ts DESC
+      LIMIT ?`,
+    [limit],
+    (err, rows)=>{
+      if (err) return res.status(500).json({ error: 'db error' });
+      res.json(rows || []);
+    }
+  );
+});
+
 // admin-only: delete a log row
 router.delete('/inventory-log/:id', requireAdmin, (req,res)=>{
   const id = Number(req.params.id);
