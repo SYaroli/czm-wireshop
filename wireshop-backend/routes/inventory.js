@@ -128,7 +128,13 @@ router.post('/inventory/:partNumber/qty', requireUser, (req,res)=>{
   if(qty === undefined) return res.status(400).json({error:'qty required'});
 
   const partNumber = req.params.partNumber;
-  const newQty = Number.isFinite(Number(qty)) ? Number(qty) : 0;
+  const parsedQty = Number(qty);
+
+  if (!Number.isFinite(parsedQty)) {
+    return res.status(400).json({ error:'invalid qty' });
+  }
+
+  const newQty = Math.trunc(parsedQty);
   const ts = Date.now();
 
   db.serialize(() => {
@@ -142,6 +148,15 @@ router.post('/inventory/:partNumber/qty', requireUser, (req,res)=>{
         const before = Number(row.qty) || 0;
         const after = newQty;
         const delta = after - before;
+
+        // Hard stop: never allow inventory below zero.
+        if (after < 0) {
+          return res.status(400).json({
+            error: 'insufficient stock',
+            before,
+            requestedQty: after
+          });
+        }
 
         db.run(
           `UPDATE inventory
