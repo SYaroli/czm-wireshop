@@ -152,11 +152,13 @@ module.exports = function attachBuildTasks(app, opts = {}) {
         user     TEXT    NOT NULL,
         ts       INTEGER NOT NULL,
         reason   TEXT,
+        elapsedSeconds INTEGER,
         FOREIGN KEY(taskId) REFERENCES build_tasks(id)
       )
     `);
 
     db.run(`ALTER TABLE build_task_events ADD COLUMN reason TEXT`, () => { });
+    db.run(`ALTER TABLE build_task_events ADD COLUMN elapsedSeconds INTEGER`, () => { });
   });
 
   // ----- Who am I -----
@@ -522,10 +524,20 @@ module.exports = function attachBuildTasks(app, opts = {}) {
         );
       }
 
+      const elapsedSecondsAtComplete = computeElapsedSeconds(
+        {
+          startedAt: Number(task.startedAt || task.claimedAt || t),
+          totalPausedSeconds: Number(task.totalPausedSeconds || 0),
+          isPaused: 0,
+          pausedAt: 0
+        },
+        t
+      );
+
       await run(
-        `INSERT INTO build_task_events (taskId, type, qty, user, ts)
-         VALUES (?, 'complete', ?, ?, ?)`,
-        [id, qty, user, t]
+        `INSERT INTO build_task_events (taskId, type, qty, user, ts, elapsedSeconds)
+         VALUES (?, 'complete', ?, ?, ?, ?)`,
+        [id, qty, user, t, elapsedSecondsAtComplete]
       );
 
       const updated = await get(`SELECT * FROM build_tasks WHERE id=?`, [id]);
@@ -564,7 +576,7 @@ module.exports = function attachBuildTasks(app, opts = {}) {
     const since = Number(req.query.since || 0);
     try {
       let sql = `
-        SELECT e.id, e.taskId, e.type, e.qty, e.user, e.ts, e.reason,
+        SELECT e.id, e.taskId, e.type, e.qty, e.user, e.ts, e.reason, e.elapsedSeconds,
                t.partNumber, t.claimedBy,
                t.claimedAt, t.startedAt, t.pausedAt, t.totalPausedSeconds, t.isPaused
           FROM build_task_events e
@@ -581,6 +593,11 @@ module.exports = function attachBuildTasks(app, opts = {}) {
 
       if (type === 'complete') {
         rows.forEach(r => {
+          if (Number.isFinite(Number(r.elapsedSeconds))) {
+            r.elapsedSeconds = Math.max(0, Number(r.elapsedSeconds || 0));
+            return;
+          }
+
           const startedAt = Number(r.startedAt || r.claimedAt || 0);
           r.elapsedSeconds = computeElapsedSeconds(
             {
@@ -767,135 +784,94 @@ module.exports = function attachBuildTasks(app, opts = {}) {
     });
   }
 
-  async function autoResumeSystemPausedBreaks() {
+  async function autoResumeSystemPausedBreakTasks() {
     const t = now();
-
-    const candidates = await all(
-      `SELECT bt.id, bt.claimedBy, bt.pausedAt
-         FROM build_tasks bt
-         JOIN (
-              SELECT claimedBy, MAX(pausedAt) AS maxPausedAt
-                FROM build_tasks
-               WHERE status='claimed'
-                 AND isPaused=1
-                 AND pausedBySystem=1
-                 AND pausedReason='break'
-                 AND pausedAt IS NOT NULL
-               GROUP BY claimedBy
-         ) x
-           ON x.claimedBy = bt.claimedBy AND x.maxPausedAt = bt.pausedAt
-        WHERE bt.status='claimed'
-          AND bt.isPaused=1
-          AND bt.pausedBySystem=1
-          AND bt.pausedReason='break'`
-    );
-
-    if (!candidates.length) return [];
-
     return tx(async () => {
-      const resumedIds = [];
+      const rows = await all(
+        `SELECT id, pausedAt
+           FROM build_tasks
+          WHERE status='claimed'
+            AND startedAt IS NOT NULL
+            AND isPaused=1
+            AND pausedBySystem=1
+            AND pausedReason='break'`
+      );
 
-      for (const row of candidates) {
-        const id = row.id;
-        const pausedAt = Number(row.pausedAt || 0);
-        const add = pausedAt ? Math.max(0, Math.floor((t - pausedAt) / 1000)) : 0;
+      if (!rows.length) return [];
 
-        const r = await run(
+      const ids = rows.map(r => r.id);
+
+      for (const row of rows) {
+        const add = Number(row.pausedAt || 0)
+          ? Math.max(0, Math.floor((t - Number(row.pausedAt)) / 1000))
+          : 0;
+
+        await run(
           `UPDATE build_tasks
               SET isPaused=0,
                   pausedAt=NULL,
-                  totalPausedSeconds = COALESCE(totalPausedSeconds, 0) + ?,
+                  totalPausedSeconds=COALESCE(totalPausedSeconds, 0) + ?,
                   pausedBySystem=0,
                   pausedReason=NULL
-            WHERE id=?
-              AND status='claimed'
-              AND isPaused=1
-              AND pausedBySystem=1
-              AND pausedReason='break'`,
-          [add, id]
+            WHERE id=?`,
+          [add, row.id]
         );
 
-        if ((r.changes | 0) > 0) {
-          resumedIds.push(id);
-          await run(
-            `INSERT INTO build_task_events (taskId, type, qty, user, ts, reason)
-             VALUES (?, 'auto_resume', 0, 'SYSTEM', ?, 'break_end')`,
-            [id, t]
-          );
-        }
+        await run(
+          `INSERT INTO build_task_events (taskId, type, qty, user, ts, reason)
+           VALUES (?, 'auto_resume', 0, 'SYSTEM', ?, 'break')`,
+          [row.id, t]
+        );
       }
 
-      return resumedIds;
+      return ids;
     });
   }
 
-  // Prevent double-fire within the same minute if interval drifts or overlaps
-  let _autoSchedRunning = false;
-  let _lastKey = '';
+  let _lastSchedulerMinuteKey = null;
 
   async function runSchedulerTick(opts = {}) {
-    const bypassDedup = !!opts.bypassDedup;
+    const parts = (opts.weekday && opts.hm)
+      ? { weekday: opts.weekday, hm: opts.hm }
+      : localParts();
 
-    const lp = localParts();
-    const weekday = (opts.weekday && String(opts.weekday).trim()) || lp.weekday;
-    const hm = (opts.hm && String(opts.hm).trim()) || lp.hm;
+    const { weekday, hm } = parts;
+    const minuteKey = `${weekday} ${hm}`;
 
-    const result = {
+    if (!opts.bypassDedup) {
+      if (_lastSchedulerMinuteKey === minuteKey) {
+        return { ok: true, skipped: true, reason: 'same-minute', weekday, hm };
+      }
+      _lastSchedulerMinuteKey = minuteKey;
+    }
+
+    const pause = shouldAutoPause(hm, weekday);
+    let pausedIds = [];
+    let resumedIds = [];
+
+    if (pause.yes) {
+      pausedIds = await autoPauseAllRunning(pause.reason);
+    } else if (shouldAutoResume(hm)) {
+      resumedIds = await autoResumeSystemPausedBreakTasks();
+    }
+
+    return {
+      ok: true,
       weekday,
       hm,
-      decision: null,
-      paused: { count: 0, ids: [] },
-      resumed: { count: 0, ids: [] },
-      lastKeyBefore: _lastKey
+      autoPause: pause,
+      pausedIds,
+      resumedIds
     };
-
-    const chk = shouldAutoPause(hm, weekday);
-    if (chk.yes) {
-      const key = `pause|${weekday}|${hm}|${chk.reason}`;
-      result.decision = { action: 'pause', reason: chk.reason, key };
-
-      if (bypassDedup || _lastKey !== key) {
-        const ids = await autoPauseAllRunning(chk.reason);
-        result.paused.ids = ids;
-        result.paused.count = ids.length;
-        _lastKey = key;
-      }
-      result.lastKeyAfter = _lastKey;
-      return result;
-    }
-
-    // Saturday never auto-pauses for breaks, so don't auto-resume there.
-    if (weekday !== 'Sat' && shouldAutoResume(hm)) {
-      const key = `resume|${weekday}|${hm}`;
-      result.decision = { action: 'resume', reason: 'break_end', key };
-
-      if (bypassDedup || _lastKey !== key) {
-        const ids = await autoResumeSystemPausedBreaks();
-        result.resumed.ids = ids;
-        result.resumed.count = ids.length;
-        _lastKey = key;
-      }
-      result.lastKeyAfter = _lastKey;
-      return result;
-    }
-
-    result.decision = { action: 'none', reason: '' };
-    result.lastKeyAfter = _lastKey;
-    return result;
   }
 
-  setInterval(async () => {
-    if (_autoSchedRunning) return;
-    _autoSchedRunning = true;
+  // Poll every 15s; dedup ensures once per minute max.
+  setInterval(() => {
+    runSchedulerTick().catch(err => {
+      console.error('[build_tasks scheduler] tick failed:', err);
+    });
+  }, 15 * 1000);
 
-    try {
-      await runSchedulerTick();
-    } catch (e) {
-      console.warn('auto scheduler error:', e?.message || e);
-    } finally {
-      _autoSchedRunning = false;
-    }
-  }, 60 * 1000);
-
+  // mount
   app.use(router);
 };
