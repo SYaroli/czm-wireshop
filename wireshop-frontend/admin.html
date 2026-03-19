@@ -6,81 +6,334 @@
   <title>CZM • Admin</title>
   <link rel="stylesheet" href="style.css" />
   <style>
-    body { margin:0; font-family:system-ui,sans-serif; background:#f5f5f5; }
-    .brand-bar { padding:8px 12px; background:#0f1114; border-bottom:3px solid #c30000; }
-    .brand-inner { max-width:1200px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; }
-    .brand-actions .navbtn { padding:6px 10px; font-size:11px; border-radius:6px; }
-    main { max-width:1100px; margin:0 auto; padding:8px; }
-    .card { background:#fff; border-radius:6px; box-shadow:0 1px 4px rgba(0,0,0,0.08); padding:10px; margin:10px 0; }
+    :root{
+      --bg:#eef1f4;
+      --card:#ffffff;
+      --text:#16181b;
+      --muted:#66707a;
+      --line:#d8dee5;
+      --dark:#0f1114;
+      --red:#b30000;
+      --red-hover:#d20000;
+      --shadow:0 8px 24px rgba(0,0,0,0.08);
+      --radius:14px;
+    }
 
-    #lowStockCard { max-width:75%; margin:10px auto; }
-    .alert-item { font-size:12px; padding:5px 0; border-bottom:1px solid #eee; }
+    * { box-sizing:border-box; }
+    body {
+      margin:0;
+      font-family:system-ui,sans-serif;
+      background:linear-gradient(180deg,#f4f6f8 0%, #eceff3 100%);
+      color:var(--text);
+    }
+
+    .brand-bar {
+      padding:10px 14px;
+      background:var(--dark);
+      border-bottom:4px solid var(--red);
+      box-shadow:0 4px 18px rgba(0,0,0,0.18);
+    }
+
+    .brand-inner {
+      max-width:1200px;
+      margin:0 auto;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      flex-wrap:wrap;
+    }
+
+    .brand-logo {
+      display:flex;
+      align-items:center;
+      gap:12px;
+      text-decoration:none;
+      color:#fff;
+    }
+
+    .brand-logo img {
+      height:34px;
+      width:auto;
+      display:block;
+    }
+
+    .brand-title {
+      margin:0;
+      font-size:1.2rem;
+      font-weight:800;
+      letter-spacing:.02em;
+    }
+
+    .brand-actions {
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+
+    .brand-actions .navbtn,
+    .btn-mini,
+    .quick-link,
+    .toggle-btn {
+      appearance:none;
+      border:none;
+      cursor:pointer;
+      transition:all .18s ease;
+    }
+
+    .brand-actions .navbtn {
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      background:#1a1c20;
+      color:#c8cdd3;
+      padding:8px 14px;
+      border-radius:10px;
+      text-decoration:none;
+      border:1px solid #343941;
+      font-weight:700;
+      font-size:.92rem;
+    }
+
+    .brand-actions .navbtn.active {
+      background:var(--red);
+      color:#fff;
+      border-color:#ff5c5c;
+    }
+
+    .brand-actions .navbtn:hover { background:#262a30; color:#fff; }
+
+    main {
+      max-width:1100px;
+      margin:0 auto;
+      padding:18px 12px 28px;
+    }
+
+    .page-grid {
+      display:grid;
+      gap:16px;
+    }
+
+    .card {
+      background:var(--card);
+      border:1px solid rgba(0,0,0,0.05);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      padding:16px;
+      margin:0 auto;
+    }
+
+    #lowStockCard,
+    #usersCard,
+    #movementCard {
+      width:min(100%, 880px);
+    }
+
+    .section-head {
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom:12px;
+      flex-wrap:wrap;
+    }
+
+    .section-head h2 {
+      margin:0;
+      font-size:1.15rem;
+      line-height:1.2;
+    }
+
+    .section-head p {
+      margin:4px 0 0;
+      color:var(--muted);
+      font-size:.92rem;
+    }
+
+    .toggle-btn,
+    .quick-link {
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      background:var(--red);
+      color:#fff;
+      text-decoration:none;
+      padding:9px 14px;
+      border-radius:10px;
+      font-weight:800;
+      font-size:.92rem;
+      box-shadow:0 4px 12px rgba(179,0,0,0.18);
+    }
+
+    .toggle-btn:hover,
+    .quick-link:hover { background:var(--red-hover); }
+
+    .users-card.collapsed .users-body {
+      display:none;
+    }
+
+    .users-card.collapsed .toggle-btn::after {
+      content:"Show";
+    }
+
+    .users-card:not(.collapsed) .toggle-btn::after {
+      content:"Hide";
+    }
+
+    .low-list,
+    .users-body {
+      margin-top:4px;
+    }
+
+    .alert-item {
+      font-size:12px;
+      padding:10px 0;
+      border-bottom:1px solid #eceff3;
+    }
     .alert-item:last-child { border-bottom:none; }
 
     .alert-item .queue-btn {
-      background:#b30000; color:#fff; border:none; border-radius:4px; padding:3px 7px;
-      font-size:10px; font-weight:600; cursor:pointer; margin-left:4px;
+      background:var(--red);
+      color:#fff;
+      border:none;
+      border-radius:8px;
+      padding:5px 9px;
+      font-size:10px;
+      font-weight:700;
+      cursor:pointer;
+      margin-left:4px;
     }
-    .alert-item .queue-btn:hover { background:#d20000; }
+    .alert-item .queue-btn:hover { background:var(--red-hover); }
     .alert-item .queue-btn:disabled { background:#666; cursor:not-allowed; }
     .alert-item .queue-reminder {
-      font-size:10px; color:#666; font-weight:600; margin-left:4px;
-    }
-
-    #usersCard { max-width:75%; margin:10px auto; }
-    #movementCard { max-width:75%; margin:10px auto; }
-
-    .quick-link {
-      display:inline-block;
-      background:#b30000;
-      color:#fff;
-      text-decoration:none;
-      padding:8px 12px;
-      border-radius:8px;
+      font-size:10px;
+      color:var(--muted);
       font-weight:700;
-      border:none;
-      cursor:pointer;
+      margin-left:4px;
     }
-    .quick-link:hover { background:#d20000; }
 
-    .table-wrap { overflow:auto; }
-    table { width:100%; border-collapse:collapse; font-size:12px; }
-    th, td { padding:5px 6px; text-align:left; vertical-align:middle; white-space:nowrap; border-right:1px solid #eee; }
-    th:last-child, td:last-child { border-right:none; }
-    th { background:#111; color:#fff; font-weight:600; }
-    tr:nth-child(even) { background:#fafafa; }
-
-    th.username-col, td.username-col { width:110px; padding-left:5px; }
-    th.role-col,   td.role-col   { width:80px;  padding:5px 4px; }
-    th.active-col, td.active-col { width:70px;  text-align:center; padding:5px 3px; }
-    th.newpin-col, td.newpin-col { width:90px;  text-align:center; padding:5px 3px; }
-    th.action-col, td.action-col { width:50px;  text-align:center; padding:5px 3px; }
-
-    .btn-mini { margin:0; padding:4px 8px; font-size:10px; border-radius:4px; }
-    input, select { height:26px; font-size:12px; padding:0 6px; border-radius:4px; }
-    .muted { font-size:10px; color:#666; }
-    .msg { margin-top:4px; font-size:11px; }
-    .msg.ok { color:#0a6a0a; font-weight:700; }
-    .msg.err { color:#b30000; font-weight:700; }
-    .add-row { gap:6px; margin-bottom:6px; flex-wrap:wrap; }
-    .add-row label { flex:1 1 130px; min-width:130px; }
-
-    .brand-bar { background:#0f1114; border-bottom:4px solid #c30000; }
-    .brand-actions .navbtn {
-      display:inline-block;
-      background:#1a1c20;
-      color:#bbb;
-      padding:6px 12px;
-      border-radius:10px;
+    .part-link {
+      color:#101317;
       text-decoration:none;
-      border:1px solid #3a3f44;
-      font-weight:600;
-      font-size:.9rem;
-      margin-left:8px;
     }
-    .brand-actions .navbtn.active { background:#b30000; color:#fff; border-color:#ff4d4d; }
-    .brand-actions .navbtn:hover { background:#24272b; color:#fff; }
+    .part-link:hover { text-decoration:underline; }
 
+    .add-row {
+      display:grid !important;
+      grid-template-columns:2fr 1fr 1fr auto;
+      gap:10px;
+      margin-bottom:14px;
+      align-items:end;
+      padding:12px;
+      border:1px solid var(--line);
+      border-radius:12px;
+      background:#f9fbfc;
+    }
+
+    .add-row label {
+      min-width:0;
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+    }
+
+    .muted {
+      font-size:11px;
+      color:var(--muted);
+      font-weight:700;
+      letter-spacing:.02em;
+    }
+
+    .msg {
+      margin-top:8px;
+      font-size:12px;
+      min-height:16px;
+    }
+    .msg.ok { color:#0a6a0a; font-weight:800; }
+    .msg.err { color:var(--red); font-weight:800; }
+
+    input, select {
+      height:34px;
+      width:100%;
+      font-size:13px;
+      padding:0 10px;
+      border-radius:10px;
+      border:1px solid #cfd6de;
+      background:#fff;
+      outline:none;
+    }
+
+    input:focus, select:focus {
+      border-color:#8d98a6;
+      box-shadow:0 0 0 3px rgba(17,24,39,0.08);
+    }
+
+    .btn-mini,
+    #btnAddUser {
+      background:var(--dark);
+      color:#fff;
+      border:1px solid #1f2329;
+      border-radius:10px;
+      padding:9px 12px;
+      font-size:12px;
+      font-weight:800;
+      height:34px;
+    }
+
+    .btn-mini:hover,
+    #btnAddUser:hover {
+      background:#23272d;
+    }
+
+    .table-wrap {
+      overflow:auto;
+      border:1px solid var(--line);
+      border-radius:12px;
+      background:#fff;
+    }
+
+    table {
+      width:100%;
+      border-collapse:collapse;
+      font-size:12px;
+    }
+
+    th, td {
+      padding:8px 8px;
+      text-align:left;
+      vertical-align:middle;
+      white-space:nowrap;
+      border-right:1px solid #eef1f4;
+    }
+
+    th:last-child, td:last-child { border-right:none; }
+
+    th {
+      background:#15181d;
+      color:#fff;
+      font-weight:800;
+      position:sticky;
+      top:0;
+    }
+
+    tr:nth-child(even) { background:#fafbfd; }
+
+    th.username-col, td.username-col { width:160px; }
+    th.role-col,   td.role-col   { width:90px; }
+    th.active-col, td.active-col { width:90px; text-align:center; }
+    th.newpin-col, td.newpin-col { width:120px; text-align:center; }
+    th.action-col, td.action-col { width:70px; text-align:center; }
+
+    .low-qty { font-weight:800; color:var(--red); }
+
+    @media (max-width: 760px){
+      main { padding:14px 10px 24px; }
+      .add-row { grid-template-columns:1fr; }
+      .section-head { align-items:stretch; }
+      .toggle-btn, .quick-link { width:100%; }
+      .brand-inner { align-items:flex-start; }
+      .brand-actions { width:100%; }
+    }
   </style>
 </head>
 <body>
@@ -102,59 +355,78 @@
   </div>
 
   <main>
-    <div class="card" id="lowStockCard" style="display:none;">
-      <h2>Low Stock Alerts</h2>
-      <div id="lowStockList"></div>
-      <div id="lowMsg" class="msg muted"></div>
-    </div>
-
-    <div class="card" id="movementCard">
-      <h2>Inventory Movement</h2>
-      <p class="muted" style="margin:4px 0 10px;">See every inventory add, remove, and adjustment in one place.</p>
-      <a class="quick-link" href="/inventory-movement.html">Open Movement Log</a>
-    </div>
-
-    <div class="card" id="usersCard">
-      <h2>Users</h2>
-
-      <div class="add-row" style="display:flex;">
-        <label>
-          <span class="muted">Username</span>
-          <input id="uName" type="text" placeholder="firstname.lastname" />
-        </label>
-        <label>
-          <span class="muted">PIN</span>
-          <input id="uPin" type="text" inputmode="numeric" placeholder="1234" maxlength="10" />
-        </label>
-        <label>
-          <span class="muted">Role</span>
-          <select id="uRole">
-            <option value="tech" selected>tech</option>
-            <option value="admin">admin</option>
-          </select>
-        </label>
-        <button id="btnAddUser" class="navbtn red">Add User</button>
+    <div class="page-grid">
+      <div class="card" id="lowStockCard" style="display:none;">
+        <div class="section-head">
+          <div>
+            <h2>Low Stock Alerts</h2>
+            <p>Parts at or below minimum quantity.</p>
+          </div>
+        </div>
+        <div id="lowStockList" class="low-list"></div>
+        <div id="lowMsg" class="msg muted"></div>
       </div>
 
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th class="username-col">Username</th>
-              <th class="role-col">Role</th>
-              <th class="active-col">Active</th>
-              <th class="newpin-col">New PIN</th>
-              <th class="action-col">Save</th>
-              <th class="action-col">Delete</th>
-            </tr>
-          </thead>
-          <tbody id="usersTableBody">
-            <tr><td colspan="6" style="opacity:.7; text-align:center; padding:8px;">Loading…</td></tr>
-          </tbody>
-        </table>
+      <div class="card" id="movementCard">
+        <div class="section-head">
+          <div>
+            <h2>Inventory Movement</h2>
+            <p>See every inventory add, remove, and adjustment in one place.</p>
+          </div>
+          <a class="quick-link" href="/inventory-movement.html">Open Movement Log</a>
+        </div>
       </div>
 
-      <div id="uMsg" class="msg muted"></div>
+      <div class="card users-card collapsed" id="usersCard">
+        <div class="section-head">
+          <div>
+            <h2>Users</h2>
+            <p>Add, edit, deactivate, or delete users without the page feeling like a cluttered mess.</p>
+          </div>
+          <button id="toggleUsersBtn" class="toggle-btn" type="button" aria-expanded="false"></button>
+        </div>
+
+        <div class="users-body" id="usersBody">
+          <div class="add-row">
+            <label>
+              <span class="muted">Username</span>
+              <input id="uName" type="text" placeholder="firstname.lastname" />
+            </label>
+            <label>
+              <span class="muted">PIN</span>
+              <input id="uPin" type="text" inputmode="numeric" placeholder="1234" maxlength="10" />
+            </label>
+            <label>
+              <span class="muted">Role</span>
+              <select id="uRole">
+                <option value="tech" selected>tech</option>
+                <option value="admin">admin</option>
+              </select>
+            </label>
+            <button id="btnAddUser" class="navbtn red">Add User</button>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th class="username-col">Username</th>
+                  <th class="role-col">Role</th>
+                  <th class="active-col">Active</th>
+                  <th class="newpin-col">New PIN</th>
+                  <th class="action-col">Save</th>
+                  <th class="action-col">Delete</th>
+                </tr>
+              </thead>
+              <tbody id="usersTableBody">
+                <tr><td colspan="6" style="opacity:.7; text-align:center; padding:12px;">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div id="uMsg" class="msg muted"></div>
+        </div>
+      </div>
     </div>
   </main>
 
@@ -496,8 +768,22 @@
       }
     });
 
+
+    function setUsersCollapsed(collapsed){
+      const card = document.getElementById('usersCard');
+      const btn = document.getElementById('toggleUsersBtn');
+      if(!card || !btn) return;
+      card.classList.toggle('collapsed', !!collapsed);
+      btn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+    }
+
     if (requireAdmin()) {
       document.getElementById('btnAddUser')?.addEventListener('click', addUser);
+      document.getElementById('toggleUsersBtn')?.addEventListener('click', () => {
+        const card = document.getElementById('usersCard');
+        setUsersCollapsed(!card || !card.classList.contains('collapsed') ? true : false);
+      });
+      setUsersCollapsed(true);
       wireTableClicks();
       loadUsers();
       loadLowStock();
