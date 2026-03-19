@@ -216,13 +216,12 @@
     function esc(s){ return String(s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
     function ts(ms){ if(!ms) return ''; return new Date(ms).toLocaleString(); }
     function fmtSecs(s){
-      s = Math.max(0, Number(s||0)|0);
+      s = Math.max(0, Math.floor(Number(s||0)));
       const h = Math.floor(s/3600);
       const m = Math.floor((s%3600)/60);
       const ss = s%60;
       const pad = n => String(n).padStart(2,'0');
-      if (h>0) return `${h}:${pad(m)}:${pad(ss)}`;
-      return `${m}:${pad(ss)}`;
+      return `${h}:${pad(m)}:${pad(ss)}`;
     }
     async function api(path, opts={}){
       const headers = Object.assign(
