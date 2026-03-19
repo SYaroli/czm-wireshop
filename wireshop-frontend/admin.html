@@ -29,10 +29,8 @@
 
     #usersCard { max-width:75%; margin:10px auto; }
     #movementCard { max-width:75%; margin:10px auto; }
-    #catalogSyncCard { max-width:75%; margin:10px auto; }
 
-    .quick-link,
-    .repair-btn {
+    .quick-link {
       display:inline-block;
       background:#b30000;
       color:#fff;
@@ -43,15 +41,7 @@
       border:none;
       cursor:pointer;
     }
-    .quick-link:hover,
-    .repair-btn:hover { background:#d20000; }
-
-    .repair-btn.secondary {
-      background:#444;
-    }
-    .repair-btn.secondary:hover {
-      background:#555;
-    }
+    .quick-link:hover { background:#d20000; }
 
     .table-wrap { overflow:auto; }
     table { width:100%; border-collapse:collapse; font-size:12px; }
@@ -91,36 +81,6 @@
     .brand-actions .navbtn.active { background:#b30000; color:#fff; border-color:#ff4d4d; }
     .brand-actions .navbtn:hover { background:#24272b; color:#fff; }
 
-    .repair-actions {
-      display:flex;
-      gap:8px;
-      flex-wrap:wrap;
-      align-items:center;
-      margin-top:8px;
-    }
-
-    .preview-box {
-      margin-top:10px;
-      max-height:260px;
-      overflow:auto;
-      border:1px solid #e5e5e5;
-      border-radius:6px;
-      background:#fafafa;
-      padding:8px;
-      font-size:12px;
-      display:none;
-    }
-
-    .preview-row {
-      padding:6px 0;
-      border-bottom:1px solid #e9e9e9;
-    }
-    .preview-row:last-child {
-      border-bottom:none;
-    }
-    .preview-part {
-      font-weight:700;
-    }
   </style>
 </head>
 <body>
@@ -152,22 +112,6 @@
       <h2>Inventory Movement</h2>
       <p class="muted" style="margin:4px 0 10px;">See every inventory add, remove, and adjustment in one place.</p>
       <a class="quick-link" href="/inventory-movement.html">Open Movement Log</a>
-    </div>
-
-    <div class="card" id="catalogSyncCard">
-      <h2>Catalog Metadata Repair</h2>
-      <p class="muted" style="margin:4px 0 10px;">
-        This repairs old inventory records that are missing description, location, SA number, expected hours, or notes.
-        It does <strong>not</strong> touch quantity.
-      </p>
-
-      <div class="repair-actions">
-        <button id="previewCatalogSyncBtn" class="repair-btn secondary" type="button">Preview Missing Metadata</button>
-        <button id="runCatalogSyncBtn" class="repair-btn" type="button">Run Catalog Repair</button>
-      </div>
-
-      <div id="catalogSyncMsg" class="msg muted"></div>
-      <div id="catalogPreview" class="preview-box"></div>
     </div>
 
     <div class="card" id="usersCard">
@@ -214,12 +158,10 @@
     </div>
   </main>
 
-  <script src="/catalog.js"></script>
   <script>
     const API_BASE = (localStorage.getItem("API_BASE") || "https://wireshop-backend.onrender.com").replace(/\/+$/, "");
     const API_USERS = API_BASE + '/api/users';
     const API_INVENTORY = API_BASE + '/api/inventory-all';
-    const API_CATALOG_SYNC = API_BASE + '/api/catalog-sync';
 
     function getSession(){
       try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; }
@@ -512,132 +454,11 @@
       }
     }
 
-    async function getInventoryRows(){
-      const res = await fetch(API_INVENTORY, { headers: authHeaders() });
-      if (!res.ok) throw new Error(`Inventory failed: ${res.status}`);
-      return res.json();
-    }
 
-    function getCatalogArray(){
-      if (Array.isArray(window.catalog)) return window.catalog;
-      return [];
-    }
 
-    function normalizeText(v){
-      return String(v == null ? '' : v).trim();
-    }
 
-    function buildCatalogPreviewRows(inventoryRows, catalogRows){
-      const invMap = new Map(
-        (inventoryRows || []).map(row => [normalizeText(row.partNumber), row])
-      );
 
-      const preview = [];
 
-      for (const item of catalogRows) {
-        const partNumber = normalizeText(item.partNumber);
-        if (!partNumber) continue;
-
-        const inv = invMap.get(partNumber);
-        if (!inv) continue;
-
-        const missing = [];
-        if (!normalizeText(inv.description)) missing.push(`description → ${item.printName || ''}`);
-        if (!normalizeText(inv.location) && normalizeText(item.location)) missing.push(`location → ${item.location}`);
-        if (!normalizeText(inv.saNumber) && normalizeText(item.saNumber)) missing.push(`SA → ${item.saNumber}`);
-        if ((inv.expectedHours == null || inv.expectedHours === '') && item.expectedHours != null && item.expectedHours !== '') {
-          missing.push(`hours → ${item.expectedHours}`);
-        }
-        if (!normalizeText(inv.notes) && normalizeText(item.notes)) missing.push(`notes → ${item.notes}`);
-
-        if (missing.length) {
-          preview.push({
-            partNumber,
-            printName: item.printName || '',
-            missing
-          });
-        }
-      }
-
-      return preview;
-    }
-
-    async function previewCatalogSync(){
-      const previewBox = document.getElementById('catalogPreview');
-      const catalogRows = getCatalogArray();
-
-      if (!catalogRows.length) {
-        setMsg('catalogSyncMsg', 'catalog.js did not load, so preview cannot run.', 'err');
-        previewBox.style.display = 'none';
-        previewBox.innerHTML = '';
-        return;
-      }
-
-      try {
-        setMsg('catalogSyncMsg', 'Checking old inventory rows against catalog…', 'muted');
-        const inventoryRows = await getInventoryRows();
-        const preview = buildCatalogPreviewRows(inventoryRows, catalogRows);
-
-        if (!preview.length) {
-          previewBox.style.display = 'block';
-          previewBox.innerHTML = '<div class="preview-row">No missing metadata found.</div>';
-          setMsg('catalogSyncMsg', 'Preview complete. Nothing missing.', 'ok');
-          return;
-        }
-
-        previewBox.style.display = 'block';
-        previewBox.innerHTML = preview.slice(0, 200).map(row => `
-          <div class="preview-row">
-            <div class="preview-part">${escapeHtml(row.partNumber)} — ${escapeHtml(row.printName || 'No print name')}</div>
-            <div>${escapeHtml(row.missing.join(' | '))}</div>
-          </div>
-        `).join('');
-
-        const extra = preview.length > 200 ? ` Showing first 200 of ${preview.length}.` : ` ${preview.length} parts need repair.`;
-        setMsg('catalogSyncMsg', 'Preview complete.' + extra, 'ok');
-      } catch (err) {
-        console.error(err);
-        setMsg('catalogSyncMsg', err.message || 'Preview failed.', 'err');
-        previewBox.style.display = 'none';
-        previewBox.innerHTML = '';
-      }
-    }
-
-    async function runCatalogSync(){
-      const catalogRows = getCatalogArray();
-      if (!catalogRows.length) {
-        setMsg('catalogSyncMsg', 'catalog.js did not load, so repair cannot run.', 'err');
-        return;
-      }
-
-      const ok = window.confirm(
-        'Run catalog metadata repair now?\n\nThis will fill missing description/location/SA/hours/notes in old inventory rows.\nIt will NOT change quantity.'
-      );
-      if (!ok) return;
-
-      try {
-        setMsg('catalogSyncMsg', 'Running catalog repair…', 'muted');
-
-        const res = await fetch(API_CATALOG_SYNC, {
-          method: 'POST',
-          headers: authHeaders(),
-          body: JSON.stringify({ catalog: catalogRows })
-        });
-
-        const data = await res.json().catch(() => ({}));
-
-        if (!res.ok) {
-          throw new Error(data.error || `Repair failed (${res.status})`);
-        }
-
-        setMsg('catalogSyncMsg', `Repair complete. Updated ${Number(data.updated || 0)} part(s).`, 'ok');
-        await loadLowStock();
-        await previewCatalogSync();
-      } catch (err) {
-        console.error(err);
-        setMsg('catalogSyncMsg', err.message || 'Repair failed.', 'err');
-      }
-    }
 
     const lowStockList = document.getElementById('lowStockList');
     lowStockList.addEventListener('click', async (e) => {
@@ -677,8 +498,6 @@
 
     if (requireAdmin()) {
       document.getElementById('btnAddUser')?.addEventListener('click', addUser);
-      document.getElementById('previewCatalogSyncBtn')?.addEventListener('click', previewCatalogSync);
-      document.getElementById('runCatalogSyncBtn')?.addEventListener('click', runCatalogSync);
       wireTableClicks();
       loadUsers();
       loadLowStock();
