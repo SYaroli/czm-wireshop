@@ -180,8 +180,21 @@
       content:"Hide";
     }
 
+    .low-stock-card.collapsed .low-stock-body {
+      display:none;
+    }
+
+    .low-stock-card.collapsed .toggle-btn::after {
+      content:"Show";
+    }
+
+    .low-stock-card:not(.collapsed) .toggle-btn::after {
+      content:"Hide";
+    }
+
     .low-list,
-    .users-body {
+    .users-body,
+    .low-stock-body {
       margin-top:4px;
     }
 
@@ -356,15 +369,18 @@
 
   <main>
     <div class="page-grid">
-      <div class="card" id="lowStockCard" style="display:none;">
+      <div class="card low-stock-card collapsed" id="lowStockCard" style="display:none;">
         <div class="section-head">
           <div>
             <h2>Low Stock Alerts</h2>
             <p>Parts at or below minimum quantity.</p>
           </div>
+          <button id="toggleLowStockBtn" class="toggle-btn" type="button" aria-expanded="false"></button>
         </div>
-        <div id="lowStockList" class="low-list"></div>
-        <div id="lowMsg" class="msg muted"></div>
+        <div class="low-stock-body" id="lowStockBody">
+          <div id="lowStockList" class="low-list"></div>
+          <div id="lowMsg" class="msg muted"></div>
+        </div>
       </div>
 
       <div class="card" id="movementCard">
@@ -726,12 +742,6 @@
       }
     }
 
-
-
-
-
-
-
     const lowStockList = document.getElementById('lowStockList');
     lowStockList.addEventListener('click', async (e) => {
       if (e.target.classList.contains('queue-btn')) {
@@ -768,7 +778,6 @@
       }
     });
 
-
     function setUsersCollapsed(collapsed){
       const card = document.getElementById('usersCard');
       const btn = document.getElementById('toggleUsersBtn');
@@ -777,13 +786,29 @@
       btn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
     }
 
+    function setLowStockCollapsed(collapsed){
+      const card = document.getElementById('lowStockCard');
+      const btn = document.getElementById('toggleLowStockBtn');
+      if(!card || !btn) return;
+      card.classList.toggle('collapsed', !!collapsed);
+      btn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+    }
+
     if (requireAdmin()) {
       document.getElementById('btnAddUser')?.addEventListener('click', addUser);
+
       document.getElementById('toggleUsersBtn')?.addEventListener('click', () => {
         const card = document.getElementById('usersCard');
         setUsersCollapsed(!card || !card.classList.contains('collapsed') ? true : false);
       });
+
+      document.getElementById('toggleLowStockBtn')?.addEventListener('click', () => {
+        const card = document.getElementById('lowStockCard');
+        setLowStockCollapsed(!card || !card.classList.contains('collapsed') ? true : false);
+      });
+
       setUsersCollapsed(true);
+      setLowStockCollapsed(true);
       wireTableClicks();
       loadUsers();
       loadLowStock();
