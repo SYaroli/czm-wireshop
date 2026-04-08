@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CZM • Bench Stock</title>
+  <link rel="stylesheet" href="/style.css" />
+  <style>
+    .brand-actions .navbtn{display:inline-block;background:#1a1c20;color:#bbb;padding:6px 12px;border-radius:10px;text-decoration:none;border:1px solid #3a3f44;font-weight:600;font-size:.9rem;margin-left:8px}
+    .brand-actions .navbtn.active{background:#b30000;color:#fff;border-color:#ff4d4d}
+    .page-wrap{max-width:1300px;margin:20px auto;padding:0 16px}
+    .card{background:#fff;border:1px solid #d9dfe8;border-radius:14px;box-shadow:0 3px 10px rgba(0,0,0,.06);overflow:hidden}
+    .card-head{padding:16px 18px;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+    .card-title{margin:0;font-size:1.15rem;font-weight:900}
+    .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .toolbar input{padding:10px 12px;border:1px solid #cfd6df;border-radius:10px;font:inherit}
+    .toolbar .search{min-width:260px;flex:1}
+    .toolbar .btn{padding:10px 14px;border-radius:10px;border:1px solid #b30000;background:#b30000;color:#fff;font-weight:800;cursor:pointer}
+    .toolbar .btn.secondary{background:#fff;color:#333;border-color:#cfd6df}
+    .admin-panel{display:none;padding:16px 18px;border-bottom:1px solid #e5e7eb;background:#fafbfc}
+    .form-grid{display:grid;grid-template-columns:1.3fr 2fr 1.2fr 1.2fr .8fr auto;gap:10px;align-items:end}
+    .field label{display:block;font-size:.82rem;font-weight:800;color:#555;margin-bottom:6px}
+    .field input{width:100%;padding:10px 12px;border:1px solid #cfd6df;border-radius:10px;font:inherit;box-sizing:border-box}
+    .table-wrap{overflow:auto}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:12px 14px;border-bottom:1px solid #edf1f5;text-align:left;vertical-align:middle}
+    th{background:#f7f9fb;font-size:.9rem}
+    td.actions{white-space:nowrap}
+    .small-btn{padding:7px 10px;border-radius:8px;border:1px solid #cfd6df;background:#fff;cursor:pointer;font-weight:700;margin-right:6px}
+    .small-btn.delete{border-color:#b30000;color:#b30000}
+    .muted{color:#6b7280}
+    .hidden{display:none !important}
+    .pill{display:inline-block;padding:4px 8px;border-radius:999px;background:#f1f5f9;font-weight:700;font-size:.8rem}
+    @media (max-width: 1100px){.form-grid{grid-template-columns:1fr 1fr}.form-grid .wide{grid-column:span 2}}
+    @media (max-width: 700px){.form-grid{grid-template-columns:1fr}.form-grid .wide{grid-column:span 1} .toolbar .search{min-width:0;width:100%}}
+  </style>
+</head>
+<body>
+  <div class="brand-bar">
+    <div class="brand-inner">
+      <a class="brand-logo" href="/dashboard.html">
+        <img src="/czm-logo.png" alt="CZM">
+        <h1 class="brand-title">CZM • Bench Stock</h1>
+      </a>
+      <div class="brand-actions">
+        <a class="navbtn" href="/dashboard.html">Dashboard</a>
+        <a class="navbtn" href="/assignments.html">Build Next</a>
+        <a class="navbtn" href="/inventory-list.html">Inventory</a>
+        <a class="navbtn active" href="/bench-stock.html">Bench Stock</a>
+        <a class="navbtn" href="/admin.html">Admin</a>
+        <button id="logoutBtn" class="navbtn">Logout</button>
+      </div>
+    </div>
+  </div>
+
+  <main class="page-wrap">
+    <section class="card">
+      <div class="card-head">
+        <h2 class="card-title">Bench Stock Inventory</h2>
+        <div class="toolbar">
+          <input id="searchBox" class="search" type="text" placeholder="Search part number, description, location, manufacturer" />
+          <button id="toggleAdminBtn" class="btn hidden" type="button">Add Item</button>
+          <button id="exportBtn" class="btn secondary" type="button">Export CSV</button>
+        </div>
+      </div>
+
+      <div id="adminPanel" class="admin-panel">
+        <div class="form-grid">
+          <div class="field">
+            <label for="partNumber">Part Number</label>
+            <input id="partNumber" type="text" />
+          </div>
+          <div class="field wide">
+            <label for="description">Description</label>
+            <input id="description" type="text" />
+          </div>
+          <div class="field">
+            <label for="location">Location</label>
+            <input id="location" type="text" />
+          </div>
+          <div class="field">
+            <label for="manufacturer">Manufacturer</label>
+            <input id="manufacturer" type="text" />
+          </div>
+          <div class="field">
+            <label for="qty">Qty</label>
+            <input id="qty" type="number" min="0" step="1" value="0" />
+          </div>
+          <div class="field">
+            <button id="saveBtn" class="btn" type="button">Save</button>
+          </div>
+        </div>
+        <p id="formStatus" class="muted" style="margin:10px 0 0 0;"></p>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Part Number</th>
+              <th>Description</th>
+              <th>Location</th>
+              <th>Manufacturer</th>
+              <th>Qty</th>
+              <th>Updated</th>
+              <th>By</th>
+              <th id="actionsHead" class="hidden">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="itemsBody">
+            <tr><td colspan="8" class="muted">Loading bench stock...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const API_ROOT = 'https://wireshop-backend.onrender.com';
+    const user = (() => { try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; } })();
+    if (!user || !user.username) window.location.href = '/index.html';
+
+    const itemsBody = document.getElementById('itemsBody');
+    const searchBox = document.getElementById('searchBox');
+    const adminPanel = document.getElementById('adminPanel');
+    const toggleAdminBtn = document.getElementById('toggleAdminBtn');
+    const actionsHead = document.getElementById('actionsHead');
+    const formStatus = document.getElementById('formStatus');
+    const fields = {
+      partNumber: document.getElementById('partNumber'),
+      description: document.getElementById('description'),
+      location: document.getElementById('location'),
+      manufacturer: document.getElementById('manufacturer'),
+      qty: document.getElementById('qty'),
+    };
+
+    let isAdmin = String(user.role || '').toLowerCase() === 'admin';
+    let allRows = [];
+    let editingPart = null;
+
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      localStorage.removeItem('user');
+      location.href = '/index.html';
+    });
+
+    function esc(value){
+      return String(value || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+    }
+
+    function setStatus(message, ok = false){
+      formStatus.textContent = message || '';
+      formStatus.style.color = !message ? '#6b7280' : (ok ? '#15803d' : '#b91c1c');
+    }
+
+    async function api(path, opts = {}){
+      const res = await fetch(API_ROOT + path, {
+        method: opts.method || 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user': user.username,
+        },
+        body: opts.body ? JSON.stringify(opts.body) : undefined,
+      });
+
+      if (!res.ok) {
+        let msg = 'Request failed';
+        try {
+          const data = await res.json();
+          msg = data.error || JSON.stringify(data);
+        } catch {
+          msg = await res.text();
+        }
+        throw new Error(msg || 'Request failed');
+      }
+
+      if (res.status === 204) return null;
+      return res.json();
+    }
+
+    async function whoami(){
+      try {
+        const me = await api('/api/auth/me');
+        isAdmin = !!me.isAdmin;
+      } catch (_) {}
+
+      toggleAdminBtn.classList.toggle('hidden', !isAdmin);
+      actionsHead.classList.toggle('hidden', !isAdmin);
+    }
+
+    function clearForm(){
+      editingPart = null;
+      fields.partNumber.value = '';
+      fields.partNumber.disabled = false;
+      fields.description.value = '';
+      fields.location.value = '';
+      fields.manufacturer.value = '';
+      fields.qty.value = '0';
+      document.getElementById('saveBtn').textContent = 'Save';
+      setStatus('');
+    }
+
+    function fillForm(row){
+      editingPart = row.partNumber;
+      fields.partNumber.value = row.partNumber || '';
+      fields.partNumber.disabled = true;
+      fields.description.value = row.description || '';
+      fields.location.value = row.location || '';
+      fields.manufacturer.value = row.manufacturer || '';
+      fields.qty.value = Number(row.qty || 0);
+      adminPanel.style.display = 'block';
+      document.getElementById('saveBtn').textContent = 'Update';
+      setStatus(`Editing ${row.partNumber}`);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function filteredRows(){
+      const q = String(searchBox.value || '').trim().toLowerCase();
+      if (!q) return allRows;
+      return allRows.filter(r => [r.partNumber, r.description, r.location, r.manufacturer]
+        .some(v => String(v || '').toLowerCase().includes(q)));
+    }
+
+    function render(){
+      const rows = filteredRows();
+      if (!rows.length) {
+        itemsBody.innerHTML = `<tr><td colspan="8" class="muted">No bench stock items found.</td></tr>`;
+        return;
+      }
+
+      itemsBody.innerHTML = rows.map(r => `
+        <tr data-part="${esc(r.partNumber)}">
+          <td><strong>${esc(r.partNumber)}</strong></td>
+          <td>${esc(r.description)}</td>
+          <td>${esc(r.location)}</td>
+          <td>${esc(r.manufacturer)}</td>
+          <td><span class="pill">${Number(r.qty || 0)}</span></td>
+          <td>${r.updatedAt ? esc(new Date(r.updatedAt).toLocaleString()) : ''}</td>
+          <td>${esc(r.updatedBy)}</td>
+          <td class="actions ${isAdmin ? '' : 'hidden'}">
+            <button class="small-btn js-edit" type="button">Edit</button>
+            <button class="small-btn delete js-delete" type="button">Delete</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    async function loadRows(){
+      try {
+        allRows = await api('/api/benchstock-all');
+        render();
+      } catch (err) {
+        console.error(err);
+        itemsBody.innerHTML = `<tr><td colspan="8" class="muted">Failed to load bench stock.</td></tr>`;
+      }
+    }
+
+    async function saveRow(){
+      const payload = {
+        partNumber: fields.partNumber.value.trim(),
+        description: fields.description.value.trim(),
+        location: fields.location.value.trim(),
+        manufacturer: fields.manufacturer.value.trim(),
+        qty: Number(fields.qty.value || 0),
+      };
+
+      if (!payload.partNumber && !editingPart) return setStatus('Part number is required.');
+      if (!Number.isFinite(payload.qty) || payload.qty < 0) return setStatus('Qty must be 0 or higher.');
+
+      try {
+        if (editingPart) {
+          await api(`/api/benchstock/${encodeURIComponent(editingPart)}`, { method: 'PUT', body: payload });
+          setStatus('Bench stock item updated.', true);
+        } else {
+          await api('/api/benchstock', { method: 'POST', body: payload });
+          setStatus('Bench stock item added.', true);
+        }
+        clearForm();
+        await loadRows();
+      } catch (err) {
+        console.error(err);
+        setStatus(err.message || 'Failed to save item.');
+      }
+    }
+
+    function exportCsv(){
+      const rows = filteredRows();
+      const header = ['Part Number','Description','Location','Manufacturer','Qty','Updated','By'];
+      const lines = [header.join(',')].concat(rows.map(r => [
+        r.partNumber,
+        r.description,
+        r.location,
+        r.manufacturer,
+        Number(r.qty || 0),
+        r.updatedAt ? new Date(r.updatedAt).toLocaleString() : '',
+        r.updatedBy || '',
+      ].map(v => `"${String(v || '').replace(/"/g, '""')}"`).join(',')));
+
+      const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'bench-stock.csv';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    toggleAdminBtn.addEventListener('click', () => {
+      if (adminPanel.style.display === 'block') {
+        adminPanel.style.display = 'none';
+        clearForm();
+      } else {
+        adminPanel.style.display = 'block';
+        clearForm();
+      }
+    });
+
+    document.getElementById('saveBtn').addEventListener('click', saveRow);
+    document.getElementById('exportBtn').addEventListener('click', exportCsv);
+    searchBox.addEventListener('input', render);
+
+    itemsBody.addEventListener('click', async (e) => {
+      const tr = e.target.closest('tr[data-part]');
+      if (!tr) return;
+      const part = tr.dataset.part;
+      const row = allRows.find(x => x.partNumber === part);
+      if (!row) return;
+
+      if (e.target.classList.contains('js-edit')) {
+        fillForm(row);
+      }
+
+      if (e.target.classList.contains('js-delete')) {
+        if (!confirm(`Delete bench stock item ${part}?`)) return;
+        try {
+          await api(`/api/benchstock/${encodeURIComponent(part)}`, { method: 'DELETE' });
+          if (editingPart === part) clearForm();
+          await loadRows();
+        } catch (err) {
+          console.error(err);
+          alert(err.message || 'Failed to delete item.');
+        }
+      }
+    });
+
+    (async function init(){
+      await whoami();
+      await loadRows();
+    })();
+  </script>
+</body>
+</html>
