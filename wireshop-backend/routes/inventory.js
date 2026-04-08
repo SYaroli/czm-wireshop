@@ -335,4 +335,134 @@ router.post('/inventory/:partNumber/log', requireUser, (req,res)=>{
   );
 });
 
+// ===== BENCH STOCK =====
+db.run(`CREATE TABLE IF NOT EXISTS bench_stock (
+  partNumber TEXT PRIMARY KEY,
+  description TEXT,
+  location TEXT,
+  manufacturer TEXT,
+  qty INTEGER NOT NULL DEFAULT 0,
+  updatedAt INTEGER,
+  updatedBy TEXT
+)`);
+
+router.get('/benchstock-all', requireUser, (_req,res)=>{
+  db.all(
+    `SELECT partNumber, description, location, manufacturer, qty, updatedAt, updatedBy
+       FROM bench_stock
+      ORDER BY partNumber COLLATE NOCASE ASC`,
+    [],
+    (err, rows)=>{
+      if (err) return res.status(500).json({ error:'db error' });
+      res.json(rows || []);
+    }
+  );
+});
+
+router.get('/benchstock/:partNumber', requireUser, (req,res)=>{
+  db.get(
+    `SELECT partNumber, description, location, manufacturer, qty, updatedAt, updatedBy
+       FROM bench_stock
+      WHERE partNumber = ?`,
+    [req.params.partNumber],
+    (err, row)=>{
+      if (err) return res.status(500).json({ error:'db error' });
+      if (!row) return res.status(404).json({ error:'not found' });
+      res.json(row);
+    }
+  );
+});
+
+router.post('/benchstock', requireAdmin, (req,res)=>{
+  const {
+    partNumber,
+    description = '',
+    location = '',
+    manufacturer = '',
+    qty = 0,
+  } = req.body || {};
+
+  const pn = String(partNumber || '').trim();
+  if (!pn) return res.status(400).json({ error:'partNumber required' });
+
+  const parsedQty = Number(qty);
+  if (!Number.isFinite(parsedQty) || parsedQty < 0) {
+    return res.status(400).json({ error:'invalid qty' });
+  }
+
+  const now = Date.now();
+  db.run(
+    `INSERT INTO bench_stock (partNumber, description, location, manufacturer, qty, updatedAt, updatedBy)
+     VALUES (?,?,?,?,?,?,?)`,
+    [
+      pn,
+      String(description || '').trim(),
+      String(location || '').trim(),
+      String(manufacturer || '').trim(),
+      Math.trunc(parsedQty),
+      now,
+      req.user
+    ],
+    function(err){
+      if (err) {
+        if (String(err.message || '').includes('UNIQUE')) return res.status(409).json({ error:'exists' });
+        return res.status(500).json({ error:'db error' });
+      }
+      res.json({ ok:true, partNumber: pn });
+    }
+  );
+});
+
+router.put('/benchstock/:partNumber', requireAdmin, (req,res)=>{
+  const {
+    description = '',
+    location = '',
+    manufacturer = '',
+    qty = 0,
+  } = req.body || {};
+
+  const parsedQty = Number(qty);
+  if (!Number.isFinite(parsedQty) || parsedQty < 0) {
+    return res.status(400).json({ error:'invalid qty' });
+  }
+
+  const now = Date.now();
+  db.run(
+    `UPDATE bench_stock
+        SET description = ?,
+            location = ?,
+            manufacturer = ?,
+            qty = ?,
+            updatedAt = ?,
+            updatedBy = ?
+      WHERE partNumber = ?`,
+    [
+      String(description || '').trim(),
+      String(location || '').trim(),
+      String(manufacturer || '').trim(),
+      Math.trunc(parsedQty),
+      now,
+      req.user,
+      req.params.partNumber,
+    ],
+    function(err){
+      if (err) return res.status(500).json({ error:'db error' });
+      if (this.changes === 0) return res.status(404).json({ error:'not found' });
+      res.json({ ok:true, partNumber: req.params.partNumber });
+    }
+  );
+});
+
+router.delete('/benchstock/:partNumber', requireAdmin, (req,res)=>{
+  db.run(
+    `DELETE FROM bench_stock WHERE partNumber = ?`,
+    [req.params.partNumber],
+    function(err){
+      if (err) return res.status(500).json({ error:'db error' });
+      if (this.changes === 0) return res.status(404).json({ error:'not found' });
+      res.json({ ok:true });
+    }
+  );
+});
+
 module.exports = router;
