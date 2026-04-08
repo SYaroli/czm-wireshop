@@ -239,22 +239,36 @@ router.get('/inventory/:partNumber/log', requireUser, (req,res)=>{
 
 // admin-only: consolidated inventory movement feed
 router.get('/inventory-log', requireAdmin, (req,res)=>{
-  const limitRaw = Number(req.query.limit || 500);
-  const limit = Number.isFinite(limitRaw) ? Math.max(1, Math.min(2000, Math.trunc(limitRaw))) : 500;
+  const raw = String(req.query.limit || '').trim();
+  const hasLimit = raw !== '';
+
+  let sql = `
+    SELECT id,
+           partNumber,
+           ts       AS "when",
+           user,
+           delta,
+           qtyBefore AS "before",
+           qtyAfter  AS "after",
+           note
+      FROM inventory_log
+     ORDER BY ts DESC
+  `;
+  let params = [];
+
+  if (hasLimit) {
+    const limitRaw = Number(raw);
+    const limit = Number.isFinite(limitRaw)
+      ? Math.max(1, Math.trunc(limitRaw))
+      : 500;
+
+    sql += ` LIMIT ?`;
+    params.push(limit);
+  }
 
   db.all(
-    `SELECT id,
-            partNumber,
-            ts       AS "when",
-            user,
-            delta,
-            qtyBefore AS "before",
-            qtyAfter  AS "after",
-            note
-       FROM inventory_log
-      ORDER BY ts DESC
-      LIMIT ?`,
-    [limit],
+    sql,
+    params,
     (err, rows)=>{
       if (err) return res.status(500).json({ error: 'db error' });
       res.json(rows || []);
