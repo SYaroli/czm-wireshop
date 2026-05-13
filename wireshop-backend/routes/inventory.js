@@ -2,15 +2,6 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 
-let ADMIN_USERS = (process.env.ADMIN_USERS || '')
-  .split(',')
-  .map(s => s.trim().toLowerCase())
-  .filter(Boolean);
-
-['shane','shane.yaroli','tyler','tyler.ellis','Tyler.Ellis'.toLowerCase()].forEach(u => {
-  if (!ADMIN_USERS.includes(u.toLowerCase())) ADMIN_USERS.push(u.toLowerCase());
-});
-
 function getUser(req) {
   return (req.header('x-user') || '').trim().toLowerCase();
 }
@@ -23,9 +14,17 @@ function requireUser(req,res,next){
 function requireAdmin(req,res,next){
   const u = getUser(req);
   if(!u) return res.status(401).json({error:'x-user required'});
-  if(!ADMIN_USERS.includes(u)) return res.status(403).json({error:'admin only'});
-  req.user = u;
-  next();
+  db.get(
+    `SELECT role FROM users WHERE username = ? COLLATE NOCASE`,
+    [u],
+    (err, row) => {
+      if(err) return res.status(500).json({error:'db error'});
+      if(!row || String(row.role||'').toLowerCase() !== 'admin')
+        return res.status(403).json({error:'admin only'});
+      req.user = u;
+      next();
+    }
+  );
 }
 
 db.run(`CREATE TABLE IF NOT EXISTS inventory (
