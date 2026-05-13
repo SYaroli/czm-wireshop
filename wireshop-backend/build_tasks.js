@@ -511,19 +511,8 @@ module.exports = function attachBuildTasks(app, opts = {}) {
         task.startedAt = task.claimedAt || t;
       }
 
-      if (qty === task.qty) {
-        await run(
-          `UPDATE build_tasks SET status='done', qty=0, completedAt=?, pausedBySystem=0, pausedReason=NULL WHERE id=? AND status='claimed'`,
-          [t, id]
-        );
-      } else {
-        const remaining = task.qty - qty;
-        await run(
-          `UPDATE build_tasks SET qty=?, claimedBy=?, claimedAt=?, pausedBySystem=0, pausedReason=NULL WHERE id=? AND status='claimed'`,
-          [remaining, task.claimedBy || user, task.claimedAt || t, id]
-        );
-      }
-
+      // Compute elapsed for THIS unit BEFORE any DB updates that would reset startedAt.
+      // This captures the time from when this unit's timer started to right now.
       const elapsedSecondsAtComplete = computeElapsedSeconds(
         {
           startedAt: Number(task.startedAt || task.claimedAt || t),
@@ -534,11 +523,29 @@ module.exports = function attachBuildTasks(app, opts = {}) {
         t
       );
 
-      await run(
-        `INSERT INTO build_task_events (taskId, type, qty, user, ts, elapsedSeconds)
-         VALUES (?, 'complete', ?, ?, ?, ?)`,
-        [id, qty, user, t, elapsedSecondsAtComplete]
-      );
+      await tx(async () => {
+        if (qty === task.qty) {
+          // Completing the last (or only) unit — mark task done
+          const r = await run(
+            `UPDATE build_tasks SET status='done', qty=0, completedAt=?, pausedBySystem=0, pausedReason=NULL WHERE id=? AND status='claimed'`,
+            [t, id]
+          );
+          if (r.changes === 0) throw new Error('complete-conflict');
+        } else {
+          // Partial complete — reset the timer so the next unit starts fresh from NOW
+          const remaining = task.qty - qty;
+          const r = await run(
+            `UPDATE build_tasks SET qty=?, claimedBy=?, claimedAt=?, pausedBySystem=0, pausedReason=NULL, startedAt=?, totalPausedSeconds=0, isPaused=0, pausedAt=NULL WHERE id=? AND status='claimed'`,
+            [remaining, task.claimedBy || user, task.claimedAt || t, t, id]
+          );
+          if (r.changes === 0) throw new Error('complete-conflict');
+        }
+
+        await run(
+          `INSERT INTO build_task_events (taskId, type, qty, user, ts, elapsedSeconds)\n         VALUES (?, 'complete', ?, ?, ?, ?)`,
+          [id, qty, user, t, elapsedSecondsAtComplete]
+        );
+      });
 
       const updated = await get(`SELECT * FROM build_tasks WHERE id=?`, [id]);
       res.json({ task: updated, completedQty: qty, addToInventory: { partNumber: task.partNumber, qty } });
