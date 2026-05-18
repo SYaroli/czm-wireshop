@@ -108,6 +108,31 @@ router.get('/:id/download', (req, res) => {
   );
 });
 
+// ── UPDATE — replace file_data in place (admin only) ─────────────────────────
+// Body: { file_data (base64), filename? }
+router.put('/:id', requireAdmin, (req, res) => {
+  const { file_data, filename } = req.body || {};
+  if (!file_data) return res.status(400).json({ error: 'Missing file_data' });
+
+  let buffer;
+  try { buffer = Buffer.from(file_data, 'base64'); }
+  catch (e) { return res.status(400).json({ error: 'Invalid base64 file_data' }); }
+
+  const user = currentUser(req);
+  const sql = filename
+    ? `UPDATE komax_files SET file_data=?, file_size=?, filename=?, uploaded_by=?, uploaded_at=datetime('now','localtime') WHERE id=?`
+    : `UPDATE komax_files SET file_data=?, file_size=?, uploaded_by=?, uploaded_at=datetime('now','localtime') WHERE id=?`;
+  const params = filename
+    ? [buffer, buffer.length, filename, user, req.params.id]
+    : [buffer, buffer.length, user, req.params.id];
+
+  db.run(sql, params, function (err) {
+    if (err) return res.status(500).json({ error: err.message });
+    if (this.changes === 0) return res.status(404).json({ error: 'File not found' });
+    res.json({ ok: true });
+  });
+});
+
 // ── DELETE (admin only) ───────────────────────────────────────────────────────
 router.delete('/:id', requireAdmin, (req, res) => {
   db.run(`DELETE FROM komax_files WHERE id = ?`, [req.params.id], function (err) {
