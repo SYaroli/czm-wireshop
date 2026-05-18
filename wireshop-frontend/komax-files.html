@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CZM • Komax Files</title>
+  <link rel="stylesheet" href="style.css"/>
+  <style>
+    .file-table { width:100%; border-collapse:collapse; margin-top:12px; font-size:.9rem; }
+    .file-table th {
+      text-align:left; padding:9px 12px;
+      background:#1e2226; color:#fff;
+      position:sticky; top:0;
+    }
+    .file-table td { padding:9px 12px; border-bottom:1px solid rgba(128,128,128,.15); }
+    .file-table tr:hover td { background:rgba(0,0,0,.03); }
+    .dl-btn {
+      background:#1a6b3a; color:#fff; text-decoration:none;
+      padding:6px 14px; border-radius:6px; font-weight:700;
+      font-size:.85rem; white-space:nowrap; display:inline-block;
+    }
+    .search-input {
+      padding:8px 12px; border:1px solid #ccc; border-radius:6px;
+      font-size:.95rem; width:100%; max-width:340px; box-sizing:border-box;
+    }
+    .empty { padding:24px; opacity:.6; text-align:center; }
+  </style>
+</head>
+<body>
+  <div class="brand-bar">
+    <div class="brand-inner">
+      <a class="brand-logo" href="dashboard.html">
+        <img src="czm-logo.png" alt="CZM">
+        <h1 class="brand-title">CZM • Komax Files</h1>
+      </a>
+      <div class="brand-actions" id="navActions">
+        <a href="/dashboard.html" class="navbtn">Dashboard</a>
+        <a href="/assignments.html" class="navbtn">Build Next</a>
+        <a href="/inventory" class="navbtn">Inventory</a>
+        <a href="/admin.html" class="navbtn" id="adminNav" style="display:none;">Admin</a>
+        <button id="logoutBtn" class="navbtn">Logout</button>
+      </div>
+    </div>
+  </div>
+
+  <main class="page">
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
+        <div>
+          <h2 style="margin:0;">Komax Job Files</h2>
+          <div style="font-size:.85rem;opacity:.7;margin-top:3px;">Download the Excel cut/crimp file for any harness.</div>
+        </div>
+        <input class="search-input" id="searchInput" placeholder="Search part number or filename…" />
+      </div>
+
+      <div style="overflow-x:auto;">
+        <table class="file-table" id="fileTable">
+          <thead>
+            <tr>
+              <th>Part Number</th>
+              <th>Filename</th>
+              <th>Uploaded By</th>
+              <th>Uploaded</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="fileTbody">
+            <tr><td colspan="5" class="empty">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const API_ROOT = 'https://wireshop-backend.onrender.com';
+
+    let session = {};
+    try { session = JSON.parse(localStorage.getItem('user') || '{}'); } catch {}
+
+    if (!session.username) { location.href = 'index.html'; }
+
+    // Show admin nav if applicable
+    if (String(session.role||'').toLowerCase() === 'admin') {
+      document.getElementById('adminNav').style.display = '';
+    }
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      localStorage.removeItem('user');
+      location.href = 'index.html';
+    });
+
+    let allFiles = [];
+
+    function escHtml(s) {
+      return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    function render(files) {
+      const tbody = document.getElementById('fileTbody');
+      if (!files.length) {
+        tbody.innerHTML = '<tr><td colspan="5" class="empty">No files found.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = files.map(f => `
+        <tr>
+          <td><a href="/inv/${encodeURIComponent(f.part_number)}" style="font-weight:700;color:inherit;">${escHtml(f.part_number)}</a></td>
+          <td style="opacity:.85;">${escHtml(f.filename)}</td>
+          <td>${escHtml(f.uploaded_by)}</td>
+          <td style="font-size:.82rem;opacity:.7;">${escHtml(f.uploaded_at)}</td>
+          <td>
+            <a class="dl-btn"
+               href="${API_ROOT}/api/komax-files/${f.id}/download">
+              ⬇ Download
+            </a>
+          </td>
+        </tr>`).join('');
+    }
+
+    async function load() {
+      try {
+        const res  = await fetch(`${API_ROOT}/api/komax-files`, {
+          headers: { 'x-user': session.username || '' }
+        });
+        allFiles = await res.json();
+        render(allFiles);
+      } catch(e) {
+        document.getElementById('fileTbody').innerHTML =
+          `<tr><td colspan="5" class="empty" style="color:red;">Failed to load: ${e.message}</td></tr>`;
+      }
+    }
+
+    document.getElementById('searchInput').addEventListener('input', function() {
+      const q = this.value.toLowerCase();
+      render(q ? allFiles.filter(f =>
+        f.part_number.toLowerCase().includes(q) ||
+        f.filename.toLowerCase().includes(q)
+      ) : allFiles);
+    });
+
+    load();
+  </script>
+</body>
+</html>

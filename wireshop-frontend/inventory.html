@@ -236,6 +236,7 @@
         <a class="navbtn" href="/assignments.html">Build Next</a>
         <a class="navbtn active" href="/inventory">Inventory</a>
         <a class="navbtn" href="/archive.html">Archive</a>
+        <a class="navbtn" href="/komax-files.html">Komax Files</a>
         <a class="navbtn" href="/bench-stock.html">Bench Stock</a>
         <a id="adminNavBtn" class="navbtn" href="/admin.html">Admin</a>
         <button id="logoutBtn" class="navbtn">Logout</button>
@@ -509,6 +510,8 @@
             <div><b>Min Qty</b></div><div>${escapeHtml(String(row.minQty || 0))}</div>
             <div><b>Notes</b></div><div style="white-space:pre-wrap;">${escapeHtml(row.notes || '')}</div>
           </div>
+
+          <div id="komaxFileSection" style="margin-top:12px;"></div>
           </div>
 
           <hr class="detail-hr" />
@@ -574,6 +577,7 @@
 
       generatePartQr(row.partNumber, row.printName || '');
       loadMovement(partNumber);
+      checkKomaxFile(partNumber);
 
       // Mobile tech UX: collapse QR + Movement and auto-scroll to Adjust Inventory on phones
       (function(){
@@ -611,6 +615,36 @@
         }, 50);
       })();
 
+    }
+
+    async function checkKomaxFile(partNumber) {
+      const section = document.getElementById('komaxFileSection');
+      if (!section) return;
+      try {
+        const res  = await fetch(
+          `${API_BASE.replace('/api','')}` + `/api/komax-files/check?part_number=${encodeURIComponent(partNumber)}`,
+          { headers: { 'x-user': uname } }
+        );
+        const data = await res.json();
+        if (data.exists) {
+          const f = data.file;
+          section.innerHTML = `
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+                        padding:10px 14px;background:#f0faf4;border:1px solid #b2dfc2;
+                        border-radius:8px;">
+              <span style="font-size:1.3rem;">📄</span>
+              <div style="flex:1;min-width:0;">
+                <div style="font-weight:700;font-size:.9rem;">Komax Job File</div>
+                <div style="font-size:.8rem;opacity:.7;">${f.filename} &middot; uploaded by ${f.uploaded_by}</div>
+              </div>
+              <a href="https://wireshop-backend.onrender.com/api/komax-files/${f.id}/download"
+                 style="background:#1a6b3a;color:#fff;text-decoration:none;padding:8px 16px;
+                        border-radius:6px;font-weight:700;font-size:.9rem;white-space:nowrap;">
+                ⬇ Download
+              </a>
+            </div>`;
+        }
+      } catch(e) { /* no file, no problem */ }
     }
 
     function generatePartQr(partNumber, printName){
