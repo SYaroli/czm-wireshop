@@ -183,6 +183,24 @@ db.serialize(() => {
     ts INTEGER DEFAULT (strftime('%s','now')*1000)
   )`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_inv_txn_part_ts ON inventory_txns(partNumber, ts DESC)`);
+
+  // ===== KOMAX FILES =====
+  db.run(`CREATE TABLE IF NOT EXISTS komax_files (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    part_number TEXT    NOT NULL,
+    filename    TEXT    NOT NULL,
+    file_data   BLOB    NOT NULL,
+    file_size   INTEGER,
+    uploaded_by TEXT    NOT NULL,
+    uploaded_at TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
+  )`);
+
+  db.run(`CREATE TABLE IF NOT EXISTS komax_downloads (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    file_id       INTEGER NOT NULL,
+    downloaded_by TEXT    NOT NULL,
+    downloaded_at TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
+  )`);
 });
 
 module.exports = db;

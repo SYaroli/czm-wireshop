@@ -16,6 +16,7 @@ const archiveRouter = require("./routes/archive");
 const assignmentsRouter = require("./routes/assignments");
 const inventoryRoutes = require("./routes/inventory");
 const catalogSyncRouter = require("./routes/catalog-sync");
+const komaxFilesRouter  = require("./routes/komax-files");
 const archive = require("./archiveStore");
 const db = require("./db"); // ensures DB/tables are created
 
@@ -100,6 +101,7 @@ app.use("/api/archive", archiveRouter);
 app.use("/api/assignments", assignmentsRouter);
 app.use("/api", inventoryRoutes);
 app.use("/api", catalogSyncRouter);
+app.use("/api/komax-files", komaxFilesRouter);
 
 // NEW: Build Next endpoints (/api/build-tasks/*)
 attachBuildTasks(app);
