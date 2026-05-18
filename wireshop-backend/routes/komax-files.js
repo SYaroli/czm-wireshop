@@ -10,10 +10,22 @@ const ADMIN_USERS = (process.env.ADMIN_USERS || '')
   .split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
 
 const currentUser = req => (req.header('x-user') || 'unknown').toLowerCase();
-const requireAdmin = (req, res, next) =>
-  ADMIN_USERS.includes(currentUser(req))
-    ? next()
-    : res.status(403).json({ error: 'Admin only' });
+
+// Check env var first (bootstrap admins), then fall back to DB role
+function requireAdmin(req, res, next) {
+  const username = currentUser(req);
+  if (ADMIN_USERS.includes(username)) return next();
+  db.get(
+    `SELECT role FROM users WHERE LOWER(username) = ? AND active = 1`,
+    [username],
+    (err, row) => {
+      if (err || !row || row.role !== 'admin') {
+        return res.status(403).json({ error: 'Admin only' });
+      }
+      next();
+    }
+  );
+}
 
 // ── LIST all files (metadata only, no blobs) ──────────────────────────────────
 // Returns most-recent upload per part_number by default.
