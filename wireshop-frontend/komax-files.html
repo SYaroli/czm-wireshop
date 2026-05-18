@@ -36,7 +36,8 @@
     .submit-btn{background:#b30000;color:#fff;padding:8px 18px;border-radius:6px;font-weight:700;font-size:.9rem;border:none;cursor:pointer;white-space:nowrap;}
     .submit-btn:hover{background:#900;}
     .btn-cell{display:flex;gap:6px;align-items:center;}
-    .search-input{padding:8px 12px;border:1px solid #ccc;border-radius:6px;font-size:.95rem;width:100%;max-width:320px;box-sizing:border-box;}
+    .del-btn{background:#8a1a1a;color:#fff;padding:6px 14px;border-radius:6px;font-weight:700;font-size:.85rem;white-space:nowrap;border:none;cursor:pointer;}
+    .del-btn:hover{background:#6e0f0f;}
     .empty{padding:24px;opacity:.6;text-align:center;}
     .top-row{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px;}
   </style>
@@ -150,6 +151,7 @@
             <div class="btn-cell">
               <a class="dl-btn" href="${API_ROOT}/api/komax-files/${f.id}/download">⬇ Download</a>
               ${isAdmin ? `<button class="upd-btn update-btn" data-id="${f.id}">↑ Update</button>` : ''}
+              ${isAdmin ? `<button class="del-btn delete-btn" data-id="${f.id}" data-pn="${escHtml(f.part_number)}">✕ Delete</button>` : ''}
             </div>
           </td>
         </tr>`).join('');
@@ -159,6 +161,24 @@
           btn.addEventListener('click', () => {
             updateTargetId = btn.dataset.id;
             document.getElementById('updateFileInput').click();
+          });
+        });
+        tbody.querySelectorAll('.delete-btn').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            const pn = btn.dataset.pn;
+            const confirmed = confirm(
+              `Delete the Komax file for ${pn}?\n\nThis cannot be undone. Techs will lose access to this file immediately.`
+            );
+            if (!confirmed) return;
+            try {
+              const res = await fetch(`${API_ROOT}/api/komax-files/${btn.dataset.id}`, {
+                method: 'DELETE',
+                headers: { 'x-user': session.username || '' }
+              });
+              const d = await res.json();
+              if (d.ok) { load(); }
+              else { alert('Delete failed: ' + (d.error || 'unknown')); }
+            } catch(e) { alert('Delete failed: ' + e.message); }
           });
         });
       }
