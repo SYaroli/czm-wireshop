@@ -40,6 +40,13 @@
     .del-btn:hover{background:#6e0f0f;}
     .empty{padding:24px;opacity:.6;text-align:center;}
     .top-row{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px;}
+    .toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);
+           padding:12px 28px;border-radius:8px;font-weight:700;font-size:.95rem;
+           box-shadow:0 4px 16px rgba(0,0,0,.25);z-index:9999;
+           opacity:0;transition:opacity .25s ease;pointer-events:none;white-space:nowrap;}
+    .toast.show{opacity:1;}
+    .toast.success{background:#1a6b3a;color:#fff;}
+    .toast.error{background:#8a1a1a;color:#fff;}
   </style>
 </head>
 <body>
@@ -108,6 +115,7 @@
 
   <!-- Hidden file input for per-row Update -->
   <input type="file" id="updateFileInput" accept=".xlsx,.xlsm" style="display:none;" />
+  <div class="toast" id="toast"></div>
 
   <script>
     const API_ROOT = 'https://wireshop-backend.onrender.com';
@@ -130,6 +138,15 @@
 
     let allFiles = [];
     let updateTargetId = null;
+
+    let toastTimer = null;
+    function showToast(msg, type = 'success') {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.className = `toast ${type} show`;
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => { t.classList.remove('show'); }, 3000);
+    }
 
     function escHtml(s) {
       return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -244,9 +261,9 @@
             body: JSON.stringify({ file_data: reader.result.split(',')[1], filename: fi.name })
           });
           const d = await res.json();
-          if (d.ok) { load(); }
-          else { alert('Update failed: ' + (d.error || 'unknown')); }
-        } catch(e) { alert('Update failed: ' + e.message); }
+          if (d.ok) { showToast('✓ File updated successfully.', 'success'); load(); }
+          else { showToast('Update failed: ' + (d.error || 'unknown'), 'error'); }
+        } catch(e) { showToast('Update failed: ' + e.message, 'error'); }
         updateTargetId = null;
         this.value = '';
       };
