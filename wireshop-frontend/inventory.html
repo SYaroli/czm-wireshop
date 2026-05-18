@@ -620,10 +620,12 @@
     async function checkKomaxFile(partNumber) {
       const section = document.getElementById('komaxFileSection');
       if (!section) return;
+      let username = 'unknown';
+      try { username = JSON.parse(localStorage.getItem('user') || '{}').username || 'unknown'; } catch {}
       try {
         const res  = await fetch(
           `${API_BASE.replace('/api','')}` + `/api/komax-files/check?part_number=${encodeURIComponent(partNumber)}`,
-          { headers: { 'x-user': uname } }
+          { headers: { 'x-user': username } }
         );
         const data = await res.json();
         if (data.exists) {
