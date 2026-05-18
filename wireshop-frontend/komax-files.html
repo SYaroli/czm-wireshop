@@ -40,13 +40,14 @@
     .del-btn:hover{background:#6e0f0f;}
     .empty{padding:24px;opacity:.6;text-align:center;}
     .top-row{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px;}
-    .toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);
-           padding:12px 28px;border-radius:8px;font-weight:700;font-size:.95rem;
-           box-shadow:0 4px 16px rgba(0,0,0,.25);z-index:9999;
-           opacity:0;transition:opacity .25s ease;pointer-events:none;white-space:nowrap;}
-    .toast.show{opacity:1;}
-    .toast.success{background:#1a6b3a;color:#fff;}
-    .toast.error{background:#8a1a1a;color:#fff;}
+    .modal-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9998;align-items:center;justify-content:center;}
+    .modal-backdrop.show{display:flex;}
+    .modal-box{background:#fff;border-radius:10px;padding:28px 32px;max-width:380px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,.25);text-align:center;}
+    .modal-box .modal-icon{font-size:2.2rem;margin-bottom:10px;}
+    .modal-box .modal-msg{font-size:1rem;font-weight:600;margin-bottom:20px;line-height:1.4;}
+    .modal-box .modal-ok{background:#1a6b3a;color:#fff;border:none;border-radius:6px;padding:9px 32px;font-size:.95rem;font-weight:700;cursor:pointer;}
+    .modal-box .modal-ok.error{background:#8a1a1a;}
+    .modal-box .modal-ok:hover{opacity:.88;}
   </style>
 </head>
 <body>
@@ -115,7 +116,14 @@
 
   <!-- Hidden file input for per-row Update -->
   <input type="file" id="updateFileInput" accept=".xlsx,.xlsm" style="display:none;" />
-  <div class="toast" id="toast"></div>
+
+  <div class="modal-backdrop" id="modalBackdrop">
+    <div class="modal-box">
+      <div class="modal-icon" id="modalIcon"></div>
+      <div class="modal-msg" id="modalMsg"></div>
+      <button class="modal-ok" id="modalOk">OK</button>
+    </div>
+  </div>
 
   <script>
     const API_ROOT = 'https://wireshop-backend.onrender.com';
@@ -139,13 +147,16 @@
     let allFiles = [];
     let updateTargetId = null;
 
-    let toastTimer = null;
-    function showToast(msg, type = 'success') {
-      const t = document.getElementById('toast');
-      t.textContent = msg;
-      t.className = `toast ${type} show`;
-      clearTimeout(toastTimer);
-      toastTimer = setTimeout(() => { t.classList.remove('show'); }, 3000);
+    function showModal(msg, type = 'success') {
+      const backdrop = document.getElementById('modalBackdrop');
+      const icon     = document.getElementById('modalIcon');
+      const msgEl    = document.getElementById('modalMsg');
+      const okBtn    = document.getElementById('modalOk');
+      icon.textContent  = type === 'success' ? '✅' : '❌';
+      msgEl.textContent = msg;
+      okBtn.className   = type === 'success' ? 'modal-ok' : 'modal-ok error';
+      backdrop.classList.add('show');
+      okBtn.onclick = () => backdrop.classList.remove('show');
     }
 
     function escHtml(s) {
@@ -261,9 +272,9 @@
             body: JSON.stringify({ file_data: reader.result.split(',')[1], filename: fi.name })
           });
           const d = await res.json();
-          if (d.ok) { showToast('✓ File updated successfully.', 'success'); load(); }
-          else { showToast('Update failed: ' + (d.error || 'unknown'), 'error'); }
-        } catch(e) { showToast('Update failed: ' + e.message, 'error'); }
+          if (d.ok) { showModal('File updated successfully.', 'success'); load(); }
+          else { showModal('Update failed: ' + (d.error || 'unknown'), 'error'); }
+        } catch(e) { showModal('Update failed: ' + e.message, 'error'); }
         updateTargetId = null;
         this.value = '';
       };
