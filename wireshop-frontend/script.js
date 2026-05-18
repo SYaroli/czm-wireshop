@@ -174,6 +174,30 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     loadParts();
 
+    // ── Komax file download bar ───────────────────────────────────────────────
+    const komaxBar  = document.getElementById('komaxFileBar');
+    const komaxLink = document.getElementById('komaxFileLink');
+    const komaxMeta = document.getElementById('komaxFileMeta');
+
+    async function checkKomaxFile(partNumber) {
+      if (!komaxBar) return;
+      if (!partNumber) { komaxBar.style.display = 'none'; return; }
+      try {
+        const res = await fetch(
+          `${API_ROOT}/api/komax-files/check?part_number=${encodeURIComponent(partNumber)}`,
+          { headers: { 'x-user': username() } }
+        );
+        const data = await res.json();
+        if (data.exists) {
+          komaxLink.href = `${API_ROOT}/api/komax-files/${data.file.id}/download`;
+          komaxMeta.textContent = `${data.file.filename} · uploaded by ${data.file.uploaded_by} on ${data.file.uploaded_at}`;
+          komaxBar.style.display = 'block';
+        } else {
+          komaxBar.style.display = 'none';
+        }
+      } catch { komaxBar.style.display = 'none'; }
+    }
+
     function fillInfoFromPart(partNumber){
       const rec = (window.catalog || []).find(p => p.partNumber === partNumber);
       if (rec){
@@ -185,6 +209,7 @@ document.addEventListener('DOMContentLoaded', () => {
       } else {
         expTime.textContent='--'; expNotes.textContent='--'; expLoc.textContent='--'; expSA.textContent='--';
       }
+      checkKomaxFile(partNumber);
     }
     partSelect.addEventListener('change', ()=> fillInfoFromPart(partSelect.value));
 
