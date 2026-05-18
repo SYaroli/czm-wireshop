@@ -6,37 +6,40 @@
   <title>CZM • Komax Files</title>
   <link rel="stylesheet" href="style.css"/>
   <style>
-    .file-table { width:100%; border-collapse:collapse; margin-top:12px; font-size:.9rem; }
-    .file-table th {
-      text-align:left; padding:9px 12px;
-      background:#1e2226; color:#fff;
-      position:sticky; top:0;
-    }
-    .file-table td { padding:9px 12px; border-bottom:1px solid rgba(128,128,128,.15); }
-    .file-table tr:hover td { background:rgba(0,0,0,.03); }
-    .dl-btn {
-      background:#1a6b3a; color:#fff; text-decoration:none;
-      padding:6px 14px; border-radius:6px; font-weight:700;
-      font-size:.85rem; white-space:nowrap; display:inline-block;
-    }
-    .search-input {
-      padding:8px 12px; border:1px solid #ccc; border-radius:6px;
-      font-size:.95rem; width:100%; max-width:340px; box-sizing:border-box;
-    }
-    .empty { padding:24px; opacity:.6; text-align:center; }
+    .brand-bar{background:#0f1114;border-bottom:4px solid #c30000}
+    .brand-inner{max-width:1200px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;padding:8px 12px}
+    .brand-logo{display:flex;align-items:center;gap:10px;color:#fff;text-decoration:none}
+    .brand-logo img{height:22px;opacity:.95}
+    .brand-title{font-size:16px;margin:0;color:#fff}
+    .brand-actions .navbtn{display:inline-block;background:#1a1c20;color:#bbb;padding:6px 12px;border-radius:10px;text-decoration:none;border:1px solid #3a3f44;font-weight:600;font-size:.9rem;cursor:pointer}
+    .brand-actions .navbtn.active{background:#b30000;color:#fff;border-color:#ff4d4d}
+    .brand-actions .navbtn:hover{background:#24272b;color:#fff}
+    .brand-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    body{background:#eef0f3;margin:0}
+    .page{max-width:1200px;margin:24px auto;padding:0 12px}
+    .card{background:#fff;border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,.08);padding:20px;margin-bottom:16px}
+    .file-table{width:100%;border-collapse:collapse;margin-top:12px;font-size:.9rem;}
+    .file-table th{text-align:left;padding:9px 12px;background:#1e2226;color:#fff;}
+    .file-table td{padding:9px 12px;border-bottom:1px solid rgba(128,128,128,.15);}
+    .file-table tr:hover td{background:rgba(0,0,0,.03);}
+    .dl-btn{background:#1a6b3a;color:#fff;text-decoration:none;padding:6px 14px;border-radius:6px;font-weight:700;font-size:.85rem;white-space:nowrap;display:inline-block;}
+    .search-input{padding:8px 12px;border:1px solid #ccc;border-radius:6px;font-size:.95rem;width:100%;max-width:340px;box-sizing:border-box;}
+    .empty{padding:24px;opacity:.6;text-align:center;}
   </style>
 </head>
 <body>
   <div class="brand-bar">
     <div class="brand-inner">
-      <a class="brand-logo" href="dashboard.html">
+      <a class="brand-logo" href="/dashboard.html">
         <img src="czm-logo.png" alt="CZM">
         <h1 class="brand-title">CZM • Komax Files</h1>
       </a>
-      <div class="brand-actions" id="navActions">
+      <div class="brand-actions">
         <a href="/dashboard.html" class="navbtn">Dashboard</a>
         <a href="/assignments.html" class="navbtn">Build Next</a>
         <a href="/inventory" class="navbtn">Inventory</a>
+        <a href="/komax-files.html" class="navbtn active">Komax Files</a>
+        <a href="/bench-stock.html" class="navbtn">Bench Stock</a>
         <a href="/admin.html" class="navbtn" id="adminNav" style="display:none;">Admin</a>
         <button id="logoutBtn" class="navbtn">Logout</button>
       </div>

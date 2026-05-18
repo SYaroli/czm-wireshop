@@ -361,6 +361,7 @@
       <div class="brand-actions">
         <a class="navbtn" href="/assignments.html">Assignments</a>
         <a class="navbtn" href="/inventory.html">Inventory</a>
+        <a class="navbtn" href="/komax-files.html">Komax Files</a>
         <a class="navbtn active" href="/admin.html">Admin</a>
         <a class="navbtn" href="/bench-stock.html">Bench Stock</a>
         <button id="logoutBtn" class="navbtn">Logout</button>
@@ -443,49 +444,6 @@
 
           <div id="uMsg" class="msg muted"></div>
         </div>
-      </div>
-    </div>
-
-    <!-- ── KOMAX FILES ────────────────────────────────────────────── -->
-    <div class="card" id="komaxCard" style="margin-top:16px;">
-      <div class="section-head" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
-        <div>
-          <h2 style="margin:0;">Komax Job Files</h2>
-          <p style="margin:4px 0 0;opacity:.7;font-size:.9rem;">Upload the Excel cut/crimp file for each harness. Techs download directly from the Q.</p>
-        </div>
-        <button class="toggle-btn" id="toggleKomaxBtn" type="button" aria-expanded="true"></button>
-      </div>
-
-      <div id="komaxBody" style="margin-top:14px;">
-        <!-- Upload form -->
-        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid rgba(128,128,128,.2);">
-          <label style="flex:1;min-width:200px;">Part Number
-            <input id="kfPartNumber" class="inline-input" placeholder="e.g. 40602.1990.003" style="display:block;width:100%;margin-top:4px;" />
-          </label>
-          <label style="flex:2;min-width:220px;">Excel File (.xlsx)
-            <input id="kfFileInput" type="file" accept=".xlsx,.xlsm" style="display:block;margin-top:4px;" />
-          </label>
-          <button id="kfUploadBtn" class="btn primary" style="white-space:nowrap;">Upload File</button>
-        </div>
-        <div id="kfMsg" style="margin-bottom:10px;font-size:.9rem;"></div>
-
-        <!-- File list -->
-        <table style="width:100%;border-collapse:collapse;font-size:.9rem;" id="kfTable">
-          <thead>
-            <tr style="text-align:left;border-bottom:2px solid rgba(128,128,128,.3);">
-              <th style="padding:6px 8px;">Part Number</th>
-              <th style="padding:6px 8px;">Filename</th>
-              <th style="padding:6px 8px;">Size</th>
-              <th style="padding:6px 8px;">Uploaded By</th>
-              <th style="padding:6px 8px;">Uploaded At</th>
-              <th style="padding:6px 8px;">Downloads</th>
-              <th style="padding:6px 8px;"></th>
-            </tr>
-          </thead>
-          <tbody id="kfTbody">
-            <tr><td colspan="7" style="padding:12px 8px;opacity:.6;">Loading…</td></tr>
-          </tbody>
-        </table>
       </div>
     </div>
   </main>
@@ -856,123 +814,6 @@
       wireTableClicks();
       loadUsers();
       loadLowStock();
-
-      // ── KOMAX FILES ───────────────────────────────────────────────────────
-      const KF_API = API_BASE + '/api/komax-files';
-      const kfMsg    = document.getElementById('kfMsg');
-      const kfTbody  = document.getElementById('kfTbody');
-      const session  = getSession();
-
-      function fmtBytes(n) {
-        if (!n) return '—';
-        return n < 1024 ? n + ' B' : n < 1048576 ? (n/1024).toFixed(1) + ' KB' : (n/1048576).toFixed(1) + ' MB';
-      }
-
-      async function loadKomaxFiles() {
-        kfTbody.innerHTML = '<tr><td colspan="7" style="padding:12px 8px;opacity:.6;">Loading…</td></tr>';
-        try {
-          const res  = await fetch(KF_API + '?all=1', { headers: { 'x-user': session.username || '' } });
-          const rows = await res.json();
-          if (!rows.length) {
-            kfTbody.innerHTML = '<tr><td colspan="7" style="padding:12px 8px;opacity:.6;">No files uploaded yet.</td></tr>';
-            return;
-          }
-          // fetch download counts
-          const countMap = {};
-          await Promise.all(rows.map(async r => {
-            try {
-              const lr = await fetch(`${KF_API}/${r.id}/log`, { headers: { 'x-user': session.username || '' } });
-              const log = await lr.json();
-              countMap[r.id] = Array.isArray(log) ? log.length : 0;
-            } catch { countMap[r.id] = '?'; }
-          }));
-
-          kfTbody.innerHTML = rows.map(r => `
-            <tr style="border-bottom:1px solid rgba(128,128,128,.15);" data-id="${r.id}">
-              <td style="padding:7px 8px;font-weight:600;">${r.part_number}</td>
-              <td style="padding:7px 8px;">${r.filename}</td>
-              <td style="padding:7px 8px;">${fmtBytes(r.file_size)}</td>
-              <td style="padding:7px 8px;">${r.uploaded_by}</td>
-              <td style="padding:7px 8px;font-size:.85rem;">${r.uploaded_at}</td>
-              <td style="padding:7px 8px;text-align:center;">
-                <button class="btn-mini kf-log-btn" data-id="${r.id}" title="View download log">${countMap[r.id] ?? 0}</button>
-              </td>
-              <td style="padding:7px 8px;display:flex;gap:6px;">
-                <a href="${KF_API}/${r.id}/download?x-user=${encodeURIComponent(session.username||'')}"
-                   download="${r.filename}" class="btn-mini" style="text-decoration:none;">⬇</a>
-                <button class="btn-mini del kf-del-btn" data-id="${r.id}" title="Delete">✕</button>
-              </td>
-            </tr>`).join('');
-
-          // download log popup
-          kfTbody.querySelectorAll('.kf-log-btn').forEach(btn => {
-            btn.addEventListener('click', async () => {
-              const id = btn.dataset.id;
-              const lr = await fetch(`${KF_API}/${id}/log`, { headers: { 'x-user': session.username || '' } });
-              const log = await lr.json();
-              if (!log.length) { alert('No downloads recorded yet.'); return; }
-              alert('Download log:\n\n' + log.map(l => `${l.downloaded_at}  ${l.downloaded_by}`).join('\n'));
-            });
-          });
-
-          // delete
-          kfTbody.querySelectorAll('.kf-del-btn').forEach(btn => {
-            btn.addEventListener('click', async () => {
-              if (!confirm('Delete this file? This cannot be undone.')) return;
-              const res = await fetch(`${KF_API}/${btn.dataset.id}`, {
-                method: 'DELETE',
-                headers: { 'x-user': session.username || '' }
-              });
-              const d = await res.json();
-              if (d.ok) { kfMsg.textContent = 'File deleted.'; loadKomaxFiles(); }
-              else kfMsg.textContent = 'Error: ' + (d.error || 'unknown');
-            });
-          });
-
-        } catch (e) {
-          kfTbody.innerHTML = `<tr><td colspan="7" style="color:red;padding:12px 8px;">Failed to load: ${e.message}</td></tr>`;
-        }
-      }
-
-      document.getElementById('kfUploadBtn')?.addEventListener('click', async () => {
-        const pn   = document.getElementById('kfPartNumber').value.trim();
-        const fi   = document.getElementById('kfFileInput').files[0];
-        if (!pn)  { kfMsg.textContent = 'Enter a part number.'; return; }
-        if (!fi)  { kfMsg.textContent = 'Select a file.'; return; }
-        kfMsg.textContent = 'Uploading…';
-
-        const reader = new FileReader();
-        reader.onload = async () => {
-          const b64 = reader.result.split(',')[1];
-          try {
-            const res = await fetch(KF_API, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'x-user': session.username || '' },
-              body: JSON.stringify({ part_number: pn, filename: fi.name, file_data: b64 })
-            });
-            const d = await res.json();
-            if (d.ok) {
-              kfMsg.textContent = `Uploaded "${fi.name}" for ${pn}.`;
-              document.getElementById('kfPartNumber').value = '';
-              document.getElementById('kfFileInput').value  = '';
-              loadKomaxFiles();
-            } else {
-              kfMsg.textContent = 'Error: ' + (d.error || 'unknown');
-            }
-          } catch (e) { kfMsg.textContent = 'Upload failed: ' + e.message; }
-        };
-        reader.readAsDataURL(fi);
-      });
-
-      document.getElementById('toggleKomaxBtn')?.addEventListener('click', () => {
-        const body = document.getElementById('komaxBody');
-        const btn  = document.getElementById('toggleKomaxBtn');
-        const open = body.style.display !== 'none';
-        body.style.display = open ? 'none' : 'block';
-        btn.setAttribute('aria-expanded', open ? 'false' : 'true');
-      });
-
-      loadKomaxFiles();
     }
   </script>
 </body>
