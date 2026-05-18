@@ -18,13 +18,27 @@
     body{background:#eef0f3;margin:0}
     .page{max-width:1200px;margin:24px auto;padding:0 12px}
     .card{background:#fff;border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,.08);padding:20px;margin-bottom:16px}
-    .file-table{width:100%;border-collapse:collapse;margin-top:12px;font-size:.9rem;}
+    .upload-section{background:#f7f8fa;border:1px solid #dde1e7;border-radius:8px;padding:16px;margin-bottom:20px;}
+    .upload-section h3{margin:0 0 12px;font-size:.95rem;color:#333;}
+    .upload-row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;}
+    .upload-row label{display:flex;flex-direction:column;gap:4px;font-size:.85rem;font-weight:600;color:#555;}
+    .upload-row input[type="text"]{padding:7px 10px;border:1px solid #ccc;border-radius:6px;font-size:.9rem;width:220px;}
+    .upload-row input[type="file"]{font-size:.85rem;}
+    .upload-msg{margin-top:8px;font-size:.85rem;min-height:1.2em;}
+    .file-table{width:100%;border-collapse:collapse;font-size:.9rem;}
     .file-table th{text-align:left;padding:9px 12px;background:#1e2226;color:#fff;}
-    .file-table td{padding:9px 12px;border-bottom:1px solid rgba(128,128,128,.15);}
+    .file-table td{padding:9px 12px;border-bottom:1px solid rgba(128,128,128,.15);vertical-align:middle;}
     .file-table tr:hover td{background:rgba(0,0,0,.03);}
-    .dl-btn{background:#1a6b3a;color:#fff;text-decoration:none;padding:6px 14px;border-radius:6px;font-weight:700;font-size:.85rem;white-space:nowrap;display:inline-block;}
-    .search-input{padding:8px 12px;border:1px solid #ccc;border-radius:6px;font-size:.95rem;width:100%;max-width:340px;box-sizing:border-box;}
+    .dl-btn{background:#1a6b3a;color:#fff;text-decoration:none;padding:6px 14px;border-radius:6px;font-weight:700;font-size:.85rem;white-space:nowrap;display:inline-block;border:none;cursor:pointer;}
+    .dl-btn:hover{background:#155830;}
+    .upd-btn{background:#1a4a8a;color:#fff;padding:6px 14px;border-radius:6px;font-weight:700;font-size:.85rem;white-space:nowrap;border:none;cursor:pointer;}
+    .upd-btn:hover{background:#163d74;}
+    .submit-btn{background:#b30000;color:#fff;padding:8px 18px;border-radius:6px;font-weight:700;font-size:.9rem;border:none;cursor:pointer;white-space:nowrap;}
+    .submit-btn:hover{background:#900;}
+    .btn-cell{display:flex;gap:6px;align-items:center;}
+    .search-input{padding:8px 12px;border:1px solid #ccc;border-radius:6px;font-size:.95rem;width:100%;max-width:320px;box-sizing:border-box;}
     .empty{padding:24px;opacity:.6;text-align:center;}
+    .top-row{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px;}
   </style>
 </head>
 <body>
@@ -48,16 +62,32 @@
 
   <main class="page">
     <div class="card">
-      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
+
+      <!-- Upload form — admin only -->
+      <div class="upload-section" id="uploadSection" style="display:none;">
+        <h3>Add / Replace File</h3>
+        <div class="upload-row">
+          <label>Part Number
+            <input type="text" id="upPartNumber" placeholder="e.g. 40602.1990.003" />
+          </label>
+          <label>Excel File (.xlsx / .xlsm)
+            <input type="file" id="upFileInput" accept=".xlsx,.xlsm" />
+          </label>
+          <button class="submit-btn" id="upSubmitBtn">Upload</button>
+        </div>
+        <div class="upload-msg" id="upMsg"></div>
+      </div>
+
+      <div class="top-row">
         <div>
-          <h2 style="margin:0;">Komax Job Files</h2>
-          <div style="font-size:.85rem;opacity:.7;margin-top:3px;">Download the Excel cut/crimp file for any harness.</div>
+          <strong>Komax Job Files</strong>
+          <div style="font-size:.85rem;opacity:.7;margin-top:2px;">Download the Excel cut/crimp file for any harness.</div>
         </div>
         <input class="search-input" id="searchInput" placeholder="Search part number or filename…" />
       </div>
 
       <div style="overflow-x:auto;">
-        <table class="file-table" id="fileTable">
+        <table class="file-table">
           <thead>
             <tr>
               <th>Part Number</th>
@@ -75,27 +105,33 @@
     </div>
   </main>
 
+  <!-- Hidden file input for per-row Update -->
+  <input type="file" id="updateFileInput" accept=".xlsx,.xlsm" style="display:none;" />
+
   <script>
     const API_ROOT = 'https://wireshop-backend.onrender.com';
 
     let session = {};
     try { session = JSON.parse(localStorage.getItem('user') || '{}'); } catch {}
-
     if (!session.username) { location.href = 'index.html'; }
 
-    // Show admin nav if applicable
-    if (String(session.role||'').toLowerCase() === 'admin') {
+    const isAdmin = String(session.role || '').toLowerCase() === 'admin';
+
+    if (isAdmin) {
       document.getElementById('adminNav').style.display = '';
+      document.getElementById('uploadSection').style.display = '';
     }
+
     document.getElementById('logoutBtn').addEventListener('click', () => {
       localStorage.removeItem('user');
       location.href = 'index.html';
     });
 
     let allFiles = [];
+    let updateTargetId = null;
 
     function escHtml(s) {
-      return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     }
 
     function render(files) {
@@ -105,23 +141,32 @@
         return;
       }
       tbody.innerHTML = files.map(f => `
-        <tr>
+        <tr data-id="${f.id}">
           <td><a href="/inv/${encodeURIComponent(f.part_number)}" style="font-weight:700;color:inherit;">${escHtml(f.part_number)}</a></td>
           <td style="opacity:.85;">${escHtml(f.filename)}</td>
           <td>${escHtml(f.uploaded_by)}</td>
           <td style="font-size:.82rem;opacity:.7;">${escHtml(f.uploaded_at)}</td>
           <td>
-            <a class="dl-btn"
-               href="${API_ROOT}/api/komax-files/${f.id}/download">
-              ⬇ Download
-            </a>
+            <div class="btn-cell">
+              <a class="dl-btn" href="${API_ROOT}/api/komax-files/${f.id}/download">⬇ Download</a>
+              ${isAdmin ? `<button class="upd-btn update-btn" data-id="${f.id}">↑ Update</button>` : ''}
+            </div>
           </td>
         </tr>`).join('');
+
+      if (isAdmin) {
+        tbody.querySelectorAll('.update-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            updateTargetId = btn.dataset.id;
+            document.getElementById('updateFileInput').click();
+          });
+        });
+      }
     }
 
     async function load() {
       try {
-        const res  = await fetch(`${API_ROOT}/api/komax-files`, {
+        const res = await fetch(`${API_ROOT}/api/komax-files`, {
           headers: { 'x-user': session.username || '' }
         });
         allFiles = await res.json();
@@ -138,6 +183,54 @@
         f.part_number.toLowerCase().includes(q) ||
         f.filename.toLowerCase().includes(q)
       ) : allFiles);
+    });
+
+    document.getElementById('upSubmitBtn').addEventListener('click', () => {
+      const pn  = document.getElementById('upPartNumber').value.trim();
+      const fi  = document.getElementById('upFileInput').files[0];
+      const msg = document.getElementById('upMsg');
+      if (!pn) { msg.textContent = 'Enter a part number.'; return; }
+      if (!fi) { msg.textContent = 'Select a file.'; return; }
+      msg.textContent = 'Uploading…';
+      const reader = new FileReader();
+      reader.onload = async () => {
+        try {
+          const res = await fetch(`${API_ROOT}/api/komax-files`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-user': session.username || '' },
+            body: JSON.stringify({ part_number: pn, filename: fi.name, file_data: reader.result.split(',')[1] })
+          });
+          const d = await res.json();
+          if (d.ok) {
+            msg.textContent = `✓ "${fi.name}" uploaded for ${pn}.`;
+            document.getElementById('upPartNumber').value = '';
+            document.getElementById('upFileInput').value  = '';
+            load();
+          } else { msg.textContent = 'Error: ' + (d.error || 'unknown'); }
+        } catch(e) { msg.textContent = 'Upload failed: ' + e.message; }
+      };
+      reader.readAsDataURL(fi);
+    });
+
+    document.getElementById('updateFileInput').addEventListener('change', function() {
+      const fi = this.files[0];
+      if (!fi || !updateTargetId) return;
+      const reader = new FileReader();
+      reader.onload = async () => {
+        try {
+          const res = await fetch(`${API_ROOT}/api/komax-files/${updateTargetId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'x-user': session.username || '' },
+            body: JSON.stringify({ file_data: reader.result.split(',')[1], filename: fi.name })
+          });
+          const d = await res.json();
+          if (d.ok) { load(); }
+          else { alert('Update failed: ' + (d.error || 'unknown')); }
+        } catch(e) { alert('Update failed: ' + e.message); }
+        updateTargetId = null;
+        this.value = '';
+      };
+      reader.readAsDataURL(fi);
     });
 
     load();
