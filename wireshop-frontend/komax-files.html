@@ -48,6 +48,12 @@
     .modal-box .modal-ok{background:#1a6b3a;color:#fff;border:none;border-radius:6px;padding:9px 32px;font-size:.95rem;font-weight:700;cursor:pointer;}
     .modal-box .modal-ok.error{background:#8a1a1a;}
     .modal-box .modal-ok:hover{opacity:.88;}
+    .modal-box .modal-cancel{background:#555;color:#fff;border:none;border-radius:6px;padding:9px 24px;font-size:.95rem;font-weight:700;cursor:pointer;margin-right:10px;}
+    .modal-box .modal-cancel:hover{background:#333;}
+    .warn-box{background:#fff;border-radius:10px;padding:28px 32px;max-width:460px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,.25);text-align:center;}
+    .warn-box .warn-icon{font-size:2.4rem;margin-bottom:8px;}
+    .warn-box .warn-title{font-size:1.05rem;font-weight:800;margin-bottom:14px;color:#b30000;}
+    .warn-box .warn-body{font-size:.88rem;line-height:1.7;color:#333;margin-bottom:22px;text-align:left;}
   </style>
 </head>
 <body>
@@ -117,11 +123,30 @@
   <!-- Hidden file input for per-row Update -->
   <input type="file" id="updateFileInput" accept=".xlsx,.xlsm" style="display:none;" />
 
+  <!-- Update result modal -->
   <div class="modal-backdrop" id="modalBackdrop">
     <div class="modal-box">
       <div class="modal-icon" id="modalIcon"></div>
       <div class="modal-msg" id="modalMsg"></div>
       <button class="modal-ok" id="modalOk">OK</button>
+    </div>
+  </div>
+
+  <!-- Download warning modal -->
+  <div class="modal-backdrop" id="warnBackdrop">
+    <div class="warn-box">
+      <div class="warn-icon">⚠️</div>
+      <div class="warn-title">Read Before Downloading</div>
+      <div class="warn-body">
+        • Always build to the <strong>print</strong>, never this file.<br>
+        • This file is for Komax programming only.<br>
+        • <strong>Delete it after the build.</strong> Download a fresh copy next time.<br>
+        • Any changes to this file must go through leadership for upload.
+      </div>
+      <div>
+        <button class="modal-cancel" id="warnCancel">Cancel</button>
+        <a class="modal-ok" id="warnDownload" style="text-decoration:none;display:inline-block;padding:9px 24px;">Download</a>
+      </div>
     </div>
   </div>
 
@@ -146,6 +171,16 @@
 
     let allFiles = [];
     let updateTargetId = null;
+
+    function showDownloadWarning(url) {
+      const backdrop    = document.getElementById('warnBackdrop');
+      const dlBtn       = document.getElementById('warnDownload');
+      const cancelBtn   = document.getElementById('warnCancel');
+      dlBtn.href        = url;
+      backdrop.classList.add('show');
+      dlBtn.onclick     = () => backdrop.classList.remove('show');
+      cancelBtn.onclick = () => backdrop.classList.remove('show');
+    }
 
     function showModal(msg, type = 'success') {
       const backdrop = document.getElementById('modalBackdrop');
@@ -177,12 +212,17 @@
           <td style="font-size:.82rem;opacity:.7;">${escHtml(f.uploaded_at)}</td>
           <td>
             <div class="btn-cell">
-              <a class="dl-btn" href="${API_ROOT}/api/komax-files/${f.id}/download">⬇ Download</a>
+              <button class="dl-btn download-btn" data-url="${API_ROOT}/api/komax-files/${f.id}/download">⬇ Download</button>
               ${isAdmin ? `<button class="upd-btn update-btn" data-id="${f.id}">↑ Update</button>` : ''}
               ${isAdmin ? `<button class="del-btn delete-btn" data-id="${f.id}" data-pn="${escHtml(f.part_number)}">✕ Delete</button>` : ''}
             </div>
           </td>
         </tr>`).join('');
+
+      // Wire download buttons to warning modal
+      tbody.querySelectorAll('.download-btn').forEach(btn => {
+        btn.addEventListener('click', () => showDownloadWarning(btn.dataset.url));
+      });
 
       if (isAdmin) {
         tbody.querySelectorAll('.update-btn').forEach(btn => {
