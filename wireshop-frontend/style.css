@@ -1,13 +1,18 @@
-/* ===== CZM Wireshop — Compact Pro Theme ===== */
+/* ===== CZM Wireshop — Dark Theme ===== */
 :root{
   --red:#C20F2F;
   --black:#0E0F12;
-  --ink:#1c1f24;
-  --muted:#6b7280;
-  --bg:#f6f7f9;
-  --card:#ffffff;
-  --line:#e5e7eb;
-  --shadow:0 6px 18px rgba(0,0,0,.12);
+  --ink:#e9eefc;
+  --ink-dim:#8a97b0;
+  --muted:#8a97b0;
+  --bg:#0b0d12;
+  --card:#141925ee;
+  --line:#2a3245;
+  --shadow:
+    0 20px 50px rgba(0,0,0,.5),
+    0 0 0 1px rgba(0,0,0,.3),
+    0 0 28px 5px rgba(194,15,47,.12),
+    0 0 50px 10px rgba(91,192,235,.07);
 }
 
 *{box-sizing:border-box}
@@ -16,15 +21,19 @@ body{
   margin:0;
   font: 14px/1.4 ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
   color:var(--ink);
-  background:linear-gradient(180deg,#fafafa, #f1f3f6 40%, #eef0f3);
+  background:
+    radial-gradient(ellipse 900px 600px at 75% 20%, rgba(194,15,47,.15), transparent 60%),
+    radial-gradient(ellipse 800px 600px at 15% 85%, rgba(91,192,235,.10), transparent 55%),
+    #0b0d12;
+  min-height:100vh;
 }
 
-/* Subtle background logo (smaller, lighter) */
+/* Background logo watermark */
 body::before{
   content:"";
   position:fixed; inset:0;
-  background:url('czm-logo.png') center/280px no-repeat;
-  opacity:.04; filter:grayscale(100%);
+  background:url('czm-logo.png') center/300px no-repeat;
+  opacity:.04; filter:grayscale(100%) invert(1);
   pointer-events:none;
 }
 
@@ -34,9 +43,10 @@ main,.page{width:min(1080px,92vw); margin:64px auto}
 /* ===== Top bar ===== */
 .brand-bar{
   position:sticky; top:0; z-index:40;
-  background:linear-gradient(0deg, var(--black), #000);
+  backdrop-filter:blur(12px) saturate(110%);
+  background:linear-gradient(180deg,#0d1119f2,#0b0f16e8);
   border-bottom:2px solid var(--red);
-  box-shadow:0 3px 14px rgba(0,0,0,.22);
+  box-shadow:0 4px 20px rgba(0,0,0,.5);
 }
 .brand-inner{
   width:min(1080px,92vw); margin:0 auto;
@@ -55,29 +65,31 @@ main,.page{width:min(1080px,92vw); margin:64px auto}
 /* ===== Cards ===== */
 .card{
   background:var(--card);
-  border:1px solid var(--line);
+  border:1px solid rgba(255,255,255,.08);
   border-radius:12px;
   padding:14px 16px;
   box-shadow:var(--shadow);
   margin:14px auto;
+  backdrop-filter:blur(10px);
 }
-.card h2{margin:.1rem 0 .6rem 0; font-size:18px}
+.card h2{margin:.1rem 0 .6rem 0; font-size:18px; color:var(--ink);}
 
 /* ===== Inputs / Buttons ===== */
-label{font-weight:700; font-size:13px}
+label{font-weight:700; font-size:13px; color:var(--ink);}
 input,select,textarea,button{font:inherit}
 select, input, textarea{
-  width:100%; background:#fff; border:1px solid #d3d8e1; border-radius:10px;
-  padding:9px 10px; outline:none; transition:border .15s, box-shadow .15s;
+  width:100%; background:#0f1320; border:1px solid var(--line); border-radius:10px;
+  padding:9px 10px; outline:none; color:var(--ink);
+  transition:border .15s, box-shadow .15s;
 }
 select:focus, input:focus, textarea:focus{
-  border-color:var(--red); box-shadow:0 0 0 3px rgba(194,15,47,.14);
+  border-color:var(--red); box-shadow:0 0 0 3px rgba(194,15,47,.18);
 }
 button{
   background:var(--red); color:#fff; border:0; border-radius:10px; font-weight:800;
   padding:10px 14px; cursor:pointer;
 }
-button:hover{filter:brightness(1.05)}
+button:hover{filter:brightness(1.08)}
 button:active{transform:translateY(1px)}
 button.danger{background:#b91c1c}
 button.secondary{background:#26282e}
@@ -88,7 +100,7 @@ button.secondary{background:#26282e}
 
 /* Info panel */
 .info{
-  background:#fbfcff; border:1px dashed #d8dde6; border-radius:10px; padding:10px;
+  background:rgba(255,255,255,.04); border:1px dashed rgba(255,255,255,.12); border-radius:10px; padding:10px;
   display:grid; gap:4px; font-size:13px;
 }
 .info p{margin:0} .info span{font-weight:800}
@@ -96,58 +108,60 @@ button.secondary{background:#26282e}
 /* ===== Tables ===== */
 table{width:100%; border-collapse:separate; border-spacing:0; font-size:13px}
 thead th{
-  background:#0f1114; color:#fff; text-align:left; padding:9px 10px; font-weight:800;
+  background:#0a0c10; color:#fff; text-align:left; padding:9px 10px; font-weight:800;
 }
-tbody td{background:#fff; padding:9px 10px; border-top:1px solid var(--line); vertical-align:top}
-tbody tr:hover td{background:#fafafa}
+tbody td{background:rgba(15,20,35,.7); padding:9px 10px; border-top:1px solid var(--line); vertical-align:top; color:var(--ink);}
+tbody tr:hover td{background:rgba(255,255,255,.04)}
 tbody tr:first-child td{border-top:0}
 .sticky-head thead th{position:sticky; top:48px; z-index:5}
 
 /* Active row widgets */
 .notes-box{
   width:100%; min-height:64px; resize:vertical;
-  border:1px solid #d3d8e1; border-radius:10px; padding:8px 10px;
+  border:1px solid var(--line); border-radius:10px; padding:8px 10px;
+  background:#0f1320; color:var(--ink);
 }
 .row-action{
-  width:100%; min-width:140px; padding:7px 8px; border:1px solid #d3d8e1; border-radius:10px; background:#fff; font-weight:700;
+  width:100%; min-width:140px; padding:7px 8px; border:1px solid var(--line);
+  border-radius:10px; background:#0f1320; font-weight:700; color:var(--ink);
 }
-.row-pause{color:#a07900}
-.row-continue{color:#163ea3}
-.row-finish{color:#b31224}
+.row-pause{color:#f59e0b}
+.row-continue{color:#60a5fa}
+.row-finish{color:#f87171}
 
 /* Selection highlight */
-tr.row-selected td{ background:#fff6f7 !important; box-shadow: inset 0 0 0 1px rgba(194,15,47,.15); }
+tr.row-selected td{ background:rgba(194,15,47,.08) !important; box-shadow: inset 0 0 0 1px rgba(194,15,47,.2); }
 
-/* ===== Login (compact) ===== */
+/* ===== Login ===== */
 .login-wrap{ width:min(360px, 92vw); margin:64px auto; }
 .login-card{
-  background:#fff; border:1px solid var(--line); border-radius:14px; padding:16px;
-  box-shadow:var(--shadow);
+  background:var(--card); border:1px solid rgba(255,255,255,.08); border-radius:14px; padding:16px;
+  box-shadow:var(--shadow); backdrop-filter:blur(10px);
 }
 .login-top{display:flex; align-items:center; gap:10px; margin-bottom:8px}
 .login-top img{height:28px}
-.login-title{margin:0; font-size:18px; font-weight:800}
+.login-title{margin:0; font-size:18px; font-weight:800; color:var(--ink);}
 .login-sub{margin:0 0 10px 0; color:var(--muted); font-size:12px}
 #login-form .row{display:grid; gap:6px; margin:8px 0}
-#error-message{color:#b91c1c; min-height:18px; font-size:12px}
+#error-message{color:#f87171; min-height:18px; font-size:12px}
 
-/* TEMP: hide unused nav links without touching markup */
+/* Hide unused nav links */
 .brand-actions a[href$="dashboard.html"],
 .brand-actions a[href$="archive.html"]{
   display:none !important;
 }
 
-/* inventory toolbar fixes */
+/* Toolbar */
 .card .toolbar .badge,
 .card .toolbar button.badge {
-  background: #eee;
-  border: 1px solid #ddd;
-  color: #000;
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.12);
+  color: var(--ink);
   border-radius: 8px;
   padding: 4px 8px;
   font-weight: 700;
 }
-.card .toolbar #status { color: #666; }
+.card .toolbar #status { color: var(--ink-dim); }
 
 .brand-actions{
   display:flex;
@@ -157,9 +171,7 @@ tr.row-selected td{ background:#fff6f7 !important; box-shadow: inset 0 0 0 1px r
   align-items:center;
 }
 
-/* ===== Inventory page button consistency (targets YOUR real classes) ===== */
-
-/* Make inventory "Edit" buttons red/white like the others */
+/* Button consistency */
 .edit-btn{
   background: var(--red) !important;
   color:#fff !important;
@@ -167,27 +179,24 @@ tr.row-selected td{ background:#fff6f7 !important; box-shadow: inset 0 0 0 1px r
   border-radius: 6px !important;
   font-weight: 800 !important;
 }
-.edit-btn:hover{filter:brightness(1.05)}
+.edit-btn:hover{filter:brightness(1.08)}
 .edit-btn:active{transform:translateY(1px)}
 
-/* Make movement log buttons consistent */
 .log-btn{
   background: var(--red) !important;
   color:#fff !important;
   border-color: rgba(0,0,0,.08) !important;
   font-weight: 800 !important;
 }
-.log-btn:hover{filter:brightness(1.05)}
+.log-btn:hover{filter:brightness(1.08)}
 .log-btn:active{transform:translateY(1px)}
 
-/* Keep .log-btn.red working (already red), but ensure it stays white text */
 .log-btn.red{
   background: var(--red) !important;
   color:#fff !important;
   border-color: rgba(0,0,0,.08) !important;
 }
 
-/* Optional: if any toolbar button gets .red, make sure it matches theme */
 .toolbar-btn.red{
   background: var(--red) !important;
   color:#fff !important;
