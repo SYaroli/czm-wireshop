@@ -6,40 +6,66 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <link rel="stylesheet" href="/style.css" />
   <style>
-  /* Card shell */
+    /* Brand bar (match assignments.html) */
+    
+    
+    
+    
+    
+    
+    
+    
+
+    /* Page chrome */
+    
+
+    /* Card shell */
     .inventory-shell{max-width:1200px;margin:24px auto;background:#fff;border-radius:6px;box-shadow:0 2px 4px rgba(0,0,0,.08);padding:0 0 12px}
-  .inventory-header{padding:14px 16px 6px}
-  .inventory-header h2{margin:0 0 6px;font-size:16px;font-weight:600}
-  /* Filter toolbar */
+    .inventory-header{padding:14px 16px 6px}
+    .inventory-header h2{margin:0 0 6px;font-size:16px;font-weight:600}
+
+    /* Filter toolbar */
     .filter-row{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
-  .filter-row input[type="text"]{flex:1;min-width:260px;height:32px;border:1px solid #cfd4da;border-radius:6px;padding:0 10px}
-  .cb{display:flex;align-items:center;gap:8px;height:32px;padding:0 10px;border:1px solid #cfd4da;border-radius:6px;background:#f7f8fa;user-select:none}
-  .cb input{margin:0;width:16px;height:16px}
-  #countLabel{font-size:12px;margin-left:auto;white-space:nowrap}
-  /* Header row */
+    .filter-row input[type="text"]{flex:1;min-width:260px;height:32px;border:1px solid #cfd4da;border-radius:6px;padding:0 10px}
+    .cb{display:flex;align-items:center;gap:8px;height:32px;padding:0 10px;border:1px solid #cfd4da;border-radius:6px;background:#f7f8fa;user-select:none}
+    .cb input{margin:0;width:16px;height:16px}
+    .toolbar-btn{background:#eee;border:1px solid #cfd4da;border-radius:6px;height:32px;padding:0 12px;font-size:13px;cursor:pointer}
+    .toolbar-btn.red{background:#c30000;color:#fff;border-color:#a00000}
+    #countLabel{font-size:12px;margin-left:auto;white-space:nowrap}
+
+    /* Header row */
     .table-head{background:#0a0b0d;color:#fff;display:grid;grid-template-columns:150px 220px 100px 60px 280px 1fr;gap:0;padding:8px 16px;font-size:12px;font-weight:600;margin-top:12px}
-  /* Data rows */
+
+    /* Data rows */
     .list-body .row{display:grid;grid-template-columns:150px 220px 100px 60px 280px 1fr;gap:0;padding:10px 16px;border-bottom:1px solid #eef2f6;background:#fff;align-items:center}
-  .list-body .row:nth-child(odd){background:#fafbfc}
-  .notes-cell{font-size:12px;color:#333;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  /* Adjust + actions */
+    .list-body .row:nth-child(odd){background:#fafbfc}
+    .notes-cell{font-size:12px;color:#333;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+    /* Adjust + actions */
     .adjust-controls{display:flex;align-items:center;gap:10px;flex-wrap:nowrap}
-  .qty-input{width:76px;border:1px solid #d0d3d8;border-radius:20px;height:30px;padding:0 8px;text-align:center}
-  /* Modal */
+    .qty-input{width:76px;border:1px solid #d0d3d8;border-radius:20px;height:30px;padding:0 8px;text-align:center}
+    .apply-btn{background:#b70000;color:#fff;border:none;border-radius:6px;height:32px;min-width:64px;padding:0 10px;cursor:pointer}
+    .edit-btn{background:#3a3a3a;color:#fff;border:none;border-radius:6px;height:32px;min-width:64px;padding:0 10px;cursor:pointer}
+    .muted{color:#9aa3ad;font-size:12px}
+
+    /* Modal */
     .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:center;justify-content:center;z-index:50}
-  .modal{background:#122032;color:#fff;padding:16px;width:420px;border-radius:8px;box-shadow:0 8px 20px rgba(0,0,0,.4)}
-  .modal h3{margin:0 0 10px;font-size:18px}
-  .modal label{display:block;font-size:12px;margin-top:8px;margin-bottom:4px}
-  .modal input,.modal textarea{width:100%;border:none;border-radius:6px;height:34px;padding:6px 8px;outline:none;font-size:14px;color:#000}
-  .modal textarea{height:90px;resize:vertical}
-  .modal-actions{margin-top:14px;display:flex;gap:10px;justify-content:flex-end}
-  .btn-small{border:none;border-radius:6px;padding:6px 14px;cursor:pointer}
-  .btn-red{background:#c30000;color:#fff}
-  .btn-gray{background:#c5c5c5;color:#000}
-  .inventory-shell{max-width:100%;margin:0;border-radius:0;box-shadow:none}
-  .table-head,.list-body .row{grid-template-columns:140px 1fr 90px 60px 240px}
-  .notes-cell{grid-column:1 / -1;margin-top:4px}
-</style>
+    .modal{background:#122032;color:#fff;padding:16px;width:420px;border-radius:8px;box-shadow:0 8px 20px rgba(0,0,0,.4)}
+    .modal h3{margin:0 0 10px;font-size:18px}
+    .modal label{display:block;font-size:12px;margin-top:8px;margin-bottom:4px}
+    .modal input,.modal textarea{width:100%;border:none;border-radius:6px;height:34px;padding:6px 8px;outline:none;font-size:14px;color:#000}
+    .modal textarea{height:90px;resize:vertical}
+    .modal-actions{margin-top:14px;display:flex;gap:10px;justify-content:flex-end}
+    .btn-small{border:none;border-radius:6px;padding:6px 14px;cursor:pointer}
+    .btn-red{background:#c30000;color:#fff}
+    .btn-gray{background:#c5c5c5;color:#000}
+
+    @media (max-width:900px){
+      .inventory-shell{max-width:100%;margin:0;border-radius:0;box-shadow:none}
+      .table-head,.list-body .row{grid-template-columns:140px 1fr 90px 60px 240px}
+      .notes-cell{grid-column:1 / -1;margin-top:4px}
+    }
+  </style>
 </head>
 <body>
   <!-- Top navigation -->
