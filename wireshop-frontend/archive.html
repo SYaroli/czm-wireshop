@@ -6,63 +6,28 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <link rel="stylesheet" href="style.css"/>
   <style>
-    .brand-actions .navbtn{
-      display:inline-block !important;
-      background:var(--red) !important;
-      color:#fff !important;
-      padding:8px 12px !important;
-      border-radius:9px !important;
-      text-decoration:none !important;
-      border:0 !important;
-      font-weight:700 !important;
-      cursor:pointer !important;
-    }
-    .brand-actions .navbtn:hover{ filter:brightness(.92) }
-    .table-wrap{overflow:auto}
-
-    /* Modal */
+  /* Modal */
     .modal-backdrop{
       position:fixed; inset:0; background:rgba(0,0,0,.5);
       display:none; align-items:center; justify-content:center; z-index:1000;
     }
-    .modal{
+  .modal{
       background:#fff; border-radius:12px; width:min(900px, 94vw);
       box-shadow:0 10px 30px rgba(0,0,0,.25); padding:16px 16px 12px;
     }
-    .modal header{display:flex;align-items:center;gap:12px;margin-bottom:10px}
-    .modal h3{margin:0}
-    .modal .grid.cols-3{grid-template-columns:1fr 1fr 1fr}
-    .modal .grid.cols-2{grid-template-columns:1fr 1fr}
-    .modal footer{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
-    .danger-outline{
+  .modal header{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+  .modal h3{margin:0}
+  .modal .grid.cols-3{grid-template-columns:1fr 1fr 1fr}
+  .modal .grid.cols-2{grid-template-columns:1fr 1fr}
+  .modal footer{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
+  .danger-outline{
       background:#fff !important; color:var(--red) !important; border:2px solid var(--red) !important;
     }
-    .muted-sm{opacity:.8; font-size:.9rem}
-    .inline-input{width:100%; box-sizing:border-box}
-  </style>
-
-<style id="nav-pill-override">
-/* Compact pill buttons, high-specificity, no logic changes */
-.brand-bar .brand-inner .brand-actions a.navbtn{
-  display:inline-block !important;
-  background:#1a1c20 !important;
-  color:#bbb !important;
-  padding:6px 12px !important;
-  border-radius:10px !important;
-  text-decoration:none !important;
-  border:1px solid #3a3f44 !important;
-  font-weight:600 !important;
-  font-size:0.9rem !important;
-  margin-left:8px !important;
-  cursor:pointer !important;
-}
-.brand-bar .brand-inner .brand-actions a.navbtn:hover{ filter:brightness(1.1) !important; }
-.brand-bar .brand-inner .brand-actions a.navbtn.active{
-  background:#b30000 !important;
-  color:#fff !important;
-  border-color:#ff4d4d !important;
-}
+  .muted-sm{opacity:.8; font-size:.9rem}
+  .inline-input{width:100%; box-sizing:border-box}
 </style>
+
+
 
 </head>
 <body>

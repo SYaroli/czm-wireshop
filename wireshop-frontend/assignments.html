@@ -6,33 +6,21 @@
   <title>CZM • Build Next</title>
   <link rel="stylesheet" href="/style.css"/>
   <style>
-    .brand-actions .navbtn{display:inline-block;background:#1a1c20;color:#bbb;padding:6px 12px;border-radius:10px;text-decoration:none;border:1px solid #3a3f44;font-weight:600;font-size:.9rem;margin-left:8px}
-    .brand-actions .navbtn.active{background:#b30000;color:#fff;border-color:#ff4d4d}
-    .toolbar{display:flex;gap:10px;flex-wrap:wrap}
-    .toolbar > *{flex:1}
-    .toolbar .tight{flex:0}
-    .right{display:flex;justify-content:flex-end;gap:8px;align-items:center;flex-wrap:wrap}
-    .pill{padding:10px 14px;border:1px solid #d3d8e1;border-radius:10px;background:#fff;cursor:pointer;font-weight:800;min-width:64px;text-align:center}
-    .pill.claim{background:#0e7a0d;color:#fff;border-color:#0e7a0d}
-    .pill.cancel{background:#a00;color:#fff;border-color:#a00}
-    .pill.small{min-width:0;padding:8px 10px;font-size:.95rem}
-    .pill.primary{background:#b30000;color:#fff;border-color:#b30000}
-    table.compact td, table.compact th{padding:8px 10px}
-    td.qty{font-weight:900}
-    .muted{color:#666;font-size:.95rem}
-    .kicker{font-weight:900;margin:0 0 8px}
-    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace}
-    .note{font-size:.9rem;color:#666}
-    .minw{min-width:120px}
-    .nowrap{white-space:nowrap}
-    .card.sized{min-height:320px}
-    th.wide, td.wide{min-width:320px}
-    @media (max-width: 900px){ th.wide, td.wide{min-width:260px} }
-    .priority{display:inline-block;border:1px solid #ccc;border-radius:8px;padding:2px 8px;font-weight:800;font-size:.85rem}
-    .p1{background:#fff3cd;border-color:#ffe08a}
-    .p2{background:#ffd5d5;border-color:#ff9b9b}
-
-    /* Done header actions layout */
+  .toolbar{display:flex;gap:10px;flex-wrap:wrap}
+  .toolbar > *{flex:1}
+  .toolbar .tight{flex:0}
+  .pill{padding:10px 14px;border:1px solid #d3d8e1;border-radius:10px;background:#fff;cursor:pointer;font-weight:800;min-width:64px;text-align:center}
+  .pill.claim{background:#0e7a0d;color:#fff;border-color:#0e7a0d}
+  .pill.cancel{background:#a00;color:#fff;border-color:#a00}
+  .pill.small{min-width:0;padding:8px 10px;font-size:.95rem}
+  .pill.primary{background:#b30000;color:#fff;border-color:#b30000}
+  table.compact td, table.compact th{padding:8px 10px}
+  .kicker{font-weight:900;margin:0 0 8px}
+  .minw{min-width:120px}
+  th.wide, td.wide{min-width:320px}
+  th.wide, td.wide{min-width:260px}
+  .priority{display:inline-block;border:1px solid #ccc;border-radius:8px;padding:2px 8px;font-weight:800;font-size:.85rem}
+  /* Done header actions layout */
     .actions-row{
       display:flex;
       align-items:center;
@@ -40,33 +28,28 @@
       justify-content:flex-end;
       flex-wrap:nowrap;
     }
-    .actions-row > *{flex:0 0 auto;}
-
-    /* Make Export CSV visible (match red theme like Clear) */
+  .actions-row > *{flex:0 0 auto;}
+  /* Make Export CSV visible (match red theme like Clear) */
     #exportDoneBtn{
       background:#b30000;
       color:#fff;
       border-color:#b30000;
     }
-    #exportDoneBtn:hover{ background:#d20000; }
-
-    /* Fix Admin "Add to Queue" layout (prevent scrunched qty/priority/add) */
+  #exportDoneBtn:hover{ background:#d20000; }
+  /* Fix Admin "Add to Queue" layout (prevent scrunched qty/priority/add) */
     #addCard .toolbar{flex-wrap:nowrap;align-items:center}
-    #pnInput{flex:1 1 420px;min-width:260px}
-    #qAdd{flex:0 0 90px;max-width:90px}
-    #prioritySel{flex:0 0 140px;max-width:140px}
-    #addBtn{flex:0 0 90px;max-width:90px}
-    @media (max-width: 900px){
-      #addCard .toolbar{flex-wrap:wrap}
-      #pnInput{flex:1 1 100%}
-      #qAdd,#prioritySel,#addBtn{flex:1 1 30%}
-    }
-
-    .progress-section{margin-bottom:20px}
-    .progress-section:last-of-type{margin-bottom:12px}
-    .subkicker{font-size:1rem;font-weight:900;margin:0 0 8px}
-    .progress-table{width:100%}
-  </style>
+  #pnInput{flex:1 1 420px;min-width:260px}
+  #qAdd{flex:0 0 90px;max-width:90px}
+  #prioritySel{flex:0 0 140px;max-width:140px}
+  #addBtn{flex:0 0 90px;max-width:90px}
+  #addCard .toolbar{flex-wrap:wrap}
+  #pnInput{flex:1 1 100%}
+  #qAdd,#prioritySel,#addBtn{flex:1 1 30%}
+  .progress-section{margin-bottom:20px}
+  .progress-section:last-of-type{margin-bottom:12px}
+  .subkicker{font-size:1rem;font-weight:900;margin:0 0 8px}
+  .progress-table{width:100%}
+</style>
 </head>
 <body>
   <div class="brand-bar">

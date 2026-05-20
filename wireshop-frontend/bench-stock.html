@@ -6,43 +6,20 @@
   <title>CZM • Bench Stock</title>
   <link rel="stylesheet" href="/style.css" />
   <style>
-    .brand-actions .navbtn{display:inline-block;background:#1a1c20;color:#bbb;padding:6px 12px;border-radius:10px;text-decoration:none;border:1px solid #3a3f44;font-weight:600;font-size:.9rem;margin-left:8px}
-    .brand-actions .navbtn.active{background:#b30000;color:#fff;border-color:#ff4d4d}
-    .page-wrap{max-width:1300px;margin:20px auto;padding:0 16px}
-    .card{background:#fff;border:1px solid #d9dfe8;border-radius:14px;box-shadow:0 3px 10px rgba(0,0,0,.06);overflow:hidden}
-    .card-head{padding:16px 18px;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
-    .card-title{margin:0;font-size:1.15rem;font-weight:900}
-    .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-    .toolbar input{padding:10px 12px;border:1px solid #cfd6df;border-radius:10px;font:inherit}
-    .toolbar .search{min-width:260px;flex:1}
-    .toolbar .btn{padding:10px 14px;border-radius:10px;border:1px solid #b30000;background:#b30000;color:#fff;font-weight:800;cursor:pointer}
-    .toolbar .btn.secondary{background:#fff;color:#333;border-color:#cfd6df}
-    .admin-panel{display:none;padding:16px 18px;border-bottom:1px solid #e5e7eb;background:#fafbfc}
-    .form-grid{display:grid;grid-template-columns:1.3fr 2fr 1.2fr 1.2fr .8fr auto;gap:10px;align-items:end}
-    .field label{display:block;font-size:.82rem;font-weight:800;color:#555;margin-bottom:6px}
-    .field input{width:100%;padding:10px 12px;border:1px solid #cfd6df;border-radius:10px;font:inherit;box-sizing:border-box}
-    .table-wrap{overflow:auto}
-    table{width:100%;border-collapse:collapse}
-    th,td{padding:12px 14px;border-bottom:1px solid #edf1f5;text-align:left;vertical-align:middle}
-    th{background:#f7f9fb;font-size:.9rem}
-    td.actions{white-space:nowrap}
-    .small-btn{
-      padding:7px 10px;
-      border-radius:8px;
-      border:1px solid #cfd6df;
-      background:#fff;
-      color:#111;
-      cursor:pointer;
-      font-weight:700;
-      margin-right:6px;
-    }
-    .small-btn.delete{border-color:#b30000;color:#b30000}
-    .muted{color:#6b7280}
-    .hidden{display:none !important}
-    .pill{display:inline-block;padding:4px 8px;border-radius:999px;background:#f1f5f9;font-weight:700;font-size:.8rem}
-    @media (max-width: 1100px){.form-grid{grid-template-columns:1fr 1fr}.form-grid .wide{grid-column:span 2}}
-    @media (max-width: 700px){.form-grid{grid-template-columns:1fr}.form-grid .wide{grid-column:span 1} .toolbar .search{min-width:0;width:100%}}
-  </style>
+  .page-wrap{max-width:1300px;margin:20px auto;padding:0 16px}
+  .card-head{padding:16px 18px;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+  .card-title{margin:0;font-size:1.15rem;font-weight:900}
+  .toolbar .search{min-width:260px;flex:1}
+  .admin-panel{display:none;padding:16px 18px;border-bottom:1px solid #e5e7eb;background:#fafbfc}
+  .form-grid{display:grid;grid-template-columns:1.3fr 2fr 1.2fr 1.2fr .8fr auto;gap:10px;align-items:end}
+  .field label{display:block;font-size:.82rem;font-weight:800;color:#555;margin-bottom:6px}
+  .field input{width:100%;padding:10px 12px;border:1px solid #cfd6df;border-radius:10px;font:inherit;box-sizing:border-box}
+  .form-grid{grid-template-columns:1fr 1fr}
+  .form-grid .wide{grid-column:span 2}
+  .form-grid{grid-template-columns:1fr}
+  .form-grid .wide{grid-column:span 1}
+  .toolbar .search{min-width:0;width:100%}
+</style>
 </head>
 <body>
   <div class="brand-bar">

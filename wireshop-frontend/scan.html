@@ -6,59 +6,50 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <link rel="stylesheet" href="/style.css" />
   <style>
-    :root { --red:#c30000; --bg:#0f1114; --card:#ffffff; --muted:#6b7280; }
-    body{ margin:0; background:#eef0f3; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
-    .topbar{
+  .topbar{
       position:sticky; top:0; z-index:10;
       background:var(--bg); color:#fff;
       border-bottom:4px solid var(--red);
       padding:10px 12px;
       display:flex; align-items:center; justify-content:space-between; gap:10px;
     }
-    .topbar .title{ font-weight:800; letter-spacing:.2px; font-size:16px; }
-    .topbar .btn{
+  .topbar .title{ font-weight:800; letter-spacing:.2px; font-size:16px; }
+  .topbar .btn{
       border:1px solid #3a3f44; background:#1a1c20; color:#fff;
       padding:8px 10px; border-radius:12px; font-weight:700; font-size:13px;
     }
-    .wrap{ max-width:560px; margin:12px auto; padding:0 12px 18px; }
-    .card{
+  .wrap{ max-width:560px; margin:12px auto; padding:0 12px 18px; }
+  .card{
       background:var(--card); border-radius:14px; box-shadow:0 2px 8px rgba(0,0,0,.08);
       padding:14px;
     }
-    .part{ font-weight:900; font-size:20px; margin:0; }
-    .desc{ margin:4px 0 0; font-size:15px; font-weight:700; color:#111; }
-    .meta{ margin-top:10px; display:grid; grid-template-columns: 1fr; gap:8px; }
-    .metaRow{ display:flex; justify-content:space-between; gap:10px; align-items:center; }
-    .label{ color:var(--muted); font-size:12px; font-weight:700; }
-    .value{ font-size:14px; font-weight:800; color:#111; text-align:right; word-break:break-word; }
-
-    .qtyBox{
+  .part{ font-weight:900; font-size:20px; margin:0; }
+  .desc{ margin:4px 0 0; font-size:15px; font-weight:700; color:#111; }
+  .meta{ margin-top:10px; display:grid; grid-template-columns: 1fr; gap:8px; }
+  .metaRow{ display:flex; justify-content:space-between; gap:10px; align-items:center; }
+  .label{ color:var(--muted); font-size:12px; font-weight:700; }
+  .value{ font-size:14px; font-weight:800; color:#111; text-align:right; word-break:break-word; }
+  .qtyBox{
       margin-top:12px;
       background:#0a0b0d; color:#fff; border-radius:14px; padding:12px;
       display:flex; align-items:center; justify-content:space-between; gap:12px;
     }
-    .qtyBox .qtyLabel{ font-size:12px; color:#cbd5e1; font-weight:800; letter-spacing:.2px; }
-    .qtyBox .qtyNum{ font-size:34px; font-weight:900; line-height:1; }
-
-    .grid{
-      margin-top:12px;
-      display:grid; grid-template-columns: 1fr 1fr; gap:10px;
-    }
-    .qbtn{
+  .qtyBox .qtyLabel{ font-size:12px; color:#cbd5e1; font-weight:800; letter-spacing:.2px; }
+  .qtyBox .qtyNum{ font-size:34px; font-weight:900; line-height:1; }
+  .qbtn{
       height:56px;
       border:none; border-radius:14px;
       font-size:18px; font-weight:900;
       cursor:pointer;
     }
-    .qbtn.neg{ background:#2f2f2f; color:#fff; }
-    .qbtn.pos{ background:#0f6a00; color:#fff; }
-    .qbtn:disabled{ opacity:.6; cursor:not-allowed; }
-
-    .custom{
+  .qbtn.neg{ background:#2f2f2f; color:#fff; }
+  .qbtn.pos{ background:#0f6a00; color:#fff; }
+  .qbtn:disabled{ opacity:.6; cursor:not-allowed; }
+  .custom{
       margin-top:12px;
       display:flex; gap:10px; align-items:center;
     }
-    .custom input{
+  .custom input{
       flex:1;
       height:52px;
       border:1px solid #cfd4da;
@@ -69,7 +60,7 @@
       text-align:center;
       background:#fff;
     }
-    .apply{
+  .apply{
       height:52px;
       min-width:120px;
       border:none;
@@ -80,15 +71,14 @@
       font-weight:900;
       cursor:pointer;
     }
-    .apply:disabled{ opacity:.6; cursor:not-allowed; }
-
-    .note{
+  .apply:disabled{ opacity:.6; cursor:not-allowed; }
+  .note{
       margin-top:10px;
       display:flex;
       gap:10px;
       align-items:center;
     }
-    .note input{
+  .note input{
       flex:1;
       height:44px;
       border:1px solid #cfd4da;
@@ -98,20 +88,19 @@
       font-weight:700;
       background:#fff;
     }
-    .hint{ margin-top:10px; color:#6b7280; font-size:12px; }
-    .err{ margin-top:10px; background:#fff0f0; border:1px solid #ffb4b4; color:#7a0000; padding:10px 12px; border-radius:12px; font-weight:800; display:none; }
-    .ok{ margin-top:10px; background:#f0fff3; border:1px solid #9be3a5; color:#0b4d00; padding:10px 12px; border-radius:12px; font-weight:800; display:none; }
-
-    .footer{
+  .hint{ margin-top:10px; color:#6b7280; font-size:12px; }
+  .err{ margin-top:10px; background:#fff0f0; border:1px solid #ffb4b4; color:#7a0000; padding:10px 12px; border-radius:12px; font-weight:800; display:none; }
+  .ok{ margin-top:10px; background:#f0fff3; border:1px solid #9be3a5; color:#0b4d00; padding:10px 12px; border-radius:12px; font-weight:800; display:none; }
+  .footer{
       margin-top:12px;
       display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap;
     }
-    .smallbtn{
+  .smallbtn{
       border:1px solid #cfd4da; background:#eee; color:#111;
       padding:10px 12px; border-radius:12px; font-weight:900; cursor:pointer; font-size:13px;
     }
-    .logout{ border-color:#3a3f44; background:#1a1c20; color:#fff; }
-  </style>
+  .logout{ border-color:#3a3f44; background:#1a1c20; color:#fff; }
+</style>
 </head>
 <body>
   <div class="topbar">

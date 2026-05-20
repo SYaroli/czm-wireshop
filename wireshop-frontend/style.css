@@ -1,56 +1,81 @@
-/* ===== CZM Wireshop — Compact Pro Theme ===== */
+/* ===== CZM Wireshop — Master Stylesheet ===== */
+/* Single source of truth. All pages share these rules. */
+
 :root{
   --red:#C20F2F;
+  --red-hover:#d20000;
   --black:#0E0F12;
+  --dark:#0f1114;
   --ink:#1c1f24;
   --muted:#6b7280;
-  --bg:#f6f7f9;
+  --bg:#eef0f3;
   --card:#ffffff;
   --line:#e5e7eb;
-  --shadow:0 6px 18px rgba(0,0,0,.12);
+  --shadow:0 2px 8px rgba(0,0,0,.08);
 }
 
+/* ===== Reset ===== */
 *{box-sizing:border-box}
-html,body{height:100%}
+html,body{height:100%; margin:0}
 body{
-  margin:0;
-  font: 14px/1.4 ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+  font:14px/1.4 ui-sans-serif,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
   color:var(--ink);
-  background:linear-gradient(180deg,#fafafa, #f1f3f6 40%, #eef0f3);
+  background:var(--bg);
 }
 
-/* Subtle background logo (smaller, lighter) */
+/* ===== Background logo watermark ===== */
 body::before{
   content:"";
   position:fixed; inset:0;
   background:url('czm-logo.png') center/280px no-repeat;
   opacity:.04; filter:grayscale(100%);
-  pointer-events:none;
+  pointer-events:none; z-index:0;
 }
-
-/* Page width */
-main,.page{width:min(1080px,92vw); margin:64px auto}
 
 /* ===== Top bar ===== */
 .brand-bar{
   position:sticky; top:0; z-index:40;
-  background:linear-gradient(0deg, var(--black), #000);
-  border-bottom:2px solid var(--red);
-  box-shadow:0 3px 14px rgba(0,0,0,.22);
+  background:#0f1114;
+  border-bottom:4px solid var(--red);
+  box-shadow:0 3px 14px rgba(0,0,0,.3);
 }
 .brand-inner{
-  width:min(1080px,92vw); margin:0 auto;
-  display:flex; align-items:center; gap:10px; padding:8px 0;
+  max-width:1200px; margin:0 auto;
+  display:flex; align-items:center; justify-content:space-between;
+  gap:12px; padding:8px 12px;
 }
-.brand-logo{display:flex; align-items:center; gap:10px; text-decoration:none}
-.brand-logo img{height:26px; filter:drop-shadow(0 1px 1px rgba(0,0,0,.35))}
-.brand-title{color:#fff; font-weight:800; font-size:14px; letter-spacing:.4px; margin:0}
-.brand-actions{margin-left:auto; display:flex; gap:8px}
-.brand-actions button{
-  background:var(--red); color:#fff; border:0;
-  padding:8px 10px; border-radius:9px; font-weight:700; cursor:pointer;
+.brand-logo{display:flex; align-items:center; gap:10px; text-decoration:none; color:#fff}
+.brand-logo img{height:24px; opacity:.95}
+.brand-title{color:#fff; font-weight:800; font-size:15px; letter-spacing:.3px; margin:0}
+.brand-actions{display:flex; align-items:center; gap:8px; flex-wrap:wrap}
+
+/* Nav buttons — all pages */
+.brand-actions .navbtn,
+.navbtn{
+  display:inline-block;
+  background:#1a1c20;
+  color:#bbb;
+  padding:6px 12px;
+  border-radius:10px;
+  text-decoration:none;
+  border:1px solid #3a3f44;
+  font-weight:600;
+  font-size:.88rem;
+  cursor:pointer;
+  white-space:nowrap;
+  appearance:none;
 }
-.brand-actions .dark{background:#202329}
+.brand-actions .navbtn:hover,
+.navbtn:hover{background:#24272b; color:#fff}
+.brand-actions .navbtn.active,
+.navbtn.active{background:var(--red); color:#fff; border-color:#ff4d4d}
+
+/* ===== Page wrapper ===== */
+main,.page{
+  width:min(1080px,92vw);
+  margin:0 auto;
+  padding:20px 0 40px;
+}
 
 /* ===== Cards ===== */
 .card{
@@ -59,138 +84,212 @@ main,.page{width:min(1080px,92vw); margin:64px auto}
   border-radius:12px;
   padding:14px 16px;
   box-shadow:var(--shadow);
-  margin:14px auto;
+  margin-bottom:14px;
 }
-.card h2{margin:.1rem 0 .6rem 0; font-size:18px}
+.card h2{margin:.1rem 0 .6rem; font-size:17px}
 
-/* ===== Inputs / Buttons ===== */
+/* ===== Inputs ===== */
 label{font-weight:700; font-size:13px}
 input,select,textarea,button{font:inherit}
-select, input, textarea{
-  width:100%; background:#fff; border:1px solid #d3d8e1; border-radius:10px;
-  padding:9px 10px; outline:none; transition:border .15s, box-shadow .15s;
+select,input,textarea{
+  width:100%; background:#fff; border:1px solid #cfd4da;
+  border-radius:8px; padding:8px 10px; outline:none;
+  color:var(--ink);
+  transition:border .15s,box-shadow .15s;
 }
-select:focus, input:focus, textarea:focus{
-  border-color:var(--red); box-shadow:0 0 0 3px rgba(194,15,47,.14);
+select:focus,input:focus,textarea:focus{
+  border-color:var(--red); box-shadow:0 0 0 3px rgba(194,15,47,.12);
 }
+
+/* ===== Buttons ===== */
 button{
-  background:var(--red); color:#fff; border:0; border-radius:10px; font-weight:800;
-  padding:10px 14px; cursor:pointer;
+  background:var(--red); color:#fff; border:0;
+  border-radius:8px; font-weight:800;
+  padding:8px 14px; cursor:pointer;
 }
-button:hover{filter:brightness(1.05)}
+button:hover{filter:brightness(1.06)}
 button:active{transform:translateY(1px)}
-button.danger{background:#b91c1c}
 button.secondary{background:#26282e}
+button.danger{background:#b91c1c}
+button.dark{background:#202329}
 
-/* ===== Grid ===== */
+/* ===== Tables ===== */
+table{width:100%; border-collapse:collapse; font-size:13px}
+thead th{
+  background:#0f1114; color:#fff;
+  text-align:left; padding:9px 10px; font-weight:700;
+}
+tbody td{
+  background:#fff; padding:9px 10px;
+  border-bottom:1px solid var(--line); vertical-align:top;
+}
+tbody tr:hover td{background:#fafafa}
+tbody tr:last-child td{border-bottom:0}
+
+/* ===== Grid helpers ===== */
 .grid{display:grid; gap:10px}
-@media(min-width:860px){ .grid.cols-3{grid-template-columns:1fr 1.2fr auto} }
+@media(min-width:860px){.grid.cols-3{grid-template-columns:1fr 1.2fr auto}}
 
-/* Info panel */
+/* ===== Info panel ===== */
 .info{
-  background:#fbfcff; border:1px dashed #d8dde6; border-radius:10px; padding:10px;
+  background:#fbfcff; border:1px dashed #d8dde6;
+  border-radius:10px; padding:10px;
   display:grid; gap:4px; font-size:13px;
 }
 .info p{margin:0} .info span{font-weight:800}
 
-/* ===== Tables ===== */
-table{width:100%; border-collapse:separate; border-spacing:0; font-size:13px}
-thead th{
-  background:#0f1114; color:#fff; text-align:left; padding:9px 10px; font-weight:800;
-}
-tbody td{background:#fff; padding:9px 10px; border-top:1px solid var(--line); vertical-align:top}
-tbody tr:hover td{background:#fafafa}
-tbody tr:first-child td{border-top:0}
-.sticky-head thead th{position:sticky; top:48px; z-index:5}
+/* ===== Utility ===== */
+.muted{color:var(--muted); font-size:.9rem}
+.table-wrap{overflow:auto}
+.nowrap{white-space:nowrap}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.hidden{display:none !important}
 
-/* Active row widgets */
+/* ===== Active row / selection ===== */
+tr.row-selected td{
+  background:#fff6f7 !important;
+  box-shadow:inset 0 0 0 1px rgba(194,15,47,.15);
+}
+
+/* ===== Notes box ===== */
 .notes-box{
   width:100%; min-height:64px; resize:vertical;
-  border:1px solid #d3d8e1; border-radius:10px; padding:8px 10px;
+  border:1px solid #d3d8e1; border-radius:8px; padding:8px 10px;
 }
-.row-action{
-  width:100%; min-width:140px; padding:7px 8px; border:1px solid #d3d8e1; border-radius:10px; background:#fff; font-weight:700;
-}
-.row-pause{color:#a07900}
-.row-continue{color:#163ea3}
-.row-finish{color:#b31224}
 
-/* Selection highlight */
-tr.row-selected td{ background:#fff6f7 !important; box-shadow: inset 0 0 0 1px rgba(194,15,47,.15); }
-
-/* ===== Login (compact) ===== */
-.login-wrap{ width:min(360px, 92vw); margin:64px auto; }
+/* ===== Login ===== */
+.login-wrap{width:min(360px,92vw); margin:64px auto}
 .login-card{
-  background:#fff; border:1px solid var(--line); border-radius:14px; padding:16px;
-  box-shadow:var(--shadow);
+  background:#fff; border:1px solid var(--line);
+  border-radius:14px; padding:16px; box-shadow:var(--shadow);
 }
 .login-top{display:flex; align-items:center; gap:10px; margin-bottom:8px}
 .login-top img{height:28px}
 .login-title{margin:0; font-size:18px; font-weight:800}
-.login-sub{margin:0 0 10px 0; color:var(--muted); font-size:12px}
+.login-sub{margin:0 0 10px; color:var(--muted); font-size:12px}
 #login-form .row{display:grid; gap:6px; margin:8px 0}
 #error-message{color:#b91c1c; min-height:18px; font-size:12px}
 
-/* TEMP: hide unused nav links without touching markup */
-.brand-actions a[href$="dashboard.html"],
-.brand-actions a[href$="archive.html"]{
-  display:none !important;
-}
-
-/* inventory toolbar fixes */
-.card .toolbar .badge,
-.card .toolbar button.badge {
-  background: #eee;
-  border: 1px solid #ddd;
-  color: #000;
-  border-radius: 8px;
-  padding: 4px 8px;
-  font-weight: 700;
-}
-.card .toolbar #status { color: #666; }
-
-.brand-actions{
-  display:flex;
-  gap:10px;
-  flex-wrap:wrap;
-  justify-content:flex-end;
-  align-items:center;
-}
-
-/* ===== Inventory page button consistency (targets YOUR real classes) ===== */
-
-/* Make inventory "Edit" buttons red/white like the others */
+/* ===== Inventory shared buttons ===== */
 .edit-btn{
-  background: var(--red) !important;
-  color:#fff !important;
-  border: 1px solid rgba(0,0,0,.08) !important;
-  border-radius: 6px !important;
-  font-weight: 800 !important;
+  background:#3a3a3a !important; color:#fff !important;
+  border:none !important; border-radius:6px !important;
+  font-weight:700 !important;
 }
-.edit-btn:hover{filter:brightness(1.05)}
-.edit-btn:active{transform:translateY(1px)}
+.edit-btn:hover{filter:brightness(1.15) !important}
 
-/* Make movement log buttons consistent */
+.apply-btn,.log-btn.red,.toolbar-btn.red{
+  background:var(--red) !important; color:#fff !important;
+  border:none !important;
+}
+
 .log-btn{
-  background: var(--red) !important;
-  color:#fff !important;
-  border-color: rgba(0,0,0,.08) !important;
-  font-weight: 800 !important;
+  border:1px solid #cfd4da; background:#eee;
+  border-radius:6px; padding:4px 8px; font-size:12px; cursor:pointer;
 }
-.log-btn:hover{filter:brightness(1.05)}
-.log-btn:active{transform:translateY(1px)}
+.log-btn.red{border-color:var(--red) !important}
 
-/* Keep .log-btn.red working (already red), but ensure it stays white text */
-.log-btn.red{
-  background: var(--red) !important;
-  color:#fff !important;
-  border-color: rgba(0,0,0,.08) !important;
+.toolbar-btn{
+  background:#eee; border:1px solid #cfd4da;
+  border-radius:6px; height:32px; padding:0 12px; font-size:13px; cursor:pointer;
 }
+.toolbar-btn.red{background:var(--red); color:#fff; border-color:#a00}
 
-/* Optional: if any toolbar button gets .red, make sure it matches theme */
-.toolbar-btn.red{
-  background: var(--red) !important;
-  color:#fff !important;
-  border-color: rgba(0,0,0,.08) !important;
-  font-weight: 800 !important;
+/* ===== Quick inventory buttons ===== */
+.quick-btn{
+  border:1px solid #cfd4da; background:#eee;
+  border-radius:6px; height:32px; min-width:44px;
+  padding:0 10px; font-weight:700; cursor:pointer;
+}
+.quick-btn.minus{background:#2f2f2f; color:#fff; border-color:#1f1f1f}
+.quick-btn.plus{background:#0f6a00; color:#fff; border-color:#0b4d00}
+.quick-btn:disabled{opacity:.6; cursor:not-allowed}
+
+/* ===== Sticky head ===== */
+.sticky-head thead th{position:sticky; top:48px; z-index:5}
+
+/* ===== Modal (shared) ===== */
+.modal-backdrop{
+  position:fixed; inset:0; background:rgba(0,0,0,.45);
+  display:none; align-items:center; justify-content:center; z-index:1000;
+}
+.modal-backdrop.show,.modal-backdrop[style*="flex"]{display:flex}
+.modal{
+  background:#fff; border-radius:12px;
+  width:min(900px,94vw); padding:16px;
+  box-shadow:0 10px 30px rgba(0,0,0,.25);
+}
+.modal-box{
+  background:#fff; border-radius:10px;
+  padding:28px 32px; max-width:420px; width:90%;
+  box-shadow:0 8px 32px rgba(0,0,0,.25); text-align:center;
+}
+.modal-box .modal-icon{font-size:2.2rem; margin-bottom:10px}
+.modal-box .modal-msg{font-size:1rem; font-weight:600; margin-bottom:20px; line-height:1.4}
+.modal-box .modal-ok{background:#1a6b3a; color:#fff; border:none; border-radius:6px; padding:9px 32px; font-size:.95rem; font-weight:700; cursor:pointer}
+.modal-box .modal-ok.error{background:#8a1a1a}
+.modal-box .modal-cancel{background:#555; color:#fff; border:none; border-radius:6px; padding:9px 24px; font-size:.95rem; font-weight:700; cursor:pointer; margin-right:10px}
+.warn-box{background:#fff; border-radius:10px; padding:28px 32px; max-width:460px; width:90%; box-shadow:0 8px 32px rgba(0,0,0,.25); text-align:center}
+.warn-box .warn-icon{font-size:2.4rem; margin-bottom:8px}
+.warn-box .warn-title{font-size:1.05rem; font-weight:800; margin-bottom:14px; color:var(--red)}
+.warn-box .warn-body{font-size:.88rem; line-height:1.7; color:#333; margin-bottom:22px; text-align:left}
+
+/* ===== Delta colors (movement log) ===== */
+.delta-pos{color:#0a6a0a; font-weight:700}
+.delta-neg{color:var(--red); font-weight:700}
+.chip{display:inline-block; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:700; background:#eee}
+.chip.in{background:#e8f6e8; color:#0a6a0a}
+.chip.out{background:#fdeaea; color:var(--red)}
+.chip.same{background:#f0f0f0; color:#444}
+
+/* ===== Admin card shared ===== */
+.btn-mini{
+  background:var(--dark); color:#fff;
+  border:1px solid #1f2329; border-radius:8px;
+  padding:6px 10px; font-size:12px; font-weight:700;
+  cursor:pointer; height:34px;
+}
+.btn-mini:hover{background:#23272d}
+.toggle-btn,.quick-link{
+  display:inline-flex; align-items:center; justify-content:center;
+  background:var(--red); color:#fff; text-decoration:none;
+  padding:9px 14px; border-radius:10px; font-weight:800; font-size:.92rem;
+  border:none; cursor:pointer;
+}
+.toggle-btn:hover,.quick-link:hover{background:var(--red-hover)}
+.low-qty{font-weight:800; color:var(--red)}
+.msg{margin-top:8px; font-size:12px; min-height:16px}
+.msg.ok{color:#0a6a0a; font-weight:800}
+.msg.err{color:var(--red); font-weight:800}
+
+/* ===== Assignments pill buttons ===== */
+.pill{
+  padding:8px 12px; border:1px solid #d3d8e1;
+  border-radius:10px; background:#fff; cursor:pointer;
+  font-weight:800; min-width:64px; text-align:center;
+}
+.pill.claim{background:#0e7a0d; color:#fff; border-color:#0e7a0d}
+.pill.cancel{background:#a00; color:#fff; border-color:#a00}
+.pill.small{min-width:0; padding:6px 10px; font-size:.9rem}
+.pill.primary{background:var(--red); color:#fff; border-color:var(--red)}
+.priority{display:inline-block; border:1px solid #ccc; border-radius:8px; padding:2px 8px; font-weight:800; font-size:.85rem}
+.p1{background:#fff3cd; border-color:#ffe08a}
+.p2{background:#ffd5d5; border-color:#ff9b9b}
+
+/* ===== Bench stock shared ===== */
+.small-btn{
+  padding:7px 10px; border-radius:8px; border:1px solid #cfd4da;
+  background:#fff; color:#111; cursor:pointer; font-weight:700; margin-right:6px;
+}
+.small-btn.delete{border-color:var(--red); color:var(--red)}
+
+/* ===== Hide legacy unused links ===== */
+.brand-actions a[href$="dashboard.html"],
+.brand-actions a[href$="archive.html"]{display:none !important}
+
+/* ===== Toolbar badge ===== */
+.card .toolbar .badge,
+.card .toolbar button.badge{
+  background:#eee; border:1px solid #ddd; color:#000;
+  border-radius:8px; padding:4px 8px; font-weight:700;
 }
