@@ -335,19 +335,33 @@ router.post('/inventory/:partNumber/log', requireUser, (req,res)=>{
 });
 
 // ===== BENCH STOCK =====
-db.run(`CREATE TABLE IF NOT EXISTS bench_stock (
-  partNumber TEXT PRIMARY KEY,
-  description TEXT,
-  location TEXT,
-  manufacturer TEXT,
-  qty INTEGER NOT NULL DEFAULT 0,
-  updatedAt INTEGER,
-  updatedBy TEXT
-)`);
+db.serialize(() => {
+  db.run(`CREATE TABLE IF NOT EXISTS bench_stock (
+    partNumber TEXT PRIMARY KEY,
+    description TEXT,
+    location TEXT,
+    manufacturer TEXT,
+    notes TEXT,
+    qty INTEGER NOT NULL DEFAULT 0,
+    updatedAt INTEGER,
+    updatedBy TEXT
+  )`);
+
+  // Upgrade existing Bench Stock tables without losing current entries.
+  db.all(`PRAGMA table_info(bench_stock)`, (err, rows = []) => {
+    if (err) return console.error('PRAGMA bench_stock:', err);
+    const names = rows.map(column => column.name);
+    if (!names.includes('notes')) {
+      db.run(`ALTER TABLE bench_stock ADD COLUMN notes TEXT`, alterErr => {
+        if (alterErr) console.error('ALTER bench_stock notes:', alterErr);
+      });
+    }
+  });
+});
 
 router.get('/benchstock-all', requireUser, (_req,res)=>{
   db.all(
-    `SELECT partNumber, description, location, manufacturer, qty, updatedAt, updatedBy
+    `SELECT partNumber, description, location, manufacturer, notes, qty, updatedAt, updatedBy
        FROM bench_stock
       ORDER BY partNumber COLLATE NOCASE ASC`,
     [],
@@ -360,7 +374,7 @@ router.get('/benchstock-all', requireUser, (_req,res)=>{
 
 router.get('/benchstock/:partNumber', requireUser, (req,res)=>{
   db.get(
-    `SELECT partNumber, description, location, manufacturer, qty, updatedAt, updatedBy
+    `SELECT partNumber, description, location, manufacturer, notes, qty, updatedAt, updatedBy
        FROM bench_stock
       WHERE partNumber = ?`,
     [req.params.partNumber],
@@ -378,6 +392,7 @@ router.post('/benchstock', requireAdmin, (req,res)=>{
     description = '',
     location = '',
     manufacturer = '',
+    notes = '',
     qty = 0,
   } = req.body || {};
 
@@ -391,13 +406,14 @@ router.post('/benchstock', requireAdmin, (req,res)=>{
 
   const now = Date.now();
   db.run(
-    `INSERT INTO bench_stock (partNumber, description, location, manufacturer, qty, updatedAt, updatedBy)
-     VALUES (?,?,?,?,?,?,?)`,
+    `INSERT INTO bench_stock (partNumber, description, location, manufacturer, notes, qty, updatedAt, updatedBy)
+     VALUES (?,?,?,?,?,?,?,?)`,
     [
       pn,
       String(description || '').trim(),
       String(location || '').trim(),
       String(manufacturer || '').trim(),
+      String(notes || '').trim(),
       Math.trunc(parsedQty),
       now,
       req.user
@@ -417,6 +433,7 @@ router.put('/benchstock/:partNumber', requireAdmin, (req,res)=>{
     description = '',
     location = '',
     manufacturer = '',
+    notes = '',
     qty = 0,
   } = req.body || {};
 
@@ -431,6 +448,7 @@ router.put('/benchstock/:partNumber', requireAdmin, (req,res)=>{
         SET description = ?,
             location = ?,
             manufacturer = ?,
+            notes = ?,
             qty = ?,
             updatedAt = ?,
             updatedBy = ?
@@ -439,6 +457,7 @@ router.put('/benchstock/:partNumber', requireAdmin, (req,res)=>{
       String(description || '').trim(),
       String(location || '').trim(),
       String(manufacturer || '').trim(),
+      String(notes || '').trim(),
       Math.trunc(parsedQty),
       now,
       req.user,
