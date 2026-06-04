@@ -45,7 +45,7 @@
       <div class="card-head">
         <h2 class="card-title">Bench Stock Inventory</h2>
         <div class="toolbar">
-          <input id="searchBox" class="search" type="text" placeholder="Search part number, description, location, manufacturer" />
+          <input id="searchBox" class="search" type="text" placeholder="Search part number, description, location, manufacturer, note" />
           <button id="toggleAdminBtn" class="btn hidden" type="button">Add Item</button>
           <button id="exportBtn" class="btn secondary" type="button">Export CSV</button>
         </div>
@@ -69,6 +69,10 @@
             <label for="manufacturer">Manufacturer</label>
             <input id="manufacturer" type="text" />
           </div>
+          <div class="field wide">
+            <label for="notes">Note</label>
+            <input id="notes" type="text" />
+          </div>
           <div class="field">
             <label for="qty">Qty</label>
             <input id="qty" type="number" min="0" step="1" value="0" />
@@ -88,6 +92,7 @@
               <th>Description</th>
               <th>Location</th>
               <th>Manufacturer</th>
+              <th>Note</th>
               <th>Qty</th>
               <th>Updated</th>
               <th>By</th>
@@ -95,7 +100,7 @@
             </tr>
           </thead>
           <tbody id="itemsBody">
-            <tr><td colspan="8" class="muted">Loading bench stock...</td></tr>
+            <tr><td colspan="9" class="muted">Loading bench stock...</td></tr>
           </tbody>
         </table>
       </div>
@@ -118,6 +123,7 @@
       description: document.getElementById('description'),
       location: document.getElementById('location'),
       manufacturer: document.getElementById('manufacturer'),
+      notes: document.getElementById('notes'),
       qty: document.getElementById('qty'),
     };
 
@@ -181,6 +187,7 @@
       fields.description.value = '';
       fields.location.value = '';
       fields.manufacturer.value = '';
+      fields.notes.value = '';
       fields.qty.value = '0';
       document.getElementById('saveBtn').textContent = 'Save';
       setStatus('');
@@ -193,6 +200,7 @@
       fields.description.value = row.description || '';
       fields.location.value = row.location || '';
       fields.manufacturer.value = row.manufacturer || '';
+      fields.notes.value = row.notes || '';
       fields.qty.value = Number(row.qty || 0);
       adminPanel.style.display = 'block';
       document.getElementById('saveBtn').textContent = 'Update';
@@ -203,14 +211,14 @@
     function filteredRows(){
       const q = String(searchBox.value || '').trim().toLowerCase();
       if (!q) return allRows;
-      return allRows.filter(r => [r.partNumber, r.description, r.location, r.manufacturer]
+      return allRows.filter(r => [r.partNumber, r.description, r.location, r.manufacturer, r.notes]
         .some(v => String(v || '').toLowerCase().includes(q)));
     }
 
     function render(){
       const rows = filteredRows();
       if (!rows.length) {
-        itemsBody.innerHTML = `<tr><td colspan="8" class="muted">No bench stock items found.</td></tr>`;
+        itemsBody.innerHTML = `<tr><td colspan="9" class="muted">No bench stock items found.</td></tr>`;
         return;
       }
 
@@ -220,6 +228,7 @@
           <td>${esc(r.description)}</td>
           <td>${esc(r.location)}</td>
           <td>${esc(r.manufacturer)}</td>
+          <td>${esc(r.notes)}</td>
           <td><span class="pill">${Number(r.qty || 0)}</span></td>
           <td>${r.updatedAt ? esc(new Date(r.updatedAt).toLocaleString()) : ''}</td>
           <td>${esc(r.updatedBy)}</td>
@@ -242,7 +251,7 @@
         render();
       } catch (err) {
         console.error(err);
-        itemsBody.innerHTML = `<tr><td colspan="8" class="muted">Failed to load bench stock.</td></tr>`;
+        itemsBody.innerHTML = `<tr><td colspan="9" class="muted">Failed to load bench stock.</td></tr>`;
       }
     }
 
@@ -252,6 +261,7 @@
         description: fields.description.value.trim(),
         location: fields.location.value.trim(),
         manufacturer: fields.manufacturer.value.trim(),
+        notes: fields.notes.value.trim(),
         qty: Number(fields.qty.value || 0),
       };
 
@@ -276,12 +286,13 @@
 
     function exportCsv(){
       const rows = filteredRows();
-      const header = ['Part Number','Description','Location','Manufacturer','Qty','Updated','By'];
+      const header = ['Part Number','Description','Location','Manufacturer','Note','Qty','Updated','By'];
       const lines = [header.join(',')].concat(rows.map(r => [
         r.partNumber,
         r.description,
         r.location,
         r.manufacturer,
+        r.notes,
         Number(r.qty || 0),
         r.updatedAt ? new Date(r.updatedAt).toLocaleString() : '',
         r.updatedBy || '',
