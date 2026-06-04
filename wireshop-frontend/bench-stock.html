@@ -19,6 +19,7 @@
   .form-grid{grid-template-columns:1fr}
   .form-grid .wide{grid-column:span 1}
   .toolbar .search{min-width:0;width:100%}
+  .notes-cell{max-width:260px;white-space:normal;color:#4b5563;font-size:.88rem}
 </style>
 </head>
 <body>
@@ -73,6 +74,10 @@
             <label for="qty">Qty</label>
             <input id="qty" type="number" min="0" step="1" value="0" />
           </div>
+          <div class="field wide">
+            <label for="notes">Notes</label>
+            <input id="notes" type="text" placeholder="Optional notes" />
+          </div>
           <div class="field">
             <button id="saveBtn" class="btn" type="button">Save</button>
           </div>
@@ -89,13 +94,14 @@
               <th>Location</th>
               <th>Manufacturer</th>
               <th>Qty</th>
+              <th>Notes</th>
               <th>Updated</th>
               <th>By</th>
               <th id="actionsHead" class="hidden">Actions</th>
             </tr>
           </thead>
           <tbody id="itemsBody">
-            <tr><td colspan="8" class="muted">Loading bench stock...</td></tr>
+            <tr><td colspan="9" class="muted">Loading bench stock...</td></tr>
           </tbody>
         </table>
       </div>
@@ -119,6 +125,7 @@
       location: document.getElementById('location'),
       manufacturer: document.getElementById('manufacturer'),
       qty: document.getElementById('qty'),
+      notes: document.getElementById('notes'),
     };
 
     let isAdmin = String(user.role || '').toLowerCase() === 'admin';
@@ -182,6 +189,7 @@
       fields.location.value = '';
       fields.manufacturer.value = '';
       fields.qty.value = '0';
+      fields.notes.value = '';
       document.getElementById('saveBtn').textContent = 'Save';
       setStatus('');
     }
@@ -194,6 +202,7 @@
       fields.location.value = row.location || '';
       fields.manufacturer.value = row.manufacturer || '';
       fields.qty.value = Number(row.qty || 0);
+      fields.notes.value = row.notes || '';
       adminPanel.style.display = 'block';
       document.getElementById('saveBtn').textContent = 'Update';
       setStatus(`Editing ${row.partNumber}`);
@@ -210,7 +219,7 @@
     function render(){
       const rows = filteredRows();
       if (!rows.length) {
-        itemsBody.innerHTML = `<tr><td colspan="8" class="muted">No bench stock items found.</td></tr>`;
+        itemsBody.innerHTML = `<tr><td colspan="9" class="muted">No bench stock items found.</td></tr>`;
         return;
       }
 
@@ -221,6 +230,7 @@
           <td>${esc(r.location)}</td>
           <td>${esc(r.manufacturer)}</td>
           <td><span class="pill">${Number(r.qty || 0)}</span></td>
+          <td class="notes-cell">${esc(r.notes)}</td>
           <td>${r.updatedAt ? esc(new Date(r.updatedAt).toLocaleString()) : ''}</td>
           <td>${esc(r.updatedBy)}</td>
           <td class="actions ${isAdmin ? '' : 'hidden'}">
@@ -242,7 +252,7 @@
         render();
       } catch (err) {
         console.error(err);
-        itemsBody.innerHTML = `<tr><td colspan="8" class="muted">Failed to load bench stock.</td></tr>`;
+        itemsBody.innerHTML = `<tr><td colspan="9" class="muted">Failed to load bench stock.</td></tr>`;
       }
     }
 
@@ -253,6 +263,7 @@
         location: fields.location.value.trim(),
         manufacturer: fields.manufacturer.value.trim(),
         qty: Number(fields.qty.value || 0),
+        notes: fields.notes.value.trim(),
       };
 
       if (!payload.partNumber && !editingPart) return setStatus('Part number is required.');
@@ -276,13 +287,14 @@
 
     function exportCsv(){
       const rows = filteredRows();
-      const header = ['Part Number','Description','Location','Manufacturer','Qty','Updated','By'];
+      const header = ['Part Number','Description','Location','Manufacturer','Qty','Notes','Updated','By'];
       const lines = [header.join(',')].concat(rows.map(r => [
         r.partNumber,
         r.description,
         r.location,
         r.manufacturer,
         Number(r.qty || 0),
+        r.notes || '',
         r.updatedAt ? new Date(r.updatedAt).toLocaleString() : '',
         r.updatedBy || '',
       ].map(v => `"${String(v || '').replace(/"/g, '""')}"`).join(',')));
