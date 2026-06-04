@@ -335,33 +335,30 @@ router.post('/inventory/:partNumber/log', requireUser, (req,res)=>{
 });
 
 // ===== BENCH STOCK =====
-db.serialize(() => {
-  db.run(`CREATE TABLE IF NOT EXISTS bench_stock (
-    partNumber TEXT PRIMARY KEY,
-    description TEXT,
-    location TEXT,
-    manufacturer TEXT,
-    notes TEXT,
-    qty INTEGER NOT NULL DEFAULT 0,
-    updatedAt INTEGER,
-    updatedBy TEXT
-  )`);
+db.run(`CREATE TABLE IF NOT EXISTS bench_stock (
+  partNumber TEXT PRIMARY KEY,
+  description TEXT,
+  location TEXT,
+  manufacturer TEXT,
+  qty INTEGER NOT NULL DEFAULT 0,
+  updatedAt INTEGER,
+  updatedBy TEXT,
+  notes TEXT
+)`);
 
-  // Upgrade existing Bench Stock tables without losing current entries.
-  db.all(`PRAGMA table_info(bench_stock)`, (err, rows = []) => {
-    if (err) return console.error('PRAGMA bench_stock:', err);
-    const names = rows.map(column => column.name);
-    if (!names.includes('notes')) {
-      db.run(`ALTER TABLE bench_stock ADD COLUMN notes TEXT`, alterErr => {
-        if (alterErr) console.error('ALTER bench_stock notes:', alterErr);
-      });
-    }
-  });
+// Add notes column to existing bench_stock tables that predate this change
+db.all(`PRAGMA table_info(bench_stock)`, (err, rows = []) => {
+  if (err) return console.error('PRAGMA bench_stock:', err);
+  const names = rows.map(c => c.name);
+  if (!names.includes('notes')) {
+    db.run(`ALTER TABLE bench_stock ADD COLUMN notes TEXT`);
+    console.log('[db] Added notes column to bench_stock');
+  }
 });
 
 router.get('/benchstock-all', requireUser, (_req,res)=>{
   db.all(
-    `SELECT partNumber, description, location, manufacturer, notes, qty, updatedAt, updatedBy
+    `SELECT partNumber, description, location, manufacturer, qty, updatedAt, updatedBy, notes
        FROM bench_stock
       ORDER BY partNumber COLLATE NOCASE ASC`,
     [],
@@ -374,7 +371,7 @@ router.get('/benchstock-all', requireUser, (_req,res)=>{
 
 router.get('/benchstock/:partNumber', requireUser, (req,res)=>{
   db.get(
-    `SELECT partNumber, description, location, manufacturer, notes, qty, updatedAt, updatedBy
+    `SELECT partNumber, description, location, manufacturer, qty, updatedAt, updatedBy, notes
        FROM bench_stock
       WHERE partNumber = ?`,
     [req.params.partNumber],
@@ -392,8 +389,8 @@ router.post('/benchstock', requireAdmin, (req,res)=>{
     description = '',
     location = '',
     manufacturer = '',
-    notes = '',
     qty = 0,
+    notes = '',
   } = req.body || {};
 
   const pn = String(partNumber || '').trim();
@@ -406,17 +403,17 @@ router.post('/benchstock', requireAdmin, (req,res)=>{
 
   const now = Date.now();
   db.run(
-    `INSERT INTO bench_stock (partNumber, description, location, manufacturer, notes, qty, updatedAt, updatedBy)
+    `INSERT INTO bench_stock (partNumber, description, location, manufacturer, qty, updatedAt, updatedBy, notes)
      VALUES (?,?,?,?,?,?,?,?)`,
     [
       pn,
       String(description || '').trim(),
       String(location || '').trim(),
       String(manufacturer || '').trim(),
-      String(notes || '').trim(),
       Math.trunc(parsedQty),
       now,
-      req.user
+      req.user,
+      String(notes || '').trim(),
     ],
     function(err){
       if (err) {
@@ -433,8 +430,8 @@ router.put('/benchstock/:partNumber', requireAdmin, (req,res)=>{
     description = '',
     location = '',
     manufacturer = '',
-    notes = '',
     qty = 0,
+    notes = '',
   } = req.body || {};
 
   const parsedQty = Number(qty);
@@ -448,19 +445,19 @@ router.put('/benchstock/:partNumber', requireAdmin, (req,res)=>{
         SET description = ?,
             location = ?,
             manufacturer = ?,
-            notes = ?,
             qty = ?,
             updatedAt = ?,
-            updatedBy = ?
+            updatedBy = ?,
+            notes = ?
       WHERE partNumber = ?`,
     [
       String(description || '').trim(),
       String(location || '').trim(),
       String(manufacturer || '').trim(),
-      String(notes || '').trim(),
       Math.trunc(parsedQty),
       now,
       req.user,
+      String(notes || '').trim(),
       req.params.partNumber,
     ],
     function(err){
