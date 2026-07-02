@@ -50,9 +50,14 @@
   .progress-section:last-of-type{margin-bottom:12px}
   .subkicker{font-size:1rem;font-weight:900;margin:0 0 8px}
   .progress-table{width:100%}
-  .waiting-note-cell{min-width:220px}
-  .waitingNoteBox{width:100%;min-width:200px;min-height:40px;padding:8px;border:1px solid #d3d8e1;border-radius:8px;resize:vertical;font-family:inherit}
-  .waiting-note-actions{display:flex;gap:6px;align-items:flex-start}
+  .claimed-action-row{display:flex;align-items:center;justify-content:flex-end;gap:6px;flex-wrap:nowrap;white-space:nowrap}
+  .claimed-action-row .qtyDone{width:90px;min-width:90px}
+  .claimed-action-row .pill.small{padding:8px 9px}
+  .waiting-note-row td{padding-top:0;border-top:0}
+  .waiting-note-wrap{display:flex;gap:8px;align-items:flex-start;width:100%;padding-left:28px;padding-right:260px;box-sizing:border-box}
+  .waiting-note-label{font-weight:900;padding-top:9px;white-space:nowrap}
+  .waitingNoteBox{flex:1;min-width:360px;min-height:38px;padding:8px;border:1px solid #d3d8e1;border-radius:8px;resize:vertical;font-family:inherit}
+  .waiting-note-save{flex:0 0 auto}
 </style>
 </head>
 <body>
@@ -144,7 +149,6 @@
               <th class="nowrap">Remaining</th>
               <th>Claimed By</th>
               <th class="nowrap">Timer</th>
-              <th class="waiting-note-cell">Notes</th>
               <th class="nowrap wide">Actions</th>
             </tr>
           </thead>
@@ -202,6 +206,7 @@
     const API_ROOT = 'https://wireshop-backend.onrender.com';
     const DONE_LIMIT = 200;
     let lastDone = []; // store the visible Done rows for export
+    const waitingNoteDrafts = new Map(); // keeps notes from being wiped by auto-refresh while typing
 
     // auth
     const user = (() => { try { return JSON.parse(localStorage.getItem('user')||'{}'); } catch { return {}; } })();
@@ -408,8 +413,10 @@
 
       const canManage = isAdmin || String((r.claimedBy||'')).toLowerCase() === String(user.username||'').toLowerCase();
       const isWaitingRow = !!opts.waiting;
-      const waitingNoteCell = isWaitingRow
-        ? `<td class="waiting-note-cell"><div class="waiting-note-actions"><textarea class="waitingNoteBox" placeholder="Why is this waiting?" ${canManage ? '' : 'disabled'}>${esc(r.waitingNote || '')}</textarea>${canManage ? `<button class="pill small" data-savewaitnote="${r.id}">Save</button>` : ''}</div></td>`
+      const noteKey = String(r.id);
+      const noteValue = waitingNoteDrafts.has(noteKey) ? waitingNoteDrafts.get(noteKey) : (r.waitingNote || '');
+      const waitingNoteRow = isWaitingRow
+        ? `<tr class="waiting-note-row" data-id="${r.id}"><td colspan="6"><div class="waiting-note-wrap"><span class="waiting-note-label">Notes</span><textarea class="waitingNoteBox" data-noteid="${r.id}" placeholder="Why is this waiting?" ${canManage ? '' : 'disabled'}>${esc(noteValue)}</textarea>${canManage ? `<button class="pill small waiting-note-save" data-savewaitnote="${r.id}">Save</button>` : ''}</div></td></tr>`
         : '';
 
       const timerBtns = (() => {
@@ -428,14 +435,13 @@
         <td class="qty">${r.qty|0}</td>
         <td>${who}</td>
         <td class="nowrap">${stateLabel}<br><span class="mono timerVal" data-base="${elapsed}" data-state="${state}" data-rendered="${Date.now()}">${fmtSecs(elapsed)}</span></td>
-        ${waitingNoteCell}
-        <td class="right wide">
+        <td class="right wide"><div class="claimed-action-row">
           <input type="number" class="qtyDone" min="1" step="1" placeholder="qty">
           ${timerBtns}
           <button class="pill small primary" data-complete="${r.id}">Complete</button>
           ${isAdmin ? `<button class="pill small primary" data-unclaim="${r.id}">Unclaim</button>` : ''}
-        </td>
-      </tr>`;
+        </div></td>
+      </tr>${waitingNoteRow}`;
     }
 
     function rowDoneEvt(e){
@@ -502,7 +508,7 @@
 
       queuedBody.innerHTML = queued.map(rowQueued).join('');
       claimedActiveBody.innerHTML = activeClaimed.length ? activeClaimed.map(rowClaimed).join('') : '<tr><td colspan="6" class="muted">No active timers.</td></tr>';
-      claimedWaitingBody.innerHTML = waitingClaimed.length ? waitingClaimed.map(r => rowClaimed(r, { waiting:true })).join('') : '<tr><td colspan="7" class="muted">No waiting work.</td></tr>';
+      claimedWaitingBody.innerHTML = waitingClaimed.length ? waitingClaimed.map(r => rowClaimed(r, { waiting:true })).join('') : '<tr><td colspan="6" class="muted">No waiting work.</td></tr>';
       claimedPausedBody.innerHTML = pausedClaimed.length ? pausedClaimed.map(rowClaimed).join('') : '<tr><td colspan="6" class="muted">No paused work.</td></tr>';
       doneBody.innerHTML = done.map(rowDoneEvt).join('');
 
@@ -510,6 +516,15 @@
     }
 
     // ---- ACTIONS ----
+    document.addEventListener('input', (e)=>{
+      if (!e.target?.classList?.contains('waitingNoteBox')) return;
+      waitingNoteDrafts.set(String(e.target.dataset.noteid || ''), e.target.value || '');
+    });
+
+    function isEditingWaitingNote(){
+      return !!document.activeElement?.classList?.contains('waitingNoteBox');
+    }
+
     document.addEventListener('click', async (e)=>{
       const claimId = e.target?.dataset?.claim;
       const cancelId = e.target?.dataset?.cancel;
@@ -559,6 +574,7 @@
           const tr = e.target.closest('tr');
           const note = tr?.querySelector('.waitingNoteBox')?.value || '';
           await api(`/api/build-tasks/${saveWaitNoteId}/waiting-note`, { method:'PATCH', body:{ note } });
+          waitingNoteDrafts.delete(String(saveWaitNoteId));
           await refreshAll(); return;
         }
         if (resumeId){
@@ -672,7 +688,7 @@
       await whoami();
       await loadPartList();
       await refreshAll().catch(()=>alert('Failed to load build queue'));
-      setInterval(()=>{ if(!document.hidden) refreshAll().catch(()=>{}); }, 5000);
+      setInterval(()=>{ if(!document.hidden && !isEditingWaitingNote()) refreshAll().catch(()=>{}); }, 5000);
     })();
   </script>
 </body>
