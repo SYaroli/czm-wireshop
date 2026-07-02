@@ -57,7 +57,14 @@
   .waiting-note-wrap{display:flex;gap:8px;align-items:flex-start;width:100%;padding-left:28px;padding-right:260px;box-sizing:border-box}
   .waiting-note-label{font-weight:900;padding-top:9px;white-space:nowrap}
   .waitingNoteBox{flex:1;min-width:360px;min-height:38px;padding:8px;border:1px solid #d3d8e1;border-radius:8px;resize:vertical;font-family:inherit}
-  .waiting-note-save{flex:0 0 auto}
+  .waiting-note-save{
+    flex:0 0 64px;
+    min-width:64px !important;
+    background:#b30000 !important;
+    color:#fff !important;
+    border:1px solid #b30000 !important;
+  }
+  .waiting-note-save:hover{background:#d20000 !important}
 </style>
 </head>
 <body>
@@ -140,23 +147,6 @@
       </div>
 
       <div class="progress-section">
-        <h3 class="subkicker">Waiting</h3>
-        <table class="sticky-head compact progress-table" id="tblClaimedWaiting">
-          <thead>
-            <tr>
-              <th>Part</th>
-              <th>Print Name</th>
-              <th class="nowrap">Remaining</th>
-              <th>Claimed By</th>
-              <th class="nowrap">Timer</th>
-              <th class="nowrap wide">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="claimedWaitingBody"></tbody>
-        </table>
-      </div>
-
-      <div class="progress-section">
         <h3 class="subkicker">Paused</h3>
         <table class="sticky-head compact progress-table" id="tblClaimedPaused">
           <thead>
@@ -170,6 +160,23 @@
             </tr>
           </thead>
           <tbody id="claimedPausedBody"></tbody>
+        </table>
+      </div>
+
+      <div class="progress-section">
+        <h3 class="subkicker">Waiting</h3>
+        <table class="sticky-head compact progress-table" id="tblClaimedWaiting">
+          <thead>
+            <tr>
+              <th>Part</th>
+              <th>Print Name</th>
+              <th class="nowrap">Remaining</th>
+              <th>Claimed By</th>
+              <th class="nowrap">Timer</th>
+              <th class="nowrap wide">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="claimedWaitingBody"></tbody>
         </table>
       </div>
 
