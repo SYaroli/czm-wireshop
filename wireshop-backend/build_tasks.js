@@ -430,6 +430,44 @@ module.exports = function attachBuildTasks(app, opts = {}) {
     } catch (e) { res.status(500).json({ error: 'db', detail: String(e.message || e) }); }
   });
 
+  // ----- Waiting timer (CLAIMER or ADMIN) -----
+  router.patch('/api/build-tasks/:id/waiting', async (req, res) => {
+    const actor = requireUser(req, res); if (!actor) return;
+    const id = Number(req.params.id || 0);
+    if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'bad id' });
+
+    try {
+      const task = await get(`SELECT * FROM build_tasks WHERE id=?`, [id]);
+      if (!task) return res.status(404).json({ error: 'not found' });
+      if (task.status !== 'claimed') return res.status(409).json({ error: 'not-claimed', current: task });
+      if (!canControlTask(req, task)) return res.status(403).json({ error: 'forbidden' });
+
+      const t = now();
+
+      await tx(async () => {
+        await run(
+          `UPDATE build_tasks
+              SET startedAt = COALESCE(startedAt, ?),
+                  isPaused = 1,
+                  pausedAt = COALESCE(pausedAt, ?),
+                  totalPausedSeconds = COALESCE(totalPausedSeconds, 0),
+                  pausedBySystem = 0,
+                  pausedReason = 'waiting'
+            WHERE id=?`,
+          [t, t, id]
+        );
+
+        await run(
+          `INSERT INTO build_task_events (taskId, type, qty, user, ts, reason)
+           VALUES (?, 'pause', 0, ?, ?, 'waiting')`,
+          [id, actor, t]
+        );
+      });
+
+      res.json(await get(`SELECT * FROM build_tasks WHERE id=?`, [id]));
+    } catch (e) { res.status(500).json({ error: 'db', detail: String(e.message || e) }); }
+  });
+
   // ----- Resume timer (CLAIMER or ADMIN) -----
   router.patch('/api/build-tasks/:id/resume', async (req, res) => {
     const actor = requireUser(req, res); if (!actor) return;
