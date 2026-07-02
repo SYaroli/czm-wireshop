@@ -14,6 +14,7 @@
   .pill.cancel{background:#a00;color:#fff;border-color:#a00}
   .pill.small{min-width:0;padding:8px 10px;font-size:.95rem}
   .pill.primary{background:#b30000;color:#fff;border-color:#b30000}
+  .pill.waiting{background:#b87900;color:#fff;border-color:#b87900}
   table.compact td, table.compact th{padding:8px 10px}
   .kicker{font-weight:900;margin:0 0 8px}
   .minw{min-width:120px}
@@ -127,6 +128,23 @@
             </tr>
           </thead>
           <tbody id="claimedActiveBody"></tbody>
+        </table>
+      </div>
+
+      <div class="progress-section">
+        <h3 class="subkicker">Waiting</h3>
+        <table class="sticky-head compact progress-table" id="tblClaimedWaiting">
+          <thead>
+            <tr>
+              <th>Part</th>
+              <th>Print Name</th>
+              <th class="nowrap">Remaining</th>
+              <th>Claimed By</th>
+              <th class="nowrap">Timer</th>
+              <th class="nowrap wide">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="claimedWaitingBody"></tbody>
         </table>
       </div>
 
@@ -323,6 +341,7 @@
     // ---- TABLE RENDERERS ----
     const queuedBody = document.getElementById('queuedBody');
     const claimedActiveBody = document.getElementById('claimedActiveBody');
+    const claimedWaitingBody = document.getElementById('claimedWaitingBody');
     const claimedPausedBody = document.getElementById('claimedPausedBody');
     const doneBody = document.getElementById('doneBody');
 
@@ -365,13 +384,16 @@
 
       const stateLabel =
         state === 'paused'
-          ? (pausedBySystem && pausedReason === 'break'
-              ? '<span class="priority p1">Paused (Break)</span>'
-              : (pausedBySystem && pausedReason === 'shift_end'
-                  ? '<span class="priority p1">Paused (Shift End)</span>'
-                  : (pausedBySystem && pausedReason === 'off_hours'
-                      ? '<span class="priority p1">Paused (Off Hours)</span>'
-                      : '<span class="priority p1">Paused</span>'
+          ? (pausedReason === 'waiting'
+              ? '<span class="priority p1">Waiting</span>'
+              : (pausedBySystem && pausedReason === 'break'
+                  ? '<span class="priority p1">Paused (Break)</span>'
+                  : (pausedBySystem && pausedReason === 'shift_end'
+                      ? '<span class="priority p1">Paused (Shift End)</span>'
+                      : (pausedBySystem && pausedReason === 'off_hours'
+                          ? '<span class="priority p1">Paused (Off Hours)</span>'
+                          : '<span class="priority p1">Paused</span>'
+                        )
                     )
                 )
             )
@@ -385,8 +407,11 @@
       const timerBtns = (() => {
         if (!canManage) return '';
         if (!r.startedAt) return `<button class="pill small primary" data-starttimer="${r.id}">Start</button>`;
-        if (state === 'paused') return `<button class="pill small primary" data-resume="${r.id}">Resume</button>`;
-        return `<button class="pill small primary" data-pause="${r.id}">Pause</button>`;
+        if (state === 'paused') {
+          if (pausedReason === 'waiting') return `<button class="pill small primary" data-resume="${r.id}">Resume</button>`;
+          return `<button class="pill small primary" data-resume="${r.id}">Resume</button> <button class="pill small waiting" data-waiting="${r.id}">Waiting</button>`;
+        }
+        return `<button class="pill small primary" data-pause="${r.id}">Pause</button> <button class="pill small waiting" data-waiting="${r.id}">Waiting</button>`;
       })();
 
       return `<tr data-id="${r.id}">
@@ -457,13 +482,18 @@
         const state = String(r._timerState || (r.startedAt ? (Number(r.isPaused||0)===1?'paused':'running') : 'not_started'));
         return state === 'running';
       });
+      const waitingClaimed = claimed.filter(r => {
+        const state = String(r._timerState || (r.startedAt ? (Number(r.isPaused||0)===1?'paused':'running') : 'not_started'));
+        return state === 'paused' && String(r.pausedReason || '').toLowerCase() === 'waiting';
+      });
       const pausedClaimed = claimed.filter(r => {
         const state = String(r._timerState || (r.startedAt ? (Number(r.isPaused||0)===1?'paused':'running') : 'not_started'));
-        return state !== 'running';
+        return state !== 'running' && String(r.pausedReason || '').toLowerCase() !== 'waiting';
       });
 
       queuedBody.innerHTML = queued.map(rowQueued).join('');
       claimedActiveBody.innerHTML = activeClaimed.length ? activeClaimed.map(rowClaimed).join('') : '<tr><td colspan="6" class="muted">No active timers.</td></tr>';
+      claimedWaitingBody.innerHTML = waitingClaimed.length ? waitingClaimed.map(rowClaimed).join('') : '<tr><td colspan="6" class="muted">No waiting work.</td></tr>';
       claimedPausedBody.innerHTML = pausedClaimed.length ? pausedClaimed.map(rowClaimed).join('') : '<tr><td colspan="6" class="muted">No paused work.</td></tr>';
       doneBody.innerHTML = done.map(rowDoneEvt).join('');
 
@@ -478,6 +508,7 @@
       const completeId = e.target?.dataset?.complete;
       const pauseId = e.target?.dataset?.pause;
       const resumeId = e.target?.dataset?.resume;
+      const waitingId = e.target?.dataset?.waiting;
       const startTimerId = e.target?.dataset?.starttimer;
 
       try {
@@ -506,6 +537,10 @@
         }
         if (pauseId){
           await api(`/api/build-tasks/${pauseId}/pause`, { method:'PATCH' });
+          await refreshAll(); return;
+        }
+        if (waitingId){
+          await api(`/api/build-tasks/${waitingId}/waiting`, { method:'PATCH' });
           await refreshAll(); return;
         }
         if (resumeId){
