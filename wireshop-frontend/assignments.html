@@ -50,6 +50,9 @@
   .progress-section:last-of-type{margin-bottom:12px}
   .subkicker{font-size:1rem;font-weight:900;margin:0 0 8px}
   .progress-table{width:100%}
+  .waiting-note-cell{min-width:220px}
+  .waitingNoteBox{width:100%;min-width:200px;min-height:40px;padding:8px;border:1px solid #d3d8e1;border-radius:8px;resize:vertical;font-family:inherit}
+  .waiting-note-actions{display:flex;gap:6px;align-items:flex-start}
 </style>
 </head>
 <body>
@@ -141,6 +144,7 @@
               <th class="nowrap">Remaining</th>
               <th>Claimed By</th>
               <th class="nowrap">Timer</th>
+              <th class="waiting-note-cell">Notes</th>
               <th class="nowrap wide">Actions</th>
             </tr>
           </thead>
@@ -370,7 +374,7 @@
       </tr>`;
     }
 
-    function rowClaimed(r){
+    function rowClaimed(r, opts = {}){
       const c = byPN.get(String(r.partNumber)) || {};
       const name = c.printName || '';
       const who = esc(r.claimedBy||'');
@@ -403,6 +407,10 @@
             );
 
       const canManage = isAdmin || String((r.claimedBy||'')).toLowerCase() === String(user.username||'').toLowerCase();
+      const isWaitingRow = !!opts.waiting;
+      const waitingNoteCell = isWaitingRow
+        ? `<td class="waiting-note-cell"><div class="waiting-note-actions"><textarea class="waitingNoteBox" placeholder="Why is this waiting?" ${canManage ? '' : 'disabled'}>${esc(r.waitingNote || '')}</textarea>${canManage ? `<button class="pill small" data-savewaitnote="${r.id}">Save</button>` : ''}</div></td>`
+        : '';
 
       const timerBtns = (() => {
         if (!canManage) return '';
@@ -420,6 +428,7 @@
         <td class="qty">${r.qty|0}</td>
         <td>${who}</td>
         <td class="nowrap">${stateLabel}<br><span class="mono timerVal" data-base="${elapsed}" data-state="${state}" data-rendered="${Date.now()}">${fmtSecs(elapsed)}</span></td>
+        ${waitingNoteCell}
         <td class="right wide">
           <input type="number" class="qtyDone" min="1" step="1" placeholder="qty">
           ${timerBtns}
@@ -493,7 +502,7 @@
 
       queuedBody.innerHTML = queued.map(rowQueued).join('');
       claimedActiveBody.innerHTML = activeClaimed.length ? activeClaimed.map(rowClaimed).join('') : '<tr><td colspan="6" class="muted">No active timers.</td></tr>';
-      claimedWaitingBody.innerHTML = waitingClaimed.length ? waitingClaimed.map(rowClaimed).join('') : '<tr><td colspan="6" class="muted">No waiting work.</td></tr>';
+      claimedWaitingBody.innerHTML = waitingClaimed.length ? waitingClaimed.map(r => rowClaimed(r, { waiting:true })).join('') : '<tr><td colspan="7" class="muted">No waiting work.</td></tr>';
       claimedPausedBody.innerHTML = pausedClaimed.length ? pausedClaimed.map(rowClaimed).join('') : '<tr><td colspan="6" class="muted">No paused work.</td></tr>';
       doneBody.innerHTML = done.map(rowDoneEvt).join('');
 
@@ -509,6 +518,7 @@
       const pauseId = e.target?.dataset?.pause;
       const resumeId = e.target?.dataset?.resume;
       const waitingId = e.target?.dataset?.waiting;
+      const saveWaitNoteId = e.target?.dataset?.savewaitnote;
       const startTimerId = e.target?.dataset?.starttimer;
 
       try {
@@ -540,7 +550,15 @@
           await refreshAll(); return;
         }
         if (waitingId){
-          await api(`/api/build-tasks/${waitingId}/waiting`, { method:'PATCH' });
+          const note = prompt('Why is this waiting? (parts, engineering, print issue, etc.)', '');
+          if (note === null) return;
+          await api(`/api/build-tasks/${waitingId}/waiting`, { method:'PATCH', body:{ note } });
+          await refreshAll(); return;
+        }
+        if (saveWaitNoteId){
+          const tr = e.target.closest('tr');
+          const note = tr?.querySelector('.waitingNoteBox')?.value || '';
+          await api(`/api/build-tasks/${saveWaitNoteId}/waiting-note`, { method:'PATCH', body:{ note } });
           await refreshAll(); return;
         }
         if (resumeId){
