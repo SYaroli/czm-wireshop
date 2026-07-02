@@ -129,7 +129,8 @@ module.exports = function attachBuildTasks(app, opts = {}) {
         totalPausedSeconds INTEGER NOT NULL DEFAULT 0,
         isPaused           INTEGER NOT NULL DEFAULT 0, -- 0 running, 1 paused
         pausedBySystem     INTEGER NOT NULL DEFAULT 0, -- 1 if SYSTEM paused it
-        pausedReason       TEXT,                 -- break | shift_end | off_hours
+        pausedReason       TEXT,                 -- break | shift_end | off_hours | waiting
+        waitingNote        TEXT,
         completedAt  INTEGER,
         priority     INTEGER NOT NULL DEFAULT 0  -- 0 normal, 1 high, 2 urgent
       )
@@ -142,6 +143,7 @@ module.exports = function attachBuildTasks(app, opts = {}) {
     db.run(`ALTER TABLE build_tasks ADD COLUMN isPaused INTEGER NOT NULL DEFAULT 0`, () => { });
     db.run(`ALTER TABLE build_tasks ADD COLUMN pausedBySystem INTEGER NOT NULL DEFAULT 0`, () => { });
     db.run(`ALTER TABLE build_tasks ADD COLUMN pausedReason TEXT`, () => { });
+    db.run(`ALTER TABLE build_tasks ADD COLUMN waitingNote TEXT`, () => { });
 
     db.run(`
       CREATE TABLE IF NOT EXISTS build_task_events (
@@ -435,6 +437,7 @@ module.exports = function attachBuildTasks(app, opts = {}) {
     const actor = requireUser(req, res); if (!actor) return;
     const id = Number(req.params.id || 0);
     if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'bad id' });
+    const note = String(req.body?.note ?? req.body?.waitingNote ?? '').trim().slice(0, 500);
 
     try {
       const task = await get(`SELECT * FROM build_tasks WHERE id=?`, [id]);
@@ -452,9 +455,10 @@ module.exports = function attachBuildTasks(app, opts = {}) {
                   pausedAt = COALESCE(pausedAt, ?),
                   totalPausedSeconds = COALESCE(totalPausedSeconds, 0),
                   pausedBySystem = 0,
-                  pausedReason = 'waiting'
+                  pausedReason = 'waiting',
+                  waitingNote = ?
             WHERE id=?`,
-          [t, t, id]
+          [t, t, note, id]
         );
 
         await run(
@@ -464,6 +468,26 @@ module.exports = function attachBuildTasks(app, opts = {}) {
         );
       });
 
+      res.json(await get(`SELECT * FROM build_tasks WHERE id=?`, [id]));
+    } catch (e) { res.status(500).json({ error: 'db', detail: String(e.message || e) }); }
+  });
+
+
+  // ----- Update Waiting note (CLAIMER or ADMIN) -----
+  router.patch('/api/build-tasks/:id/waiting-note', async (req, res) => {
+    const actor = requireUser(req, res); if (!actor) return;
+    const id = Number(req.params.id || 0);
+    if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'bad id' });
+    const note = String(req.body?.note ?? req.body?.waitingNote ?? '').trim().slice(0, 500);
+
+    try {
+      const task = await get(`SELECT * FROM build_tasks WHERE id=?`, [id]);
+      if (!task) return res.status(404).json({ error: 'not found' });
+      if (task.status !== 'claimed') return res.status(409).json({ error: 'not-claimed', current: task });
+      if (String(task.pausedReason || '').toLowerCase() !== 'waiting') return res.status(409).json({ error: 'not-waiting', current: task });
+      if (!canControlTask(req, task)) return res.status(403).json({ error: 'forbidden' });
+
+      await run(`UPDATE build_tasks SET waitingNote=? WHERE id=?`, [note, id]);
       res.json(await get(`SELECT * FROM build_tasks WHERE id=?`, [id]));
     } catch (e) { res.status(500).json({ error: 'db', detail: String(e.message || e) }); }
   });
