@@ -129,11 +129,24 @@
       }[m]));
     }
 
+    function pad2(n) {
+      return String(n).padStart(2, "0");
+    }
+
+    // Spreadsheet-safe local timestamp. Sorts cleanly as text and imports cleanly into Excel.
     function formatTs(ts) {
-      if (!ts) return "—";
+      if (!ts) return "";
       const d = new Date(Number(ts));
       if (Number.isNaN(d.getTime())) return String(ts);
-      return d.toLocaleString();
+
+      const year = d.getFullYear();
+      const month = pad2(d.getMonth() + 1);
+      const day = pad2(d.getDate());
+      const hour = pad2(d.getHours());
+      const minute = pad2(d.getMinutes());
+      const second = pad2(d.getSeconds());
+
+      return `${year}-${month}-${day} ${hour}:${minute}:${second}`;
     }
 
     function classify(delta) {
@@ -160,7 +173,7 @@
 
     function csvEscape(v) {
       const s = String(v ?? "");
-      return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+      return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
     }
 
     function renderRows() {
@@ -213,7 +226,7 @@
 
       tbody.innerHTML = rows.map(r => `
         <tr>
-          <td>${escapeHtml(formatTs(r.when || r.ts))}</td>
+          <td>${escapeHtml(formatTs(r.when || r.ts) || "—")}</td>
           <td>${escapeHtml(r.partNumber)}</td>
           <td>${escapeHtml(r.description || "—")}</td>
           <td>${escapeHtml(r.user || "—")}</td>
@@ -311,7 +324,7 @@
         ].join(","));
       });
 
-      const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+      const blob = new Blob([lines.join("\r\n")], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
