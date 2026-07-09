@@ -200,6 +200,7 @@
             <th>Print Name</th>
             <th class="nowrap">Qty</th>
             <th>By</th>
+            <th class="nowrap">Time</th>
             <th class="nowrap">Completed</th>
           </tr>
         </thead>
@@ -457,11 +458,14 @@
       const who = esc(e.user || e.claimedBy || '');
       const when = ts(e.ts);
       const qty = e.qty|0;
+      const elapsedSec = Number(e.elapsedSeconds || 0);
+      const elapsed = elapsedSec > 0 ? fmtSecs(elapsedSec) : '';
       return `<tr>
         <td>${linkPN(e.partNumber)}</td>
         <td>${esc(name)}</td>
         <td class="qty">${qty}</td>
         <td>${who}</td>
+        <td class="nowrap mono">${elapsed}</td>
         <td><span class="muted">${when}</span></td>
       </tr>`;
     }
