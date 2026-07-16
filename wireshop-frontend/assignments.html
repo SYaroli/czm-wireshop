@@ -668,7 +668,11 @@
       }, 0);
     }
     function fmtIso(tsMs){
-      try { return new Date(tsMs).toISOString(); } catch { return ''; }
+      try {
+        const d = new Date(tsMs);
+        const pad = n => String(n).padStart(2,'0');
+        return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+      } catch { return ''; }
     }
     function buildDoneCsvRows(doneEvents){
       const header = ['Part Number','Print Name','Qty','By','Completed','Elapsed Seconds','Elapsed (H:MM:SS)'];
