@@ -25,16 +25,16 @@ jobs:
           path = Path('wireshop-frontend/assignments.html')
           text = path.read_text(encoding='utf-8')
 
-          old = """    function fmtIso(tsMs){
-              try { return new Date(tsMs).toISOString(); } catch { return ''; }
-            }"""
-          new = """    function fmtIso(tsMs){
-              try {
-                const d = new Date(tsMs);
-                const pad = n => String(n).padStart(2,'0');
-                return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
-              } catch { return ''; }
-            }"""
+          old = "    function fmtIso(tsMs){\n      try { return new Date(tsMs).toISOString(); } catch { return ''; }\n    }"
+          new = (
+              "    function fmtIso(tsMs){\n"
+              "      try {\n"
+              "        const d = new Date(tsMs);\n"
+              "        const pad = n => String(n).padStart(2,'0');\n"
+              "        return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;\n"
+              "      } catch { return ''; }\n"
+              "    }"
+          )
 
           if old not in text:
               raise SystemExit('Completed export formatter was not found; no file changed.')
