@@ -56,9 +56,19 @@ db.run(`CREATE INDEX IF NOT EXISTS idx_cirris_forms_part_id
           ON cirris_forms(part_number, id DESC)`);
 
 function getBlankTemplateBuffer() {
-  const templatePath = path.join(__dirname, '..', 'templates', 'cirris-setup-blank.b64');
-  const b64 = fs.readFileSync(templatePath, 'utf8').trim();
-  return Buffer.from(b64, 'base64');
+  const templateDir = path.join(__dirname, '..', 'templates');
+  const parts = Array.from({ length: 6 }, (_, i) =>
+    fs.readFileSync(
+      path.join(templateDir, `cirris-master-0${i + 1}.b64`),
+      'utf8'
+    ).trim()
+  );
+
+  // GitHub's text-file write path dropped one 80-character zero-filled Base64 run
+  // from the first chunk. Restore it at its verified byte position before decoding.
+  parts[0] = parts[0].slice(0, 76) + 'A'.repeat(80) + parts[0].slice(76);
+
+  return Buffer.from(parts.join(''), 'base64');
 }
 
 function safeFilenamePart(partNumber) {
