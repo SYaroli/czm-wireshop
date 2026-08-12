@@ -1,11 +1,12 @@
 // routes/cirris-forms.js
-// Store, create, replace, and download Cirris setup workbooks by harness part number.
+// Store, create, replace, download, and generate Cirris setup files by harness part number.
 
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const router = express.Router();
 const db = require('../db');
+const { generateCirrisProgram } = require('../cirris-generator');
 
 const ADMIN_USERS = (process.env.ADMIN_USERS || '')
   .split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
@@ -62,6 +63,10 @@ function getBlankTemplateBuffer() {
 
 function safeFilenamePart(partNumber) {
   return String(partNumber || '').trim().replace(/[\\/:*?"<>|]/g, '_');
+}
+
+function easyWireFilename(partNumber) {
+  return `${safeFilenamePart(partNumber).replace(/\./g, '_')}_CIRRIS.txt`;
 }
 
 // Latest form metadata for a part number.
@@ -167,6 +172,47 @@ router.get('/:id/download', (req, res) => {
       );
       res.setHeader('Content-Disposition', `attachment; filename="${String(row.filename).replace(/"/g, '')}"`);
       res.send(row.file_data);
+    }
+  );
+});
+
+// Generate a complete Easy-Wire import TXT from the stored workbook.
+// This performs validation first; a bad source workbook is rejected instead of silently producing a bad test.
+router.get('/:id/generate', requireUser, (req, res) => {
+  db.get(
+    `SELECT id, part_number, filename, file_data
+       FROM cirris_forms
+      WHERE id = ?`,
+    [req.params.id],
+    (err, row) => {
+      if (err) return res.status(500).json({ error: err.message });
+      if (!row) return res.status(404).json({ error: 'Cirris form not found' });
+
+      try {
+        const result = generateCirrisProgram(row.file_data);
+        const filename = easyWireFilename(row.part_number);
+
+        console.log(
+          `[CIRRIS GENERATE] ${row.part_number}: ${result.connectorCount} connectors, ` +
+          `${result.attachedCount} attached pins, highest point ${result.highestPoint}`
+        );
+
+        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        res.setHeader('X-Cirris-Connector-Count', String(result.connectorCount));
+        res.setHeader('X-Cirris-Attached-Pin-Count', String(result.attachedCount));
+        res.setHeader('X-Cirris-Highest-Point', String(result.highestPoint));
+        res.send(result.text);
+      } catch (e) {
+        console.error(`[CIRRIS GENERATE] ${row.part_number} failed:`, e.message);
+        if (Array.isArray(e.details) && e.details.length) {
+          return res.status(400).json({
+            error: e.message || 'Cirris form validation failed',
+            details: e.details,
+          });
+        }
+        return res.status(400).json({ error: e.message || 'Failed to generate Cirris test' });
+      }
     }
   );
 });
