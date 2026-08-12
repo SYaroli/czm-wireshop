@@ -31,6 +31,13 @@
       .replace(/'/g, '&#039;');
   }
 
+  function formatDateOnly(value) {
+    const s = String(value || '').trim();
+    const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (m) return `${Number(m[2])}/${Number(m[3])}/${m[1]}`;
+    return s || '';
+  }
+
   function actionButton(label, kind = 'gray') {
     const colors = kind === 'green'
       ? 'background:#1a6b3a;color:#fff;border:1px solid #155b31;'
@@ -101,29 +108,54 @@
     input.click();
   }
 
-  async function createBlank(partNumber, section) {
-    try {
-      setStatus(section, 'Creating blank Cirris setup form...');
-      const res = await fetch(`${CIRRIS_API_BASE}/cirris-forms/create`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-user': username(),
-        },
-        body: JSON.stringify({ part_number: partNumber }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || 'Create failed');
-      await refresh(partNumber, section);
-    } catch (e) {
-      alert(e.message || 'Create failed');
-      await refresh(partNumber, section);
-    }
-  }
-
   function filenameFromDisposition(header, fallback) {
     const match = String(header || '').match(/filename="?([^";]+)"?/i);
     return match?.[1] || fallback;
+  }
+
+  async function downloadBlank() {
+    const button = document.getElementById('cirrisDownloadBlank');
+    const oldText = button?.textContent || 'Download Blank Form';
+
+    if (button) {
+      button.disabled = true;
+      button.textContent = 'Downloading...';
+      button.style.opacity = '.65';
+    }
+
+    try {
+      const res = await fetch(`${CIRRIS_API_BASE}/cirris-forms/blank/download`, {
+        headers: { 'x-user': username() },
+      });
+
+      if (!res.ok) {
+        let data = {};
+        try { data = await res.json(); } catch {}
+        throw new Error(data?.error || 'Blank form download failed');
+      }
+
+      const blob = await res.blob();
+      const filename = filenameFromDisposition(
+        res.headers.get('Content-Disposition'),
+        'Blank Cirris Test.xlsx'
+      );
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (e) {
+      alert(e.message || 'Blank form download failed');
+    } finally {
+      if (button) {
+        button.disabled = false;
+        button.textContent = oldText;
+        button.style.opacity = '1';
+      }
+    }
   }
 
   async function generateTest(formId, partNumber) {
@@ -191,21 +223,21 @@
             <span style="font-size:1.3rem;">🧪</span>
             <div style="flex:1;min-width:220px;">
               <div style="font-weight:700;font-size:.9rem;">Cirris Setup Form</div>
-              <div style="font-size:.8rem;opacity:.7;">No form created yet</div>
+              <div style="font-size:.8rem;opacity:.7;">Not set up — download the blank form, complete it, then upload it here.</div>
             </div>
+            <button id="cirrisDownloadBlank" type="button" style="${actionButton('Download Blank Form', 'green')}">⬇ Download Blank Form</button>
             ${isAdmin() ? `
-              <button id="cirrisCreateBlank" type="button" style="${actionButton('Create Blank', 'green')}">Create Blank</button>
-              <button id="cirrisUploadExisting" type="button" style="${actionButton('Upload Existing', 'gray')}">Upload Existing</button>
+              <button id="cirrisUploadExisting" type="button" style="${actionButton('Upload Completed Form', 'gray')}">Upload Completed Form</button>
             ` : ''}
           </div>`;
 
-        document.getElementById('cirrisCreateBlank')?.addEventListener('click', () => createBlank(partNumber, section));
+        document.getElementById('cirrisDownloadBlank')?.addEventListener('click', downloadBlank);
         document.getElementById('cirrisUploadExisting')?.addEventListener('click', () => chooseWorkbook(partNumber, section));
         return;
       }
 
       const f = data.file;
-      const sourceText = f.source === 'blank' ? 'blank created by' : 'uploaded by';
+      const dateText = formatDateOnly(f.uploaded_at);
       section.innerHTML = `
         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;
                     padding:10px 14px;background:#f5f8ff;border:1px solid #cbdaf3;
@@ -213,12 +245,12 @@
           <span style="font-size:1.3rem;">🧪</span>
           <div style="flex:1;min-width:220px;">
             <div style="font-weight:700;font-size:.9rem;">Cirris Setup Form</div>
-            <div style="font-size:.8rem;opacity:.7;">${esc(f.filename)} &middot; ${sourceText} ${esc(f.uploaded_by)}</div>
+            <div style="font-size:.8rem;opacity:.7;">${esc(f.filename)} &middot; uploaded by ${esc(f.uploaded_by)}${dateText ? ` on ${esc(dateText)}` : ''}</div>
           </div>
           ${isAdmin() ? `<button id="cirrisGenerate" type="button" style="${actionButton('Generate Test', 'red')}">Generate Test</button>` : ''}
           <a href="${CIRRIS_API_BASE}/cirris-forms/${encodeURIComponent(f.id)}/download"
-             style="${actionButton('Download', 'green')}text-decoration:none;">⬇ Download</a>
-          ${isAdmin() ? `<button id="cirrisReplace" type="button" style="${actionButton('Replace', 'gray')}">Replace</button>` : ''}
+             style="${actionButton('Download Form', 'green')}text-decoration:none;">⬇ Download Form</a>
+          ${isAdmin() ? `<button id="cirrisReplace" type="button" style="${actionButton('Replace Form', 'gray')}">Replace Form</button>` : ''}
         </div>`;
 
       document.getElementById('cirrisGenerate')?.addEventListener('click', () => generateTest(f.id, partNumber));
