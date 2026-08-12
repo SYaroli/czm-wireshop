@@ -1,5 +1,5 @@
 // routes/cirris-forms.js
-// Store, create, replace, download, and generate Cirris setup files by harness part number.
+// Store, replace, download, and generate Cirris setup files by harness part number.
 
 const express = require('express');
 const fs = require('fs');
@@ -69,7 +69,8 @@ function easyWireFilename(partNumber) {
   return `${safeFilenamePart(partNumber).replace(/\./g, '_')}_CIRRIS.txt`;
 }
 
-// Latest form metadata for a part number.
+// Latest completed/uploaded form metadata for a part number.
+// Legacy rows created by the old Create Blank flow are intentionally ignored.
 router.get('/check', requireUser, (req, res) => {
   const pn = String(req.query.part_number || '').trim();
   if (!pn) return res.json({ exists: false });
@@ -77,7 +78,7 @@ router.get('/check', requireUser, (req, res) => {
   db.get(
     `SELECT id, part_number, filename, file_size, uploaded_by, uploaded_at, source
        FROM cirris_forms
-      WHERE part_number = ?
+      WHERE part_number = ? AND source = 'upload'
       ORDER BY id DESC
       LIMIT 1`,
     [pn],
@@ -88,39 +89,22 @@ router.get('/check', requireUser, (req, res) => {
   );
 });
 
-// Create a fresh blank form from the standard template.
-router.post('/create', requireAdmin, (req, res) => {
-  const pn = String(req.body?.part_number || '').trim();
-  if (!pn) return res.status(400).json({ error: 'part_number required' });
+// Download the master blank form without creating anything in the database.
+router.get('/blank/download', requireUser, (req, res) => {
+  let buffer;
+  try {
+    buffer = getBlankTemplateBuffer();
+  } catch (e) {
+    console.error('[CIRRIS FORM] blank template read failed:', e);
+    return res.status(500).json({ error: 'Blank Cirris template is unavailable' });
+  }
 
-  db.get(
-    `SELECT id FROM cirris_forms WHERE part_number = ? ORDER BY id DESC LIMIT 1`,
-    [pn],
-    (checkErr, existing) => {
-      if (checkErr) return res.status(500).json({ error: checkErr.message });
-      if (existing) return res.status(409).json({ error: 'Cirris form already exists for this harness' });
-
-      let buffer;
-      try {
-        buffer = getBlankTemplateBuffer();
-      } catch (e) {
-        console.error('[CIRRIS FORM] blank template read failed:', e);
-        return res.status(500).json({ error: 'Blank Cirris template is unavailable' });
-      }
-
-      const filename = `${safeFilenamePart(pn)} Cirris Setup.xlsx`;
-      db.run(
-        `INSERT INTO cirris_forms
-          (part_number, filename, file_data, file_size, uploaded_by, uploaded_at, source)
-         VALUES (?, ?, ?, ?, ?, datetime('now','localtime'), 'blank')`,
-        [pn, filename, buffer, buffer.length, req.user],
-        function (err) {
-          if (err) return res.status(500).json({ error: err.message });
-          res.json({ ok: true, id: this.lastID, filename });
-        }
-      );
-    }
+  res.setHeader(
+    'Content-Type',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
   );
+  res.setHeader('Content-Disposition', 'attachment; filename="Blank Cirris Test.xlsx"');
+  res.send(buffer);
 });
 
 // Upload a completed/edited workbook. A new row is inserted so older versions remain recoverable.
@@ -176,17 +160,17 @@ router.get('/:id/download', (req, res) => {
   );
 });
 
-// Generate a complete Easy-Wire import TXT from the stored workbook.
+// Generate a complete Easy-Wire import TXT from a completed uploaded workbook.
 // This performs validation first; a bad source workbook is rejected instead of silently producing a bad test.
 router.get('/:id/generate', requireUser, (req, res) => {
   db.get(
     `SELECT id, part_number, filename, file_data
        FROM cirris_forms
-      WHERE id = ?`,
+      WHERE id = ? AND source = 'upload'`,
     [req.params.id],
     (err, row) => {
       if (err) return res.status(500).json({ error: err.message });
-      if (!row) return res.status(404).json({ error: 'Cirris form not found' });
+      if (!row) return res.status(404).json({ error: 'Completed Cirris form not found' });
 
       try {
         const result = generateCirrisProgram(row.file_data);
