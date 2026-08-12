@@ -17,6 +17,7 @@ const assignmentsRouter = require("./routes/assignments");
 const inventoryRoutes = require("./routes/inventory");
 const catalogSyncRouter = require("./routes/catalog-sync");
 const komaxFilesRouter  = require("./routes/komax-files");
+const cirrisFormsRouter = require("./routes/cirris-forms");
 const archive = require("./archiveStore");
 const db = require("./db"); // ensures DB/tables are created
 
@@ -102,6 +103,7 @@ app.use("/api/assignments", assignmentsRouter);
 app.use("/api", inventoryRoutes);
 app.use("/api", catalogSyncRouter);
 app.use("/api/komax-files", komaxFilesRouter);
+app.use("/api/cirris-forms", cirrisFormsRouter);
 
 // NEW: Build Next endpoints (/api/build-tasks/*)
 attachBuildTasks(app);
