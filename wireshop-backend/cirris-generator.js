@@ -207,6 +207,30 @@ function requiredCol(map, name, sheetName) {
   return index;
 }
 
+function parseTableLabel(value) {
+  const raw = norm(value).toUpperCase();
+  const match = raw.match(/^(BASE|EXP([1-9]\d*))-P([1-4])\.(\d{3})$/);
+  if (!match) {
+    throw new Error(
+      `Table_Label "${norm(value)}" is invalid. Use BASE-P1.001 or EXP1-P1.001 format.`
+    );
+  }
+
+  const unit = match[1];
+  const unitIndex = unit === 'BASE' ? 0 : Number(match[2]);
+  const port = Number(match[3]);
+  const tablePin = Number(match[4]);
+
+  if (!Number.isInteger(tablePin) || tablePin < 1 || tablePin > 62) {
+    throw new Error(
+      `Table_Label "${norm(value)}" uses pin ${match[4]}; active Cirris table pins are 001-062.`
+    );
+  }
+
+  const globalPoint = (unitIndex * 256) + ((port - 1) * 64) + tablePin;
+  return { unit, unitIndex, port, tablePin, globalPoint, label: raw };
+}
+
 function buildGraphicType(partNumber, pinCount) {
   const pins = [];
   for (let pin = 1; pin <= pinCount; pin++) {
@@ -227,28 +251,28 @@ function validationError(details) {
 }
 
 function generateCirrisProgram(buffer) {
-  const sheets = parseWorkbook(buffer);
-  const testRows = sheets.get('Test');
-  const connectorRows = sheets.get('Connectors');
+  const TEST_SHEET = 'Harness Test Points';
+  const CONNECTOR_SHEET = 'Harness Connectors';
 
-  if (!testRows) throw new Error('Workbook is missing the Test sheet');
-  if (!connectorRows) throw new Error('Workbook is missing the Connectors sheet');
-  if (!testRows.length) throw new Error('Test sheet is empty');
-  if (!connectorRows.length) throw new Error('Connectors sheet is empty');
+  const sheets = parseWorkbook(buffer);
+  const testRows = sheets.get(TEST_SHEET);
+  const connectorRows = sheets.get(CONNECTOR_SHEET);
+
+  if (!testRows) throw new Error(`Workbook is missing the ${TEST_SHEET} sheet`);
+  if (!connectorRows) throw new Error(`Workbook is missing the ${CONNECTOR_SHEET} sheet`);
+  if (!testRows.length) throw new Error(`${TEST_SHEET} sheet is empty`);
+  if (!connectorRows.length) throw new Error(`${CONNECTOR_SHEET} sheet is empty`);
 
   const testHeaders = headerMap(testRows[0]);
   const connectorHeaders = headerMap(connectorRows[0]);
 
-  const tRef = requiredCol(testHeaders, 'Harness_Connector', 'Test');
-  const tHarnessPin = requiredCol(testHeaders, 'Harness_Pin', 'Test');
-  const tGlobal = requiredCol(testHeaders, 'Global_Point_No', 'Test');
-  const tTablePin = requiredCol(testHeaders, 'Pin', 'Test');
-  const tUnit = requiredCol(testHeaders, 'Unit', 'Test');
-  const tPort = requiredCol(testHeaders, 'Port', 'Test');
+  const tRef = requiredCol(testHeaders, 'Harness_Connector', TEST_SHEET);
+  const tHarnessPin = requiredCol(testHeaders, 'Harness_Pin', TEST_SHEET);
+  const tTableLabel = requiredCol(testHeaders, 'Table_Label', TEST_SHEET);
 
-  const cRef = requiredCol(connectorHeaders, 'CONNECTOR REF', 'Connectors');
-  const cPart = requiredCol(connectorHeaders, 'PART NUMBER', 'Connectors');
-  const cPinCount = requiredCol(connectorHeaders, 'PIN COUNT', 'Connectors');
+  const cRef = requiredCol(connectorHeaders, 'CONNECTOR REF', CONNECTOR_SHEET);
+  const cPart = requiredCol(connectorHeaders, 'PART NUMBER', CONNECTOR_SHEET);
+  const cPinCount = requiredCol(connectorHeaders, 'PIN COUNT', CONNECTOR_SHEET);
 
   const connectors = [];
   const byRef = new Map();
@@ -263,19 +287,19 @@ function generateCirrisProgram(buffer) {
     if (!ref && !partNumber && (rawPinCount == null || rawPinCount === '')) continue;
 
     if (!ref || !partNumber) {
-      errors.push(`Connectors row ${i + 1}: connector reference and part number are required.`);
+      errors.push(`${CONNECTOR_SHEET} row ${i + 1}: connector reference and part number are required.`);
       continue;
     }
 
     const pinCount = Number(rawPinCount);
     if (!Number.isInteger(pinCount) || pinCount <= 0) {
-      errors.push(`Connectors row ${i + 1} (${ref}): PIN COUNT must be a positive whole number.`);
+      errors.push(`${CONNECTOR_SHEET} row ${i + 1} (${ref}): PIN COUNT must be a positive whole number.`);
       continue;
     }
 
     const key = ref.toUpperCase();
     if (byRef.has(key)) {
-      errors.push(`Connectors sheet defines ${ref} more than once.`);
+      errors.push(`${CONNECTOR_SHEET} defines ${ref} more than once.`);
       continue;
     }
 
@@ -291,7 +315,7 @@ function generateCirrisProgram(buffer) {
     byRef.set(key, connector);
   }
 
-  if (!connectors.length) errors.push('Connectors sheet has no connector definitions.');
+  if (!connectors.length) errors.push(`${CONNECTOR_SHEET} has no connector definitions.`);
 
   const pointOwner = new Map();
   let mappedRowCount = 0;
@@ -299,39 +323,48 @@ function generateCirrisProgram(buffer) {
   for (let i = 1; i < testRows.length; i++) {
     const row = testRows[i] || [];
     const ref = norm(row[tRef]);
-    if (!ref) continue;
+    const rawHarnessPin = row[tHarnessPin];
+    const tableLabel = norm(row[tTableLabel]);
 
+    if (!ref && (rawHarnessPin == null || rawHarnessPin === '') && !tableLabel) continue;
     mappedRowCount++;
-    const harnessPin = Number(row[tHarnessPin]);
-    const globalPoint = Number(row[tGlobal]);
-    const tablePin = Number(row[tTablePin]);
-    const unit = norm(row[tUnit]);
-    const port = norm(row[tPort]);
-    const connector = byRef.get(ref.toUpperCase());
 
-    if (!connector) {
-      errors.push(`Test row ${i + 1}: connector ${ref} is not defined on the Connectors sheet.`);
+    if (!ref) {
+      errors.push(`${TEST_SHEET} row ${i + 1}: Harness_Connector is required.`);
+      continue;
+    }
+    if (rawHarnessPin == null || rawHarnessPin === '') {
+      errors.push(`${TEST_SHEET} row ${i + 1} (${ref}): Harness_Pin is required.`);
+      continue;
+    }
+    if (!tableLabel) {
+      errors.push(`${TEST_SHEET} row ${i + 1} (${ref}): Table_Label is required.`);
       continue;
     }
 
+    const connector = byRef.get(ref.toUpperCase());
+    if (!connector) {
+      errors.push(`${TEST_SHEET} row ${i + 1}: connector ${ref} is not defined on the ${CONNECTOR_SHEET} sheet.`);
+      continue;
+    }
+
+    const harnessPin = Number(rawHarnessPin);
     if (!Number.isInteger(harnessPin) || harnessPin < 1 || harnessPin > connector.pinCount) {
       errors.push(
-        `Test row ${i + 1} (${ref}): Harness_Pin ${row[tHarnessPin]} is outside 1-${connector.pinCount}.`
+        `${TEST_SHEET} row ${i + 1} (${ref}): Harness_Pin ${rawHarnessPin} is outside 1-${connector.pinCount}.`
       );
       continue;
     }
 
-    if (!Number.isInteger(globalPoint) || globalPoint < 1) {
-      errors.push(
-        `Test row ${i + 1} (${ref}:${harnessPin}): Global_Point_No must be a positive whole number.`
-      );
+    let table;
+    try {
+      table = parseTableLabel(tableLabel);
+    } catch (e) {
+      errors.push(`${TEST_SHEET} row ${i + 1} (${ref}:${harnessPin}): ${e.message}`);
       continue;
     }
 
-    if (!Number.isInteger(tablePin) || tablePin < 1 || tablePin > 64) {
-      errors.push(`Test row ${i + 1} (${ref}:${harnessPin}): Pin must be 1-64.`);
-      continue;
-    }
+    const { globalPoint, tablePin, unit, port } = table;
 
     const previousPoint = connector.attach[harnessPin - 1];
     if (previousPoint !== -1 && previousPoint !== globalPoint) {
@@ -361,10 +394,10 @@ function generateCirrisProgram(buffer) {
     });
   }
 
-  if (!mappedRowCount) errors.push('Test sheet has no mapped connector rows.');
+  if (!mappedRowCount) errors.push(`${TEST_SHEET} has no mapped connector rows.`);
 
   // The standard workbook records only used harness endpoints. For direct/reusable 1:1
-  // adapters (IP6/IP7/S1-style mappings), attach every physical connector cavity so
+  // adapters (IP6/IP7/S1-style mappings), attach every active physical table cavity so
   // Easy-Wire can also catch shorts/miswires into currently unused cavities.
   // A connector qualifies only when every mapped row is on one Unit/Port and
   // Harness_Pin == table Pin with a consistent system-point offset.
@@ -382,7 +415,9 @@ function generateCirrisProgram(buffer) {
 
     if (!oneToOne) continue;
 
-    for (let pin = 1; pin <= connector.pinCount; pin++) {
+    // Cirris port positions 63-64 are reserved; never auto-attach through them.
+    const maxAutoPin = Math.min(connector.pinCount, 62);
+    for (let pin = 1; pin <= maxAutoPin; pin++) {
       const point = offset + pin;
       const endpoint = `${connector.ref}:${pin}`;
       const existingOwner = pointOwner.get(point);
