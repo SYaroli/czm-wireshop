@@ -1,0 +1,71 @@
+name: Install Cirris Forms UI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/install-cirris-forms.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  install:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Patch server and inventory page
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          server_path = Path('wireshop-backend/server.js')
+          server = server_path.read_text()
+
+          require_line = 'const komaxFilesRouter  = require("./routes/komax-files");'
+          require_add = require_line + '\nconst cirrisFormsRouter = require("./routes/cirris-forms");'
+          if 'const cirrisFormsRouter = require("./routes/cirris-forms");' not in server:
+              if require_line not in server:
+                  raise SystemExit('Could not find Komax router require line in server.js')
+              server = server.replace(require_line, require_add, 1)
+
+          mount_line = 'app.use("/api/komax-files", komaxFilesRouter);'
+          mount_add = mount_line + '\napp.use("/api/cirris-forms", cirrisFormsRouter);'
+          if 'app.use("/api/cirris-forms", cirrisFormsRouter);' not in server:
+              if mount_line not in server:
+                  raise SystemExit('Could not find Komax router mount line in server.js')
+              server = server.replace(mount_line, mount_add, 1)
+
+          server_path.write_text(server)
+
+          inv_path = Path('wireshop-frontend/inventory.html')
+          inv = inv_path.read_text()
+          script = '  <script src="/cirris-forms-ui.js"></script>\n'
+          if '/cirris-forms-ui.js' not in inv:
+              if '</body>' not in inv:
+                  raise SystemExit('Could not find </body> in inventory.html')
+              inv = inv.replace('</body>', script + '</body>', 1)
+          inv_path.write_text(inv)
+          PY
+
+      - name: Syntax checks
+        run: |
+          node --check wireshop-backend/server.js
+          node --check wireshop-backend/routes/cirris-forms.js
+          node --check wireshop-frontend/cirris-forms-ui.js
+          grep -q 'cirrisFormsRouter' wireshop-backend/server.js
+          grep -q 'cirris-forms-ui.js' wireshop-frontend/inventory.html
+
+      - name: Commit installed feature
+        run: |
+          if git diff --quiet; then
+            echo 'Nothing to commit.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add wireshop-backend/server.js wireshop-frontend/inventory.html
+          git commit -m 'Wire Cirris setup forms into inventory'
+          git push
