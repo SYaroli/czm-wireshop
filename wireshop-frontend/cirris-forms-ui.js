@@ -121,6 +121,57 @@
     }
   }
 
+  function filenameFromDisposition(header, fallback) {
+    const match = String(header || '').match(/filename="?([^";]+)"?/i);
+    return match?.[1] || fallback;
+  }
+
+  async function generateTest(formId, partNumber) {
+    const button = document.getElementById('cirrisGenerate');
+    const oldText = button?.textContent || 'Generate Test';
+
+    if (button) {
+      button.disabled = true;
+      button.textContent = 'Generating...';
+      button.style.opacity = '.65';
+    }
+
+    try {
+      const res = await fetch(`${CIRRIS_API_BASE}/cirris-forms/${encodeURIComponent(formId)}/generate`, {
+        headers: { 'x-user': username() },
+      });
+
+      if (!res.ok) {
+        let data = {};
+        try { data = await res.json(); } catch {}
+        const details = Array.isArray(data?.details) && data.details.length
+          ? `\n\n${data.details.join('\n')}`
+          : '';
+        throw new Error(`${data?.error || 'Generate failed'}${details}`);
+      }
+
+      const blob = await res.blob();
+      const fallback = `${String(partNumber || 'HARNESS').replace(/\./g, '_')}_CIRRIS.txt`;
+      const filename = filenameFromDisposition(res.headers.get('Content-Disposition'), fallback);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (e) {
+      alert(e.message || 'Generate failed');
+    } finally {
+      if (button) {
+        button.disabled = false;
+        button.textContent = oldText;
+        button.style.opacity = '1';
+      }
+    }
+  }
+
   async function refresh(partNumber, section) {
     setStatus(section, 'Loading Cirris setup form...');
 
@@ -164,11 +215,13 @@
             <div style="font-weight:700;font-size:.9rem;">Cirris Setup Form</div>
             <div style="font-size:.8rem;opacity:.7;">${esc(f.filename)} &middot; ${sourceText} ${esc(f.uploaded_by)}</div>
           </div>
+          ${isAdmin() ? `<button id="cirrisGenerate" type="button" style="${actionButton('Generate Test', 'red')}">Generate Test</button>` : ''}
           <a href="${CIRRIS_API_BASE}/cirris-forms/${encodeURIComponent(f.id)}/download"
              style="${actionButton('Download', 'green')}text-decoration:none;">⬇ Download</a>
           ${isAdmin() ? `<button id="cirrisReplace" type="button" style="${actionButton('Replace', 'gray')}">Replace</button>` : ''}
         </div>`;
 
+      document.getElementById('cirrisGenerate')?.addEventListener('click', () => generateTest(f.id, partNumber));
       document.getElementById('cirrisReplace')?.addEventListener('click', () => chooseWorkbook(partNumber, section));
     } catch (e) {
       section.innerHTML = `
