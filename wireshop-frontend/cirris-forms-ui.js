@@ -204,6 +204,45 @@
     }
   }
 
+  async function resetSetup(partNumber, section) {
+    const ok = window.confirm(
+      `Reset Cirris setup for ${partNumber}?\n\n` +
+      'This removes all uploaded Cirris setup forms for this part and returns it to Not set up.'
+    );
+    if (!ok) return;
+
+    const button = document.getElementById('cirrisReset');
+    const oldText = button?.textContent || 'Reset';
+    if (button) {
+      button.disabled = true;
+      button.textContent = 'Resetting...';
+      button.style.opacity = '.65';
+    }
+
+    try {
+      const res = await fetch(
+        `${CIRRIS_API_BASE}/cirris-forms/reset?part_number=${encodeURIComponent(partNumber)}`,
+        {
+          method: 'DELETE',
+          headers: { 'x-user': username() },
+        }
+      );
+      let data = {};
+      try { data = await res.json(); } catch {}
+      if (!res.ok) throw new Error(data?.error || 'Reset failed');
+      await refresh(partNumber, section);
+    } catch (e) {
+      alert(e.message || 'Reset failed');
+      await refresh(partNumber, section);
+    } finally {
+      if (button && document.body.contains(button)) {
+        button.disabled = false;
+        button.textContent = oldText;
+        button.style.opacity = '1';
+      }
+    }
+  }
+
   async function refresh(partNumber, section) {
     setStatus(section, 'Loading Cirris setup form...');
 
@@ -251,10 +290,12 @@
           <a href="${CIRRIS_API_BASE}/cirris-forms/${encodeURIComponent(f.id)}/download"
              style="${actionButton('Download Form', 'green')}text-decoration:none;">⬇ Download Form</a>
           ${isAdmin() ? `<button id="cirrisReplace" type="button" style="${actionButton('Replace Form', 'gray')}">Replace Form</button>` : ''}
+          ${isAdmin() ? `<button id="cirrisReset" type="button" style="${actionButton('Reset', 'gray')}">Reset</button>` : ''}
         </div>`;
 
       document.getElementById('cirrisGenerate')?.addEventListener('click', () => generateTest(f.id, partNumber));
       document.getElementById('cirrisReplace')?.addEventListener('click', () => chooseWorkbook(partNumber, section));
+      document.getElementById('cirrisReset')?.addEventListener('click', () => resetSetup(partNumber, section));
     } catch (e) {
       section.innerHTML = `
         <div style="padding:10px 14px;background:#fff4f4;border:1px solid #efc5c5;border-radius:8px;font-size:.82rem;">
