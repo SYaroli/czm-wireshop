@@ -1,5 +1,5 @@
 // routes/cirris-forms.js
-// Store, replace, download, and generate Cirris setup files by harness part number.
+// Store, replace, download, reset, and generate Cirris setup files by harness part number.
 
 const express = require('express');
 const fs = require('fs');
@@ -115,6 +115,23 @@ router.get('/blank/download', requireUser, (req, res) => {
   );
   res.setHeader('Content-Disposition', 'attachment; filename="Blank Cirris Test.xlsx"');
   res.send(buffer);
+});
+
+// Reset this harness to a never-configured Cirris state.
+// This intentionally removes all Cirris form rows for the part number, including legacy test rows.
+router.delete('/reset', requireAdmin, (req, res) => {
+  const pn = String(req.query.part_number || '').trim();
+  if (!pn) return res.status(400).json({ error: 'part_number required' });
+
+  db.run(
+    `DELETE FROM cirris_forms WHERE part_number = ?`,
+    [pn],
+    function (err) {
+      if (err) return res.status(500).json({ error: err.message });
+      console.log(`[CIRRIS RESET] ${pn}: removed ${this.changes || 0} stored form row(s) by ${req.user}`);
+      res.json({ ok: true, removed: this.changes || 0 });
+    }
+  );
 });
 
 // Upload a completed/edited workbook. A new row is inserted so older versions remain recoverable.
