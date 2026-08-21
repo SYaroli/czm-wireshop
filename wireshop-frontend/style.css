@@ -293,3 +293,17 @@ tr.row-selected td{
   background:#eee; border:1px solid #ddd; color:#000;
   border-radius:8px; padding:4px 8px; font-weight:700;
 }
+
+/* ===== Standard navigation labels ===== */
+.brand-actions a.navbtn[href$="assignments.html"],
+.brand-actions a.navbtn[href$="komax-files.html"]{
+  font-size:0 !important;
+}
+.brand-actions a.navbtn[href$="assignments.html"]::after{
+  content:"Build Next";
+  font-size:.88rem;
+}
+.brand-actions a.navbtn[href$="komax-files.html"]::after{
+  content:"Master Files";
+  font-size:.88rem;
+}
