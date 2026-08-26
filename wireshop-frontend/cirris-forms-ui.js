@@ -1,12 +1,10 @@
 (() => {
-  // Keep the existing Master File label cleanup.
   const OLD_LABEL = 'Komax Job File';
   const NEW_LABEL = 'Master File';
 
   function renameMasterFileLabel() {
     const section = document.getElementById('komaxFileSection');
     if (!section) return;
-
     section.querySelectorAll('div').forEach((el) => {
       if (el.childElementCount === 0 && el.textContent.trim() === OLD_LABEL) {
         el.textContent = NEW_LABEL;
@@ -16,23 +14,24 @@
 
   const path = window.location.pathname || '';
   const isInventoryPage = path === '/inventory' || path === '/inventory.html' || path.startsWith('/inv/');
+
   if (!isInventoryPage) {
     renameMasterFileLabel();
-    const labelObserver = new MutationObserver(renameMasterFileLabel);
-    labelObserver.observe(document.documentElement, { childList: true, subtree: true });
+    const observer = new MutationObserver(renameMasterFileLabel);
+    observer.observe(document.documentElement, { childList: true, subtree: true });
     return;
   }
 
   let session = {};
   try { session = JSON.parse(localStorage.getItem('user') || '{}'); } catch {}
+
   const username = String(session.username || '').trim();
   const isAdmin = String(session.role || '').toLowerCase() === 'admin';
   const API_ROOT = (localStorage.getItem('API_BASE') || 'https://wireshop-backend.onrender.com').replace(/\/+$/, '');
   const VALUE_API = API_ROOT + '/api/build-values';
   const valueMap = new Map();
-  let uiQueued = false;
 
-  function addBuildValueStyles() {
+  function addStyles() {
     if (document.getElementById('buildValueStyles')) return;
     const style = document.createElement('style');
     style.id = 'buildValueStyles';
@@ -40,36 +39,36 @@
       @media (min-width:901px){
         body:not(.inv-detail) .table-head,
         body:not(.inv-detail) .list-body .row{
-          grid-template-columns:150px 210px 90px 60px 120px 74px minmax(320px,1fr) !important;
+          grid-template-columns:150px 210px 90px 60px 150px 70px minmax(380px,1fr) !important;
         }
       }
       .build-value-head{white-space:nowrap;}
-      .build-value-cell{font-size:12px;font-weight:700;display:flex;align-items:center;gap:5px;min-width:0;}
-      .build-value-editor{display:flex;align-items:center;gap:4px;}
+      .build-value-cell{font-size:12px;font-weight:700;display:flex;align-items:center;min-width:0;}
+      .build-value-editor{display:flex;align-items:center;gap:5px;}
       .build-value-input{
-        width:58px !important;
-        min-width:58px !important;
+        width:72px !important;
+        min-width:72px !important;
         height:30px !important;
         padding:0 6px !important;
         text-align:center;
+        border:1px solid #cfd4da !important;
         border-radius:6px !important;
       }
       .build-value-save{
-        min-width:38px;
-        height:30px;
-        padding:0 7px;
+        background:#c30000;
+        color:#fff;
+        border:none;
         border-radius:6px;
-        font-size:11px;
-      }
-      body:not(.inv-detail) .adjust-controls{
-        min-width:0;
-        gap:0;
-      }
-      body:not(.inv-detail) .adjust-controls .edit-btn{
-        min-width:58px;
         height:30px;
-        padding:0 9px;
+        min-width:48px;
+        padding:0 8px;
+        font-size:11px;
+        font-weight:700;
+        cursor:pointer;
       }
+      .inventory-edit-cell{display:flex;align-items:center;min-width:0;}
+      .inventory-edit-cell .edit-btn{min-width:58px;height:30px;padding:0 9px;}
+      body:not(.inv-detail) .notes-cell{padding-left:10px;}
       .build-value-detail-control{display:flex;align-items:center;gap:6px;justify-content:flex-start;}
       .build-value-detail-control .build-value-input{width:80px !important;min-width:80px !important;}
       @media(max-width:900px){
@@ -92,6 +91,7 @@
 
   async function saveBuildValue(partNumber, input, button) {
     if (!isAdmin || !partNumber) return;
+
     const value = Number(input.value);
     if (!Number.isFinite(value) || value < 0) {
       alert('Build Value must be zero or greater.');
@@ -99,60 +99,56 @@
       return;
     }
 
-    const oldText = button.textContent;
     button.disabled = true;
+    const original = button.textContent;
     button.textContent = '...';
+
     try {
       const res = await fetch(VALUE_API + '/' + encodeURIComponent(partNumber), {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'x-user': username },
+        headers: { 'Content-Type':'application/json', 'x-user': username },
         body: JSON.stringify({ buildValueHours: value })
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || 'Save failed');
+
       const saved = Number(data.buildValueHours || 0);
       valueMap.set(partNumber, saved);
       input.value = formatValue(saved);
       button.textContent = '✓';
-      setTimeout(() => { button.textContent = 'Save'; }, 900);
-      applyBuildValueUi();
+      setTimeout(() => { button.textContent = 'Save'; }, 800);
     } catch (err) {
+      button.textContent = original || 'Save';
       alert(err.message || 'Build Value save failed');
-      button.textContent = oldText || 'Save';
     } finally {
       button.disabled = false;
     }
   }
 
-  function renderValueControl(container, partNumber, detailMode = false) {
+  function renderValueCell(cell, partNumber, detailMode = false) {
     const value = getValue(partNumber);
-    container.dataset.partNumber = partNumber;
 
     if (!isAdmin) {
-      const text = formatValue(value) + ' hrs';
-      if (container.textContent !== text) container.textContent = text;
+      cell.textContent = formatValue(value) + ' hrs';
       return;
     }
 
-    let input = container.querySelector('.build-value-input');
-    let button = container.querySelector('.build-value-save');
-    if (!input || !button) {
-      container.innerHTML = '';
+    if (!cell.querySelector('.build-value-input')) {
+      cell.innerHTML = '';
       const wrap = document.createElement('div');
       wrap.className = detailMode ? 'build-value-editor build-value-detail-control' : 'build-value-editor';
 
-      input = document.createElement('input');
-      input.className = 'build-value-input';
+      const input = document.createElement('input');
       input.type = 'number';
       input.min = '0';
       input.step = '0.25';
+      input.className = 'build-value-input';
       input.setAttribute('aria-label', 'Build Value hours');
 
-      button = document.createElement('button');
-      button.className = 'build-value-save';
+      const button = document.createElement('button');
       button.type = 'button';
+      button.className = 'build-value-save';
       button.textContent = 'Save';
-      button.title = 'Save Build Value hours';
       button.addEventListener('click', () => saveBuildValue(partNumber, input, button));
       input.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
@@ -162,58 +158,72 @@
       });
 
       wrap.append(input, button);
-      container.appendChild(wrap);
+      cell.appendChild(wrap);
     }
 
-    if (document.activeElement !== input) input.value = formatValue(value);
+    const input = cell.querySelector('.build-value-input');
+    if (input && document.activeElement !== input) input.value = formatValue(value);
   }
 
-  function applyListHeader() {
+  function rebuildListHeader() {
+    if (document.body.classList.contains('inv-detail')) return;
     const head = document.getElementById('tableHead');
     if (!head) return;
 
-    const editHead = Array.from(head.children).find(el => {
-      const text = el.textContent.trim();
-      return text === 'Adjust' || text === 'Edit';
+    const wanted = ['Part Number','Print Name','Location','Qty','Build Value (hrs)','Edit','Notes'];
+    const current = Array.from(head.children).map(el => el.textContent.trim());
+    if (current.length === wanted.length && current.every((v,i) => v === wanted[i])) return;
+
+    head.innerHTML = '';
+    wanted.forEach((text, i) => {
+      const div = document.createElement('div');
+      div.textContent = text;
+      if (i === 4) div.className = 'build-value-head';
+      head.appendChild(div);
     });
-    if (!editHead) return;
-    editHead.textContent = 'Edit';
-
-    if (head.querySelector('.build-value-head')) return;
-
-    const valueHead = document.createElement('div');
-    valueHead.className = 'build-value-head';
-    valueHead.textContent = 'Build Value (hrs)';
-    head.insertBefore(valueHead, editHead);
   }
 
-  function simplifyListControls(row) {
-    const controls = row.querySelector(':scope > .adjust-controls');
-    if (!controls) return null;
+  function rebuildListRows() {
+    if (document.body.classList.contains('inv-detail')) return;
 
-    Array.from(controls.children).forEach(child => {
-      if (!child.classList.contains('edit-btn')) child.remove();
-    });
-
-    return controls;
-  }
-
-  function applyListRows() {
     document.querySelectorAll('#listBody > .row').forEach(row => {
+      const children = Array.from(row.children);
       const partLink = row.querySelector('a[href^="/inv/"]');
       const partNumber = String(partLink?.textContent || '').trim();
       if (!partNumber) return;
 
-      const editControls = simplifyListControls(row);
-      if (!editControls) return;
+      const notes = row.querySelector(':scope > .notes-cell');
+      const controls = row.querySelector(':scope > .adjust-controls, :scope > .inventory-edit-cell');
+      if (!notes || !controls) return;
 
-      let cell = row.querySelector(':scope > .build-value-cell');
-      if (!cell) {
-        cell = document.createElement('div');
-        cell.className = 'build-value-cell';
-        row.insertBefore(cell, editControls);
+      let valueCell = row.querySelector(':scope > .build-value-cell');
+      if (!valueCell) {
+        valueCell = document.createElement('div');
+        valueCell.className = 'build-value-cell';
+        row.insertBefore(valueCell, controls);
       }
-      renderValueControl(cell, partNumber, false);
+      renderValueCell(valueCell, partNumber, false);
+
+      controls.classList.remove('adjust-controls');
+      controls.classList.add('inventory-edit-cell');
+      Array.from(controls.children).forEach(child => {
+        if (!child.classList.contains('edit-btn')) child.remove();
+      });
+
+      // Keep the exact seven-column order even if older helper code touched this row.
+      const firstFour = children.filter(el =>
+        el !== notes &&
+        el !== controls &&
+        !el.classList.contains('build-value-cell')
+      ).slice(0,4);
+
+      if (firstFour.length === 4) {
+        row.innerHTML = '';
+        firstFour.forEach(el => row.appendChild(el));
+        row.appendChild(valueCell);
+        row.appendChild(controls);
+        row.appendChild(notes);
+      }
     });
   }
 
@@ -221,46 +231,45 @@
     const grid = document.querySelector('.detail-grid');
     if (!grid) return;
 
-    const routeMatch = (window.location.pathname || '').match(/^\/inv\/(.+)$/);
-    const partNumber = routeMatch ? decodeURIComponent(routeMatch[1]) : '';
+    const match = (window.location.pathname || '').match(/^\/inv\/(.+)$/);
+    const partNumber = match ? decodeURIComponent(match[1]) : '';
     if (!partNumber) return;
 
     let label = grid.querySelector('.build-value-detail-label');
-    let valueCell = grid.querySelector('.build-value-detail-value');
-    if (!label || !valueCell) {
+    let cell = grid.querySelector('.build-value-detail-value');
+
+    if (!label || !cell) {
       label = document.createElement('div');
       label.className = 'build-value-detail-label';
       label.innerHTML = '<b>Build Value (hrs)</b>';
-      valueCell = document.createElement('div');
-      valueCell.className = 'build-value-detail-value';
-      grid.append(label, valueCell);
+
+      cell = document.createElement('div');
+      cell.className = 'build-value-detail-value';
+      grid.append(label, cell);
     }
-    renderValueControl(valueCell, partNumber, true);
+
+    renderValueCell(cell, partNumber, true);
   }
 
-  function applyBuildValueUi() {
-    addBuildValueStyles();
+  function applyUi() {
+    addStyles();
     renameMasterFileLabel();
-    applyListHeader();
-    applyListRows();
+    rebuildListHeader();
+    rebuildListRows();
     applyDetailValue();
   }
 
-  function queueUi() {
-    if (uiQueued) return;
-    uiQueued = true;
-    requestAnimationFrame(() => {
-      uiQueued = false;
-      applyBuildValueUi();
-    });
-  }
-
   async function loadBuildValues() {
-    if (!username) return;
+    if (!username) {
+      applyUi();
+      return;
+    }
+
     try {
       const res = await fetch(VALUE_API, { headers: { 'x-user': username } });
       const data = await res.json().catch(() => []);
-      if (!res.ok) throw new Error(data.error || 'Failed to load build values');
+      if (!res.ok) throw new Error('Failed to load build values');
+
       valueMap.clear();
       (Array.isArray(data) ? data : []).forEach(row => {
         valueMap.set(String(row.partNumber || ''), Number(row.buildValueHours || 0));
@@ -268,13 +277,17 @@
     } catch (err) {
       console.warn('[build-values]', err);
     }
-    applyBuildValueUi();
+
+    applyUi();
   }
 
-  addBuildValueStyles();
-  applyBuildValueUi();
+  addStyles();
+  applyUi();
   loadBuildValues();
 
-  const observer = new MutationObserver(queueUi);
-  observer.observe(document.documentElement, { childList: true, subtree: true });
+  const listBody = document.getElementById('listBody');
+  if (listBody) {
+    const observer = new MutationObserver(() => requestAnimationFrame(applyUi));
+    observer.observe(listBody, { childList: true });
+  }
 })();
