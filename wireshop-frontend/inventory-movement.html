@@ -11,7 +11,11 @@
     .movement-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
     .selection-note{font-size:12px}.movement-table{width:100%;border-collapse:collapse}
     .movement-table th,.movement-table td{border:1px solid #d6d6d6;padding:7px 8px;vertical-align:middle}
-    .movement-table thead th{background:#f1f1f1;font-weight:700;position:sticky;top:0;z-index:2;white-space:nowrap}
+    .movement-table thead th{background:#f1f1f1!important;color:#111!important;text-shadow:none!important;font-weight:700;position:sticky;top:0;z-index:2;white-space:nowrap}
+    .movement-table thead th.sortable{cursor:pointer;user-select:none}
+    .movement-table thead th.sortable::after{content:" ↕";color:#777;font-size:11px}
+    .movement-table thead th.sortable.sort-asc::after{content:" ▲";color:#111}
+    .movement-table thead th.sortable.sort-desc::after{content:" ▼";color:#111}
     .movement-table tbody tr:nth-child(even) td{background:#fafafa}.movement-table tbody tr.row-selected td{background:#eef5ff}
     .movement-table td.note{white-space:normal;min-width:220px}.movement-table td.actions{white-space:nowrap}.movement-table .select-cell{width:34px;text-align:center}
     .empty,.error{padding:14px 6px;font-size:13px}.error{color:#b30000}button.small{padding:5px 8px;font-size:12px}button.danger{background:#9f1c1c;color:#fff;border-color:#9f1c1c}button:disabled{opacity:.45;cursor:not-allowed}
@@ -41,7 +45,19 @@
     </div>
 
     <div class="card"><div class="table-wrap"><table class="movement-table">
-      <thead><tr><th class="select-cell"><input id="selectAll" type="checkbox" title="Select all visible rows"></th><th>Time</th><th>Part</th><th>Description</th><th>User</th><th>Direction</th><th>Qty</th><th>Before</th><th>After</th><th>Note</th><th>Actions</th></tr></thead>
+      <thead><tr>
+        <th class="select-cell"><input id="selectAll" type="checkbox" title="Select all visible rows"></th>
+        <th class="sortable" data-sort="time">Time</th>
+        <th class="sortable" data-sort="part">Part</th>
+        <th class="sortable" data-sort="description">Description</th>
+        <th class="sortable" data-sort="user">User</th>
+        <th class="sortable" data-sort="direction">Direction</th>
+        <th class="sortable" data-sort="qty">Qty</th>
+        <th class="sortable" data-sort="before">Before</th>
+        <th class="sortable" data-sort="after">After</th>
+        <th class="sortable" data-sort="note">Note</th>
+        <th>Actions</th>
+      </tr></thead>
       <tbody id="movementBody"><tr><td colspan="11" class="empty">Loading…</td></tr></tbody>
     </table></div></div>
   </main>
@@ -64,7 +80,7 @@
   <script>
     const API_BASE=(localStorage.getItem("API_BASE")||"https://wireshop-backend.onrender.com").replace(/\/+$/,'');
     const MOVEMENT_API=API_BASE+"/api/inventory-log",INVENTORY_API=API_BASE+"/api/inventory-all";
-    let rawRows=[],visibleRows=[],inventoryMap=new Map(),selectedIds=new Set(),editingId=null;
+    let rawRows=[],visibleRows=[],inventoryMap=new Map(),selectedIds=new Set(),editingId=null,sortKey=null,sortDir='asc';
     function getSession(){try{return JSON.parse(localStorage.getItem("user")||"{}")}catch{return {}}}
     function requireAdmin(){const s=getSession();if(!s.username){location.replace("index.html");return false}if(String(s.role||'').toLowerCase()!=="admin"){location.replace("assignments.html");return false}return true}
     function authHeaders(){return {"Content-Type":"application/json","x-user":getSession().username}}
@@ -78,9 +94,31 @@
     function csvEscape(v){const s=String(v??'');return /[",\n\r]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s}
     async function apiJson(url,options={}){const res=await fetch(url,{...options,headers:{...authHeaders(),...(options.headers||{})}});let data=null;try{data=await res.json()}catch{}if(!res.ok)throw new Error(data?.error||`Request failed (${res.status})`);return data}
     function decoratedRows(){return rawRows.map(r=>{const inv=inventoryMap.get(String(r.partNumber||'').toLowerCase())||{};return {...r,description:inv.description||'',location:inv.location||''}})}
-    function filteredRows(){const search=(searchBox.value||'').trim().toLowerCase(),dir=dirFilter.value;let rows=decoratedRows();if(dir!=='all')rows=rows.filter(r=>classify(r.delta)===dir);if(search)rows=rows.filter(r=>[r.partNumber,r.description,r.location,r.user,r.note,r.before,r.after,r.delta].join(' ').toLowerCase().includes(search));return rows}
+    function sortValue(r,key){
+      if(key==='time')return Number(r.when||r.ts||0);
+      if(key==='part')return String(r.partNumber||'');
+      if(key==='description')return String(r.description||'');
+      if(key==='user')return String(r.user||'');
+      if(key==='direction')return classify(r.delta);
+      if(key==='qty')return quantityLabel(r.delta);
+      if(key==='before')return Number(r.before||0);
+      if(key==='after')return Number(r.after||0);
+      if(key==='note')return String(r.note||'');
+      return '';
+    }
+    function applySort(rows){
+      if(!sortKey)return rows;
+      const dir=sortDir==='desc'?-1:1;
+      return [...rows].sort((a,b)=>{
+        const av=sortValue(a,sortKey),bv=sortValue(b,sortKey);
+        if(typeof av==='number'&&typeof bv==='number')return (av-bv)*dir;
+        return String(av).localeCompare(String(bv),undefined,{numeric:true,sensitivity:'base'})*dir;
+      });
+    }
+    function updateSortHeaders(){document.querySelectorAll('.movement-table thead th.sortable').forEach(th=>{th.classList.remove('sort-asc','sort-desc');if(th.dataset.sort===sortKey)th.classList.add(sortDir==='asc'?'sort-asc':'sort-desc')})}
+    function filteredRows(){const search=(searchBox.value||'').trim().toLowerCase(),dir=dirFilter.value;let rows=decoratedRows();if(dir!=='all')rows=rows.filter(r=>classify(r.delta)===dir);if(search)rows=rows.filter(r=>[r.partNumber,r.description,r.location,r.user,r.note,r.before,r.after,r.delta].join(' ').toLowerCase().includes(search));return applySort(rows)}
     function updateSelectionControls(){const rows=rawRows.filter(r=>selectedIds.has(Number(r.id))),parts=new Set(rows.map(r=>String(r.partNumber||'').toLowerCase())),samePart=rows.length>=2&&parts.size===1;combineBtn.disabled=!samePart;deleteSelectedBtn.disabled=!rows.length;let text=rows.length?`${rows.length} row${rows.length===1?'':'s'} selected.`:'No rows selected.';if(rows.length>=2&&!samePart)text+=' Combine requires the same part number.';selectionNote.textContent=text;const ids=visibleRows.map(r=>Number(r.id)),checked=ids.filter(id=>selectedIds.has(id)).length;selectAll.checked=ids.length>0&&checked===ids.length;selectAll.indeterminate=checked>0&&checked<ids.length}
-    function renderRows(){visibleRows=filteredRows();const totalIn=visibleRows.reduce((s,r)=>s+Math.max(0,Number(r.delta||0)),0),totalOut=visibleRows.reduce((s,r)=>s+Math.abs(Math.min(0,Number(r.delta||0))),0);stats.innerHTML=`<span><b>${visibleRows.length}</b> rows shown</span><span><b>${totalIn}</b> in</span><span><b>${totalOut}</b> out</span>`;if(!visibleRows.length){movementBody.innerHTML='<tr><td colspan="11" class="empty">No movement found for that filter.</td></tr>';updateSelectionControls();return}movementBody.innerHTML=visibleRows.map(r=>{const id=Number(r.id),selected=selectedIds.has(id);return `<tr class="${selected?'row-selected':''}" data-id="${id}"><td class="select-cell"><input class="row-select" type="checkbox" data-id="${id}" ${selected?'checked':''}></td><td>${escapeHtml(formatTs(r.when||r.ts)||'—')}</td><td>${escapeHtml(r.partNumber)}</td><td>${escapeHtml(r.description||'—')}</td><td>${escapeHtml(r.user||'—')}</td><td>${directionChip(r.delta)}</td><td>${escapeHtml(quantityLabel(r.delta))}</td><td>${escapeHtml(r.before)}</td><td>${escapeHtml(r.after)}</td><td class="note">${escapeHtml(r.note||'')}</td><td class="actions"><button class="small edit-row" type="button" data-id="${id}">Edit</button> <button class="small danger delete-row" type="button" data-id="${id}">Delete</button></td></tr>`}).join('');updateSelectionControls()}
+    function renderRows(){visibleRows=filteredRows();updateSortHeaders();const totalIn=visibleRows.reduce((s,r)=>s+Math.max(0,Number(r.delta||0)),0),totalOut=visibleRows.reduce((s,r)=>s+Math.abs(Math.min(0,Number(r.delta||0))),0);stats.innerHTML=`<span><b>${visibleRows.length}</b> rows shown</span><span><b>${totalIn}</b> in</span><span><b>${totalOut}</b> out</span>`;if(!visibleRows.length){movementBody.innerHTML='<tr><td colspan="11" class="empty">No movement found for that filter.</td></tr>';updateSelectionControls();return}movementBody.innerHTML=visibleRows.map(r=>{const id=Number(r.id),selected=selectedIds.has(id);return `<tr class="${selected?'row-selected':''}" data-id="${id}"><td class="select-cell"><input class="row-select" type="checkbox" data-id="${id}" ${selected?'checked':''}></td><td>${escapeHtml(formatTs(r.when||r.ts)||'—')}</td><td>${escapeHtml(r.partNumber)}</td><td>${escapeHtml(r.description||'—')}</td><td>${escapeHtml(r.user||'—')}</td><td>${directionChip(r.delta)}</td><td>${escapeHtml(quantityLabel(r.delta))}</td><td>${escapeHtml(r.before)}</td><td>${escapeHtml(r.after)}</td><td class="note">${escapeHtml(r.note||'')}</td><td class="actions"><button class="small edit-row" type="button" data-id="${id}">Edit</button> <button class="small danger delete-row" type="button" data-id="${id}">Delete</button></td></tr>`}).join('');updateSelectionControls()}
     async function loadInventoryMap(){try{const items=await apiJson(INVENTORY_API);inventoryMap=new Map((items||[]).map(i=>[String(i.partNumber||'').toLowerCase(),i]))}catch(err){console.warn('Inventory map load failed',err)}}
     async function loadMovement(){movementBody.innerHTML='<tr><td colspan="11" class="empty">Loading…</td></tr>';try{const v=String(limitSel.value||'500'),url=v==='all'?MOVEMENT_API:`${MOVEMENT_API}?limit=${encodeURIComponent(Number(v))}`;const [,rows]=await Promise.all([loadInventoryMap(),apiJson(url)]);rawRows=rows||[];selectedIds=new Set();renderRows()}catch(err){console.error(err);movementBody.innerHTML='<tr><td colspan="11" class="error">'+escapeHtml(err.message||'Failed to load movement.')+'</td></tr>'}}
     function rowById(id){const base=rawRows.find(r=>Number(r.id)===Number(id));if(!base)return null;const inv=inventoryMap.get(String(base.partNumber||'').toLowerCase())||{};return {...base,description:inv.description||''}}
@@ -94,6 +132,7 @@
     function exportCsv(){const rows=filteredRows().map(r=>({time:formatTs(r.when||r.ts),partNumber:r.partNumber||'',description:r.description||'',user:r.user||'',direction:classify(r.delta),qty:quantityLabel(r.delta),delta:Number(r.delta||0),before:Number(r.before||0),after:Number(r.after||0),note:r.note||''})),lines=[["Time","Part Number","Description","User","Direction","Qty","Delta","Before","After","Note"].join(',')];rows.forEach(r=>lines.push([r.time,r.partNumber,r.description,r.user,r.direction,r.qty,r.delta,r.before,r.after,r.note].map(csvEscape).join(',')));const blob=new Blob([lines.join('\r\n')],{type:'text/csv;charset=utf-8;'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='inventory-movement.csv';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url)}
     movementBody.addEventListener('change',e=>{const box=e.target.closest('.row-select');if(!box)return;const id=Number(box.dataset.id);box.checked?selectedIds.add(id):selectedIds.delete(id);renderRows()});
     movementBody.addEventListener('click',e=>{const edit=e.target.closest('.edit-row');if(edit)return openEdit(Number(edit.dataset.id));const del=e.target.closest('.delete-row');if(del)return deleteOne(Number(del.dataset.id))});
+    document.querySelector('.movement-table thead').addEventListener('click',e=>{const th=e.target.closest('th.sortable');if(!th)return;const key=th.dataset.sort;if(sortKey===key)sortDir=sortDir==='asc'?'desc':'asc';else{sortKey=key;sortDir=key==='time'?'desc':'asc'}renderRows()});
     selectAll.addEventListener('change',e=>{visibleRows.forEach(r=>{const id=Number(r.id);e.target.checked?selectedIds.add(id):selectedIds.delete(id)});renderRows()});
     logoutBtn.addEventListener('click',logout);refreshBtn.addEventListener('click',loadMovement);exportBtn.addEventListener('click',exportCsv);combineBtn.addEventListener('click',combineSelected);deleteSelectedBtn.addEventListener('click',deleteSelected);searchBox.addEventListener('input',renderRows);dirFilter.addEventListener('change',renderRows);limitSel.addEventListener('change',loadMovement);cancelEditBtn.addEventListener('click',closeEdit);saveEditBtn.addEventListener('click',saveEdit);editDirection.addEventListener('change',updateEditAfter);editQty.addEventListener('input',updateEditAfter);editBackdrop.addEventListener('click',e=>{if(e.target.id==='editBackdrop')closeEdit()});document.addEventListener('keydown',e=>{if(e.key==='Escape')closeEdit()});
     if(requireAdmin())loadMovement();
