@@ -13,7 +13,11 @@
   }
 
   const path = window.location.pathname || '';
-  const isInventoryPage = path === '/inventory' || path === '/inventory.html' || path.startsWith('/inv/');
+  const isInventoryPage =
+    path === '/inventory' ||
+    path === '/inventory.html' ||
+    path === '/inventory-list.html' ||
+    path.startsWith('/inv/');
 
   if (!isInventoryPage) {
     renameMasterFileLabel();
@@ -27,12 +31,17 @@
 
   const username = String(session.username || '').trim();
   const isAdmin = String(session.role || '').toLowerCase() === 'admin';
-  const API_ROOT = (localStorage.getItem('API_BASE') || 'https://wireshop-backend.onrender.com').replace(/\/+$/, '');
-  const VALUE_API = API_ROOT + '/api/build-values';
+
+  let apiRoot = (localStorage.getItem('API_BASE') || 'https://wireshop-backend.onrender.com').replace(/\/+$/, '');
+  const API_BASE = apiRoot.endsWith('/api') ? apiRoot : apiRoot + '/api';
+  const INVENTORY_ALL = API_BASE + '/inventory-all';
+
   const valueMap = new Map();
+  let applying = false;
 
   function addStyles() {
     if (document.getElementById('buildValueStyles')) return;
+
     const style = document.createElement('style');
     style.id = 'buildValueStyles';
     style.textContent = `
@@ -43,7 +52,13 @@
         }
       }
       .build-value-head{white-space:nowrap;}
-      .build-value-cell{font-size:12px;font-weight:700;display:flex;align-items:center;min-width:0;}
+      .build-value-cell{
+        font-size:12px;
+        font-weight:700;
+        display:flex;
+        align-items:center;
+        min-width:0;
+      }
       .build-value-editor{display:flex;align-items:center;gap:5px;}
       .build-value-input{
         width:72px !important;
@@ -67,13 +82,35 @@
         cursor:pointer;
       }
       .inventory-edit-cell{display:flex;align-items:center;min-width:0;}
-      .inventory-edit-cell .edit-btn{min-width:58px;height:30px;padding:0 9px;}
+      .inventory-edit-cell .edit-btn{
+        min-width:58px;
+        height:30px;
+        padding:0 9px;
+      }
       body:not(.inv-detail) .notes-cell{padding-left:10px;}
       .build-value-detail-control{display:flex;align-items:center;gap:6px;justify-content:flex-start;}
-      .build-value-detail-control .build-value-input{width:80px !important;min-width:80px !important;}
+      .build-value-detail-control .build-value-input{
+        width:80px !important;
+        min-width:80px !important;
+      }
       @media(max-width:900px){
-        body:not(.inv-detail) .build-value-head,
-        body:not(.inv-detail) .build-value-cell{display:none !important;}
+        body:not(.inv-detail) .table-head,
+        body:not(.inv-detail) .list-body .row{
+          grid-template-columns:125px minmax(145px,1fr) 70px 45px 100px 60px !important;
+        }
+        body:not(.inv-detail) .notes-cell{
+          grid-column:1 / -1 !important;
+          margin-top:4px;
+          padding-left:0;
+        }
+        body:not(.inv-detail) .build-value-input{
+          width:52px !important;
+          min-width:52px !important;
+        }
+        body:not(.inv-detail) .build-value-save{
+          min-width:40px;
+          padding:0 5px;
+        }
       }
     `;
     document.head.appendChild(style);
@@ -99,16 +136,19 @@
       return;
     }
 
+    const oldText = button.textContent;
     button.disabled = true;
-    const original = button.textContent;
     button.textContent = '...';
 
     try {
-      const res = await fetch(VALUE_API + '/' + encodeURIComponent(partNumber), {
-        method: 'PUT',
-        headers: { 'Content-Type':'application/json', 'x-user': username },
-        body: JSON.stringify({ buildValueHours: value })
-      });
+      const res = await fetch(
+        API_BASE + '/inventory/' + encodeURIComponent(partNumber) + '/build-value',
+        {
+          method:'PUT',
+          headers:{'Content-Type':'application/json','x-user':username},
+          body:JSON.stringify({buildValueHours:value})
+        }
+      );
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || 'Save failed');
 
@@ -116,9 +156,9 @@
       valueMap.set(partNumber, saved);
       input.value = formatValue(saved);
       button.textContent = '✓';
-      setTimeout(() => { button.textContent = 'Save'; }, 800);
+      setTimeout(() => { if (button.isConnected) button.textContent = 'Save'; }, 800);
     } catch (err) {
-      button.textContent = original || 'Save';
+      button.textContent = oldText || 'Save';
       alert(err.message || 'Build Value save failed');
     } finally {
       button.disabled = false;
@@ -127,29 +167,37 @@
 
   function renderValueCell(cell, partNumber, detailMode = false) {
     const value = getValue(partNumber);
+    cell.dataset.partNumber = partNumber;
 
     if (!isAdmin) {
       cell.textContent = formatValue(value) + ' hrs';
       return;
     }
 
-    if (!cell.querySelector('.build-value-input')) {
-      cell.innerHTML = '';
-      const wrap = document.createElement('div');
-      wrap.className = detailMode ? 'build-value-editor build-value-detail-control' : 'build-value-editor';
+    let input = cell.querySelector('.build-value-input');
+    let button = cell.querySelector('.build-value-save');
 
-      const input = document.createElement('input');
+    if (!input || !button) {
+      cell.innerHTML = '';
+
+      const wrap = document.createElement('div');
+      wrap.className = detailMode
+        ? 'build-value-editor build-value-detail-control'
+        : 'build-value-editor';
+
+      input = document.createElement('input');
       input.type = 'number';
       input.min = '0';
       input.step = '0.25';
       input.className = 'build-value-input';
       input.setAttribute('aria-label', 'Build Value hours');
 
-      const button = document.createElement('button');
+      button = document.createElement('button');
       button.type = 'button';
       button.className = 'build-value-save';
       button.textContent = 'Save';
       button.addEventListener('click', () => saveBuildValue(partNumber, input, button));
+
       input.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
           e.preventDefault();
@@ -161,16 +209,27 @@
       cell.appendChild(wrap);
     }
 
-    const input = cell.querySelector('.build-value-input');
-    if (input && document.activeElement !== input) input.value = formatValue(value);
+    if (document.activeElement !== input) {
+      input.value = formatValue(value);
+    }
   }
 
   function rebuildListHeader() {
     if (document.body.classList.contains('inv-detail')) return;
-    const head = document.getElementById('tableHead');
+
+    const head = document.getElementById('tableHead') || document.querySelector('.table-head');
     if (!head) return;
 
-    const wanted = ['Part Number','Print Name','Location','Qty','Build Value (hrs)','Edit','Notes'];
+    const wanted = [
+      'Part Number',
+      'Print Name',
+      'Location',
+      'Qty',
+      'Build Value (hrs)',
+      'Edit',
+      'Notes'
+    ];
+
     const current = Array.from(head.children).map(el => el.textContent.trim());
     if (current.length === wanted.length && current.every((v,i) => v === wanted[i])) return;
 
@@ -187,43 +246,41 @@
     if (document.body.classList.contains('inv-detail')) return;
 
     document.querySelectorAll('#listBody > .row').forEach(row => {
-      const children = Array.from(row.children);
       const partLink = row.querySelector('a[href^="/inv/"]');
       const partNumber = String(partLink?.textContent || '').trim();
       if (!partNumber) return;
 
       const notes = row.querySelector(':scope > .notes-cell');
-      const controls = row.querySelector(':scope > .adjust-controls, :scope > .inventory-edit-cell');
-      if (!notes || !controls) return;
+      const oldControls = row.querySelector(':scope > .adjust-controls, :scope > .inventory-edit-cell');
+      if (!notes || !oldControls) return;
+
+      const allChildren = Array.from(row.children);
+      const firstFour = allChildren.filter(el =>
+        el !== notes &&
+        el !== oldControls &&
+        !el.classList.contains('build-value-cell')
+      ).slice(0,4);
+
+      if (firstFour.length !== 4) return;
 
       let valueCell = row.querySelector(':scope > .build-value-cell');
       if (!valueCell) {
         valueCell = document.createElement('div');
         valueCell.className = 'build-value-cell';
-        row.insertBefore(valueCell, controls);
       }
       renderValueCell(valueCell, partNumber, false);
 
-      controls.classList.remove('adjust-controls');
-      controls.classList.add('inventory-edit-cell');
-      Array.from(controls.children).forEach(child => {
+      oldControls.classList.remove('adjust-controls');
+      oldControls.classList.add('inventory-edit-cell');
+      Array.from(oldControls.children).forEach(child => {
         if (!child.classList.contains('edit-btn')) child.remove();
       });
 
-      // Keep the exact seven-column order even if older helper code touched this row.
-      const firstFour = children.filter(el =>
-        el !== notes &&
-        el !== controls &&
-        !el.classList.contains('build-value-cell')
-      ).slice(0,4);
-
-      if (firstFour.length === 4) {
-        row.innerHTML = '';
-        firstFour.forEach(el => row.appendChild(el));
-        row.appendChild(valueCell);
-        row.appendChild(controls);
-        row.appendChild(notes);
-      }
+      row.innerHTML = '';
+      firstFour.forEach(el => row.appendChild(el));
+      row.appendChild(valueCell);
+      row.appendChild(oldControls);
+      row.appendChild(notes);
     });
   }
 
@@ -252,11 +309,17 @@
   }
 
   function applyUi() {
-    addStyles();
-    renameMasterFileLabel();
-    rebuildListHeader();
-    rebuildListRows();
-    applyDetailValue();
+    if (applying) return;
+    applying = true;
+    try {
+      addStyles();
+      renameMasterFileLabel();
+      rebuildListHeader();
+      rebuildListRows();
+      applyDetailValue();
+    } finally {
+      applying = false;
+    }
   }
 
   async function loadBuildValues() {
@@ -266,13 +329,16 @@
     }
 
     try {
-      const res = await fetch(VALUE_API, { headers: { 'x-user': username } });
+      const res = await fetch(INVENTORY_ALL, { headers:{'x-user':username} });
       const data = await res.json().catch(() => []);
-      if (!res.ok) throw new Error('Failed to load build values');
+      if (!res.ok) throw new Error('Failed to load inventory values');
 
       valueMap.clear();
       (Array.isArray(data) ? data : []).forEach(row => {
-        valueMap.set(String(row.partNumber || ''), Number(row.buildValueHours || 0));
+        valueMap.set(
+          String(row.partNumber || ''),
+          Number(row.buildValueHours || 0)
+        );
       });
     } catch (err) {
       console.warn('[build-values]', err);
@@ -288,6 +354,10 @@
   const listBody = document.getElementById('listBody');
   if (listBody) {
     const observer = new MutationObserver(() => requestAnimationFrame(applyUi));
-    observer.observe(listBody, { childList: true });
+    observer.observe(listBody, { childList:true });
   }
+
+  window.addEventListener('pageshow', () => {
+    loadBuildValues();
+  });
 })();
