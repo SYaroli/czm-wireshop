@@ -13,6 +13,23 @@ function requireUser(req, res, next) {
   next();
 }
 
+function requireDbAdmin(req, res, next) {
+  const u = getUser(req);
+  if (!u) return res.status(401).json({ error: "x-user required" });
+  db.get(
+    `SELECT role FROM users WHERE username = ? COLLATE NOCASE`,
+    [u],
+    (err, row) => {
+      if (err) return res.status(500).json({ error: "db error" });
+      if (!row || String(row.role || "").toLowerCase() !== "admin") {
+        return res.status(403).json({ error: "admin only" });
+      }
+      req.user = u;
+      next();
+    }
+  );
+}
+
 let ADMIN_USERS = (process.env.ADMIN_USERS || "")
   .split(",")
   .map(s => s.trim().toLowerCase())
@@ -82,7 +99,7 @@ router.get("/build-values", requireUser, (req, res) => {
   });
 });
 
-router.put("/build-values/:partNumber", requireAdmin, (req, res) => {
+router.put("/build-values/:partNumber", requireDbAdmin, (req, res) => {
   ensureInventoryColumns((ensureErr) => {
     if (ensureErr) {
       console.error("[build-values] ensure columns failed:", ensureErr);
@@ -96,17 +113,20 @@ router.put("/build-values/:partNumber", requireAdmin, (req, res) => {
     }
 
     const cleanValue = Math.round(value * 100) / 100;
+    const now = Date.now();
     db.run(
-      `UPDATE inventory
-          SET buildValueHours = ?, updatedAt = ?, updatedBy = ?
-        WHERE partNumber = ?`,
-      [cleanValue, Date.now(), req.user, req.params.partNumber],
+      `INSERT INTO inventory (partNumber, buildValueHours, updatedAt, updatedBy)
+       VALUES (?, ?, ?, ?)
+       ON CONFLICT(partNumber) DO UPDATE SET
+         buildValueHours = excluded.buildValueHours,
+         updatedAt = excluded.updatedAt,
+         updatedBy = excluded.updatedBy`,
+      [req.params.partNumber, cleanValue, now, req.user],
       function (err) {
         if (err) {
           console.error("[build-values] update failed:", err);
           return res.status(500).json({ error: "db error" });
         }
-        if (this.changes === 0) return res.status(404).json({ error: "part not found" });
         res.json({ ok: true, partNumber: req.params.partNumber, buildValueHours: cleanValue });
       }
     );
