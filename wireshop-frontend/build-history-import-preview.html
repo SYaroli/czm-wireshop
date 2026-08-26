@@ -8,12 +8,12 @@
   <style>
     main{max-width:1200px;margin:22px auto;padding:0 14px 30px}.page-grid{display:grid;gap:16px}
     .section-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}.section-head h2{margin:0;font-size:1.15rem}.section-head p{margin:4px 0 0;color:var(--muted);font-size:.9rem}
-    .upload-row{display:grid;grid-template-columns:minmax(280px,1fr) auto;gap:10px;align-items:end}.upload-row label{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:800}.upload-row input{min-height:38px;border:1px solid var(--line);border-radius:8px;padding:7px;background:#fff}
-    .action-btn{height:38px;border:1px solid var(--line);border-radius:8px;padding:0 14px;background:#eee;cursor:pointer;font-weight:800}.action-btn.red{background:var(--red);border-color:var(--red);color:#fff}.action-btn:disabled{opacity:.5;cursor:not-allowed}
+    .upload-row{display:grid;grid-template-columns:minmax(280px,1fr) auto auto;gap:10px;align-items:end}.upload-row label{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:800}.upload-row input{min-height:38px;border:1px solid var(--line);border-radius:8px;padding:7px;background:#fff}
+    .action-btn{height:38px;border:1px solid var(--line);border-radius:8px;padding:0 14px;background:#eee;cursor:pointer;font-weight:800}.action-btn.red{background:var(--red);border-color:var(--red);color:#fff}.action-btn.green{background:#17751d;border-color:#17751d;color:#fff}.action-btn:disabled{opacity:.5;cursor:not-allowed}
     .stats{display:grid;grid-template-columns:repeat(5,minmax(120px,1fr));gap:10px;margin-top:14px}.stat{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#fafbfc}.stat .label{font-size:11px;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.04em}.stat .value{font-size:22px;font-weight:900;margin-top:3px}
     .good{color:#17751d}.warn{color:#a85b00}.bad{color:#b30000}.status{font-size:12px;margin-top:10px;min-height:18px}.notice{border:1px solid #d7dde5;background:#f7f9fb;border-radius:9px;padding:10px 12px;font-size:12px}.notice strong{font-weight:900}
     .table-wrap{overflow:auto;border:1px solid var(--line);border-radius:9px;margin-top:10px}table{width:100%;border-collapse:collapse;font-size:12px}th{background:#0a0b0d;color:#fff;text-align:left;padding:8px 9px;white-space:nowrap}td{padding:8px 9px;border-bottom:1px solid #e8ebef}tbody tr:nth-child(even){background:#fafbfc}.num{text-align:right;white-space:nowrap}.empty{text-align:center;padding:18px;color:var(--muted)}
-    @media(max-width:800px){.upload-row{grid-template-columns:1fr}.stats{grid-template-columns:1fr 1fr}.stats .stat:first-child{grid-column:1/-1}}
+    @media(max-width:900px){.upload-row{grid-template-columns:1fr}.stats{grid-template-columns:1fr 1fr}.stats .stat:first-child{grid-column:1/-1}}
   </style>
 </head>
 <body>
@@ -24,13 +24,14 @@
 
   <main><div class="page-grid">
     <div class="card">
-      <div class="section-head"><div><h2>Master Build History Import Preview</h2><p>Compare your CSV against permanent Build History before importing anything.</p></div><a class="quick-link" href="/build-history.html">Back to Build History</a></div>
-      <div class="notice"><strong>Preview only.</strong> This page does not insert, update, or delete any build-history records. Matching uses Part # + technician + completed date + qty + elapsed seconds.</div>
+      <div class="section-head"><div><h2>Master Build History Import</h2><p>Preview first, then import only the records that are not already in permanent Build History.</p></div><a class="quick-link" href="/build-history.html">Back to Build History</a></div>
+      <div class="notice"><strong>Safe import.</strong> Matching uses Part # + technician + completed date + qty + elapsed seconds. Import re-checks duplicates at the moment you click Import. Historical rows stay out of Done.</div>
       <div class="upload-row" style="margin-top:12px;">
         <label>CSV file
           <input id="importFile" type="file" accept=".csv,text/csv" />
         </label>
         <button id="previewBtn" class="action-btn red" type="button" disabled>Preview Against Site</button>
+        <button id="importBtn" class="action-btn green" type="button" disabled>Import New Rows</button>
       </div>
       <div id="status" class="status muted">Choose the converted CSV file, then preview it.</div>
 
@@ -59,11 +60,14 @@
 
     const fileInput=document.getElementById('importFile');
     const previewBtn=document.getElementById('previewBtn');
+    const importBtn=document.getElementById('importBtn');
     const status=document.getElementById('status');
     const stats=document.getElementById('stats');
     const sampleCard=document.getElementById('sampleCard');
     const sampleBody=document.getElementById('sampleBody');
     const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    let lastRows=[];
+    let lastPreview=null;
 
     function parseCsv(text){
       const rows=[];let row=[],field='',quoted=false;
@@ -113,31 +117,63 @@
 
     fileInput.addEventListener('change',()=>{
       previewBtn.disabled=!fileInput.files?.length;
+      importBtn.disabled=true;
+      lastRows=[];lastPreview=null;
       stats.style.display='none';sampleCard.style.display='none';
       status.textContent=fileInput.files?.length?'Ready to preview '+fileInput.files[0].name+'.':'Choose a CSV file.';
     });
 
     previewBtn.addEventListener('click',async()=>{
       const file=fileInput.files?.[0];if(!file)return;
-      previewBtn.disabled=true;status.textContent='Reading CSV and comparing against Build History…';
+      previewBtn.disabled=true;importBtn.disabled=true;status.textContent='Reading CSV and comparing against Build History…';
       try{
-        const rows=rowsFromCsv(await file.text());
+        lastRows=rowsFromCsv(await file.text());
         const res=await fetch(API_ROOT+'/api/build-history/import-preview',{
           method:'POST',
           headers:{'Content-Type':'application/json','x-user':session.username,'x-role':session.role||''},
-          body:JSON.stringify({rows})
+          body:JSON.stringify({rows:lastRows})
         });
         const data=await res.json().catch(()=>({}));
         if(!res.ok)throw new Error(data.error||data.detail||('Preview failed ('+res.status+')'));
+        lastPreview=data;
         document.getElementById('sSupplied').textContent=String(data.supplied||0);
         document.getElementById('sExisting').textContent=String(data.alreadyOnSite||0);
         document.getElementById('sNew').textContent=String(data.newToImport||0);
         document.getElementById('sInvalid').textContent=String(data.invalid||0);
         document.getElementById('sSite').textContent=String(data.existingSiteRecords||0);
         stats.style.display='';renderSamples(data);
+        importBtn.disabled=Number(data.invalid||0)!==0||Number(data.newToImport||0)<=0;
         status.textContent='Preview complete. No records were written.';
       }catch(err){
-        console.error(err);status.textContent='Preview failed: '+(err.message||err);
+        console.error(err);lastRows=[];lastPreview=null;status.textContent='Preview failed: '+(err.message||err);
+      }finally{previewBtn.disabled=false}
+    });
+
+    importBtn.addEventListener('click',async()=>{
+      if(!lastRows.length||!lastPreview)return;
+      const count=Number(lastPreview.newToImport||0);
+      if(count<=0)return;
+      if(!window.confirm('Import '+count+' new historical build records? Existing matches will be skipped again automatically.'))return;
+      importBtn.disabled=true;previewBtn.disabled=true;status.textContent='Importing historical build records…';
+      try{
+        const res=await fetch(API_ROOT+'/api/build-history/import',{
+          method:'POST',
+          headers:{'Content-Type':'application/json','x-user':session.username,'x-role':session.role||''},
+          body:JSON.stringify({rows:lastRows})
+        });
+        const data=await res.json().catch(()=>({}));
+        if(!res.ok)throw new Error(data.error||data.detail||('Import failed ('+res.status+')'));
+        document.getElementById('sSupplied').textContent=String(data.supplied||0);
+        document.getElementById('sExisting').textContent=String(data.skippedAsDuplicate||0);
+        document.getElementById('sNew').textContent='0';
+        document.getElementById('sInvalid').textContent=String(data.invalid||0);
+        document.getElementById('sSite').textContent=String(data.siteRecordsAfter||0);
+        stats.style.display='';sampleCard.style.display='none';
+        lastPreview=null;
+        status.textContent='Import complete: '+data.imported+' added, '+data.skippedAsDuplicate+' already on site. Permanent Build History now has '+data.siteRecordsAfter+' records.';
+      }catch(err){
+        console.error(err);status.textContent='Import failed: '+(err.message||err);
+        importBtn.disabled=false;
       }finally{previewBtn.disabled=false}
     });
   })();
