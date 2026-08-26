@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CZM • Build History Import Preview</title>
+  <link rel="stylesheet" href="/style.css" />
+  <style>
+    main{max-width:1200px;margin:22px auto;padding:0 14px 30px}.page-grid{display:grid;gap:16px}
+    .section-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}.section-head h2{margin:0;font-size:1.15rem}.section-head p{margin:4px 0 0;color:var(--muted);font-size:.9rem}
+    .upload-row{display:grid;grid-template-columns:minmax(280px,1fr) auto;gap:10px;align-items:end}.upload-row label{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:800}.upload-row input{min-height:38px;border:1px solid var(--line);border-radius:8px;padding:7px;background:#fff}
+    .action-btn{height:38px;border:1px solid var(--line);border-radius:8px;padding:0 14px;background:#eee;cursor:pointer;font-weight:800}.action-btn.red{background:var(--red);border-color:var(--red);color:#fff}.action-btn:disabled{opacity:.5;cursor:not-allowed}
+    .stats{display:grid;grid-template-columns:repeat(5,minmax(120px,1fr));gap:10px;margin-top:14px}.stat{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#fafbfc}.stat .label{font-size:11px;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.04em}.stat .value{font-size:22px;font-weight:900;margin-top:3px}
+    .good{color:#17751d}.warn{color:#a85b00}.bad{color:#b30000}.status{font-size:12px;margin-top:10px;min-height:18px}.notice{border:1px solid #d7dde5;background:#f7f9fb;border-radius:9px;padding:10px 12px;font-size:12px}.notice strong{font-weight:900}
+    .table-wrap{overflow:auto;border:1px solid var(--line);border-radius:9px;margin-top:10px}table{width:100%;border-collapse:collapse;font-size:12px}th{background:#0a0b0d;color:#fff;text-align:left;padding:8px 9px;white-space:nowrap}td{padding:8px 9px;border-bottom:1px solid #e8ebef}tbody tr:nth-child(even){background:#fafbfc}.num{text-align:right;white-space:nowrap}.empty{text-align:center;padding:18px;color:var(--muted)}
+    @media(max-width:800px){.upload-row{grid-template-columns:1fr}.stats{grid-template-columns:1fr 1fr}.stats .stat:first-child{grid-column:1/-1}}
+  </style>
+</head>
+<body>
+  <div class="brand-bar"><div class="brand-inner">
+    <a class="brand-logo" href="/dashboard.html"><img src="/czm-logo.png" alt="CZM"><h1 class="brand-title">CZM • Import Preview</h1></a>
+    <div class="brand-actions"><a class="navbtn" href="/assignments.html">Build Next</a><a class="navbtn" href="/inventory.html">Inventory</a><a class="navbtn" href="/build-history.html">Build History</a><a class="navbtn active" href="/admin.html">Admin</a><button id="logoutBtn" class="navbtn">Logout</button></div>
+  </div></div>
+
+  <main><div class="page-grid">
+    <div class="card">
+      <div class="section-head"><div><h2>Master Build History Import Preview</h2><p>Compare your CSV against permanent Build History before importing anything.</p></div><a class="quick-link" href="/build-history.html">Back to Build History</a></div>
+      <div class="notice"><strong>Preview only.</strong> This page does not insert, update, or delete any build-history records. Matching uses Part # + technician + completed date + qty + elapsed seconds.</div>
+      <div class="upload-row" style="margin-top:12px;">
+        <label>CSV file
+          <input id="importFile" type="file" accept=".csv,text/csv" />
+        </label>
+        <button id="previewBtn" class="action-btn red" type="button" disabled>Preview Against Site</button>
+      </div>
+      <div id="status" class="status muted">Choose the converted CSV file, then preview it.</div>
+
+      <div id="stats" class="stats" style="display:none;">
+        <div class="stat"><div class="label">Supplied</div><div id="sSupplied" class="value">0</div></div>
+        <div class="stat"><div class="label">Already On Site</div><div id="sExisting" class="value warn">0</div></div>
+        <div class="stat"><div class="label">New To Import</div><div id="sNew" class="value good">0</div></div>
+        <div class="stat"><div class="label">Invalid</div><div id="sInvalid" class="value bad">0</div></div>
+        <div class="stat"><div class="label">Site Records</div><div id="sSite" class="value">0</div></div>
+      </div>
+    </div>
+
+    <div class="card" id="sampleCard" style="display:none;">
+      <div class="section-head"><div><h2>Preview Samples</h2><p>A few matched and new rows so we can sanity-check the comparison.</p></div></div>
+      <div class="table-wrap"><table><thead><tr><th>Status</th><th>Completed</th><th>Technician</th><th>Part #</th><th class="num">Qty</th><th class="num">Seconds</th></tr></thead><tbody id="sampleBody"></tbody></table></div>
+    </div>
+  </div></main>
+
+  <script>
+  (()=>{
+    const API_ROOT=(localStorage.getItem('API_BASE')||'https://wireshop-backend.onrender.com').replace(/\/+$/,'');
+    const session=(()=>{try{return JSON.parse(localStorage.getItem('user')||'{}')}catch{return {}}})();
+    if(!session.username){location.replace('/index.html');return}
+    if(String(session.role||'').toLowerCase()!=='admin'){location.replace('/assignments.html');return}
+    document.getElementById('logoutBtn')?.addEventListener('click',()=>{localStorage.removeItem('user');location.replace('/index.html')});
+
+    const fileInput=document.getElementById('importFile');
+    const previewBtn=document.getElementById('previewBtn');
+    const status=document.getElementById('status');
+    const stats=document.getElementById('stats');
+    const sampleCard=document.getElementById('sampleCard');
+    const sampleBody=document.getElementById('sampleBody');
+    const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+    function parseCsv(text){
+      const rows=[];let row=[],field='',quoted=false;
+      text=String(text||'').replace(/^\uFEFF/,'');
+      for(let i=0;i<text.length;i++){
+        const ch=text[i];
+        if(quoted){
+          if(ch==='"'&&text[i+1]==='"'){field+='"';i++;continue}
+          if(ch==='"'){quoted=false;continue}
+          field+=ch;continue;
+        }
+        if(ch==='"'){quoted=true;continue}
+        if(ch===','){row.push(field);field='';continue}
+        if(ch==='\n'){row.push(field.replace(/\r$/,''));rows.push(row);row=[];field='';continue}
+        field+=ch;
+      }
+      if(field.length||row.length){row.push(field.replace(/\r$/,''));rows.push(row)}
+      return rows.filter(r=>r.some(v=>String(v).trim()!==''));
+    }
+
+    function rowsFromCsv(text){
+      const grid=parseCsv(text);
+      if(grid.length<2) throw new Error('CSV has no data rows');
+      const headers=grid[0].map(h=>String(h||'').trim().toLowerCase());
+      const idx=name=>headers.indexOf(name.toLowerCase());
+      const required=['partnumber','printname','qty','user','completeddate','elapsedseconds','note'];
+      const missing=required.filter(h=>idx(h)<0);
+      if(missing.length) throw new Error('Wrong CSV format. Missing: '+missing.join(', '));
+      return grid.slice(1).map(r=>({
+        partNumber:r[idx('partnumber')]||'',
+        printName:r[idx('printname')]||'',
+        qty:r[idx('qty')]||'',
+        user:r[idx('user')]||'',
+        completedDate:r[idx('completeddate')]||'',
+        elapsedSeconds:r[idx('elapsedseconds')]||'',
+        note:r[idx('note')]||''
+      }));
+    }
+
+    function renderSamples(result){
+      const samples=[];
+      (result.duplicateSample||[]).forEach(r=>samples.push({...r,_status:'Already on site'}));
+      (result.newSample||[]).forEach(r=>samples.push({...r,_status:'New'}));
+      sampleCard.style.display='';
+      sampleBody.innerHTML=samples.length?samples.slice(0,20).map(r=>'<tr><td>'+esc(r._status)+'</td><td>'+esc(r.completedDate)+'</td><td>'+esc(r.user)+'</td><td>'+esc(r.partNumber)+'</td><td class="num">'+esc(r.qty)+'</td><td class="num">'+esc(r.elapsedSeconds)+'</td></tr>').join(''):'<tr><td colspan="6" class="empty">No sample rows returned.</td></tr>';
+    }
+
+    fileInput.addEventListener('change',()=>{
+      previewBtn.disabled=!fileInput.files?.length;
+      stats.style.display='none';sampleCard.style.display='none';
+      status.textContent=fileInput.files?.length?'Ready to preview '+fileInput.files[0].name+'.':'Choose a CSV file.';
+    });
+
+    previewBtn.addEventListener('click',async()=>{
+      const file=fileInput.files?.[0];if(!file)return;
+      previewBtn.disabled=true;status.textContent='Reading CSV and comparing against Build History…';
+      try{
+        const rows=rowsFromCsv(await file.text());
+        const res=await fetch(API_ROOT+'/api/build-history/import-preview',{
+          method:'POST',
+          headers:{'Content-Type':'application/json','x-user':session.username,'x-role':session.role||''},
+          body:JSON.stringify({rows})
+        });
+        const data=await res.json().catch(()=>({}));
+        if(!res.ok)throw new Error(data.error||data.detail||('Preview failed ('+res.status+')'));
+        document.getElementById('sSupplied').textContent=String(data.supplied||0);
+        document.getElementById('sExisting').textContent=String(data.alreadyOnSite||0);
+        document.getElementById('sNew').textContent=String(data.newToImport||0);
+        document.getElementById('sInvalid').textContent=String(data.invalid||0);
+        document.getElementById('sSite').textContent=String(data.existingSiteRecords||0);
+        stats.style.display='';renderSamples(data);
+        status.textContent='Preview complete. No records were written.';
+      }catch(err){
+        console.error(err);status.textContent='Preview failed: '+(err.message||err);
+      }finally{previewBtn.disabled=false}
+    });
+  })();
+  </script>
+</body>
+</html>
