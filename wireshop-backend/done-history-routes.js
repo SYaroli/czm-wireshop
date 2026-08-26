@@ -58,6 +58,51 @@ module.exports = function attachDoneHistoryRoutes(app, opts = {}) {
     return Math.max(0, Math.floor((Number(atTs || Date.now()) - startedAt) / 1000) - totalPaused - extraPaused);
   }
 
+  const SHOP_TZ = process.env.SHOP_TZ || 'America/New_York';
+  function localDateKey(ts) {
+    const d = new Date(Number(ts));
+    if (Number.isNaN(d.getTime())) return '';
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: SHOP_TZ,
+      year: 'numeric', month: '2-digit', day: '2-digit'
+    }).formatToParts(d);
+    const map = {};
+    parts.forEach(p => { if (p.type !== 'literal') map[p.type] = p.value; });
+    return `${map.year || ''}-${map.month || ''}-${map.day || ''}`;
+  }
+
+  function importKey(row) {
+    return [
+      String(row.partNumber || '').trim().toLowerCase(),
+      String(row.user || '').trim().toLowerCase(),
+      String(row.completedDate || '').trim(),
+      Math.max(0, Math.trunc(Number(row.qty) || 0)),
+      Math.max(0, Math.round(Number(row.elapsedSeconds) || 0))
+    ].join('|');
+  }
+
+  function normalizeImportRow(raw, index) {
+    const partNumber = String(raw?.partNumber || '').trim();
+    const user = String(raw?.user || '').trim();
+    const completedDate = String(raw?.completedDate || '').trim();
+    const qty = Math.trunc(Number(raw?.qty));
+    const elapsedSeconds = Math.round(Number(raw?.elapsedSeconds));
+    const valid = !!partNumber && !!user && /^\d{4}-\d{2}-\d{2}$/.test(completedDate) &&
+      Number.isInteger(qty) && qty > 0 && Number.isFinite(elapsedSeconds) && elapsedSeconds >= 0;
+
+    return {
+      index,
+      valid,
+      partNumber,
+      printName: String(raw?.printName || '').trim(),
+      qty,
+      user,
+      completedDate,
+      elapsedSeconds,
+      note: String(raw?.note || '').trim()
+    };
+  }
+
   // Intercepts the completion feed before build_tasks.js.
   // Normal callers (Build Next) see only rows not cleared from Done.
   // Build History requests includeHidden=1 and sees the permanent history.
@@ -99,6 +144,70 @@ module.exports = function attachDoneHistoryRoutes(app, opts = {}) {
     } catch (err) {
       console.error('[DONE HISTORY] feed failed:', err);
       res.status(500).json({ error: 'db', detail: String(err.message || err) });
+    }
+  });
+
+  // Read-only import preview. This never inserts, updates, or deletes build history rows.
+  app.post('/api/build-history/import-preview', async (req, res) => {
+    if (!username(req)) return res.status(401).json({ error: 'missing x-user header' });
+    if (!isAdmin(req)) return res.status(403).json({ error: 'admin only' });
+
+    const supplied = Array.isArray(req.body?.rows) ? req.body.rows : [];
+    if (supplied.length === 0) return res.status(400).json({ error: 'No import rows supplied' });
+    if (supplied.length > 5000) return res.status(400).json({ error: 'Import preview is limited to 5000 rows' });
+
+    try {
+      const existing = await all(`
+        SELECT e.qty, e.user, e.ts, e.elapsedSeconds, t.partNumber
+          FROM build_task_events e
+          JOIN build_tasks t ON t.id = e.taskId
+         WHERE e.type = 'complete'
+      `);
+
+      const counts = new Map();
+      for (const row of existing) {
+        const key = importKey({
+          partNumber: row.partNumber,
+          user: row.user,
+          completedDate: localDateKey(row.ts),
+          qty: row.qty,
+          elapsedSeconds: row.elapsedSeconds
+        });
+        counts.set(key, (counts.get(key) || 0) + 1);
+      }
+
+      const normalized = supplied.map((r, i) => normalizeImportRow(r, i + 1));
+      const invalidRows = normalized.filter(r => !r.valid);
+      const duplicateRows = [];
+      const newRows = [];
+
+      for (const row of normalized) {
+        if (!row.valid) continue;
+        const key = importKey(row);
+        const remaining = counts.get(key) || 0;
+        if (remaining > 0) {
+          duplicateRows.push(row);
+          counts.set(key, remaining - 1);
+        } else {
+          newRows.push(row);
+        }
+      }
+
+      res.json({
+        supplied: supplied.length,
+        valid: normalized.length - invalidRows.length,
+        invalid: invalidRows.length,
+        alreadyOnSite: duplicateRows.length,
+        newToImport: newRows.length,
+        existingSiteRecords: existing.length,
+        duplicateSample: duplicateRows.slice(0, 12),
+        newSample: newRows.slice(0, 12),
+        invalidSample: invalidRows.slice(0, 12),
+        writePerformed: false
+      });
+    } catch (err) {
+      console.error('[BUILD HISTORY] import preview failed:', err);
+      res.status(500).json({ error: 'Preview failed', detail: String(err.message || err) });
     }
   });
 
