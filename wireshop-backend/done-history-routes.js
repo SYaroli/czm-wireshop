@@ -178,6 +178,17 @@ module.exports = function attachDoneHistoryRoutes(app, opts = {}) {
     };
   }
 
+  function normalizeElapsedRows(rows) {
+    rows.forEach(r => {
+      if (Number.isFinite(Number(r.elapsedSeconds))) {
+        r.elapsedSeconds = Math.max(0, Number(r.elapsedSeconds || 0));
+      } else {
+        r.elapsedSeconds = computeElapsedSeconds(r, Number(r.ts || Date.now()));
+      }
+    });
+    return rows;
+  }
+
   app.get('/api/build-task-events', async (req, res, next) => {
     const type = String(req.query.type || 'complete').trim().toLowerCase();
     if (type !== 'complete') return next();
@@ -186,6 +197,8 @@ module.exports = function attachDoneHistoryRoutes(app, opts = {}) {
     try {
       await ensureSchema();
       const includeHidden = String(req.query.includeHidden || '0') === '1';
+      if (includeHidden && !isAdmin(req)) return res.status(403).json({ error: 'admin only' });
+
       const since = Number(req.query.since || 0);
       const params = [];
       let sql;
@@ -241,17 +254,49 @@ module.exports = function attachDoneHistoryRoutes(app, opts = {}) {
         sql += ` ORDER BY e.ts DESC`;
       }
 
-      const rows = await all(sql, params);
-      rows.forEach(r => {
-        if (Number.isFinite(Number(r.elapsedSeconds))) {
-          r.elapsedSeconds = Math.max(0, Number(r.elapsedSeconds || 0));
-        } else {
-          r.elapsedSeconds = computeElapsedSeconds(r, Number(r.ts || Date.now()));
-        }
-      });
+      const rows = normalizeElapsedRows(await all(sql, params));
       res.json(rows);
     } catch (err) {
       console.error('[DONE HISTORY] feed failed:', err);
+      res.status(500).json({ error: 'db', detail: String(err.message || err) });
+    }
+  });
+
+  // Logged-in users can only receive their own permanent build history here.
+  app.get('/api/build-history/my', async (req, res) => {
+    const user = username(req);
+    if (!user) return res.status(401).json({ error: 'missing x-user header' });
+
+    try {
+      await ensureSchema();
+      const rows = await all(`
+        SELECT * FROM (
+          SELECT e.id, e.taskId, e.type, e.qty, e.user, e.ts, e.reason, e.elapsedSeconds,
+                 COALESCE(e.hiddenFromDone, 0) AS hiddenFromDone,
+                 t.partNumber, t.claimedBy, t.claimedAt, t.startedAt,
+                 t.pausedAt, t.totalPausedSeconds, t.isPaused,
+                 NULL AS printName
+            FROM build_task_events e
+            JOIN build_tasks t ON t.id = e.taskId
+           WHERE e.type = 'complete'
+             AND lower(e.user) = lower(?)
+          UNION ALL
+          SELECT -h.id AS id, NULL AS taskId, 'complete' AS type, h.qty, h.user, h.ts,
+                 CASE WHEN COALESCE(h.note, '') = '' THEN 'history_import'
+                      ELSE 'history_import|' || h.note END AS reason,
+                 h.elapsedSeconds, 1 AS hiddenFromDone,
+                 h.partNumber, h.user AS claimedBy, NULL AS claimedAt, NULL AS startedAt,
+                 NULL AS pausedAt, 0 AS totalPausedSeconds, 0 AS isPaused,
+                 h.printName
+            FROM build_history_imports h
+           WHERE lower(h.user) = lower(?)
+        )
+        ORDER BY ts DESC
+      `, [user, user]);
+
+      res.json(normalizeElapsedRows(rows));
+    } catch (err) {
+      console.error('[BUILD HISTORY] my history failed:', err);
       res.status(500).json({ error: 'db', detail: String(err.message || err) });
     }
   });
