@@ -6,6 +6,13 @@ function getUser(req) {
   return (req.header("x-user") || "").trim().toLowerCase();
 }
 
+function requireUser(req, res, next) {
+  const u = getUser(req);
+  if (!u) return res.status(401).json({ error: "x-user required" });
+  req.user = u;
+  next();
+}
+
 let ADMIN_USERS = (process.env.ADMIN_USERS || "")
   .split(",")
   .map(s => s.trim().toLowerCase())
@@ -36,6 +43,7 @@ function ensureInventoryColumns(done) {
     if (!names.includes("notes")) alters.push(`ALTER TABLE inventory ADD COLUMN notes TEXT`);
     if (!names.includes("sanumber")) alters.push(`ALTER TABLE inventory ADD COLUMN saNumber TEXT`);
     if (!names.includes("expectedhours")) alters.push(`ALTER TABLE inventory ADD COLUMN expectedHours REAL`);
+    if (!names.includes("buildvaluehours")) alters.push(`ALTER TABLE inventory ADD COLUMN buildValueHours REAL NOT NULL DEFAULT 0`);
 
     if (!alters.length) return done();
 
@@ -49,6 +57,61 @@ function ensureInventoryColumns(done) {
     nextAlter();
   });
 }
+
+// Fresh production-value system. This is intentionally separate from the old expectedHours field.
+router.get("/build-values", requireUser, (req, res) => {
+  ensureInventoryColumns((ensureErr) => {
+    if (ensureErr) {
+      console.error("[build-values] ensure columns failed:", ensureErr);
+      return res.status(500).json({ error: "failed to prepare build values" });
+    }
+
+    db.all(
+      `SELECT partNumber, COALESCE(buildValueHours, 0) AS buildValueHours
+         FROM inventory
+        ORDER BY partNumber COLLATE NOCASE ASC`,
+      [],
+      (err, rows) => {
+        if (err) {
+          console.error("[build-values] list failed:", err);
+          return res.status(500).json({ error: "db error" });
+        }
+        res.json(rows || []);
+      }
+    );
+  });
+});
+
+router.put("/build-values/:partNumber", requireAdmin, (req, res) => {
+  ensureInventoryColumns((ensureErr) => {
+    if (ensureErr) {
+      console.error("[build-values] ensure columns failed:", ensureErr);
+      return res.status(500).json({ error: "failed to prepare build values" });
+    }
+
+    const raw = req.body && req.body.buildValueHours;
+    const value = Number(raw);
+    if (!Number.isFinite(value) || value < 0) {
+      return res.status(400).json({ error: "buildValueHours must be zero or greater" });
+    }
+
+    const cleanValue = Math.round(value * 100) / 100;
+    db.run(
+      `UPDATE inventory
+          SET buildValueHours = ?, updatedAt = ?, updatedBy = ?
+        WHERE partNumber = ?`,
+      [cleanValue, Date.now(), req.user, req.params.partNumber],
+      function (err) {
+        if (err) {
+          console.error("[build-values] update failed:", err);
+          return res.status(500).json({ error: "db error" });
+        }
+        if (this.changes === 0) return res.status(404).json({ error: "part not found" });
+        res.json({ ok: true, partNumber: req.params.partNumber, buildValueHours: cleanValue });
+      }
+    );
+  });
+});
 
 router.post("/catalog-sync", requireAdmin, (req, res) => {
   const catalog = Array.isArray(req.body && req.body.catalog) ? req.body.catalog : null;
