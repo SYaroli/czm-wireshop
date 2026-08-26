@@ -120,7 +120,8 @@
     container.dataset.partNumber = partNumber;
 
     if (!isAdmin) {
-      container.textContent = formatValue(value) + ' hrs';
+      const text = formatValue(value) + ' hrs';
+      if (container.textContent !== text) container.textContent = text;
       return;
     }
 
