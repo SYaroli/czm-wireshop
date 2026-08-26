@@ -1,1 +1,0 @@
-Inventory layout pass only: no backend or persistence changes in this pass.
