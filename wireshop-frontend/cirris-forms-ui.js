@@ -18,7 +18,7 @@
   if (isInventoryList) {
     if (!document.querySelector('script[data-inventory-layout-check]')) {
       const script = document.createElement('script');
-      script.src = '/inventory-layout-check.js?v=20260826-1';
+      script.src = '/inventory-layout-check.js?v=20260826-2';
       script.dataset.inventoryLayoutCheck = '1';
       document.head.appendChild(script);
     }
