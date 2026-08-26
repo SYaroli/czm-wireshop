@@ -9,20 +9,52 @@
     .toolbar label{display:flex;flex-direction:column;gap:4px;min-width:160px}
     .statline{margin-top:8px;font-size:12px;display:flex;gap:16px;flex-wrap:wrap}
     .movement-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
-    .selection-note{font-size:12px}.movement-table{width:100%;border-collapse:collapse}
+    .selection-note{font-size:12px}
+    .movement-table{width:100%;border-collapse:collapse}
     .movement-table th,.movement-table td{border:1px solid #d6d6d6;padding:7px 8px;vertical-align:middle}
     .movement-table thead th{background:#f1f1f1!important;color:#111!important;text-shadow:none!important;font-weight:700;position:sticky;top:0;z-index:2;white-space:nowrap}
-    .movement-table thead th.sortable{cursor:pointer;user-select:none}
-    .movement-table thead th.sortable::after{content:" ↕";color:#777;font-size:11px}
-    .movement-table thead th.sortable.sort-asc::after{content:" ▲";color:#111}
-    .movement-table thead th.sortable.sort-desc::after{content:" ▼";color:#111}
-    .movement-table tbody tr:nth-child(even) td{background:#fafafa}.movement-table tbody tr.row-selected td{background:#eef5ff}
-    .movement-table td.note{white-space:normal;min-width:220px}.movement-table td.actions{white-space:nowrap}.movement-table .select-cell{width:34px;text-align:center}
-    .empty,.error{padding:14px 6px;font-size:13px}.error{color:#b30000}button.small{padding:5px 8px;font-size:12px}button.danger{background:#9f1c1c;color:#fff;border-color:#9f1c1c}button:disabled{opacity:.45;cursor:not-allowed}
-    .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:1000;padding:18px}.modal-backdrop.open{display:flex}
-    .modal{width:min(620px,100%);background:#fff;border-radius:10px;box-shadow:0 18px 60px rgba(0,0,0,.28);padding:18px}.modal h2{margin:0 0 14px}
-    .modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px}.modal-grid label{display:flex;flex-direction:column;gap:4px}.modal-grid .full{grid-column:1/-1}.readonly{background:#f3f3f3}
-    .modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}.history-warning{margin-top:12px;padding:9px 10px;background:#fff5d9;border:1px solid #ead69b;border-radius:6px;font-size:12px}
+    .movement-table thead th.filterable{padding:0}
+    .header-cell{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:7px 6px 7px 8px;min-height:34px}
+    .header-label{overflow:hidden;text-overflow:ellipsis}
+    .filter-trigger{min-width:25px;height:24px;padding:0 5px;border:1px solid transparent;background:transparent;color:#333;border-radius:4px;font-size:12px;line-height:1;cursor:pointer}
+    .filter-trigger:hover{background:#ddd;border-color:#c6c6c6}
+    .filter-trigger.active{background:#dbe9ff;border-color:#8baee8;color:#0b3d78}
+    .filter-trigger.sorted{font-weight:800;color:#111}
+    .movement-table tbody tr:nth-child(even) td{background:#fafafa}
+    .movement-table tbody tr.row-selected td{background:#eef5ff}
+    .movement-table td.note{white-space:normal;min-width:220px}
+    .movement-table td.actions{white-space:nowrap}
+    .movement-table .select-cell{width:34px;text-align:center}
+    .empty,.error{padding:14px 6px;font-size:13px}
+    .error{color:#b30000}
+    button.small{padding:5px 8px;font-size:12px}
+    button.danger{background:#9f1c1c;color:#fff;border-color:#9f1c1c}
+    button:disabled{opacity:.45;cursor:not-allowed}
+    .filter-menu{position:fixed;display:none;width:290px;max-width:calc(100vw - 20px);background:#fff;color:#111;border:1px solid #bdbdbd;border-radius:8px;box-shadow:0 12px 35px rgba(0,0,0,.24);z-index:3000;padding:8px}
+    .filter-menu.open{display:block}
+    .filter-sort{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding-bottom:8px;border-bottom:1px solid #ddd}
+    .filter-sort button{font-size:12px;padding:7px 6px}
+    .filter-search{width:100%;margin:8px 0 6px;box-sizing:border-box}
+    .filter-links{display:flex;justify-content:space-between;gap:8px;font-size:12px;margin-bottom:5px}
+    .filter-links button{background:none;border:0;padding:2px;color:#185ca8;text-decoration:underline;cursor:pointer;font-size:12px}
+    .filter-values{max-height:250px;overflow:auto;border:1px solid #ddd;border-radius:5px;padding:4px;background:#fff}
+    .filter-value-row{display:flex;align-items:flex-start;gap:7px;padding:4px 3px;font-size:12px;line-height:1.25;cursor:pointer}
+    .filter-value-row:hover{background:#f3f6f9}
+    .filter-value-row input{margin-top:1px;flex:0 0 auto}
+    .filter-value-text{overflow-wrap:anywhere}
+    .filter-empty{padding:8px;font-size:12px;color:#666}
+    .filter-actions{display:flex;justify-content:flex-end;gap:6px;margin-top:8px}
+    .filter-actions button{font-size:12px;padding:6px 10px}
+    .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:1000;padding:18px}
+    .modal-backdrop.open{display:flex}
+    .modal{width:min(620px,100%);background:#fff;border-radius:10px;box-shadow:0 18px 60px rgba(0,0,0,.28);padding:18px}
+    .modal h2{margin:0 0 14px}
+    .modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px}
+    .modal-grid label{display:flex;flex-direction:column;gap:4px}
+    .modal-grid .full{grid-column:1/-1}
+    .readonly{background:#f3f3f3}
+    .modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+    .history-warning{margin-top:12px;padding:9px 10px;background:#fff5d9;border:1px solid #ead69b;border-radius:6px;font-size:12px}
     @media(max-width:760px){.modal-grid{grid-template-columns:1fr}.modal-grid .full{grid-column:auto}}
   </style>
 </head>
@@ -31,37 +63,43 @@
     <a class="brand-logo" href="/dashboard.html"><img src="/czm-logo.png" alt="CZM"><h1 class="brand-title">CZM • Inventory Movement</h1></a>
     <div class="brand-actions"><a class="navbtn" href="/assignments.html">Assignments</a><a class="navbtn" href="/inventory.html">Inventory</a><a class="navbtn" href="/komax-files.html">Komax Files</a><a class="navbtn active" href="/admin.html">Admin</a><button id="logoutBtn" class="navbtn">Logout</button></div>
   </div></div>
-
   <main>
     <div class="card">
       <div class="toolbar">
         <label><span class="muted">Search part / description / user / note</span><input id="searchBox" type="text" placeholder="48002, shane, removed, mast..." /></label>
         <label><span class="muted">Direction</span><select id="dirFilter"><option value="all">All</option><option value="in">In only</option><option value="out">Out only</option><option value="same">No qty change</option></select></label>
         <label><span class="muted">Rows</span><select id="limitSel"><option value="250">250</option><option value="500" selected>500</option><option value="1000">1000</option><option value="2000">2000</option><option value="all">All</option></select></label>
-        <button id="refreshBtn" type="button">Refresh</button><button id="exportBtn" class="secondary" type="button">Export CSV</button>
+        <button id="refreshBtn" type="button">Refresh</button>
+        <button id="exportBtn" class="secondary" type="button">Export CSV</button>
+        <button id="clearTableFiltersBtn" class="secondary" type="button" disabled>Clear Table Filters</button>
       </div>
       <div id="stats" class="statline muted"></div>
       <div class="movement-actions"><button id="combineBtn" type="button" disabled>Combine Selected</button><button id="deleteSelectedBtn" class="danger" type="button" disabled>Delete Selected</button><span id="selectionNote" class="selection-note muted">No rows selected.</span></div>
     </div>
-
     <div class="card"><div class="table-wrap"><table class="movement-table">
       <thead><tr>
         <th class="select-cell"><input id="selectAll" type="checkbox" title="Select all visible rows"></th>
-        <th class="sortable" data-sort="time">Time</th>
-        <th class="sortable" data-sort="part">Part</th>
-        <th class="sortable" data-sort="description">Description</th>
-        <th class="sortable" data-sort="user">User</th>
-        <th class="sortable" data-sort="direction">Direction</th>
-        <th class="sortable" data-sort="qty">Qty</th>
-        <th class="sortable" data-sort="before">Before</th>
-        <th class="sortable" data-sort="after">After</th>
-        <th class="sortable" data-sort="note">Note</th>
+        <th class="filterable" data-key="time"><div class="header-cell"><span class="header-label">Time</span><button class="filter-trigger" type="button" aria-label="Filter Time">▼</button></div></th>
+        <th class="filterable" data-key="part"><div class="header-cell"><span class="header-label">Part</span><button class="filter-trigger" type="button" aria-label="Filter Part">▼</button></div></th>
+        <th class="filterable" data-key="description"><div class="header-cell"><span class="header-label">Description</span><button class="filter-trigger" type="button" aria-label="Filter Description">▼</button></div></th>
+        <th class="filterable" data-key="user"><div class="header-cell"><span class="header-label">User</span><button class="filter-trigger" type="button" aria-label="Filter User">▼</button></div></th>
+        <th class="filterable" data-key="direction"><div class="header-cell"><span class="header-label">Direction</span><button class="filter-trigger" type="button" aria-label="Filter Direction">▼</button></div></th>
+        <th class="filterable" data-key="qty"><div class="header-cell"><span class="header-label">Qty</span><button class="filter-trigger" type="button" aria-label="Filter Qty">▼</button></div></th>
+        <th class="filterable" data-key="before"><div class="header-cell"><span class="header-label">Before</span><button class="filter-trigger" type="button" aria-label="Filter Before">▼</button></div></th>
+        <th class="filterable" data-key="after"><div class="header-cell"><span class="header-label">After</span><button class="filter-trigger" type="button" aria-label="Filter After">▼</button></div></th>
+        <th class="filterable" data-key="note"><div class="header-cell"><span class="header-label">Note</span><button class="filter-trigger" type="button" aria-label="Filter Note">▼</button></div></th>
         <th>Actions</th>
       </tr></thead>
       <tbody id="movementBody"><tr><td colspan="11" class="empty">Loading…</td></tr></tbody>
     </table></div></div>
   </main>
-
+  <div id="filterMenu" class="filter-menu" role="dialog" aria-label="Column filter">
+    <div class="filter-sort"><button id="sortAscBtn" type="button"></button><button id="sortDescBtn" type="button"></button></div>
+    <input id="filterSearch" class="filter-search" type="text" placeholder="Search values..." />
+    <div class="filter-links"><button id="filterSelectAllBtn" type="button">Select All</button><button id="filterClearBtn" type="button">Clear</button></div>
+    <div id="filterValues" class="filter-values"></div>
+    <div class="filter-actions"><button id="filterCancelBtn" class="secondary" type="button">Cancel</button><button id="filterApplyBtn" type="button">Apply</button></div>
+  </div>
   <div id="editBackdrop" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="editTitle"><div class="modal">
     <h2 id="editTitle">Edit Inventory Movement</h2>
     <div class="modal-grid">
@@ -76,11 +114,13 @@
     <div id="editError" class="error" style="display:none"></div>
     <div class="modal-actions"><button id="cancelEditBtn" class="secondary" type="button">Cancel</button><button id="saveEditBtn" type="button">Save Changes</button></div>
   </div></div>
-
   <script>
     const API_BASE=(localStorage.getItem("API_BASE")||"https://wireshop-backend.onrender.com").replace(/\/+$/,'');
-    const MOVEMENT_API=API_BASE+"/api/inventory-log",INVENTORY_API=API_BASE+"/api/inventory-all";
+    const MOVEMENT_API=API_BASE+"/api/inventory-log";
+    const INVENTORY_API=API_BASE+"/api/inventory-all";
     let rawRows=[],visibleRows=[],inventoryMap=new Map(),selectedIds=new Set(),editingId=null,sortKey=null,sortDir='asc';
+    const columnFilters=new Map();
+    let openFilterKey=null,draftFilterValues=new Set(),menuAllValues=[];
     function getSession(){try{return JSON.parse(localStorage.getItem("user")||"{}")}catch{return {}}}
     function requireAdmin(){const s=getSession();if(!s.username){location.replace("index.html");return false}if(String(s.role||'').toLowerCase()!=="admin"){location.replace("assignments.html");return false}return true}
     function authHeaders(){return {"Content-Type":"application/json","x-user":getSession().username}}
@@ -89,39 +129,32 @@
     function pad2(n){return String(n).padStart(2,'0')}
     function formatTs(ts){if(!ts)return '';const d=new Date(Number(ts));if(Number.isNaN(d.getTime()))return String(ts);return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`}
     function classify(delta){const n=Number(delta||0);return n>0?'in':n<0?'out':'same'}
+    function directionLabel(delta){const d=classify(delta);return d==='in'?'In':d==='out'?'Out':'No Change'}
     function directionChip(delta){const d=classify(delta);return d==='in'?'<span class="chip in">In</span>':d==='out'?'<span class="chip out">Out</span>':'<span class="chip same">No Change</span>'}
     function quantityLabel(delta){return Math.abs(Number(delta||0))}
     function csvEscape(v){const s=String(v??'');return /[",\n\r]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s}
     async function apiJson(url,options={}){const res=await fetch(url,{...options,headers:{...authHeaders(),...(options.headers||{})}});let data=null;try{data=await res.json()}catch{}if(!res.ok)throw new Error(data?.error||`Request failed (${res.status})`);return data}
     function decoratedRows(){return rawRows.map(r=>{const inv=inventoryMap.get(String(r.partNumber||'').toLowerCase())||{};return {...r,description:inv.description||'',location:inv.location||''}})}
-    function sortValue(r,key){
-      if(key==='time')return Number(r.when||r.ts||0);
-      if(key==='part')return String(r.partNumber||'');
-      if(key==='description')return String(r.description||'');
-      if(key==='user')return String(r.user||'');
-      if(key==='direction')return classify(r.delta);
-      if(key==='qty')return quantityLabel(r.delta);
-      if(key==='before')return Number(r.before||0);
-      if(key==='after')return Number(r.after||0);
-      if(key==='note')return String(r.note||'');
-      return '';
-    }
-    function applySort(rows){
-      if(!sortKey)return rows;
-      const dir=sortDir==='desc'?-1:1;
-      return [...rows].sort((a,b)=>{
-        const av=sortValue(a,sortKey),bv=sortValue(b,sortKey);
-        if(typeof av==='number'&&typeof bv==='number')return (av-bv)*dir;
-        return String(av).localeCompare(String(bv),undefined,{numeric:true,sensitivity:'base'})*dir;
-      });
-    }
-    function updateSortHeaders(){document.querySelectorAll('.movement-table thead th.sortable').forEach(th=>{th.classList.remove('sort-asc','sort-desc');if(th.dataset.sort===sortKey)th.classList.add(sortDir==='asc'?'sort-asc':'sort-desc')})}
-    function filteredRows(){const search=(searchBox.value||'').trim().toLowerCase(),dir=dirFilter.value;let rows=decoratedRows();if(dir!=='all')rows=rows.filter(r=>classify(r.delta)===dir);if(search)rows=rows.filter(r=>[r.partNumber,r.description,r.location,r.user,r.note,r.before,r.after,r.delta].join(' ').toLowerCase().includes(search));return applySort(rows)}
+    function columnValue(r,key){if(key==='time')return formatTs(r.when||r.ts);if(key==='part')return String(r.partNumber||'');if(key==='description')return String(r.description||'');if(key==='user')return String(r.user||'');if(key==='direction')return directionLabel(r.delta);if(key==='qty')return String(quantityLabel(r.delta));if(key==='before')return String(Number(r.before||0));if(key==='after')return String(Number(r.after||0));if(key==='note')return String(r.note||'');return ''}
+    function sortValue(r,key){if(key==='time')return Number(r.when||r.ts||0);if(key==='part')return String(r.partNumber||'');if(key==='description')return String(r.description||'');if(key==='user')return String(r.user||'');if(key==='direction')return directionLabel(r.delta);if(key==='qty')return quantityLabel(r.delta);if(key==='before')return Number(r.before||0);if(key==='after')return Number(r.after||0);if(key==='note')return String(r.note||'');return ''}
+    function applySort(rows){if(!sortKey)return rows;const factor=sortDir==='desc'?-1:1;return [...rows].sort((a,b)=>{const av=sortValue(a,sortKey),bv=sortValue(b,sortKey);if(typeof av==='number'&&typeof bv==='number')return(av-bv)*factor;return String(av).localeCompare(String(bv),undefined,{numeric:true,sensitivity:'base'})*factor})}
+    function baseRowsWithoutColumnFilters(){const search=(searchBox.value||'').trim().toLowerCase(),dir=dirFilter.value;let rows=decoratedRows();if(dir!=='all')rows=rows.filter(r=>classify(r.delta)===dir);if(search)rows=rows.filter(r=>[r.partNumber,r.description,r.location,r.user,r.note,r.before,r.after,r.delta].join(' ').toLowerCase().includes(search));return rows}
+    function applyColumnFilters(rows){return rows.filter(r=>{for(const[key,allowed]of columnFilters){if(!allowed.has(columnValue(r,key)))return false}return true})}
+    function filteredRows(){return applySort(applyColumnFilters(baseRowsWithoutColumnFilters()))}
+    function updateHeaderIndicators(){document.querySelectorAll('.movement-table thead th.filterable').forEach(th=>{const key=th.dataset.key,btn=th.querySelector('.filter-trigger');btn.classList.toggle('active',columnFilters.has(key));btn.classList.toggle('sorted',sortKey===key);btn.textContent=sortKey===key?(sortDir==='asc'?'▲':'▼'):'▼';const states=[];if(columnFilters.has(key))states.push('filtered');if(sortKey===key)states.push(sortDir==='asc'?'sorted ascending':'sorted descending');btn.title=states.length?states.join(', '):`Filter ${th.querySelector('.header-label').textContent}`});clearTableFiltersBtn.disabled=columnFilters.size===0}
     function updateSelectionControls(){const rows=rawRows.filter(r=>selectedIds.has(Number(r.id))),parts=new Set(rows.map(r=>String(r.partNumber||'').toLowerCase())),samePart=rows.length>=2&&parts.size===1;combineBtn.disabled=!samePart;deleteSelectedBtn.disabled=!rows.length;let text=rows.length?`${rows.length} row${rows.length===1?'':'s'} selected.`:'No rows selected.';if(rows.length>=2&&!samePart)text+=' Combine requires the same part number.';selectionNote.textContent=text;const ids=visibleRows.map(r=>Number(r.id)),checked=ids.filter(id=>selectedIds.has(id)).length;selectAll.checked=ids.length>0&&checked===ids.length;selectAll.indeterminate=checked>0&&checked<ids.length}
-    function renderRows(){visibleRows=filteredRows();updateSortHeaders();const totalIn=visibleRows.reduce((s,r)=>s+Math.max(0,Number(r.delta||0)),0),totalOut=visibleRows.reduce((s,r)=>s+Math.abs(Math.min(0,Number(r.delta||0))),0);stats.innerHTML=`<span><b>${visibleRows.length}</b> rows shown</span><span><b>${totalIn}</b> in</span><span><b>${totalOut}</b> out</span>`;if(!visibleRows.length){movementBody.innerHTML='<tr><td colspan="11" class="empty">No movement found for that filter.</td></tr>';updateSelectionControls();return}movementBody.innerHTML=visibleRows.map(r=>{const id=Number(r.id),selected=selectedIds.has(id);return `<tr class="${selected?'row-selected':''}" data-id="${id}"><td class="select-cell"><input class="row-select" type="checkbox" data-id="${id}" ${selected?'checked':''}></td><td>${escapeHtml(formatTs(r.when||r.ts)||'—')}</td><td>${escapeHtml(r.partNumber)}</td><td>${escapeHtml(r.description||'—')}</td><td>${escapeHtml(r.user||'—')}</td><td>${directionChip(r.delta)}</td><td>${escapeHtml(quantityLabel(r.delta))}</td><td>${escapeHtml(r.before)}</td><td>${escapeHtml(r.after)}</td><td class="note">${escapeHtml(r.note||'')}</td><td class="actions"><button class="small edit-row" type="button" data-id="${id}">Edit</button> <button class="small danger delete-row" type="button" data-id="${id}">Delete</button></td></tr>`}).join('');updateSelectionControls()}
+    function renderRows(){visibleRows=filteredRows();updateHeaderIndicators();const totalIn=visibleRows.reduce((s,r)=>s+Math.max(0,Number(r.delta||0)),0),totalOut=visibleRows.reduce((s,r)=>s+Math.abs(Math.min(0,Number(r.delta||0))),0);stats.innerHTML=`<span><b>${visibleRows.length}</b> rows shown</span><span><b>${totalIn}</b> in</span><span><b>${totalOut}</b> out</span>`;if(!visibleRows.length){movementBody.innerHTML='<tr><td colspan="11" class="empty">No movement found for those filters.</td></tr>';updateSelectionControls();return}movementBody.innerHTML=visibleRows.map(r=>{const id=Number(r.id),selected=selectedIds.has(id);return `<tr class="${selected?'row-selected':''}" data-id="${id}"><td class="select-cell"><input class="row-select" type="checkbox" data-id="${id}" ${selected?'checked':''}></td><td>${escapeHtml(formatTs(r.when||r.ts)||'—')}</td><td>${escapeHtml(r.partNumber)}</td><td>${escapeHtml(r.description||'—')}</td><td>${escapeHtml(r.user||'—')}</td><td>${directionChip(r.delta)}</td><td>${escapeHtml(quantityLabel(r.delta))}</td><td>${escapeHtml(r.before)}</td><td>${escapeHtml(r.after)}</td><td class="note">${escapeHtml(r.note||'')}</td><td class="actions"><button class="small edit-row" type="button" data-id="${id}">Edit</button> <button class="small danger delete-row" type="button" data-id="${id}">Delete</button></td></tr>`}).join('');updateSelectionControls()}
+    function sortButtonLabels(key){if(key==='time')return['Oldest to Newest','Newest to Oldest'];if(['qty','before','after'].includes(key))return['Smallest to Largest','Largest to Smallest'];return['A to Z','Z to A']}
+    function allValuesForColumn(key){const unique=[...new Set(decoratedRows().map(r=>columnValue(r,key)))];if(['qty','before','after'].includes(key))return unique.sort((a,b)=>Number(a)-Number(b));if(key==='time')return unique.sort((a,b)=>String(b).localeCompare(String(a)));return unique.sort((a,b)=>String(a).localeCompare(String(b),undefined,{numeric:true,sensitivity:'base'}))}
+    function renderFilterValues(){const q=(filterSearch.value||'').trim().toLowerCase(),shown=menuAllValues.filter(v=>String(v).toLowerCase().includes(q));if(!shown.length){filterValues.innerHTML='<div class="filter-empty">No matching values.</div>';return}filterValues.innerHTML=shown.map(value=>{const checked=draftFilterValues.has(value)?'checked':'',label=value===''?'(Blank)':value;return `<label class="filter-value-row"><input class="filter-value-check" type="checkbox" data-value="${escapeHtml(value)}" ${checked}><span class="filter-value-text">${escapeHtml(label)}</span></label>`}).join('')}
+    function positionFilterMenu(anchor){const rect=anchor.getBoundingClientRect();filterMenu.classList.add('open');const menuRect=filterMenu.getBoundingClientRect();let left=rect.right-menuRect.width;left=Math.max(10,Math.min(left,window.innerWidth-menuRect.width-10));let top=rect.bottom+4;if(top+menuRect.height>window.innerHeight-10)top=Math.max(10,rect.top-menuRect.height-4);filterMenu.style.left=`${left}px`;filterMenu.style.top=`${top}px`}
+    function openColumnFilter(th){openFilterKey=th.dataset.key;menuAllValues=allValuesForColumn(openFilterKey);const active=columnFilters.get(openFilterKey);draftFilterValues=new Set(active?Array.from(active):menuAllValues);const[ascLabel,descLabel]=sortButtonLabels(openFilterKey);sortAscBtn.textContent=ascLabel;sortDescBtn.textContent=descLabel;filterSearch.value='';renderFilterValues();positionFilterMenu(th);filterSearch.focus()}
+    function closeColumnFilter(){openFilterKey=null;filterMenu.classList.remove('open')}
+    function applyDraftFilter(){if(!openFilterKey)return;if(draftFilterValues.size===menuAllValues.length)columnFilters.delete(openFilterKey);else columnFilters.set(openFilterKey,new Set(draftFilterValues));closeColumnFilter();renderRows()}
+    function setSortFromMenu(dir){if(!openFilterKey)return;sortKey=openFilterKey;sortDir=dir;closeColumnFilter();renderRows()}
     async function loadInventoryMap(){try{const items=await apiJson(INVENTORY_API);inventoryMap=new Map((items||[]).map(i=>[String(i.partNumber||'').toLowerCase(),i]))}catch(err){console.warn('Inventory map load failed',err)}}
-    async function loadMovement(){movementBody.innerHTML='<tr><td colspan="11" class="empty">Loading…</td></tr>';try{const v=String(limitSel.value||'500'),url=v==='all'?MOVEMENT_API:`${MOVEMENT_API}?limit=${encodeURIComponent(Number(v))}`;const [,rows]=await Promise.all([loadInventoryMap(),apiJson(url)]);rawRows=rows||[];selectedIds=new Set();renderRows()}catch(err){console.error(err);movementBody.innerHTML='<tr><td colspan="11" class="error">'+escapeHtml(err.message||'Failed to load movement.')+'</td></tr>'}}
-    function rowById(id){const base=rawRows.find(r=>Number(r.id)===Number(id));if(!base)return null;const inv=inventoryMap.get(String(base.partNumber||'').toLowerCase())||{};return {...base,description:inv.description||''}}
+    async function loadMovement(){movementBody.innerHTML='<tr><td colspan="11" class="empty">Loading…</td></tr>';try{const v=String(limitSel.value||'500'),url=v==='all'?MOVEMENT_API:`${MOVEMENT_API}?limit=${encodeURIComponent(Number(v))}`;const[,rows]=await Promise.all([loadInventoryMap(),apiJson(url)]);rawRows=rows||[];selectedIds=new Set();renderRows()}catch(err){console.error(err);movementBody.innerHTML='<tr><td colspan="11" class="error">'+escapeHtml(err.message||'Failed to load movement.')+'</td></tr>'}}
+    function rowById(id){const base=rawRows.find(r=>Number(r.id)===Number(id));if(!base)return null;const inv=inventoryMap.get(String(base.partNumber||'').toLowerCase())||{};return{...base,description:inv.description||''}}
     function updateEditAfter(){const before=Number(editBefore.value||0),qty=Math.max(0,Math.trunc(Number(editQty.value||0))),dir=editDirection.value,delta=dir==='in'?qty:dir==='out'?-qty:0;editAfter.value=before+delta;editQty.disabled=dir==='same'}
     function openEdit(id){const r=rowById(id);if(!r)return;editingId=Number(id);editTime.value=formatTs(r.when||r.ts);editUser.value=r.user||'';editPart.value=r.partNumber||'';editDescription.value=r.description||'';editDirection.value=classify(r.delta);editQty.value=quantityLabel(r.delta);editBefore.value=Number(r.before||0);editAfter.value=Number(r.after||0);editNote.value=r.note||'';editError.style.display='none';updateEditAfter();editBackdrop.classList.add('open')}
     function closeEdit(){editingId=null;editBackdrop.classList.remove('open')}
@@ -132,9 +165,18 @@
     function exportCsv(){const rows=filteredRows().map(r=>({time:formatTs(r.when||r.ts),partNumber:r.partNumber||'',description:r.description||'',user:r.user||'',direction:classify(r.delta),qty:quantityLabel(r.delta),delta:Number(r.delta||0),before:Number(r.before||0),after:Number(r.after||0),note:r.note||''})),lines=[["Time","Part Number","Description","User","Direction","Qty","Delta","Before","After","Note"].join(',')];rows.forEach(r=>lines.push([r.time,r.partNumber,r.description,r.user,r.direction,r.qty,r.delta,r.before,r.after,r.note].map(csvEscape).join(',')));const blob=new Blob([lines.join('\r\n')],{type:'text/csv;charset=utf-8;'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='inventory-movement.csv';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url)}
     movementBody.addEventListener('change',e=>{const box=e.target.closest('.row-select');if(!box)return;const id=Number(box.dataset.id);box.checked?selectedIds.add(id):selectedIds.delete(id);renderRows()});
     movementBody.addEventListener('click',e=>{const edit=e.target.closest('.edit-row');if(edit)return openEdit(Number(edit.dataset.id));const del=e.target.closest('.delete-row');if(del)return deleteOne(Number(del.dataset.id))});
-    document.querySelector('.movement-table thead').addEventListener('click',e=>{const th=e.target.closest('th.sortable');if(!th)return;const key=th.dataset.sort;if(sortKey===key)sortDir=sortDir==='asc'?'desc':'asc';else{sortKey=key;sortDir=key==='time'?'desc':'asc'}renderRows()});
+    document.querySelector('.movement-table thead').addEventListener('click',e=>{const trigger=e.target.closest('.filter-trigger');if(!trigger)return;e.stopPropagation();openColumnFilter(trigger.closest('th.filterable'))});
+    filterValues.addEventListener('change',e=>{const box=e.target.closest('.filter-value-check');if(!box)return;const value=box.dataset.value;box.checked?draftFilterValues.add(value):draftFilterValues.delete(value)});
+    filterSearch.addEventListener('input',renderFilterValues);
+    filterSelectAllBtn.addEventListener('click',()=>{menuAllValues.forEach(v=>draftFilterValues.add(v));renderFilterValues()});
+    filterClearBtn.addEventListener('click',()=>{draftFilterValues.clear();renderFilterValues()});
+    filterApplyBtn.addEventListener('click',applyDraftFilter);
+    filterCancelBtn.addEventListener('click',closeColumnFilter);
+    sortAscBtn.addEventListener('click',()=>setSortFromMenu('asc'));
+    sortDescBtn.addEventListener('click',()=>setSortFromMenu('desc'));
+    clearTableFiltersBtn.addEventListener('click',()=>{columnFilters.clear();renderRows()});
     selectAll.addEventListener('change',e=>{visibleRows.forEach(r=>{const id=Number(r.id);e.target.checked?selectedIds.add(id):selectedIds.delete(id)});renderRows()});
-    logoutBtn.addEventListener('click',logout);refreshBtn.addEventListener('click',loadMovement);exportBtn.addEventListener('click',exportCsv);combineBtn.addEventListener('click',combineSelected);deleteSelectedBtn.addEventListener('click',deleteSelected);searchBox.addEventListener('input',renderRows);dirFilter.addEventListener('change',renderRows);limitSel.addEventListener('change',loadMovement);cancelEditBtn.addEventListener('click',closeEdit);saveEditBtn.addEventListener('click',saveEdit);editDirection.addEventListener('change',updateEditAfter);editQty.addEventListener('input',updateEditAfter);editBackdrop.addEventListener('click',e=>{if(e.target.id==='editBackdrop')closeEdit()});document.addEventListener('keydown',e=>{if(e.key==='Escape')closeEdit()});
+    logoutBtn.addEventListener('click',logout);refreshBtn.addEventListener('click',loadMovement);exportBtn.addEventListener('click',exportCsv);combineBtn.addEventListener('click',combineSelected);deleteSelectedBtn.addEventListener('click',deleteSelected);searchBox.addEventListener('input',renderRows);dirFilter.addEventListener('change',renderRows);limitSel.addEventListener('change',loadMovement);cancelEditBtn.addEventListener('click',closeEdit);saveEditBtn.addEventListener('click',saveEdit);editDirection.addEventListener('change',updateEditAfter);editQty.addEventListener('input',updateEditAfter);editBackdrop.addEventListener('click',e=>{if(e.target.id==='editBackdrop')closeEdit()});document.addEventListener('click',e=>{if(filterMenu.classList.contains('open')&&!filterMenu.contains(e.target)&&!e.target.closest('.filter-trigger'))closeColumnFilter()});document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeEdit();closeColumnFilter()}});window.addEventListener('resize',closeColumnFilter);window.addEventListener('scroll',closeColumnFilter,true);
     if(requireAdmin())loadMovement();
   </script>
 </body>
