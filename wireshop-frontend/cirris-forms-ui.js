@@ -40,7 +40,7 @@
       @media (min-width:901px){
         body:not(.inv-detail) .table-head,
         body:not(.inv-detail) .list-body .row{
-          grid-template-columns:150px 200px 90px 60px 110px 300px minmax(220px,1fr) !important;
+          grid-template-columns:150px 210px 90px 60px 120px 74px minmax(320px,1fr) !important;
         }
       }
       .build-value-head{white-space:nowrap;}
@@ -60,6 +60,15 @@
         padding:0 7px;
         border-radius:6px;
         font-size:11px;
+      }
+      body:not(.inv-detail) .adjust-controls{
+        min-width:0;
+        gap:0;
+      }
+      body:not(.inv-detail) .adjust-controls .edit-btn{
+        min-width:58px;
+        height:30px;
+        padding:0 9px;
       }
       .build-value-detail-control{display:flex;align-items:center;gap:6px;justify-content:flex-start;}
       .build-value-detail-control .build-value-input{width:80px !important;min-width:80px !important;}
@@ -161,15 +170,32 @@
 
   function applyListHeader() {
     const head = document.getElementById('tableHead');
-    if (!head || head.querySelector('.build-value-head')) return;
+    if (!head) return;
 
-    const adjustHead = Array.from(head.children).find(el => el.textContent.trim() === 'Adjust');
-    if (!adjustHead) return;
+    const editHead = Array.from(head.children).find(el => {
+      const text = el.textContent.trim();
+      return text === 'Adjust' || text === 'Edit';
+    });
+    if (!editHead) return;
+    editHead.textContent = 'Edit';
+
+    if (head.querySelector('.build-value-head')) return;
 
     const valueHead = document.createElement('div');
     valueHead.className = 'build-value-head';
     valueHead.textContent = 'Build Value (hrs)';
-    head.insertBefore(valueHead, adjustHead);
+    head.insertBefore(valueHead, editHead);
+  }
+
+  function simplifyListControls(row) {
+    const controls = row.querySelector(':scope > .adjust-controls');
+    if (!controls) return null;
+
+    Array.from(controls.children).forEach(child => {
+      if (!child.classList.contains('edit-btn')) child.remove();
+    });
+
+    return controls;
   }
 
   function applyListRows() {
@@ -178,13 +204,14 @@
       const partNumber = String(partLink?.textContent || '').trim();
       if (!partNumber) return;
 
+      const editControls = simplifyListControls(row);
+      if (!editControls) return;
+
       let cell = row.querySelector(':scope > .build-value-cell');
       if (!cell) {
-        const adjust = row.querySelector(':scope > .adjust-controls');
-        if (!adjust) return;
         cell = document.createElement('div');
         cell.className = 'build-value-cell';
-        row.insertBefore(cell, adjust);
+        row.insertBefore(cell, editControls);
       }
       renderValueControl(cell, partNumber, false);
     });
