@@ -23,7 +23,7 @@
 
   <main><div class="page-grid">
     <div class="card">
-      <div class="section-head"><div><h2>Build History</h2><p>Completed builds from Build Next. Times below are calculated per cable when a completion contains more than one.</p></div><button id="refreshBtn" class="action-btn" type="button">Refresh</button></div>
+      <div class="section-head"><div><h2>Build History</h2><p>Completed builds from Build Next. Cleared Done rows remain here permanently.</p></div><button id="refreshBtn" class="action-btn" type="button">Refresh</button></div>
       <div class="filters">
         <label class="wide">Part # / Print Name<input id="partFilter" type="text" placeholder="Search harness..."></label>
         <label>Technician<select id="techFilter"><option value="">All technicians</option></select></label>
@@ -46,7 +46,7 @@
     </div>
 
     <div class="card">
-      <div class="section-head"><div><h2>Completed Builds</h2><p>These are the same completion events used by the Done section on Build Next.</p></div><div class="muted"><span id="detailCount">0</span> records</div></div>
+      <div class="section-head"><div><h2>Completed Builds</h2><p>Individual completion records, including rows cleared from Done.</p></div><div class="muted"><span id="detailCount">0</span> records</div></div>
       <div class="table-wrap"><table><thead><tr><th>Completed</th><th>Technician</th><th>Part #</th><th>Print Name</th><th class="num">Qty</th><th class="num">Total Time</th><th class="num">Per Unit</th></tr></thead><tbody id="detailBody"></tbody></table></div>
     </div>
   </div></main>
@@ -55,7 +55,7 @@
   <script>
   (()=>{
     const API_ROOT=(localStorage.getItem('API_BASE')||'https://wireshop-backend.onrender.com').replace(/\/+$/,'');
-    const EVENTS_URL=API_ROOT+'/api/build-task-events?type=complete';
+    const EVENTS_URL=API_ROOT+'/api/build-task-events?type=complete&includeHidden=1';
     const session=(()=>{try{return JSON.parse(localStorage.getItem('user')||'{}')}catch{return {}}})();
     if(!session.username){location.replace('/index.html');return}
     if(String(session.role||'').toLowerCase()!=='admin'){location.replace('/assignments.html');return}
@@ -109,9 +109,13 @@
     function csv(v){const s=String(v??'');return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s}
     function exportCsv(){const out=[['Completed','Technician','Part Number','Print Name','Qty','Elapsed Seconds','Total Time','Per Unit Seconds','Per Unit Time','Per Unit Hours']];for(const r of filtered().slice().sort((a,b)=>(b.finishedAt||0)-(a.finishedAt||0))){out.push([r.finishedAt?new Date(r.finishedAt).toLocaleString():'',r.username,r.partNumber,r.printName,r.qty,valid(r.totalMs)?Math.round(r.totalMs/1000):'',valid(r.totalMs)?fmtDuration(r.totalMs):'',valid(r.unitMs)?Math.round(r.unitMs/1000):'',valid(r.unitMs)?fmtDuration(r.unitMs):'',valid(r.unitMs)?Math.round((r.unitMs/3600000)*100)/100:''])}const blob=new Blob([out.map(x=>x.map(csv).join(',')).join('\n')],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='build_history_'+new Date().toISOString().slice(0,10)+'.csv';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url)}
 
-    async function load(){status.textContent='Loading build history…';try{const res=await fetch(EVENTS_URL,{headers:{'x-user':session.username,'x-role':session.role||''}});if(!res.ok)throw new Error('Build history request failed ('+res.status+')');const data=await res.json();rows=(Array.isArray(data)?data:[]).map(normalize);techOptions();render();status.textContent=rows.length+' completion records loaded from Build Next.'}catch(e){console.error(e);rows=[];render();status.textContent='Failed to load build history: '+(e.message||e)}}
+    async function load(){status.textContent='Loading build history…';try{const res=await fetch(EVENTS_URL,{headers:{'x-user':session.username,'x-role':session.role||''}});if(!res.ok)throw new Error('Build history request failed ('+res.status+')');const data=await res.json();rows=(Array.isArray(data)?data:[]).map(normalize);techOptions();render();status.textContent=rows.length+' completion records loaded from permanent Build History.'}catch(e){console.error(e);rows=[];render();status.textContent='Failed to load build history: '+(e.message||e)}}
 
-    [partFilter,techFilter,fromFilter,toFilter].forEach(el=>el.addEventListener(el===partFilter?'input':'change',render));document.getElementById('clearBtn').addEventListener('click',()=>{partFilter.value='';techFilter.value='';fromFilter.value='';toFilter.value='';render()});document.getElementById('exportBtn').addEventListener('click',exportCsv);document.getElementById('refreshBtn').addEventListener('click',load);load();
+    [partFilter,techFilter,fromFilter,toFilter].forEach(el=>el.addEventListener(el===partFilter?'input':'change',render));
+    document.getElementById('clearBtn').addEventListener('click',()=>{partFilter.value='';techFilter.value='';fromFilter.value='';toFilter.value='';render()});
+    document.getElementById('exportBtn').addEventListener('click',exportCsv);
+    document.getElementById('refreshBtn').addEventListener('click',load);
+    load();
   })();
   </script>
 </body>
