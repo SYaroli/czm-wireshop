@@ -5,6 +5,7 @@ const path = require("path");
 const express = require("express");
 const cors = require("cors");
 const attachBuildTasks = require("./build_tasks");
+const attachDoneHistoryRoutes = require("./done-history-routes");
 
 // Force local-time windows to Savannah unless overridden in env
 process.env.TZ = process.env.TZ || "America/New_York";
@@ -105,7 +106,10 @@ app.use("/api", catalogSyncRouter);
 app.use("/api/komax-files", komaxFilesRouter);
 app.use("/api/cirris-forms", cirrisFormsRouter);
 
-// NEW: Build Next endpoints (/api/build-tasks/*)
+// Completion-history safety layer must mount before Build Next's legacy clear endpoint.
+attachDoneHistoryRoutes(app);
+
+// Build Next endpoints (/api/build-tasks/*)
 attachBuildTasks(app);
 
 // ---------- Archive init (Postgres mirror) ----------
