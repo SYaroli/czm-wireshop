@@ -1,0 +1,424 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CZM • Build History</title>
+  <link rel="stylesheet" href="/style.css" />
+  <style>
+    main{max-width:1400px;margin:22px auto;padding:0 14px 30px;}
+    .page-grid{display:grid;gap:16px;}
+    .section-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px;}
+    .section-head h2{margin:0;font-size:1.15rem;}
+    .section-head p{margin:4px 0 0;color:var(--muted);font-size:.9rem;}
+    .filters{display:grid;grid-template-columns:minmax(220px,2fr) minmax(160px,1fr) 150px 150px auto auto;gap:10px;align-items:end;}
+    .filters label{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:700;}
+    .filters input,.filters select{height:34px;border:1px solid var(--line);border-radius:7px;padding:0 9px;background:#fff;}
+    .action-btn{height:34px;border:1px solid var(--line);border-radius:7px;padding:0 12px;background:#eee;cursor:pointer;font-weight:700;}
+    .action-btn.red{background:var(--red);border-color:var(--red);color:#fff;}
+    .stats{display:grid;grid-template-columns:repeat(5,minmax(120px,1fr));gap:10px;margin-top:12px;}
+    .stat{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#fafbfc;}
+    .stat .label{font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em;}
+    .stat .value{font-size:20px;font-weight:800;margin-top:3px;}
+    .table-wrap{overflow:auto;border:1px solid var(--line);border-radius:9px;}
+    table{width:100%;border-collapse:collapse;font-size:12px;}
+    th{background:#0a0b0d;color:#fff;text-align:left;padding:8px 9px;white-space:nowrap;position:sticky;top:0;z-index:1;}
+    td{padding:8px 9px;border-bottom:1px solid #e8ebef;vertical-align:top;}
+    tbody tr:nth-child(even){background:#fafbfc;}
+    .num{text-align:right;white-space:nowrap;}
+    .muted{color:var(--muted);}
+    .status{font-size:12px;margin-top:8px;min-height:18px;}
+    .summary-part{font-weight:800;white-space:nowrap;}
+    .summary-name{min-width:220px;}
+    .empty{text-align:center;padding:20px;color:var(--muted);}
+    .note-cell{max-width:360px;white-space:normal;overflow-wrap:anywhere;}
+    @media(max-width:900px){
+      main{margin:10px auto;padding:0 8px 20px;}
+      .filters{grid-template-columns:1fr 1fr;}
+      .filters .wide{grid-column:1 / -1;}
+      .stats{grid-template-columns:1fr 1fr;}
+      .stats .stat:first-child{grid-column:1 / -1;}
+    }
+  </style>
+</head>
+<body>
+  <div class="brand-bar">
+    <div class="brand-inner">
+      <a class="brand-logo" href="/dashboard.html">
+        <img src="/czm-logo.png" alt="CZM">
+        <h1 class="brand-title">CZM • Build History</h1>
+      </a>
+      <div class="brand-actions">
+        <a class="navbtn" href="/assignments.html">Build Next</a>
+        <a class="navbtn" href="/inventory.html">Inventory</a>
+        <a class="navbtn" href="/komax-files.html">Master Files</a>
+        <a class="navbtn active" href="/admin.html">Admin</a>
+        <a class="navbtn" href="/bench-stock.html">Bench Stock</a>
+        <button id="logoutBtn" class="navbtn">Logout</button>
+      </div>
+    </div>
+  </div>
+
+  <main>
+    <div class="page-grid">
+      <div class="card">
+        <div class="section-head">
+          <div>
+            <h2>Build History</h2>
+            <p>Completed build times from the shop archive. Read-only for this first pass.</p>
+          </div>
+          <button id="refreshBtn" class="action-btn" type="button">Refresh</button>
+        </div>
+
+        <div class="filters">
+          <label class="wide">Part # / Print Name
+            <input id="partFilter" type="text" placeholder="Search harness..." />
+          </label>
+          <label>Technician
+            <select id="techFilter"><option value="">All technicians</option></select>
+          </label>
+          <label>From
+            <input id="fromFilter" type="date" />
+          </label>
+          <label>To
+            <input id="toFilter" type="date" />
+          </label>
+          <button id="clearBtn" class="action-btn" type="button">Clear</button>
+          <button id="exportBtn" class="action-btn red" type="button">Export CSV</button>
+        </div>
+
+        <div class="stats">
+          <div class="stat"><div class="label">Completed Builds</div><div id="statBuilds" class="value">0</div></div>
+          <div class="stat"><div class="label">Timed Builds</div><div id="statTimed" class="value">0</div></div>
+          <div class="stat"><div class="label">Average</div><div id="statAvg" class="value">—</div></div>
+          <div class="stat"><div class="label">Median</div><div id="statMedian" class="value">—</div></div>
+          <div class="stat"><div class="label">Range</div><div id="statRange" class="value">—</div></div>
+        </div>
+        <div id="status" class="status muted"></div>
+      </div>
+
+      <div class="card">
+        <div class="section-head">
+          <div>
+            <h2>Harness Summary</h2>
+            <p>Average and median use only completed builds that have a valid active build time.</p>
+          </div>
+          <div class="muted"><span id="summaryCount">0</span> harnesses</div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Part #</th>
+                <th>Print Name</th>
+                <th class="num">Builds</th>
+                <th class="num">Timed</th>
+                <th class="num">Average</th>
+                <th class="num">Median</th>
+                <th class="num">Fastest</th>
+                <th class="num">Slowest</th>
+              </tr>
+            </thead>
+            <tbody id="summaryBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-head">
+          <div>
+            <h2>Completed Builds</h2>
+            <p>Individual records behind the summary above.</p>
+          </div>
+          <div class="muted"><span id="detailCount">0</span> records</div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Finished</th>
+                <th>Technician</th>
+                <th>Part #</th>
+                <th>Print Name</th>
+                <th class="num">Build Time</th>
+                <th>Notes</th>
+              </tr>
+            </thead>
+            <tbody id="detailBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="/catalog.js"></script>
+  <script>
+    (() => {
+      const API_ROOT = (localStorage.getItem('API_BASE') || 'https://wireshop-backend.onrender.com').replace(/\/+$/, '');
+      const ARCHIVE_URL = API_ROOT + '/api/jobs/archive?limit=10000';
+
+      function getSession(){
+        try { return JSON.parse(localStorage.getItem('user') || '{}'); }
+        catch { return {}; }
+      }
+
+      const session = getSession();
+      if (!session.username) {
+        window.location.replace('/index.html');
+        return;
+      }
+      if (String(session.role || '').toLowerCase() !== 'admin') {
+        window.location.replace('/assignments.html');
+        return;
+      }
+
+      document.getElementById('logoutBtn')?.addEventListener('click', () => {
+        localStorage.removeItem('user');
+        window.location.replace('/index.html');
+      });
+
+      const partFilter = document.getElementById('partFilter');
+      const techFilter = document.getElementById('techFilter');
+      const fromFilter = document.getElementById('fromFilter');
+      const toFilter = document.getElementById('toFilter');
+      const status = document.getElementById('status');
+      const summaryBody = document.getElementById('summaryBody');
+      const detailBody = document.getElementById('detailBody');
+
+      let rows = [];
+      const catalogMap = new Map((Array.isArray(window.catalog) ? window.catalog : []).map(x => [String(x.partNumber || ''), String(x.printName || '')]));
+
+      function escapeHtml(value){
+        return String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+      }
+
+      function toMs(value){
+        if (value == null || value === '') return null;
+        if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+        const n = Number(value);
+        if (Number.isFinite(n) && String(value).trim() !== '') return n;
+        const d = new Date(value);
+        const t = d.getTime();
+        return Number.isFinite(t) ? t : null;
+      }
+
+      function validDuration(ms){
+        return Number.isFinite(ms) && ms > 0;
+      }
+
+      function formatHours(ms){
+        if (!validDuration(ms)) return '—';
+        const hrs = ms / 3600000;
+        return (Math.round(hrs * 100) / 100).toFixed(hrs < 10 ? 2 : 1).replace(/\.0+$/,'').replace(/(\.\d*[1-9])0$/,'$1') + ' h';
+      }
+
+      function formatDuration(ms){
+        if (!validDuration(ms)) return '—';
+        const total = Math.round(ms / 1000);
+        const h = Math.floor(total / 3600);
+        const m = Math.floor((total % 3600) / 60);
+        const s = total % 60;
+        return h + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+      }
+
+      function median(values){
+        if (!values.length) return null;
+        const s = values.slice().sort((a,b) => a-b);
+        const mid = Math.floor(s.length / 2);
+        return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
+      }
+
+      function normalize(raw){
+        const partNumber = String(raw.partNumber || raw.part_number || '').trim();
+        const finishedAt = toMs(raw.finishedAt ?? raw.finished_at ?? raw.endTime ?? raw.end_time);
+        let totalActiveMs = null;
+        if (Number.isFinite(Number(raw.totalActive))) totalActiveMs = Number(raw.totalActive);
+        else if (Number.isFinite(Number(raw.totalActiveMs))) totalActiveMs = Number(raw.totalActiveMs);
+        else if (Number.isFinite(Number(raw.total_active_ms))) totalActiveMs = Number(raw.total_active_ms);
+        else if (Number.isFinite(Number(raw.total_active_sec))) totalActiveMs = Number(raw.total_active_sec) * 1000;
+
+        return {
+          id: raw.id ?? '',
+          finishedAt,
+          username: String(raw.username || raw.technician || '').trim(),
+          partNumber,
+          printName: String(raw.printName || raw.print_name || catalogMap.get(partNumber) || '').trim(),
+          totalActiveMs,
+          note: String(raw.note ?? raw.notes ?? '').trim()
+        };
+      }
+
+      function filteredRows(){
+        const needle = partFilter.value.trim().toLowerCase();
+        const tech = techFilter.value.trim().toLowerCase();
+        const from = fromFilter.value ? new Date(fromFilter.value + 'T00:00:00').getTime() : -Infinity;
+        const to = toFilter.value ? new Date(toFilter.value + 'T23:59:59.999').getTime() : Infinity;
+
+        return rows.filter(r => {
+          const hay = (r.partNumber + ' ' + r.printName).toLowerCase();
+          if (needle && !hay.includes(needle)) return false;
+          if (tech && r.username.toLowerCase() !== tech) return false;
+          const when = Number.isFinite(r.finishedAt) ? r.finishedAt : 0;
+          if (when < from || when > to) return false;
+          return true;
+        });
+      }
+
+      function setTechOptions(){
+        const current = techFilter.value;
+        const names = Array.from(new Set(rows.map(r => r.username).filter(Boolean))).sort((a,b) => a.localeCompare(b));
+        techFilter.innerHTML = '<option value="">All technicians</option>' + names.map(n => '<option value="' + escapeHtml(n) + '">' + escapeHtml(n) + '</option>').join('');
+        if (names.includes(current)) techFilter.value = current;
+      }
+
+      function renderStats(filtered){
+        const timed = filtered.filter(r => validDuration(r.totalActiveMs)).map(r => r.totalActiveMs);
+        const avg = timed.length ? timed.reduce((a,b) => a+b, 0) / timed.length : null;
+        const med = median(timed);
+        const fast = timed.length ? Math.min(...timed) : null;
+        const slow = timed.length ? Math.max(...timed) : null;
+
+        document.getElementById('statBuilds').textContent = String(filtered.length);
+        document.getElementById('statTimed').textContent = String(timed.length);
+        document.getElementById('statAvg').textContent = avg == null ? '—' : formatHours(avg);
+        document.getElementById('statMedian').textContent = med == null ? '—' : formatHours(med);
+        document.getElementById('statRange').textContent = fast == null ? '—' : formatHours(fast) + ' – ' + formatHours(slow);
+      }
+
+      function renderSummary(filtered){
+        const groups = new Map();
+        for (const r of filtered){
+          const key = r.partNumber || '(No part #)';
+          if (!groups.has(key)) groups.set(key, {partNumber:key, printName:r.printName || '', rows:[]});
+          const g = groups.get(key);
+          g.rows.push(r);
+          if (!g.printName && r.printName) g.printName = r.printName;
+        }
+
+        const summary = Array.from(groups.values()).map(g => {
+          const times = g.rows.filter(r => validDuration(r.totalActiveMs)).map(r => r.totalActiveMs);
+          return {
+            partNumber:g.partNumber,
+            printName:g.printName,
+            builds:g.rows.length,
+            timed:times.length,
+            avg:times.length ? times.reduce((a,b)=>a+b,0)/times.length : null,
+            med:median(times),
+            fast:times.length ? Math.min(...times) : null,
+            slow:times.length ? Math.max(...times) : null
+          };
+        }).sort((a,b) => a.partNumber.localeCompare(b.partNumber, undefined, {numeric:true}));
+
+        document.getElementById('summaryCount').textContent = String(summary.length);
+        if (!summary.length){
+          summaryBody.innerHTML = '<tr><td colspan="8" class="empty">No builds match these filters.</td></tr>';
+          return;
+        }
+
+        summaryBody.innerHTML = summary.map(g => `
+          <tr>
+            <td class="summary-part">${escapeHtml(g.partNumber)}</td>
+            <td class="summary-name">${escapeHtml(g.printName)}</td>
+            <td class="num">${g.builds}</td>
+            <td class="num">${g.timed}</td>
+            <td class="num">${formatHours(g.avg)}</td>
+            <td class="num">${formatHours(g.med)}</td>
+            <td class="num">${formatHours(g.fast)}</td>
+            <td class="num">${formatHours(g.slow)}</td>
+          </tr>
+        `).join('');
+      }
+
+      function renderDetail(filtered){
+        const ordered = filtered.slice().sort((a,b) => (b.finishedAt || 0) - (a.finishedAt || 0));
+        document.getElementById('detailCount').textContent = String(ordered.length);
+        if (!ordered.length){
+          detailBody.innerHTML = '<tr><td colspan="6" class="empty">No completed builds match these filters.</td></tr>';
+          return;
+        }
+
+        detailBody.innerHTML = ordered.map(r => `
+          <tr>
+            <td>${r.finishedAt ? escapeHtml(new Date(r.finishedAt).toLocaleString()) : '—'}</td>
+            <td>${escapeHtml(r.username)}</td>
+            <td>${escapeHtml(r.partNumber)}</td>
+            <td>${escapeHtml(r.printName)}</td>
+            <td class="num">${formatDuration(r.totalActiveMs)}</td>
+            <td class="note-cell">${escapeHtml(r.note)}</td>
+          </tr>
+        `).join('');
+      }
+
+      function render(){
+        const filtered = filteredRows();
+        renderStats(filtered);
+        renderSummary(filtered);
+        renderDetail(filtered);
+      }
+
+      function csvCell(value){
+        const s = String(value ?? '');
+        return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
+      }
+
+      function exportCsv(){
+        const filtered = filteredRows().slice().sort((a,b) => (b.finishedAt || 0) - (a.finishedAt || 0));
+        const out = [['Finished','Technician','Part Number','Print Name','Build Time','Build Hours','Notes']];
+        for (const r of filtered){
+          out.push([
+            r.finishedAt ? new Date(r.finishedAt).toLocaleString() : '',
+            r.username,
+            r.partNumber,
+            r.printName,
+            validDuration(r.totalActiveMs) ? formatDuration(r.totalActiveMs) : '',
+            validDuration(r.totalActiveMs) ? Math.round((r.totalActiveMs / 3600000) * 100) / 100 : '',
+            r.note
+          ]);
+        }
+        const blob = new Blob([out.map(row => row.map(csvCell).join(',')).join('\n')], {type:'text/csv;charset=utf-8'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'build_history_' + new Date().toISOString().slice(0,10) + '.csv';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      }
+
+      async function load(){
+        status.textContent = 'Loading build history…';
+        try{
+          const res = await fetch(ARCHIVE_URL, {headers:{'x-user':session.username}});
+          if (!res.ok) throw new Error('Build history request failed (' + res.status + ')');
+          const data = await res.json();
+          rows = (Array.isArray(data) ? data : []).map(normalize);
+          setTechOptions();
+          render();
+          status.textContent = rows.length + ' archived completed jobs loaded.';
+        }catch(err){
+          console.error(err);
+          rows = [];
+          render();
+          status.textContent = 'Failed to load build history: ' + (err.message || err);
+        }
+      }
+
+      [partFilter, techFilter, fromFilter, toFilter].forEach(el => {
+        el.addEventListener(el.tagName === 'INPUT' && el.type === 'text' ? 'input' : 'change', render);
+      });
+      document.getElementById('clearBtn').addEventListener('click', () => {
+        partFilter.value = '';
+        techFilter.value = '';
+        fromFilter.value = '';
+        toFilter.value = '';
+        render();
+      });
+      document.getElementById('exportBtn').addEventListener('click', exportCsv);
+      document.getElementById('refreshBtn').addEventListener('click', load);
+
+      load();
+    })();
+  </script>
+</body>
+</html>
