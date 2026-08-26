@@ -307,3 +307,51 @@ tr.row-selected td{
   content:"Master Files";
   font-size:.88rem;
 }
+
+/* ===== Inventory movement table fixes ===== */
+.filter-value-row input[type="checkbox"],
+.movement-table input[type="checkbox"]{
+  width:16px !important;
+  min-width:16px !important;
+  height:16px !important;
+  padding:0 !important;
+  margin:1px 0 0 0 !important;
+  border-radius:3px !important;
+  box-shadow:none !important;
+  flex:0 0 16px !important;
+}
+.filter-value-row{
+  width:100%;
+  color:#111 !important;
+  white-space:normal;
+}
+.filter-value-text{
+  display:block;
+  flex:1 1 auto;
+  min-width:0;
+  color:#111 !important;
+  overflow-wrap:anywhere;
+}
+.movement-table thead th:last-child{
+  position:sticky !important;
+  right:0;
+  z-index:6 !important;
+  min-width:112px;
+  background:#f1f1f1 !important;
+  color:#111 !important;
+  box-shadow:-4px 0 7px rgba(0,0,0,.08);
+}
+.movement-table tbody td.actions{
+  position:sticky;
+  right:0;
+  z-index:3;
+  min-width:112px;
+  background:#fff !important;
+  box-shadow:-4px 0 7px rgba(0,0,0,.08);
+}
+.movement-table tbody tr:nth-child(even) td.actions{
+  background:#fafafa !important;
+}
+.movement-table tbody tr.row-selected td.actions{
+  background:#eef5ff !important;
+}
