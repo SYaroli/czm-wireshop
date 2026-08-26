@@ -33,24 +33,10 @@ db.run(`CREATE TABLE IF NOT EXISTS inventory (
   location TEXT,
   qty INTEGER DEFAULT 0,
   minQty INTEGER DEFAULT 0,
-  buildValueHours REAL NOT NULL DEFAULT 0,
   notes TEXT,
   updatedAt INTEGER,
   updatedBy TEXT
 )`);
-
-function ensureBuildValueColumn(done){
-  db.all(`PRAGMA table_info(inventory)`, (err, rows = []) => {
-    if(err) return done(err);
-    const names = rows.map(c => String(c.name || '').toLowerCase());
-    if(names.includes('buildvaluehours')) return done();
-    db.run(`ALTER TABLE inventory ADD COLUMN buildValueHours REAL NOT NULL DEFAULT 0`, done);
-  });
-}
-
-ensureBuildValueColumn(err => {
-  if(err) console.error('[db] buildValueHours migration failed:', err);
-});
 
 db.run(`CREATE TABLE IF NOT EXISTS inventory_log (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -64,65 +50,30 @@ db.run(`CREATE TABLE IF NOT EXISTS inventory_log (
 )`);
 
 router.get('/inventory-all', requireUser, (req,res)=>{
-  ensureBuildValueColumn((ensureErr) => {
-    if(ensureErr) return res.status(500).json({error:'db error'});
-    db.all(
-      `SELECT partNumber,description,location,qty,minQty,
-              COALESCE(buildValueHours,0) AS buildValueHours,
-              notes,updatedAt,updatedBy
-       FROM inventory
-       ORDER BY partNumber`,
-      [],
-      (err,rows)=>{
-        if(err) return res.status(500).json({error:'db error'});
-        res.json(rows||[]);
-      }
-    );
-  });
+  db.all(
+    `SELECT partNumber,description,location,qty,minQty,notes,updatedAt,updatedBy
+     FROM inventory
+     ORDER BY partNumber`,
+    [],
+    (err,rows)=>{
+      if(err) return res.status(500).json({error:'db error'});
+      res.json(rows||[]);
+    }
+  );
 });
 
 router.get('/inventory/:partNumber', requireUser, (req,res)=>{
-  ensureBuildValueColumn((ensureErr) => {
-    if(ensureErr) return res.status(500).json({error:'db error'});
-    db.get(
-      `SELECT partNumber,description,location,qty,minQty,
-              COALESCE(buildValueHours,0) AS buildValueHours,
-              notes,updatedAt,updatedBy
-       FROM inventory
-       WHERE partNumber = ?`,
-      [req.params.partNumber],
-      (err,row)=>{
-        if(err) return res.status(500).json({error:'db error'});
-        if(!row) return res.status(404).json({error:'not found'});
-        res.json(row);
-      }
-    );
-  });
-});
-
-router.put('/inventory/:partNumber/build-value', requireAdmin, (req,res)=>{
-  ensureBuildValueColumn((ensureErr) => {
-    if(ensureErr) return res.status(500).json({error:'db error'});
-
-    const raw = req.body?.buildValueHours;
-    const parsed = Number(raw);
-    if(!Number.isFinite(parsed) || parsed < 0)
-      return res.status(400).json({error:'buildValueHours must be zero or greater'});
-
-    const value = Math.round(parsed * 100) / 100;
-    const now = Date.now();
-    db.run(
-      `UPDATE inventory
-          SET buildValueHours = ?, updatedAt = ?, updatedBy = ?
-        WHERE partNumber = ?`,
-      [value, now, req.user, req.params.partNumber],
-      function(err){
-        if(err) return res.status(500).json({error:'db error'});
-        if(this.changes===0) return res.status(404).json({error:'not found'});
-        res.json({ok:true,partNumber:req.params.partNumber,buildValueHours:value});
-      }
-    );
-  });
+  db.get(
+    `SELECT partNumber,description,location,qty,minQty,notes,updatedAt,updatedBy
+     FROM inventory
+     WHERE partNumber = ?`,
+    [req.params.partNumber],
+    (err,row)=>{
+      if(err) return res.status(500).json({error:'db error'});
+      if(!row) return res.status(404).json({error:'not found'});
+      res.json(row);
+    }
+  );
 });
 
 router.post('/inventory', requireAdmin, (req,res)=>{
@@ -390,7 +341,7 @@ router.get('/benchstock/:partNumber', requireUser, (req,res)=>{
     [req.params.partNumber],
     (err, row)=>{
       if (err) return res.status(500).json({ error:'db error' });
-      if (!row) return res.status(404).json({ error:'not found'});
+      if (!row) return res.status(404).json({ error:'not found' });
       res.json(row);
     }
   );
