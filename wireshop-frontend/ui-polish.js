@@ -99,15 +99,44 @@
         border-color:#929aa6 !important;
       }
 
-      .waiting-note-wrap {
-        gap:7px !important;
-        align-items:center !important;
+      /* Waiting notes: one compact line instead of a large textarea row. */
+      .waiting-note-row td {
+        padding:4px 8px 7px !important;
       }
-
+      .waiting-note-wrap {
+        display:grid !important;
+        grid-template-columns:54px minmax(220px,420px) 52px !important;
+        gap:6px !important;
+        align-items:center !important;
+        justify-content:start !important;
+        padding:0 0 0 24px !important;
+        width:100% !important;
+        box-sizing:border-box !important;
+      }
+      .waiting-note-label {
+        padding-top:0 !important;
+        font-size:11px !important;
+        line-height:1 !important;
+      }
       .waitingNoteBox {
-        min-height:34px !important;
-        padding:7px 8px !important;
+        width:100% !important;
+        min-width:220px !important;
+        height:28px !important;
+        min-height:28px !important;
+        max-height:28px !important;
+        padding:5px 8px !important;
         border-radius:6px !important;
+        line-height:16px !important;
+        font-size:12px !important;
+        resize:none !important;
+        overflow-y:hidden !important;
+        box-sizing:border-box !important;
+      }
+      .waiting-note-save {
+        width:52px !important;
+        min-width:52px !important;
+        padding-left:7px !important;
+        padding-right:7px !important;
       }
 
       /* Done header: Export is primary; Clear is deliberately quieter/destructive. */
