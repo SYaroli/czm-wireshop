@@ -604,7 +604,8 @@ module.exports = function attachBuildTasks(app, opts = {}) {
         }
 
         await run(
-          `INSERT INTO build_task_events (taskId, type, qty, user, ts, elapsedSeconds)\n         VALUES (?, 'complete', ?, ?, ?, ?)`,
+          `INSERT INTO build_task_events (taskId, type, qty, user, ts, elapsedSeconds)
+         VALUES (?, 'complete', ?, ?, ?, ?)`,
           [id, qty, user, t, elapsedSecondsAtComplete]
         );
       });
@@ -721,11 +722,13 @@ module.exports = function attachBuildTasks(app, opts = {}) {
 
   // ----- Auto-pause + auto-resume scheduler -----
   //
-  // SHIFT HOURS (shop local time):
-  //   Mon–Thu: 07:00–17:00
-  //   Fri:     07:00–15:30
-  //   Sat:     07:00–12:00   (Saturday runs freely; no breaks/lunch auto-pauses)
+  // STANDARD SHIFT END TIMES (shop local time):
+  //   Mon–Thu: 17:00
+  //   Fri:     15:30
+  //   Sat:     12:00   (Saturday runs freely; no breaks/lunch auto-pauses)
   //   Sun:     closed
+  //
+  // Techs may manually start work before 07:00. Early starts are not auto-paused.
   //
   // BREAKS (auto pause any active timers):
   //   10:00–10:15
@@ -735,7 +738,6 @@ module.exports = function attachBuildTasks(app, opts = {}) {
   // Auto-resume ONLY at the exact break-end minute, and only for tasks the SYSTEM paused for reason='break'.
   //
   const TZ = process.env.SHOP_TZ || 'America/New_York';
-  const SHIFT_START = '07:00';
 
   function localParts(tsMs = now()) {
     const fmt = new Intl.DateTimeFormat('en-US', {
@@ -773,9 +775,8 @@ module.exports = function attachBuildTasks(app, opts = {}) {
   }
 
   function shouldAutoPause(hm, weekday) {
-    // Saturday: allow work freely until 12:00 (no breaks/lunch on Sat)
+    // Saturday: allow manually started work freely until 12:00 (no breaks/lunch on Sat).
     if (weekday === 'Sat') {
-      if (toMinutes(hm) < toMinutes(SHIFT_START)) return { yes: true, reason: 'off_hours' };
       if (toMinutes(hm) >= toMinutes('12:00')) return { yes: true, reason: 'shift_end' };
       return { yes: false, reason: '' };
     }
@@ -787,7 +788,6 @@ module.exports = function attachBuildTasks(app, opts = {}) {
 
     const end = shiftEndForWeekday(weekday);
     if (!end || end === '00:00') return { yes: true, reason: 'off_hours' }; // Sunday
-    if (toMinutes(hm) < toMinutes(SHIFT_START)) return { yes: true, reason: 'off_hours' };
     if (toMinutes(hm) >= toMinutes(end)) return { yes: true, reason: 'shift_end' };
 
     if (inBreak) return { yes: true, reason: 'break' };
