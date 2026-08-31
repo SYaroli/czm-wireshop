@@ -210,14 +210,18 @@ router.post('/inventory-log/delete-many', requireAdmin, (req,res)=>{
 router.put('/inventory-log/:id', requireAdmin, (req,res)=>{
   const id = Number(req.params.id);
   if(!Number.isFinite(id)) return res.status(400).json({error:'invalid id'});
-  const parsedDelta = Number(req.body?.delta);
-  const note = String(req.body?.note || '');
-  if(!Number.isFinite(parsedDelta)) return res.status(400).json({error:'invalid delta'});
-  const delta = Math.trunc(parsedDelta);
 
-  db.get(`SELECT id, qtyBefore FROM inventory_log WHERE id = ?`, [id], (err,row)=>{
+  const hasDelta = req.body?.delta !== undefined && req.body?.delta !== null && req.body?.delta !== '';
+  const parsedDelta = hasDelta ? Number(req.body.delta) : null;
+  const note = String(req.body?.note || '');
+  if(hasDelta && !Number.isFinite(parsedDelta)) return res.status(400).json({error:'invalid delta'});
+
+  db.get(`SELECT id, qtyBefore, delta FROM inventory_log WHERE id = ?`, [id], (err,row)=>{
     if(err) return res.status(500).json({error:'db error'});
     if(!row) return res.status(404).json({error:'not found'});
+
+    // Note-only edits keep the movement's existing delta unchanged.
+    const delta = hasDelta ? Math.trunc(parsedDelta) : Math.trunc(Number(row.delta) || 0);
     const before = Number(row.qtyBefore) || 0;
     const after = before + delta;
     if(after < 0) return res.status(400).json({error:'resulting after quantity cannot be negative'});
