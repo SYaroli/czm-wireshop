@@ -74,6 +74,20 @@
             <label for="qty">Qty</label>
             <input id="qty" type="number" min="0" step="1" value="0" />
           </div>
+          <div class="field">
+            <label for="unitCost">Unit Cost (USD)</label>
+            <input id="unitCost" type="number" min="0" step="any" placeholder="Leave blank if unknown" />
+          </div>
+          <div class="field">
+            <label for="costUnit">Cost Unit</label>
+            <select id="costUnit"><option value="ea">Each</option><option value="ft">Foot</option></select>
+          </div>
+          <div class="field">
+            <label for="partPhoto">Part Photo</label>
+            <input id="partPhoto" type="file" accept="image/jpeg,image/png,image/webp" />
+            <small>JPG, PNG or WebP, up to 1 MB</small>
+            <label id="removePhotoLabel" hidden><input id="removePhoto" type="checkbox" /> Remove current photo</label>
+          </div>
           <div class="field wide">
             <label for="notes">Notes</label>
             <input id="notes" type="text" placeholder="Optional notes" />
@@ -89,11 +103,13 @@
         <table>
           <thead>
             <tr>
+              <th>Photo</th>
               <th>Part Number</th>
               <th>Description</th>
               <th>Location</th>
               <th>Manufacturer</th>
               <th>Qty</th>
+              <th>Unit Cost</th>
               <th>Notes</th>
               <th>Updated</th>
               <th>By</th>
@@ -101,7 +117,7 @@
             </tr>
           </thead>
           <tbody id="itemsBody">
-            <tr><td colspan="9" class="muted">Loading bench stock...</td></tr>
+            <tr><td colspan="11" class="muted">Loading bench stock...</td></tr>
           </tbody>
         </table>
       </div>
@@ -125,8 +141,46 @@
       location: document.getElementById('location'),
       manufacturer: document.getElementById('manufacturer'),
       qty: document.getElementById('qty'),
+      unitCost: document.getElementById('unitCost'),
+      costUnit: document.getElementById('costUnit'),
       notes: document.getElementById('notes'),
     };
+
+    const partPhoto = document.getElementById('partPhoto');
+    const removePhoto = document.getElementById('removePhoto');
+    const removePhotoLabel = document.getElementById('removePhotoLabel');
+    const photoObserver = new IntersectionObserver(entries => {
+      for (const { target, isIntersecting } of entries) {
+        if (!isIntersecting) continue;
+        photoObserver.unobserve(target);
+        loadPhoto(target);
+      }
+    });
+
+    async function loadPhoto(img){
+      try {
+        const path = '/api/benchstock/' + encodeURIComponent(img.dataset.photo) + '/photo';
+        const res = await fetch(API_ROOT + path, { headers: { 'x-user': user.username } });
+        if (!res.ok) throw new Error('Photo unavailable');
+        const blob = await res.blob();
+        if (!img.isConnected) return;
+        const url = URL.createObjectURL(blob);
+        img.addEventListener('load', () => URL.revokeObjectURL(url), { once: true });
+        img.addEventListener('error', () => URL.revokeObjectURL(url), { once: true });
+        img.src = url;
+      } catch {
+        img.replaceWith(document.createTextNode('Photo unavailable'));
+      }
+    }
+
+    function readPhoto(file){
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(new Error('Could not read the photo.'));
+        reader.readAsDataURL(file);
+      });
+    }
 
     let isAdmin = String(user.role || '').toLowerCase() === 'admin';
     let allRows = [];
@@ -183,12 +237,17 @@
 
     function clearForm(){
       editingPart = null;
+      partPhoto.value = '';
+      removePhoto.checked = false;
+      removePhotoLabel.hidden = true;
       fields.partNumber.value = '';
       fields.partNumber.disabled = false;
       fields.description.value = '';
       fields.location.value = '';
       fields.manufacturer.value = '';
       fields.qty.value = '0';
+      fields.unitCost.value = '';
+      fields.costUnit.value = 'ea';
       fields.notes.value = '';
       document.getElementById('saveBtn').textContent = 'Save';
       setStatus('');
@@ -196,12 +255,17 @@
 
     function fillForm(row){
       editingPart = row.partNumber;
+      partPhoto.value = '';
+      removePhoto.checked = false;
+      removePhotoLabel.hidden = !row.hasPhoto;
       fields.partNumber.value = row.partNumber || '';
       fields.partNumber.disabled = true;
       fields.description.value = row.description || '';
       fields.location.value = row.location || '';
       fields.manufacturer.value = row.manufacturer || '';
       fields.qty.value = Number(row.qty || 0);
+      fields.unitCost.value = row.unitCost ?? '';
+      fields.costUnit.value = row.costUnit ?? 'ea';
       fields.notes.value = row.notes || '';
       adminPanel.style.display = 'block';
       document.getElementById('saveBtn').textContent = 'Update';
@@ -218,18 +282,21 @@
 
     function render(){
       const rows = filteredRows();
+      photoObserver.disconnect();
       if (!rows.length) {
-        itemsBody.innerHTML = `<tr><td colspan="9" class="muted">No bench stock items found.</td></tr>`;
+        itemsBody.innerHTML = `<tr><td colspan="11" class="muted">No bench stock items found.</td></tr>`;
         return;
       }
 
       itemsBody.innerHTML = rows.map(r => `
         <tr data-part="${esc(r.partNumber)}">
+          <td>${r.hasPhoto ? `<img data-photo="${esc(r.partNumber)}" width="64" height="64" style="object-fit:contain" alt="Part ${esc(r.partNumber)}" />` : ''}</td>
           <td><strong>${esc(r.partNumber)}</strong></td>
           <td>${esc(r.description)}</td>
           <td>${esc(r.location)}</td>
           <td>${esc(r.manufacturer)}</td>
           <td><span class="pill">${Number(r.qty || 0)}</span></td>
+          <td>${r.unitCost == null ? '' : esc('$' + r.unitCost + '/' + (r.costUnit ?? 'ea'))}</td>
           <td class="notes-cell">${esc(r.notes)}</td>
           <td>${r.updatedAt ? esc(new Date(r.updatedAt).toLocaleString()) : ''}</td>
           <td>${esc(r.updatedBy)}</td>
@@ -239,6 +306,7 @@
           </td>
         </tr>
       `).join('');
+      itemsBody.querySelectorAll('[data-photo]').forEach(img => photoObserver.observe(img));
     }
 
     async function loadRows(){
@@ -252,7 +320,7 @@
         render();
       } catch (err) {
         console.error(err);
-        itemsBody.innerHTML = `<tr><td colspan="9" class="muted">Failed to load bench stock.</td></tr>`;
+        itemsBody.innerHTML = `<tr><td colspan="11" class="muted">Failed to load bench stock.</td></tr>`;
       }
     }
 
@@ -263,15 +331,28 @@
         location: fields.location.value.trim(),
         manufacturer: fields.manufacturer.value.trim(),
         qty: Number(fields.qty.value || 0),
+        unitCost: fields.unitCost.value === '' ? null : fields.unitCost.valueAsNumber,
+        costUnit: fields.costUnit.value,
         notes: fields.notes.value.trim(),
       };
 
       if (!payload.partNumber && !editingPart) return setStatus('Part number is required.');
       if (!Number.isFinite(payload.qty) || payload.qty < 0) return setStatus('Qty must be 0 or higher.');
 
+      if (!fields.unitCost.validity.valid || (payload.unitCost !== null && !Number.isFinite(payload.unitCost))) return setStatus('Unit cost must be 0 or higher.');
+
+      const targetPart = editingPart;
+      const file = partPhoto.files[0];
+      if (file && (file.size > 1024 * 1024 || !['image/jpeg','image/png','image/webp'].includes(file.type))) {
+        return setStatus('Upload a JPG, PNG or WebP image up to 1 MB.');
+      }
+      if (file && removePhoto.checked) return setStatus('Choose either a replacement photo or removal.');
+
       try {
-        if (editingPart) {
-          await api(`/api/benchstock/${encodeURIComponent(editingPart)}`, { method: 'PUT', body: payload });
+        if (file) payload.photo = await readPhoto(file);
+        else if (removePhoto.checked) payload.photo = null;
+        if (targetPart) {
+          await api(`/api/benchstock/${encodeURIComponent(targetPart)}`, { method: 'PUT', body: payload });
           setStatus('Bench stock item updated.', true);
         } else {
           await api('/api/benchstock', { method: 'POST', body: payload });
@@ -287,17 +368,19 @@
 
     function exportCsv(){
       const rows = filteredRows();
-      const header = ['Part Number','Description','Location','Manufacturer','Qty','Notes','Updated','By'];
+      const header = ['Part Number','Description','Location','Manufacturer','Qty','Unit Cost (USD)','Cost Unit','Notes','Updated','By'];
       const lines = [header.join(',')].concat(rows.map(r => [
         r.partNumber,
         r.description,
         r.location,
         r.manufacturer,
         Number(r.qty || 0),
+        r.unitCost,
+        r.costUnit ?? 'ea',
         r.notes || '',
         r.updatedAt ? new Date(r.updatedAt).toLocaleString() : '',
         r.updatedBy || '',
-      ].map(v => `"${String(v || '').replace(/"/g, '""')}"`).join(',')));
+      ].map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')));
 
       const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);

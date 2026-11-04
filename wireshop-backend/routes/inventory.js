@@ -306,29 +306,53 @@ router.post('/inventory/:partNumber/log', requireUser, (req,res)=>{
   );
 });
 
-db.run(`CREATE TABLE IF NOT EXISTS bench_stock (
-  partNumber TEXT PRIMARY KEY,
-  description TEXT,
-  location TEXT,
-  manufacturer TEXT,
-  qty INTEGER NOT NULL DEFAULT 0,
-  updatedAt INTEGER,
-  updatedBy TEXT,
-  notes TEXT
-)`);
-
-db.all(`PRAGMA table_info(bench_stock)`, (err, rows = []) => {
-  if (err) return console.error('PRAGMA bench_stock:', err);
-  const names = rows.map(c => c.name);
-  if (!names.includes('notes')) {
-    db.run(`ALTER TABLE bench_stock ADD COLUMN notes TEXT`);
-    console.log('[db] Added notes column to bench_stock');
-  }
+const runBenchStockMigration = sql => new Promise((resolve, reject) => {
+  db.run(sql, err => err ? reject(err) : resolve());
 });
+
+const benchStockReady = (async () => {
+  await runBenchStockMigration(`CREATE TABLE IF NOT EXISTS bench_stock (
+    partNumber TEXT PRIMARY KEY,
+    description TEXT,
+    location TEXT,
+    manufacturer TEXT,
+    qty INTEGER NOT NULL DEFAULT 0,
+    updatedAt INTEGER,
+    updatedBy TEXT,
+    notes TEXT,
+    unitCost REAL,
+    costUnit TEXT NOT NULL DEFAULT 'ea',
+    photo BLOB,
+    photoType TEXT
+  )`);
+  const rows = await new Promise((resolve, reject) => {
+    db.all('PRAGMA table_info(bench_stock)', (err, rows) => err ? reject(err) : resolve(rows));
+  });
+  const names = new Set(rows.map(column => column.name));
+  for (const [name, type] of [['notes', 'TEXT'], ['unitCost', 'REAL'], ['costUnit', "TEXT NOT NULL DEFAULT 'ea'"], ['photo', 'BLOB'], ['photoType', 'TEXT']]) {
+    if (!names.has(name)) await runBenchStockMigration(`ALTER TABLE bench_stock ADD COLUMN ${name} ${type}`);
+  }
+  return true;
+})().catch(err => {
+  console.error('Bench stock schema migration failed:', err);
+  return false;
+});
+
+router.use(/^\/benchstock(?:-all|\/|$)/, async (_req, res, next) => {
+  if (!await benchStockReady) return res.status(503).json({ error:'Bench stock storage unavailable' });
+  next();
+});
+
+function parseBenchStockCost(value) {
+  if (value == null || (typeof value === 'string' && !value.trim())) return null;
+  if (!['string', 'number'].includes(typeof value)) return NaN;
+  const amount = Number(value);
+  return Number.isFinite(amount) && amount >= 0 ? amount : NaN;
+}
 
 router.get('/benchstock-all', requireUser, (_req,res)=>{
   db.all(
-    `SELECT partNumber, description, location, manufacturer, qty, updatedAt, updatedBy, notes
+    `SELECT partNumber, description, location, manufacturer, qty, updatedAt, updatedBy, notes, unitCost, costUnit, photo IS NOT NULL AS hasPhoto
        FROM bench_stock ORDER BY partNumber COLLATE NOCASE ASC`,
     [],
     (err, rows)=>{
@@ -340,7 +364,7 @@ router.get('/benchstock-all', requireUser, (_req,res)=>{
 
 router.get('/benchstock/:partNumber', requireUser, (req,res)=>{
   db.get(
-    `SELECT partNumber, description, location, manufacturer, qty, updatedAt, updatedBy, notes
+    `SELECT partNumber, description, location, manufacturer, qty, updatedAt, updatedBy, notes, unitCost, costUnit, photo IS NOT NULL AS hasPhoto
        FROM bench_stock WHERE partNumber = ?`,
     [req.params.partNumber],
     (err, row)=>{
@@ -351,16 +375,44 @@ router.get('/benchstock/:partNumber', requireUser, (req,res)=>{
   );
 });
 
+router.get('/benchstock/:partNumber/photo', requireUser, (req, res) => {
+  db.get('SELECT photo, photoType FROM bench_stock WHERE partNumber = ?', [req.params.partNumber], (err, row) => {
+    if (err) return res.status(500).json({ error:'db error' });
+    if (!row?.photo) return res.sendStatus(404);
+    res.set({ 'Content-Type': row.photoType, 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
+    res.send(row.photo);
+  });
+});
+
+function parseBenchStockPhoto(value) {
+  if (value == null) return { bytes: null, type: null };
+  if (typeof value !== 'string' || value.length > 1398130) return null;
+  const match = /^data:(image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/]+={0,2})$/.exec(value);
+  if (!match) return null;
+  const bytes = Buffer.from(match[2], 'base64');
+  const type = match[1];
+  if (bytes.length > 1024 * 1024) return null;
+  const valid = type === 'image/png' ? bytes.subarray(0, 8).equals(Buffer.from('89504e470d0a1a0a', 'hex'))
+    : type === 'image/jpeg' ? bytes.subarray(0, 3).equals(Buffer.from('ffd8ff', 'hex'))
+    : bytes.toString('ascii', 0, 4) === 'RIFF' && bytes.toString('ascii', 8, 12) === 'WEBP';
+  return valid ? { bytes, type } : null;
+}
+
 router.post('/benchstock', requireAdmin, (req,res)=>{
-  const { partNumber, description='', location='', manufacturer='', qty=0, notes='' } = req.body || {};
+  const { partNumber, description='', location='', manufacturer='', qty=0, notes='', unitCost, costUnit, photo } = req.body || {};
+  const parsedPhoto = parseBenchStockPhoto(photo);
+  if (!parsedPhoto) return res.status(400).json({ error:'Upload a JPG, PNG or WebP image up to 1 MB' });
+  const parsedCost = parseBenchStockCost(unitCost);
+  if (Number.isNaN(parsedCost)) return res.status(400).json({ error:'Unit cost must be 0 or higher' });
+  if (costUnit !== undefined && !['ea', 'ft'].includes(costUnit)) return res.status(400).json({ error:'Invalid cost unit' });
   const pn = String(partNumber || '').trim();
   if (!pn) return res.status(400).json({ error:'partNumber required' });
   const parsedQty = Number(qty);
   if (!Number.isFinite(parsedQty) || parsedQty < 0) return res.status(400).json({ error:'invalid qty' });
   const now = Date.now();
   db.run(
-    `INSERT INTO bench_stock (partNumber, description, location, manufacturer, qty, updatedAt, updatedBy, notes) VALUES (?,?,?,?,?,?,?,?)`,
-    [pn, String(description||'').trim(), String(location||'').trim(), String(manufacturer||'').trim(), Math.trunc(parsedQty), now, req.user, String(notes||'').trim()],
+    `INSERT INTO bench_stock (partNumber, description, location, manufacturer, qty, updatedAt, updatedBy, notes, unitCost, costUnit, photo, photoType) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+    [pn, String(description||'').trim(), String(location||'').trim(), String(manufacturer||'').trim(), Math.trunc(parsedQty), now, req.user, String(notes||'').trim(), parsedCost, costUnit ?? 'ea', parsedPhoto.bytes, parsedPhoto.type],
     function(err){
       if (err) {
         if (String(err.message || '').includes('UNIQUE')) return res.status(409).json({ error:'exists' });
@@ -372,13 +424,18 @@ router.post('/benchstock', requireAdmin, (req,res)=>{
 });
 
 router.put('/benchstock/:partNumber', requireAdmin, (req,res)=>{
-  const { description='', location='', manufacturer='', qty=0, notes='' } = req.body || {};
+  const { description='', location='', manufacturer='', qty=0, notes='', unitCost, costUnit, photo } = req.body || {};
+  const parsedPhoto = parseBenchStockPhoto(photo);
+  if (!parsedPhoto) return res.status(400).json({ error:'Upload a JPG, PNG or WebP image up to 1 MB' });
+  const parsedCost = parseBenchStockCost(unitCost);
+  if (Number.isNaN(parsedCost)) return res.status(400).json({ error:'Unit cost must be 0 or higher' });
+  if (costUnit !== undefined && !['ea', 'ft'].includes(costUnit)) return res.status(400).json({ error:'Invalid cost unit' });
   const parsedQty = Number(qty);
   if (!Number.isFinite(parsedQty) || parsedQty < 0) return res.status(400).json({ error:'invalid qty' });
   const now = Date.now();
   db.run(
-    `UPDATE bench_stock SET description = ?, location = ?, manufacturer = ?, qty = ?, updatedAt = ?, updatedBy = ?, notes = ? WHERE partNumber = ?`,
-    [String(description||'').trim(), String(location||'').trim(), String(manufacturer||'').trim(), Math.trunc(parsedQty), now, req.user, String(notes||'').trim(), req.params.partNumber],
+    `UPDATE bench_stock SET description = ?, location = ?, manufacturer = ?, qty = ?, updatedAt = ?, updatedBy = ?, notes = ?, unitCost = CASE WHEN ? THEN ? ELSE unitCost END, costUnit = COALESCE(?, costUnit), photo = CASE WHEN ? THEN ? ELSE photo END, photoType = CASE WHEN ? THEN ? ELSE photoType END WHERE partNumber = ?`,
+    [String(description||'').trim(), String(location||'').trim(), String(manufacturer||'').trim(), Math.trunc(parsedQty), now, req.user, String(notes||'').trim(), Number(unitCost !== undefined), parsedCost, costUnit ?? null, Number(photo !== undefined), parsedPhoto.bytes, Number(photo !== undefined), parsedPhoto.type, req.params.partNumber],
     function(err){
       if (err) return res.status(500).json({ error:'db error' });
       if (this.changes === 0) return res.status(404).json({ error:'not found' });
