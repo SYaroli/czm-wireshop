@@ -306,29 +306,51 @@ router.post('/inventory/:partNumber/log', requireUser, (req,res)=>{
   );
 });
 
-db.run(`CREATE TABLE IF NOT EXISTS bench_stock (
-  partNumber TEXT PRIMARY KEY,
-  description TEXT,
-  location TEXT,
-  manufacturer TEXT,
-  qty INTEGER NOT NULL DEFAULT 0,
-  updatedAt INTEGER,
-  updatedBy TEXT,
-  notes TEXT
-)`);
-
-db.all(`PRAGMA table_info(bench_stock)`, (err, rows = []) => {
-  if (err) return console.error('PRAGMA bench_stock:', err);
-  const names = rows.map(c => c.name);
-  if (!names.includes('notes')) {
-    db.run(`ALTER TABLE bench_stock ADD COLUMN notes TEXT`);
-    console.log('[db] Added notes column to bench_stock');
-  }
+const runBenchStockMigration = sql => new Promise((resolve, reject) => {
+  db.run(sql, err => err ? reject(err) : resolve());
 });
+
+const benchStockReady = (async () => {
+  await runBenchStockMigration(`CREATE TABLE IF NOT EXISTS bench_stock (
+    partNumber TEXT PRIMARY KEY,
+    description TEXT,
+    location TEXT,
+    manufacturer TEXT,
+    qty INTEGER NOT NULL DEFAULT 0,
+    updatedAt INTEGER,
+    updatedBy TEXT,
+    notes TEXT,
+    unitCost REAL,
+    costUnit TEXT NOT NULL DEFAULT 'ea'
+  )`);
+  const rows = await new Promise((resolve, reject) => {
+    db.all('PRAGMA table_info(bench_stock)', (err, rows) => err ? reject(err) : resolve(rows));
+  });
+  const names = new Set(rows.map(column => column.name));
+  for (const [name, type] of [['notes', 'TEXT'], ['unitCost', 'REAL'], ['costUnit', "TEXT NOT NULL DEFAULT 'ea'"]]) {
+    if (!names.has(name)) await runBenchStockMigration(`ALTER TABLE bench_stock ADD COLUMN ${name} ${type}`);
+  }
+  return true;
+})().catch(err => {
+  console.error('Bench stock schema migration failed:', err);
+  return false;
+});
+
+router.use(/^\/benchstock(?:-all|\/|$)/, async (_req, res, next) => {
+  if (!await benchStockReady) return res.status(503).json({ error:'Bench stock storage unavailable' });
+  next();
+});
+
+function parseBenchStockCost(value) {
+  if (value == null || (typeof value === 'string' && !value.trim())) return null;
+  if (!['string', 'number'].includes(typeof value)) return NaN;
+  const amount = Number(value);
+  return Number.isFinite(amount) && amount >= 0 ? amount : NaN;
+}
 
 router.get('/benchstock-all', requireUser, (_req,res)=>{
   db.all(
-    `SELECT partNumber, description, location, manufacturer, qty, updatedAt, updatedBy, notes
+    `SELECT partNumber, description, location, manufacturer, qty, updatedAt, updatedBy, notes, unitCost, costUnit
        FROM bench_stock ORDER BY partNumber COLLATE NOCASE ASC`,
     [],
     (err, rows)=>{
@@ -340,7 +362,7 @@ router.get('/benchstock-all', requireUser, (_req,res)=>{
 
 router.get('/benchstock/:partNumber', requireUser, (req,res)=>{
   db.get(
-    `SELECT partNumber, description, location, manufacturer, qty, updatedAt, updatedBy, notes
+    `SELECT partNumber, description, location, manufacturer, qty, updatedAt, updatedBy, notes, unitCost, costUnit
        FROM bench_stock WHERE partNumber = ?`,
     [req.params.partNumber],
     (err, row)=>{
@@ -352,15 +374,18 @@ router.get('/benchstock/:partNumber', requireUser, (req,res)=>{
 });
 
 router.post('/benchstock', requireAdmin, (req,res)=>{
-  const { partNumber, description='', location='', manufacturer='', qty=0, notes='' } = req.body || {};
+  const { partNumber, description='', location='', manufacturer='', qty=0, notes='', unitCost, costUnit } = req.body || {};
+  const parsedCost = parseBenchStockCost(unitCost);
+  if (Number.isNaN(parsedCost)) return res.status(400).json({ error:'Unit cost must be 0 or higher' });
+  if (costUnit !== undefined && !['ea', 'ft'].includes(costUnit)) return res.status(400).json({ error:'Invalid cost unit' });
   const pn = String(partNumber || '').trim();
   if (!pn) return res.status(400).json({ error:'partNumber required' });
   const parsedQty = Number(qty);
   if (!Number.isFinite(parsedQty) || parsedQty < 0) return res.status(400).json({ error:'invalid qty' });
   const now = Date.now();
   db.run(
-    `INSERT INTO bench_stock (partNumber, description, location, manufacturer, qty, updatedAt, updatedBy, notes) VALUES (?,?,?,?,?,?,?,?)`,
-    [pn, String(description||'').trim(), String(location||'').trim(), String(manufacturer||'').trim(), Math.trunc(parsedQty), now, req.user, String(notes||'').trim()],
+    `INSERT INTO bench_stock (partNumber, description, location, manufacturer, qty, updatedAt, updatedBy, notes, unitCost, costUnit) VALUES (?,?,?,?,?,?,?,?,?,?)`,
+    [pn, String(description||'').trim(), String(location||'').trim(), String(manufacturer||'').trim(), Math.trunc(parsedQty), now, req.user, String(notes||'').trim(), parsedCost, costUnit ?? 'ea'],
     function(err){
       if (err) {
         if (String(err.message || '').includes('UNIQUE')) return res.status(409).json({ error:'exists' });
@@ -372,13 +397,16 @@ router.post('/benchstock', requireAdmin, (req,res)=>{
 });
 
 router.put('/benchstock/:partNumber', requireAdmin, (req,res)=>{
-  const { description='', location='', manufacturer='', qty=0, notes='' } = req.body || {};
+  const { description='', location='', manufacturer='', qty=0, notes='', unitCost, costUnit } = req.body || {};
+  const parsedCost = parseBenchStockCost(unitCost);
+  if (Number.isNaN(parsedCost)) return res.status(400).json({ error:'Unit cost must be 0 or higher' });
+  if (costUnit !== undefined && !['ea', 'ft'].includes(costUnit)) return res.status(400).json({ error:'Invalid cost unit' });
   const parsedQty = Number(qty);
   if (!Number.isFinite(parsedQty) || parsedQty < 0) return res.status(400).json({ error:'invalid qty' });
   const now = Date.now();
   db.run(
-    `UPDATE bench_stock SET description = ?, location = ?, manufacturer = ?, qty = ?, updatedAt = ?, updatedBy = ?, notes = ? WHERE partNumber = ?`,
-    [String(description||'').trim(), String(location||'').trim(), String(manufacturer||'').trim(), Math.trunc(parsedQty), now, req.user, String(notes||'').trim(), req.params.partNumber],
+    `UPDATE bench_stock SET description = ?, location = ?, manufacturer = ?, qty = ?, updatedAt = ?, updatedBy = ?, notes = ?, unitCost = CASE WHEN ? THEN ? ELSE unitCost END, costUnit = COALESCE(?, costUnit) WHERE partNumber = ?`,
+    [String(description||'').trim(), String(location||'').trim(), String(manufacturer||'').trim(), Math.trunc(parsedQty), now, req.user, String(notes||'').trim(), Number(unitCost !== undefined), parsedCost, costUnit ?? null, req.params.partNumber],
     function(err){
       if (err) return res.status(500).json({ error:'db error' });
       if (this.changes === 0) return res.status(404).json({ error:'not found' });
