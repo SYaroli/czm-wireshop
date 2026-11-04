@@ -235,7 +235,6 @@
       removePhoto.checked = false;
       removePhotoLabel.hidden = true;
       fields.partNumber.value = '';
-      fields.partNumber.disabled = false;
       fields.description.value = '';
       fields.location.value = '';
       fields.manufacturer.value = '';
@@ -252,7 +251,6 @@
       removePhoto.checked = false;
       removePhotoLabel.hidden = !row.hasPhoto;
       fields.partNumber.value = row.partNumber || '';
-      fields.partNumber.disabled = true;
       fields.description.value = row.description || '';
       fields.location.value = row.location || '';
       fields.manufacturer.value = row.manufacturer || '';
@@ -326,7 +324,7 @@
         notes: fields.notes.value.trim(),
       };
 
-      if (!payload.partNumber && !editingPart) return setStatus('Part number is required.');
+      if (!payload.partNumber) return setStatus('Part number is required.');
 
       if (!fields.unitCost.validity.valid || (payload.unitCost !== null && !Number.isFinite(payload.unitCost))) return setStatus('Unit cost must be 0 or higher.');
 
