@@ -424,7 +424,9 @@ router.post('/benchstock', requireAdmin, (req,res)=>{
 });
 
 router.put('/benchstock/:partNumber', requireAdmin, (req,res)=>{
-  const { description='', location='', manufacturer='', qty, notes='', unitCost, costUnit, photo } = req.body || {};
+  const { partNumber, description='', location='', manufacturer='', qty, notes='', unitCost, costUnit, photo } = req.body || {};
+  const pn = partNumber === undefined ? req.params.partNumber : typeof partNumber === 'string' ? partNumber.trim() : '';
+  if (!pn) return res.status(400).json({ error:'Part number is required' });
   const parsedPhoto = parseBenchStockPhoto(photo);
   if (!parsedPhoto) return res.status(400).json({ error:'Upload a JPG, PNG or WebP image up to 1 MB' });
   const parsedCost = parseBenchStockCost(unitCost);
@@ -434,12 +436,17 @@ router.put('/benchstock/:partNumber', requireAdmin, (req,res)=>{
   if (parsedQty !== null && (!Number.isFinite(parsedQty) || parsedQty < 0)) return res.status(400).json({ error:'invalid qty' });
   const now = Date.now();
   db.run(
-    `UPDATE bench_stock SET description = ?, location = ?, manufacturer = ?, qty = COALESCE(?, qty), updatedAt = ?, updatedBy = ?, notes = ?, unitCost = CASE WHEN ? THEN ? ELSE unitCost END, costUnit = COALESCE(?, costUnit), photo = CASE WHEN ? THEN ? ELSE photo END, photoType = CASE WHEN ? THEN ? ELSE photoType END WHERE partNumber = ?`,
-    [String(description||'').trim(), String(location||'').trim(), String(manufacturer||'').trim(), parsedQty === null ? null : Math.trunc(parsedQty), now, req.user, String(notes||'').trim(), Number(unitCost !== undefined), parsedCost, costUnit ?? null, Number(photo !== undefined), parsedPhoto.bytes, Number(photo !== undefined), parsedPhoto.type, req.params.partNumber],
+    `UPDATE bench_stock SET partNumber = ?, description = ?, location = ?, manufacturer = ?, qty = COALESCE(?, qty), updatedAt = ?, updatedBy = ?, notes = ?, unitCost = CASE WHEN ? THEN ? ELSE unitCost END, costUnit = COALESCE(?, costUnit), photo = CASE WHEN ? THEN ? ELSE photo END, photoType = CASE WHEN ? THEN ? ELSE photoType END WHERE partNumber = ?`,
+    [pn, String(description||'').trim(), String(location||'').trim(), String(manufacturer||'').trim(), parsedQty === null ? null : Math.trunc(parsedQty), now, req.user, String(notes||'').trim(), Number(unitCost !== undefined), parsedCost, costUnit ?? null, Number(photo !== undefined), parsedPhoto.bytes, Number(photo !== undefined), parsedPhoto.type, req.params.partNumber],
     function(err){
-      if (err) return res.status(500).json({ error:'db error' });
+      if (err) {
+        if (err.code === 'SQLITE_CONSTRAINT' && /bench_stock\.partNumber/.test(err.message)) {
+          return res.status(409).json({ error:'That part number already exists in Bench Stock' });
+        }
+        return res.status(500).json({ error:'db error' });
+      }
       if (this.changes === 0) return res.status(404).json({ error:'not found' });
-      res.json({ ok:true, partNumber: req.params.partNumber });
+      res.json({ ok:true, partNumber: pn });
     }
   );
 });
