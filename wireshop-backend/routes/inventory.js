@@ -424,18 +424,18 @@ router.post('/benchstock', requireAdmin, (req,res)=>{
 });
 
 router.put('/benchstock/:partNumber', requireAdmin, (req,res)=>{
-  const { description='', location='', manufacturer='', qty=0, notes='', unitCost, costUnit, photo } = req.body || {};
+  const { description='', location='', manufacturer='', qty, notes='', unitCost, costUnit, photo } = req.body || {};
   const parsedPhoto = parseBenchStockPhoto(photo);
   if (!parsedPhoto) return res.status(400).json({ error:'Upload a JPG, PNG or WebP image up to 1 MB' });
   const parsedCost = parseBenchStockCost(unitCost);
   if (Number.isNaN(parsedCost)) return res.status(400).json({ error:'Unit cost must be 0 or higher' });
   if (costUnit !== undefined && !['ea', 'ft'].includes(costUnit)) return res.status(400).json({ error:'Invalid cost unit' });
-  const parsedQty = Number(qty);
-  if (!Number.isFinite(parsedQty) || parsedQty < 0) return res.status(400).json({ error:'invalid qty' });
+  const parsedQty = qty === undefined ? null : Number(qty);
+  if (parsedQty !== null && (!Number.isFinite(parsedQty) || parsedQty < 0)) return res.status(400).json({ error:'invalid qty' });
   const now = Date.now();
   db.run(
-    `UPDATE bench_stock SET description = ?, location = ?, manufacturer = ?, qty = ?, updatedAt = ?, updatedBy = ?, notes = ?, unitCost = CASE WHEN ? THEN ? ELSE unitCost END, costUnit = COALESCE(?, costUnit), photo = CASE WHEN ? THEN ? ELSE photo END, photoType = CASE WHEN ? THEN ? ELSE photoType END WHERE partNumber = ?`,
-    [String(description||'').trim(), String(location||'').trim(), String(manufacturer||'').trim(), Math.trunc(parsedQty), now, req.user, String(notes||'').trim(), Number(unitCost !== undefined), parsedCost, costUnit ?? null, Number(photo !== undefined), parsedPhoto.bytes, Number(photo !== undefined), parsedPhoto.type, req.params.partNumber],
+    `UPDATE bench_stock SET description = ?, location = ?, manufacturer = ?, qty = COALESCE(?, qty), updatedAt = ?, updatedBy = ?, notes = ?, unitCost = CASE WHEN ? THEN ? ELSE unitCost END, costUnit = COALESCE(?, costUnit), photo = CASE WHEN ? THEN ? ELSE photo END, photoType = CASE WHEN ? THEN ? ELSE photoType END WHERE partNumber = ?`,
+    [String(description||'').trim(), String(location||'').trim(), String(manufacturer||'').trim(), parsedQty === null ? null : Math.trunc(parsedQty), now, req.user, String(notes||'').trim(), Number(unitCost !== undefined), parsedCost, costUnit ?? null, Number(photo !== undefined), parsedPhoto.bytes, Number(photo !== undefined), parsedPhoto.type, req.params.partNumber],
     function(err){
       if (err) return res.status(500).json({ error:'db error' });
       if (this.changes === 0) return res.status(404).json({ error:'not found' });

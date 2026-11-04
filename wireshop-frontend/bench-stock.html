@@ -71,10 +71,6 @@
             <input id="manufacturer" type="text" />
           </div>
           <div class="field">
-            <label for="qty">Qty</label>
-            <input id="qty" type="number" min="0" step="1" value="0" />
-          </div>
-          <div class="field">
             <label for="unitCost">Unit Cost (USD)</label>
             <input id="unitCost" type="number" min="0" step="any" placeholder="Leave blank if unknown" />
           </div>
@@ -108,7 +104,6 @@
               <th>Description</th>
               <th>Location</th>
               <th>Manufacturer</th>
-              <th>Qty</th>
               <th>Unit Cost</th>
               <th>Notes</th>
               <th>Updated</th>
@@ -117,7 +112,7 @@
             </tr>
           </thead>
           <tbody id="itemsBody">
-            <tr><td colspan="11" class="muted">Loading bench stock...</td></tr>
+            <tr><td colspan="10" class="muted">Loading bench stock...</td></tr>
           </tbody>
         </table>
       </div>
@@ -140,7 +135,6 @@
       description: document.getElementById('description'),
       location: document.getElementById('location'),
       manufacturer: document.getElementById('manufacturer'),
-      qty: document.getElementById('qty'),
       unitCost: document.getElementById('unitCost'),
       costUnit: document.getElementById('costUnit'),
       notes: document.getElementById('notes'),
@@ -245,7 +239,6 @@
       fields.description.value = '';
       fields.location.value = '';
       fields.manufacturer.value = '';
-      fields.qty.value = '0';
       fields.unitCost.value = '';
       fields.costUnit.value = 'ea';
       fields.notes.value = '';
@@ -263,7 +256,6 @@
       fields.description.value = row.description || '';
       fields.location.value = row.location || '';
       fields.manufacturer.value = row.manufacturer || '';
-      fields.qty.value = Number(row.qty || 0);
       fields.unitCost.value = row.unitCost ?? '';
       fields.costUnit.value = row.costUnit ?? 'ea';
       fields.notes.value = row.notes || '';
@@ -284,7 +276,7 @@
       const rows = filteredRows();
       photoObserver.disconnect();
       if (!rows.length) {
-        itemsBody.innerHTML = `<tr><td colspan="11" class="muted">No bench stock items found.</td></tr>`;
+        itemsBody.innerHTML = `<tr><td colspan="10" class="muted">No bench stock items found.</td></tr>`;
         return;
       }
 
@@ -295,7 +287,6 @@
           <td>${esc(r.description)}</td>
           <td>${esc(r.location)}</td>
           <td>${esc(r.manufacturer)}</td>
-          <td><span class="pill">${Number(r.qty || 0)}</span></td>
           <td>${r.unitCost == null ? '' : esc('$' + r.unitCost + '/' + (r.costUnit ?? 'ea'))}</td>
           <td class="notes-cell">${esc(r.notes)}</td>
           <td>${r.updatedAt ? esc(new Date(r.updatedAt).toLocaleString()) : ''}</td>
@@ -320,7 +311,7 @@
         render();
       } catch (err) {
         console.error(err);
-        itemsBody.innerHTML = `<tr><td colspan="11" class="muted">Failed to load bench stock.</td></tr>`;
+        itemsBody.innerHTML = `<tr><td colspan="10" class="muted">Failed to load bench stock.</td></tr>`;
       }
     }
 
@@ -330,14 +321,12 @@
         description: fields.description.value.trim(),
         location: fields.location.value.trim(),
         manufacturer: fields.manufacturer.value.trim(),
-        qty: Number(fields.qty.value || 0),
         unitCost: fields.unitCost.value === '' ? null : fields.unitCost.valueAsNumber,
         costUnit: fields.costUnit.value,
         notes: fields.notes.value.trim(),
       };
 
       if (!payload.partNumber && !editingPart) return setStatus('Part number is required.');
-      if (!Number.isFinite(payload.qty) || payload.qty < 0) return setStatus('Qty must be 0 or higher.');
 
       if (!fields.unitCost.validity.valid || (payload.unitCost !== null && !Number.isFinite(payload.unitCost))) return setStatus('Unit cost must be 0 or higher.');
 
@@ -368,13 +357,12 @@
 
     function exportCsv(){
       const rows = filteredRows();
-      const header = ['Part Number','Description','Location','Manufacturer','Qty','Unit Cost (USD)','Cost Unit','Notes','Updated','By'];
+      const header = ['Part Number','Description','Location','Manufacturer','Unit Cost (USD)','Cost Unit','Notes','Updated','By'];
       const lines = [header.join(',')].concat(rows.map(r => [
         r.partNumber,
         r.description,
         r.location,
         r.manufacturer,
-        Number(r.qty || 0),
         r.unitCost,
         r.costUnit ?? 'ea',
         r.notes || '',
