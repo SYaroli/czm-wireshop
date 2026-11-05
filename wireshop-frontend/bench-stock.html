@@ -10,7 +10,12 @@
   .card-head{padding:16px 18px;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
   .card-title{margin:0;font-size:1.15rem;font-weight:900}
   .toolbar .search{min-width:260px;flex:1}
-  .admin-panel{display:none;padding:16px 18px;border-bottom:1px solid #e5e7eb;background:#fafbfc}
+  .admin-panel{width:min(560px,calc(100vw - 32px));max-height:calc(100dvh - 40px);box-sizing:border-box;padding:20px;border:1px solid #cfd6df;border-radius:14px;background:#fafbfc;overflow:auto;color:#111827}
+  .admin-panel::backdrop{background:rgba(0,0,0,.45)}
+  .editor-head{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:16px}
+  .editor-head h2{margin:0;font-size:1.15rem}
+  .editor-actions{display:flex;gap:10px}
+  body:has(#adminPanel[open]){overflow:hidden}
   .form-grid{display:grid;grid-template-columns:1.3fr 2fr 1.2fr 1.2fr .8fr auto;gap:10px;align-items:end}
   .field label{display:block;font-size:.82rem;font-weight:800;color:#555;margin-bottom:6px}
   .field input{width:100%;padding:10px 12px;border:1px solid #cfd6df;border-radius:10px;font:inherit;box-sizing:border-box}
@@ -52,7 +57,8 @@
         </div>
       </div>
 
-      <div id="adminPanel" class="admin-panel">
+      <dialog id="adminPanel" class="admin-panel" aria-labelledby="editorTitle">
+        <div class="editor-head"><h2 id="editorTitle">Add Bench Stock Item</h2><button id="closeEditorBtn" class="small-btn" type="button" aria-label="Close editor">Close</button></div>
         <div class="form-grid">
           <div class="field">
             <label for="partNumber">Part Number</label>
@@ -89,11 +95,11 @@
             <input id="notes" type="text" placeholder="Optional notes" />
           </div>
           <div class="field">
-            <button id="saveBtn" class="btn" type="button">Save</button>
+            <div class="editor-actions"><button id="saveBtn" class="btn" type="button">Save</button><button id="cancelEditorBtn" class="btn secondary" type="button">Cancel</button></div>
           </div>
         </div>
-        <p id="formStatus" class="muted" style="margin:10px 0 0 0;"></p>
-      </div>
+        <p id="formStatus" role="status" class="muted" style="margin:10px 0 0 0;"></p>
+      </dialog>
 
       <div class="table-wrap">
         <table>
@@ -179,6 +185,34 @@
     let isAdmin = String(user.role || '').toLowerCase() === 'admin';
     let allRows = [];
     let editingPart = null;
+    let editorScroll = { left: 0, top: 0 };
+    let editorTrigger = null;
+    let saving = false;
+
+    function openEditor(title){
+      editorScroll = { left: window.scrollX, top: window.scrollY };
+      editorTrigger = document.activeElement;
+      document.getElementById('editorTitle').textContent = title;
+      adminPanel.scrollTop = 0;
+      adminPanel.showModal();
+      fields.partNumber.focus({ preventScroll: true });
+    }
+
+    function closeEditor(){
+      if (saving) return;
+      adminPanel.close();
+    }
+
+    adminPanel.addEventListener('cancel', e => {
+      if (saving) e.preventDefault();
+    });
+    adminPanel.addEventListener('close', () => {
+      clearForm();
+      editorTrigger?.isConnected && editorTrigger.focus({ preventScroll: true });
+      window.scrollTo({ ...editorScroll, behavior: 'instant' });
+    });
+    document.getElementById('closeEditorBtn').addEventListener('click', closeEditor);
+    document.getElementById('cancelEditorBtn').addEventListener('click', closeEditor);
 
     document.getElementById('logoutBtn').addEventListener('click', () => {
       localStorage.removeItem('user');
@@ -257,10 +291,9 @@
       fields.unitCost.value = row.unitCost ?? '';
       fields.costUnit.value = row.costUnit ?? 'ea';
       fields.notes.value = row.notes || '';
-      adminPanel.style.display = 'block';
       document.getElementById('saveBtn').textContent = 'Update';
       setStatus(`Editing ${row.partNumber}`);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      openEditor('Edit Bench Stock Item');
     }
 
     function filteredRows(){
@@ -314,6 +347,7 @@
     }
 
     async function saveRow(){
+      if (saving) return;
       const payload = {
         partNumber: fields.partNumber.value.trim(),
         description: fields.description.value.trim(),
@@ -335,6 +369,9 @@
       }
       if (file && removePhoto.checked) return setStatus('Choose either a replacement photo or removal.');
 
+      saving = true;
+      const editorButtons = adminPanel.querySelectorAll('button');
+      editorButtons.forEach(button => button.disabled = true);
       try {
         if (file) payload.photo = await readPhoto(file);
         else if (removePhoto.checked) payload.photo = null;
@@ -345,11 +382,17 @@
           await api('/api/benchstock', { method: 'POST', body: payload });
           setStatus('Bench stock item added.', true);
         }
-        clearForm();
         await loadRows();
+        const savedRow = Array.from(itemsBody.querySelectorAll('tr[data-part]')).find(row => row.dataset.part === payload.partNumber);
+        editorTrigger = savedRow?.querySelector('.js-edit') || toggleAdminBtn;
+        saving = false;
+        closeEditor();
       } catch (err) {
         console.error(err);
         setStatus(err.message || 'Failed to save item.');
+      } finally {
+        saving = false;
+        editorButtons.forEach(button => button.disabled = false);
       }
     }
 
@@ -380,13 +423,8 @@
     }
 
     toggleAdminBtn.addEventListener('click', () => {
-      if (adminPanel.style.display === 'block') {
-        adminPanel.style.display = 'none';
-        clearForm();
-      } else {
-        adminPanel.style.display = 'block';
-        clearForm();
-      }
+      clearForm();
+      openEditor('Add Bench Stock Item');
     });
 
     document.getElementById('saveBtn').addEventListener('click', saveRow);
