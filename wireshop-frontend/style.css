@@ -355,3 +355,46 @@ tr.row-selected td{
 .movement-table tbody tr.row-selected td.actions{
   background:#eef5ff !important;
 }
+
+
+/* ===== Seasonal holiday decorations (visual only) ===== */
+/* Decorative touches are confined to the header; forms and shop functions stay unchanged. */
+.brand-bar{
+  border-bottom-color:#246b47;
+}
+.brand-bar::after{
+  content:"";
+  display:block;
+  height:7px;
+  width:100%;
+  pointer-events:none;
+  background:
+    radial-gradient(circle at 8px 3px,#ffdd78 0 2px,transparent 3px) 0 0/64px 7px repeat-x,
+    radial-gradient(circle at 24px 3px,#e94955 0 2px,transparent 3px) 0 0/64px 7px repeat-x,
+    radial-gradient(circle at 40px 3px,#6de6b0 0 2px,transparent 3px) 0 0/64px 7px repeat-x,
+    radial-gradient(circle at 56px 3px,#a4c4ff 0 2px,transparent 3px) 0 0/64px 7px repeat-x;
+  box-shadow:0 3px 8px rgba(0,0,0,.12);
+}
+.brand-logo::after{
+  content:"🎄";
+  font-size:19px;
+  line-height:1;
+  margin-left:3px;
+  flex-shrink:0;
+}
+.login-card{
+  border-top:3px solid #26764d;
+}
+.login-card::after{
+  content:"❄  Warm wishes from the CZM Wireshop  ❄";
+  display:block;
+  text-align:center;
+  color:#35664e;
+  font-size:11px;
+  font-weight:700;
+  letter-spacing:.02em;
+  margin-top:14px;
+}
+@media(max-width:520px){
+  .brand-logo::after{font-size:15px;margin-left:0}
+}
