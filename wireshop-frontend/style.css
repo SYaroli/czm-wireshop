@@ -358,32 +358,69 @@ tr.row-selected td{
 
 
 /* ===== Seasonal holiday decorations (visual only) ===== */
-/* Decorative touches are confined to the header; forms and shop functions stay unchanged. */
+/* Seasonal styling stays purely decorative: no changes to any inventory or job controls. */
 .brand-bar{
-  border-bottom-color:#246b47;
+  border-bottom:2px solid #bb9a49;
+  background:linear-gradient(110deg,#0c1712,#10251c 48%,#18151b) !important;
 }
 .brand-bar::after{
   content:"";
   display:block;
-  height:7px;
-  width:100%;
   pointer-events:none;
+  height:20px;
+  width:100%;
   background:
-    radial-gradient(circle at 8px 3px,#ffdd78 0 2px,transparent 3px) 0 0/64px 7px repeat-x,
-    radial-gradient(circle at 24px 3px,#e94955 0 2px,transparent 3px) 0 0/64px 7px repeat-x,
-    radial-gradient(circle at 40px 3px,#6de6b0 0 2px,transparent 3px) 0 0/64px 7px repeat-x,
-    radial-gradient(circle at 56px 3px,#a4c4ff 0 2px,transparent 3px) 0 0/64px 7px repeat-x;
-  box-shadow:0 3px 8px rgba(0,0,0,.12);
+    radial-gradient(ellipse at 12px 10px,#fff5b0 0 3px,#ffbc42 4px,transparent 8px) 0 0/112px 20px repeat-x,
+    radial-gradient(ellipse at 40px 10px,#ffd3dc 0 3px,#f24050 4px,transparent 8px) 0 0/112px 20px repeat-x,
+    radial-gradient(ellipse at 68px 10px,#d8ffe7 0 3px,#35d88b 4px,transparent 8px) 0 0/112px 20px repeat-x,
+    radial-gradient(ellipse at 96px 10px,#e6efff 0 3px,#6f9eff 4px,transparent 8px) 0 0/112px 20px repeat-x,
+    repeating-radial-gradient(ellipse at 56px -16px,transparent 0 54px,rgba(138,191,149,.7) 55px 56px,transparent 57px 112px);
+  filter:drop-shadow(0 2px 4px rgba(220,184,98,.24));
+  animation:czmHolidayTwinkle 3.8s ease-in-out infinite alternate;
 }
 .brand-logo::after{
   content:"🎄";
-  font-size:19px;
+  font-size:20px;
   line-height:1;
   margin-left:3px;
   flex-shrink:0;
+  filter:drop-shadow(0 0 5px rgba(245,208,92,.6));
+}
+.brand-actions .navbtn{border-color:#345344}
+.brand-actions .navbtn:hover{border-color:#bb9a49}
+div[role="status"]{
+  position:relative;
+  isolation:isolate;
+  overflow:hidden;
+  background:linear-gradient(110deg,#103c30 0%,#1d6044 36%,#184a3e 65%,#792d36 100%) !important;
+  border-bottom:3px solid #dfbf66 !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.13),0 3px 12px rgba(21,53,39,.12);
+  color:#fff9e9 !important;
+  text-shadow:0 1px 8px rgba(0,0,0,.25);
+  padding:17px 54px !important;
+}
+div[role="status"]::before,div[role="status"]::after{
+  position:absolute;
+  top:50%;
+  transform:translateY(-50%);
+  font-size:25px;
+  text-shadow:0 0 8px rgba(255,220,145,.3);
+}
+div[role="status"]::before{content:"🎁 ✨";left:clamp(10px,5vw,90px)}
+div[role="status"]::after{content:"✨ 🎁";right:clamp(10px,5vw,90px)}
+body{
+  background-color:#eef2f0;
+  background-image:
+    radial-gradient(circle at 12% 24%,rgba(255,255,255,.95) 0 3px,transparent 4px),
+    radial-gradient(circle at 84% 13%,rgba(255,255,255,.8) 0 2px,transparent 3px),
+    radial-gradient(circle at 67% 64%,rgba(255,255,255,.75) 0 3px,transparent 4px),
+    linear-gradient(180deg,#e9f1ec,#f0f2f4 55%,#eef0f3);
+  background-size:260px 240px,190px 200px,300px 280px,100% 100%;
 }
 .login-card{
-  border-top:3px solid #26764d;
+  border:1px solid #d0dfd4;
+  border-top:5px solid #26764d;
+  box-shadow:0 10px 32px rgba(25,69,46,.13),0 1px 6px rgba(0,0,0,.08);
 }
 .login-card::after{
   content:"❄  Warm wishes from the CZM Wireshop  ❄";
@@ -393,8 +430,20 @@ tr.row-selected td{
   font-size:11px;
   font-weight:700;
   letter-spacing:.02em;
-  margin-top:14px;
+  margin-top:18px;
+  padding-top:12px;
+  border-top:1px solid #e2ebe5;
 }
-@media(max-width:520px){
-  .brand-logo::after{font-size:15px;margin-left:0}
+@keyframes czmHolidayTwinkle{
+  from{opacity:.8;filter:drop-shadow(0 2px 3px rgba(220,184,98,.12))}
+  to{opacity:1;filter:drop-shadow(0 2px 7px rgba(220,184,98,.5))}
+}
+@media(max-width:650px){
+  div[role="status"]{padding:12px 35px !important;font-size:1.12rem !important}
+  div[role="status"]::before{content:"✨";left:9px;font-size:17px}
+  div[role="status"]::after{content:"✨";right:9px;font-size:17px}
+  .brand-logo::after{font-size:16px;margin-left:0}
+}
+@media(prefers-reduced-motion:reduce){
+  .brand-bar::after{animation:none}
 }
