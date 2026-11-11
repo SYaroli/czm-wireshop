@@ -211,20 +211,6 @@
     });
   }
 
-  function alignQueueMenus() {
-    if (!onAssignments) return;
-    document.querySelectorAll('#queuedBody tr').forEach(tr => {
-      const trigger = tr.querySelector('.row-menu-trigger');
-      if (!trigger) return;
-      const cell = tr.cells?.[tr.cells.length - 1];
-      if (!cell) return;
-      cell.style.display = 'flex';
-      cell.style.alignItems = 'center';
-      cell.style.justifyContent = 'flex-end';
-      cell.style.gap = '5px';
-    });
-  }
-
   function fixEmptyDoneRows() {
     if (!onAssignments) return;
     document.querySelectorAll('#doneBody tr').forEach(tr => {
@@ -235,7 +221,6 @@
   function ensure() {
     queued = false;
     alignProgressMenus();
-    alignQueueMenus();
     ensureDoneActionsColumn();
     fixEmptyDoneRows();
   }

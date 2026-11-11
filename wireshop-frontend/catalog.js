@@ -5,8 +5,8 @@
 document.write('<script src="/catalog-data.js"><\/script>');
 document.write('<script src="/inventory-edit-fallback.js"><\/script>');
 document.write('<script src="/time-edit-ui.js"><\/script>');
-document.write('<script src="/context-actions.js"><\/script>');
-document.write('<script src="/ui-polish.js"><\/script>');
+document.write('<script src="/context-actions.js?v=queue-fix-20261111"><\/script>');
+document.write('<script src="/ui-polish.js?v=queue-fix-20261111"><\/script>');
 document.write('<script src="/history-name-fallback.js"><\/script>');
 document.write('<script src="/part-number-transition-ui.js"><\/script>');
 document.write('<script src="/movement-note-edit.js"><\/script>');

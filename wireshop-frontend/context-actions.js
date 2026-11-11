@@ -25,6 +25,8 @@
       .row-menu-trigger:hover{background:#f2f4f7;border-color:#9fa8b6}
       .row-menu-trigger:active{transform:translateY(1px)}
       .context-actions-cell{white-space:nowrap;text-align:right}
+      #queuedBody .context-actions-cell{vertical-align:middle;text-align:right !important}
+      #queuedBody .row-menu-trigger{margin-left:5px}
       .row-context-menu{
         position:fixed;z-index:100000;min-width:190px;max-width:280px;padding:6px;
         background:#fff;border:1px solid #c7ccd4;border-radius:10px;
@@ -106,6 +108,7 @@
         if (seen.has(key)) return;
         seen.add(key);
         out.push({
+          key,
           label,
           source: btn,
           danger: !!btn.dataset.cancel,
@@ -132,6 +135,8 @@
   function showMenu(tr, x, y) {
     const actions = actionsFor(tr);
     if (!actions.length) return false;
+    const queue = tr.closest('#queuedBody');
+    const taskId = tr.dataset.id;
 
     closeMenu();
     const m = document.createElement('div');
@@ -154,8 +159,13 @@
         e.preventDefault();
         e.stopPropagation();
         closeMenu();
-        if (!a.source.isConnected || a.source.disabled) return;
-        setTimeout(() => a.source.click(), 0);
+        let source = a.source;
+        // Polling can replace the row while its menu is still open.
+        if (queue && !source.isConnected) {
+          const currentRow = Array.from(queue.rows).find(row => row.dataset.id === taskId);
+          source = currentRow && actionsFor(currentRow).find(action => action.key === a.key)?.source;
+        }
+        if (source?.isConnected && !source.disabled) source.click();
       });
       m.appendChild(b);
     });
