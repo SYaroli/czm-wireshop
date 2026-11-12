@@ -95,6 +95,14 @@ app.options("*", cors(corsConfig));
 app.use(express.json({ limit: "5mb" }));
 app.use(express.urlencoded({ extended: true }));
 
+// Preserve access to historical records while the shop works in CZM Electrical.
+app.use("/api", (req, res, next) => {
+  if (["GET", "HEAD", "OPTIONS"].includes(req.method)) return next();
+  return res.status(409).json({
+    error: "The old Wire Shop is read-only. Use CZM Electrical at https://czm-electrical.onrender.com/.",
+  });
+});
+
 // ----- mount routers -----
 app.use("/api/auth", authRouter);
 app.use("/api/users", usersRouter);
